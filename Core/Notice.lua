@@ -96,7 +96,11 @@ local Num = MelloUI.Safe.Number
 local Call = MelloUI.Safe.Call
 local Anim = MelloUI.Anim
 local GameLook = MelloUI.Look   -- (the palette's colours, outline and shadow)
-local Tr = MelloUI.Widgets.Tr
+-- (a line in the language in use: the widget set's Tr, which loads the language's table first)
+local function Tr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
+end
 
 local OWNER = "Notice"
 local KEY = "notice"            -- its place in the store

@@ -2,6 +2,13 @@
 
 ## 2.1.54
 
+- Quest Tracker: a new Guide: Next Steps slider shows up to five of a leveling guide's next steps under its current one, dimmed, with RestedXP Guides. It starts off.
+- Quest Tracker: the items a RestedXP step names are now the game's item links. Point at one for its tooltip, click it for its card, shift-click to link it in the chat. A step's own link opens a window to copy its address.
+- RestedXP Guides: its Active Targets wears MelloUI's look while its guide is followed.
+- Edit Layout: hold Alt to put the dock out of the way and reach an element that lies under it. The dock says so when something does.
+- Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.
+- German: the bag window, the map's quest log, the widgets, the reminders, the chat and Edit Layout are translated now.
+- French: the on-screen lines, the tutorial tips, the reminders, the map's layers, the quest log, Services, Restock and Route's distances and times are translated now, and follow a language change at once. In French, Route's distances show in metres.
 - Dungeon maps: Santiago Reyes' maps of The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace, a map for each part of a dungeon (Blackmaw Hold has six). City of Dalaran, Ruins of Lordaeron, The Hall of Thanes and Excavation Site: Wetlands show his newest versions, all of them sharper than before.
 - Dungeon Info: The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace have pages of their own, with their bosses and level ranges. No drops are known for them yet.
 - Map: clicking a dungeon's entrance opens its page in Dungeon Info with its map, for the new dungeons too. An entrance you found by walking in now shows on MelloUI's map as well.

@@ -39,6 +39,12 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("QuestTracker")
 local C_Timer = Perf.C_Timer
+-- (a line in the language in use: the widget set's Tr, which loads the language's table first. A world without the
+-- widget set -- the suite's small ones -- the text as it is)
+local function Tr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
+end
 
 local M = MelloUI:RegisterModule("QuestTracker", {
 	title = "Quest Tracker",
@@ -129,7 +135,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		-- Tracker category") the rows Questie's tracker has nothing for ask it (Core/ConfigLayout.lua's `when`): this
 		-- tracker lists the quests -- false while Questie's does in MelloUI's look (Core/QuestieLook.lua: the others are
 		-- written into Questie's). Read only, never a row of its own (L.unplaced), never saved
-		{ type = "toggle", key = "ownLines", name = "MelloUI Lists The Quests", new = "2.1.53",
+		{ type = "toggle", key = "ownLines", name = "MelloUI Lists The Quests",
 		  get = function()
 			local QK = rawget(MelloUI, "QuestieLook")
 			return not (type(QK) == "table" and type(QK.InUse) == "function" and QK.InUse())
@@ -2223,7 +2229,7 @@ local function OnBlockEnter(block, onMark)
 		GameTooltip:SetOwner(block, "ANCHOR_LEFT")
 		GameTooltip:SetText(block.title:GetText() or "")
 		local c = MelloUI.Look.TipPalette().text
-		GameTooltip:AddLine(MelloUI.Widgets.Tr("Click: mark this step on the map again  -  Right-click: remove its mark"), c[1], c[2], c[3], true)
+		GameTooltip:AddLine(Tr("Click: mark this step on the map again  -  Right-click: remove its mark"), c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		Act.Lit(block, true)
 		return
@@ -2239,7 +2245,7 @@ local function OnBlockEnter(block, onMark)
 			GameTooltip:SetText(block.title:GetText() or "")
 		end
 		local c = MelloUI.Look.TipPalette().text   -- (a hint: small text is never mutedText)
-		GameTooltip:AddLine(MelloUI.Widgets.Tr("Click: open the recipe  -  Shift-click: stop tracking"), c[1], c[2], c[3], true)
+		GameTooltip:AddLine(Tr("Click: open the recipe  -  Shift-click: stop tracking"), c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		Act.Lit(block, true)
 		return
@@ -2256,12 +2262,12 @@ local function OnBlockEnter(block, onMark)
 	local QI = MelloUI.QuestInk
 	local name = block.tier and QI and QI.TIER_NAME and QI.TIER_NAME[block.tier]
 	if name then
-		MelloUI.Widgets.Tr("Difficulty: %s")
-		GameTooltip:AddLine(MelloUI.Lang.F("Difficulty: %s", name), c[1], c[2], c[3], true)
+		-- (the line and the tier's name in the language in use)
+		GameTooltip:AddLine(Tr("Difficulty: %s"):format(Tr(name)), c[1], c[2], c[3], true)
 	end
 	local pad = MelloUI.Safe.GamepadUI()
 	local hint = onMark and (pad and Act.HINT.markPad or Act.HINT.mark) or (pad and Act.HINT.blockPad or Act.HINT.block)
-	GameTooltip:AddLine(MelloUI.Widgets.Tr(hint), c[1], c[2], c[3], true)
+	GameTooltip:AddLine(Tr(hint), c[1], c[2], c[3], true)
 	GameTooltip:Show()
 	Act.Lit(block, true)
 end
@@ -2390,7 +2396,7 @@ local function NewBlock()
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			pcall(GameTooltip.SetHyperlink, GameTooltip, self.itemLink)
 			local c = MelloUI.Look.TipPalette().text
-			GameTooltip:AddLine(MelloUI.Widgets.Tr("Out of combat, a click uses it."), c[1], c[2], c[3], true)
+			GameTooltip:AddLine(Tr("Out of combat, a click uses it."), c[1], c[2], c[3], true)
 			GameTooltip:Show()
 		end
 	end)
@@ -3576,7 +3582,7 @@ local function FillBlock(block, questID, width, followedID)
 		local text = Near.TurnInLine(questID)
 		if not text then
 			text = logIndex and GetQuestLogCompletionText and GetQuestLogCompletionText(logIndex)
-			text = MelloUI.Lang.T(Plain(text) or "Ready for turn-in")
+			text = Tr(Plain(text) or "Ready for turn-in")
 		end
 		local fs
 		y, fs = PutLine(block, n, text, y, textWidth, false, 0.95, 0.95, 0.95)
@@ -3926,104 +3932,108 @@ end
 -- modified click what the game does with it (a shift-click links it in the chat); a guide's own link (mellouiguide:n,
 -- the line's Open: RestedXP's copy box for a video or a page) says so and opens it. The block's own click (the step
 -- marked again) waits while the pointer is on a link.
-local GUIDE_LINK = "mellouiguide"
-local GUIDE_LINK_TIP = "Click: open the link to copy it"
+-- (one block: the file's top-level locals stand near Lua's 200, and only these two are called from outside it)
+local GuideLayer, GuideText
+do
+	local GUIDE_LINK = "mellouiguide"
+	local GUIDE_LINK_TIP = "Click: open the link to copy it"
 
 
--- (a Frame of the block's own over it, its lines' owner while it is a guide's: the block is a Button, and a Button's
--- lines answer no hyperlink -- the game hands a FontString's links only to a plain Frame that owns it, as the chat's
--- own frames are). It forwards the block's own click, hover and wheel; a quest's block has it mouse-off, links off.
-local GuideLinkEnter = Perf.Shared("OnHyperlinkEnter on a guide step's link", function(layer, link)
-	local block = layer.block or layer
-	block.overLink = true
-	if type(link) ~= "string" then
-		return
-	end
-	GameTooltip:SetOwner(layer, "ANCHOR_CURSOR")
-	if link:match("^" .. GUIDE_LINK .. ":%d+$") then
-		GameTooltip:SetText(MelloUI.Widgets.Tr(GUIDE_LINK_TIP), 1, 1, 1)
-	elseif not pcall(GameTooltip.SetHyperlink, GameTooltip, link) then
-		GameTooltip:Hide()
-		return
-	end
-	GameTooltip:Show()
-end, "script")
-
-local GuideLinkLeave = Perf.Shared("OnHyperlinkLeave on a guide step's link", function(layer)
-	local block = layer.block or layer
-	block.overLink = nil
-	if GameTooltip:IsOwned(layer) then
-		GameTooltip:Hide()
-	end
-end, "script")
-
-local GuideLinkClick = Perf.Shared("OnHyperlinkClick on a guide step's link", function(layer, link, text, button)
-	local block = layer.block or layer
-	if type(link) ~= "string" then
-		return
-	end
-	local n = tonumber(link:match("^" .. GUIDE_LINK .. ":(%d+)$"))
-	if n then
-		local open = block.guideLinks and block.guideLinks[n]
-		if open then
-			pcall(open)
+	-- (a Frame of the block's own over it, its lines' owner while it is a guide's: the block is a Button, and a Button's
+	-- lines answer no hyperlink -- the game hands a FontString's links only to a plain Frame that owns it, as the chat's
+	-- own frames are). It forwards the block's own click, hover and wheel; a quest's block has it mouse-off, links off.
+	local GuideLinkEnter = Perf.Shared("OnHyperlinkEnter on a guide step's link", function(layer, link)
+		local block = layer.block or layer
+		block.overLink = true
+		if type(link) ~= "string" then
+			return
 		end
-	elseif IsModifiedClick() and rawget(_G, "HandleModifiedItemClick") then
-		pcall(rawget(_G, "HandleModifiedItemClick"), text)
-	elseif rawget(_G, "SetItemRef") then
-		pcall(rawget(_G, "SetItemRef"), link, text, button, layer)
-	end
-end, "script")
+		GameTooltip:SetOwner(layer, "ANCHOR_CURSOR")
+		if link:match("^" .. GUIDE_LINK .. ":%d+$") then
+			GameTooltip:SetText(Tr(GUIDE_LINK_TIP), 1, 1, 1)
+		elseif not pcall(GameTooltip.SetHyperlink, GameTooltip, link) then
+			GameTooltip:Hide()
+			return
+		end
+		GameTooltip:Show()
+	end, "script")
 
--- the layer's own mouse handed on to its block (a click off the links: the step marked again; the hover's tooltip)
-local GuideLayerUp = Perf.Shared("OnMouseUp on a guide step's link layer", function(layer, button)
-	if layer:IsMouseOver() and not (layer.block and layer.block.overLink) then
-		OnBlockClick(layer.block, button)
-	end
-end, "script")
-local GuideLayerEnter = Perf.Shared("OnEnter on a guide step's link layer", function(layer)
-	OnBlockEnter(layer.block)
-end, "script")
-local GuideLayerLeave = Perf.Shared("OnLeave on a guide step's link layer", function(layer)
-	OnBlockLeave(layer.block)
-end, "script")
-local GuideLayerWheel = Perf.Shared("OnMouseWheel on a guide step's link layer", function(_, delta)
-	Scroll(delta)
-end, "script")
+	local GuideLinkLeave = Perf.Shared("OnHyperlinkLeave on a guide step's link", function(layer)
+		local block = layer.block or layer
+		block.overLink = nil
+		if GameTooltip:IsOwned(layer) then
+			GameTooltip:Hide()
+		end
+	end, "script")
 
--- the block's link layer, made at its first guide step, mouse and links on
-local function GuideLayer(block)
-	local l = block.linkLayer
-	if not l then
-		l = CreateFrame("Frame", nil, block)
-		l:SetAllPoints(block)
-		l.block = block
-		l:EnableMouseWheel(true)
-		Perf.SetScript(l, "OnHyperlinkEnter", GuideLinkEnter)
-		Perf.SetScript(l, "OnHyperlinkLeave", GuideLinkLeave)
-		Perf.SetScript(l, "OnHyperlinkClick", GuideLinkClick)
-		Perf.SetScript(l, "OnMouseUp", GuideLayerUp)
-		Perf.SetScript(l, "OnEnter", GuideLayerEnter)
-		Perf.SetScript(l, "OnLeave", GuideLayerLeave)
-		Perf.SetScript(l, "OnMouseWheel", GuideLayerWheel)
-		block.linkLayer = l
-	end
-	l:SetFrameLevel(block:GetFrameLevel() + 1)
-	l:EnableMouse(true)
-	pcall(l.SetHyperlinksEnabled, l, true)
-	l:Show()
-	return l
-end
+	local GuideLinkClick = Perf.Shared("OnHyperlinkClick on a guide step's link", function(layer, link, text, button)
+		local block = layer.block or layer
+		if type(link) ~= "string" then
+			return
+		end
+		local n = tonumber(link:match("^" .. GUIDE_LINK .. ":(%d+)$"))
+		if n then
+			local open = block.guideLinks and block.guideLinks[n]
+			if open then
+				pcall(open)
+			end
+		elseif IsModifiedClick() and rawget(_G, "HandleModifiedItemClick") then
+			pcall(rawget(_G, "HandleModifiedItemClick"), text)
+		elseif rawget(_G, "SetItemRef") then
+			pcall(rawget(_G, "SetItemRef"), link, text, button, layer)
+		end
+	end, "script")
 
--- a guide line as the tracker shows it: its linked text (the reader's), a guide's own link wrapped round it
-local function GuideText(block, line)
-	local text = line.shown or line.text or ""
-	if type(line.Open) == "function" then
-		local links = block.guideLinks
-		links[#links + 1] = line.Open
-		text = "|H" .. GUIDE_LINK .. ":" .. #links .. "|h" .. text .. "|h"
+	-- the layer's own mouse handed on to its block (a click off the links: the step marked again; the hover's tooltip)
+	local GuideLayerUp = Perf.Shared("OnMouseUp on a guide step's link layer", function(layer, button)
+		if layer:IsMouseOver() and not (layer.block and layer.block.overLink) then
+			OnBlockClick(layer.block, button)
+		end
+	end, "script")
+	local GuideLayerEnter = Perf.Shared("OnEnter on a guide step's link layer", function(layer)
+		OnBlockEnter(layer.block)
+	end, "script")
+	local GuideLayerLeave = Perf.Shared("OnLeave on a guide step's link layer", function(layer)
+		OnBlockLeave(layer.block)
+	end, "script")
+	local GuideLayerWheel = Perf.Shared("OnMouseWheel on a guide step's link layer", function(_, delta)
+		Scroll(delta)
+	end, "script")
+
+	-- the block's link layer, made at its first guide step, mouse and links on
+	function GuideLayer(block)
+		local l = block.linkLayer
+		if not l then
+			l = CreateFrame("Frame", nil, block)
+			l:SetAllPoints(block)
+			l.block = block
+			l:EnableMouseWheel(true)
+			Perf.SetScript(l, "OnHyperlinkEnter", GuideLinkEnter)
+			Perf.SetScript(l, "OnHyperlinkLeave", GuideLinkLeave)
+			Perf.SetScript(l, "OnHyperlinkClick", GuideLinkClick)
+			Perf.SetScript(l, "OnMouseUp", GuideLayerUp)
+			Perf.SetScript(l, "OnEnter", GuideLayerEnter)
+			Perf.SetScript(l, "OnLeave", GuideLayerLeave)
+			Perf.SetScript(l, "OnMouseWheel", GuideLayerWheel)
+			block.linkLayer = l
+		end
+		l:SetFrameLevel(block:GetFrameLevel() + 1)
+		l:EnableMouse(true)
+		pcall(l.SetHyperlinksEnabled, l, true)
+		l:Show()
+		return l
 	end
-	return text
+
+	-- a guide line as the tracker shows it: its linked text (the reader's), a guide's own link wrapped round it
+	function GuideText(block, line)
+		local text = line.shown or line.text or ""
+		if type(line.Open) == "function" then
+			local links = block.guideLinks
+			links[#links + 1] = line.Open
+			text = "|H" .. GUIDE_LINK .. ":" .. #links .. "|h" .. text .. "|h"
+		end
+		return text
+	end
 end
 
 local function FillGuideBlock(block, data, width)

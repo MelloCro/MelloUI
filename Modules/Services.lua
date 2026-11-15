@@ -2339,7 +2339,7 @@ function Pick.Fill(row, e)
 	row.kind = e
 	Pic(row.icon, not e.prof and e.kind.icon or nil, ROUND_CROP)
 	row.label:SetText(Tr(e.label))
-	row.where:SetText(e.yours and Tr("Known") or "")
+	row.where:SetText(e.yours and Tr("yours") or "")
 	Tint(row.label, "text")
 	Tint(row.where, "selectedTrim")
 	row.icon:SetDesaturated(false)

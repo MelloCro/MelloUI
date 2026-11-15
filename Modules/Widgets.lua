@@ -316,13 +316,18 @@ M.TEXT = TEXT
 -- a TEXT line in the language in use, translated before it is filled in ("%s, to the %s"); a name, a quest's title
 -- or an item as it is (MelloUI.Widgets.Tr; on M, not a new file local)
 function M.Tr(s)
-	return MelloUI.Widgets.Tr(s)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(s) or s
 end
 -- string.format of a TEXT template in the language in use, its string arguments looked up too (Lang.F: "Main hand", a
 -- direction; a name or an item the table lacks as it is)
 function M.F(fmt, ...)
-	MelloUI.Widgets.Tr(fmt)   -- (the language's table loaded first)
-	return MelloUI.Lang.F(fmt, ...)
+	M.Tr(fmt)   -- (the language's table loaded first)
+	local Lang = MelloUI.Lang
+	if Lang and Lang.F then
+		return Lang.F(fmt, ...)
+	end
+	return string.format(fmt, ...)
 end
 
 --------------------------------------------------------------------------------
@@ -885,7 +890,7 @@ local function CorpseWay()
 		MelloUI:Announce(M.Tr(TEXT.corpseNoWay), "fail")
 		return
 	end
-	local ok, placed = pcall(R.SetDestinationTo, R, c, MelloUI.Lang.T("your corpse"), true)
+	local ok, placed = pcall(R.SetDestinationTo, R, c, M.Tr(TEXT.corpse), true)
 	if not ok then
 		geterrorhandler()(placed)
 	elseif placed == false then
@@ -928,14 +933,15 @@ local function CorpseRes()
 end
 
 local CORPSE = {
-	key = "corpse", column = true, label = function() return MelloUI.Lang.T(TEXT.corpseLabel) end,
+	-- (its label, title, hint and its buttons' lines plain: the column translates each where it draws it)
+	key = "corpse", column = true, label = TEXT.corpseLabel,
 	check = function()
 		return corpse.ghost
 	end,
-	title = function() return MelloUI.Lang.T(TEXT.corpse) end,
+	title = TEXT.corpse,
 	text = function()
 		if corpse.near then
-			return MelloUI.Lang.T(TEXT.corpseReady)
+			return M.Tr(TEXT.corpseReady)
 		end
 		local R, c = Route(), CorpseCandidate()
 		if R and c and type(R.DistanceTo) == "function" then
@@ -943,14 +949,14 @@ local CORPSE = {
 			d = ok and Num(d) or nil
 			if d then
 				if d < 25 then
-					return MelloUI.Lang.T(TEXT.corpseNear)
+					return M.Tr(TEXT.corpseNear)
 				end
 				local yards = type(R.YardsText) == "function" and R:YardsText(d) or (floor(d) .. " yd")
 				local dir = Bearing(corpse.mapID, corpse.x, corpse.y)
 				return dir and M.F(TEXT.corpseFar, yards, dir) or yards
 			end
 		end
-		return MelloUI.Lang.T(TEXT.corpseLine)
+		return M.Tr(TEXT.corpseLine)
 	end,
 	icon = "Interface\\Icons\\Ability_Vanish",
 	progress = function()
@@ -975,13 +981,11 @@ local CORPSE = {
 			CorpseWay()
 		end
 	end,
-	hint = function() return MelloUI.Lang.T(TEXT.way) end,
+	hint = TEXT.way,
 	actions = {
-		{ glyph = "check", tip = function() return MelloUI.Lang.T(TEXT.corpseRes) end,
-		  desc = function() return MelloUI.Lang.T(TEXT.corpseResDesc) end, fn = function() CorpseRes() end,
+		{ glyph = "check", tip = TEXT.corpseRes, desc = TEXT.corpseResDesc, fn = function() CorpseRes() end,
 		  shown = function() return corpse.near end },
-		{ glyph = "way", tip = function() return MelloUI.Lang.T(TEXT.way) end,
-		  desc = function() return MelloUI.Lang.T(TEXT.wayCorpse) end, fn = function() CorpseWay() end,
+		{ glyph = "way", tip = TEXT.way, desc = TEXT.wayCorpse, fn = function() CorpseWay() end,
 		  shown = function() return not corpse.near end },
 	},
 }

@@ -1688,7 +1688,7 @@ function Pick.NotOffered()
 			notKeys[n] = key
 		end
 	end
-		return W.Tr("Restock: Not offered: %s. You carry better %s."):format(said or "", Words(notKeys, n))
+	return W.Tr("Not offered: %s. You carry better %s."):format(said or "", Words(notKeys, n))
 end
 
 -- (2.1.51; Nixxen: at a merchant who only had a drink below the one carried, "I did not get the 'Not offered' note" --
@@ -1697,7 +1697,7 @@ end
 function Pick.TellNotOffered()
 	if plan.notN > 0 and plan.notLow and not shop.toldNot then
 		shop.toldNot = true
-		MelloUI:Announce(Pick.NotOffered())
+		MelloUI:Announce(W.Tr("Restock: %s"):format(Pick.NotOffered()))
 	end
 end
 
@@ -2256,7 +2256,7 @@ function win.FillHint()
 		local letter = i == 1 and "a" or "b"
 		local slots = list.cap[letter]
 		if slots > 0 then
-			local part = MelloUI.Lang.F(i == 1 and "quiver: %d of %d" or "ammo pouch: %d of %d", list.held[letter], slots * list.Stack(letter))
+			local part = MelloUI.Lang.F(i == 1 and "quiver %d of %d" or "ammo pouch %d of %d",list.held[letter], slots * list.Stack(letter))
 			text = text and (text .. ", " .. part) or part
 		end
 	end

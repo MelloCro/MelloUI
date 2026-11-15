@@ -1444,7 +1444,7 @@ local function LayersPage()
 	for g, name in ipairs(spec.groups) do
 		local h = HeadLook(CreateFrame("Frame", nil, pane))
 		h.mapLabelKey = name
-		h.label:SetText(W.Tr(name))
+		h.label:SetText(W.Tr(name):upper())   -- (capitals, as before: the heading's look)
 		S.layerHeads[#S.layerHeads + 1] = h
 		h:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -y)
 		h:SetWidth(width)
@@ -1532,7 +1532,7 @@ end
 
 local function RefreshLayerLabels()
 	for _, h in ipairs(S.layerHeads) do
-		h.label:SetText(W.Tr(h.mapLabelKey))
+		h.label:SetText(W.Tr(h.mapLabelKey):upper())
 	end
 	for _, r in ipairs(S.layerRows or {}) do
 		if r.mapLabelKey then

@@ -77,7 +77,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  desc = "The health bar's height." },
 		-- (2.1.53; the user, 2026-11-15: "i have no options to resize the height of the Cast bar") the preview's cast
 		-- bar and every enemy plate's alike (M.CastHeight); the wheel on the preview's cast bar sets it too
-		{ type = "slider", key = "castHeight", name = "Cast Bar Height", min = 0, max = 30, step = 1, new = "2.1.53",
+		{ type = "slider", key = "castHeight", name = "Cast Bar Height", min = 0, max = 30, step = 1,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Game's" or string.format("%d px", v) end,
 		  desc = "The height of the cast bar on enemy nameplates. Game's: the height the game gives it." },
 		{ type = "header", name = "Crowd Control" },
@@ -102,15 +102,15 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  desc = "In group fights, a thin line on an enemy's bar showing how close it is to turning on you. For tanks, it turns red when you lose a mob." },
 		-- (2.1.53; the user, 2026-11-15: "i need a checkbox to enable Custom Threat Nameplate Healthbar colours depending
 		-- on the Role") M.THREAT_TINT
-		{ type = "toggle", key = "threatColours", name = "Threat Colours By Role", new = "2.1.53",
+		{ type = "toggle", key = "threatColours", name = "Threat Colours By Role",
 		  desc = "In group fights, an enemy's health bar takes a colour by its threat on you and your role. Tanks see the mobs they hold, are losing and have lost; healers and damage dealers see the mobs about to turn on them and the ones that have." },
 		-- (2.1.53; the user's pick A of the Threat Colours Picks sketch, one colour a state for every role, then "Yes, add
 		-- wheels")
-		{ type = "colour", key = "threatSafeColour", parent = "threatColours", name = "Safe Colour", new = "2.1.53",
+		{ type = "colour", key = "threatSafeColour", parent = "threatColours", name = "Safe Colour",
 		  desc = "Threat Colours By Role: a mob that is safe. For a tank, one it holds; for a healer or damage dealer, one nowhere near turning on them." },
-		{ type = "colour", key = "threatCloseColour", parent = "threatColours", name = "Close Colour", new = "2.1.53",
+		{ type = "colour", key = "threatCloseColour", parent = "threatColours", name = "Close Colour",
 		  desc = "Threat Colours By Role: a mob a tank is losing, or one close to turning on a healer or damage dealer." },
-		{ type = "colour", key = "threatAggroColour", parent = "threatColours", name = "Aggro Colour", new = "2.1.53",
+		{ type = "colour", key = "threatAggroColour", parent = "threatColours", name = "Aggro Colour",
 		  desc = "Threat Colours By Role: a mob a tank has lost, or one that has turned on a healer or damage dealer." },
 		{ type = "header", name = "Combo Points" },
 		{ type = "toggle", key = "comboPoints", name = "Combo Points",

@@ -178,6 +178,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.54", lines = {
+		"Quest Tracker: a new Guide: Next Steps slider shows up to five of a leveling guide's next steps under its current one, dimmed, with RestedXP Guides. It starts off.",
+		"Quest Tracker: the items a RestedXP step names are now the game's item links, with the game's tooltip. A step's own link opens a window to copy its address.",
+		"RestedXP Guides: its Active Targets wears MelloUI's look while its guide is followed.",
+		"Edit Layout: hold Alt to put the dock out of the way and reach an element that lies under it.",
+		"Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.",
+		"German: the bag window, the map's quest log, the widgets, the reminders, the chat and Edit Layout are translated now.",
+		"French: the on-screen lines, the tutorial tips, the reminders, the map's layers, Services and Route's distances and times are translated now. Route's distances show in metres.",
 		"Dungeon maps: Santiago Reyes' maps of The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace, and his newest, sharper ones of the other four.",
 		"Dungeon Info: the five new dungeons have pages with their bosses. Clicking a dungeon's entrance on the map opens its page with its map, for these too.",
 	} },

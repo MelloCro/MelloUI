@@ -32,7 +32,8 @@
 local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
 local CreateFrame = MelloUI.Safe.CreateFrame
-local W = MelloUI.Widgets
+-- (the widget set, for a line in the language in use: W.Tr. A world without it -- the suite's small ones -- the text as it is)
+local W = MelloUI.Widgets or { Tr = function(text) return text end }
 local Perf = MelloUI.Perf:Scope("MelloUI_Route (Guides)")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Plain, Text, Finite = MelloUI.Safe.Value, MelloUI.Safe.Text, MelloUI.Safe.Finite
