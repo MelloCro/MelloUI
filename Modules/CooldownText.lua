@@ -396,16 +396,53 @@ end
 -- Hooks (shared Cooldown metatable)
 --------------------------------------------------------------------------------
 
+-- These public getters return real-time values by default, including any speed modifier.
+-- Never read timing fields or calculate with restricted values.
+local function ReadDurationObject(duration)
+	if duration:HasSecretValues() ~= false then
+		return nil
+	end
+	-- Our numeric tick uses GetTime; an object with another clock must stay on its native path.
+	if duration:GetClock() ~= nil then
+		return nil
+	end
+	return duration:GetStartTime(), duration:GetTotalDuration()
+end
+
+local function DurationObjectChanged(cooldown, duration)
+	cleared[cooldown] = nil
+	if not M.isEnabled or (cooldown.IsForbidden and cooldown:IsForbidden()) then
+		StopTimer(cooldown, true)
+		return
+	end
+	if not (issecretvalue and issecretvalue(duration)) then
+		local ok, start, seconds = pcall(ReadDurationObject, duration)
+		if ok and IsPlainNumber(start) and IsPlainNumber(seconds) then
+			if not Category(cooldown) then
+				StopTimer(cooldown, true)
+			end
+			StartTimer(cooldown, start, seconds)
+			return
+		end
+	end
+	-- The native setter bypasses SetCooldown. If its timing is restricted or unavailable,
+	-- retire our previous number instead of leaving it over the new cooldown.
+	StopTimer(cooldown, true)
+end
+
 -- Blizzard asked for its own numbers shown or hidden (called guarded: one
 -- function for every call, no closure made per call)
 local function NumbersRequested(cooldown, hidden)
 	local wantsHidden = hidden and true or false
 	requestedHidden[cooldown] = wantsHidden
 	local timer = timers[cooldown]
-	if timer and active[cooldown] and not wantsHidden then
-		-- Blizzard wants its numbers back while ours are showing; keep ours.
-		timer.nativeHidden = false
-		SetNativeNumbersHidden(cooldown, true)
+	if timer and active[cooldown] then
+		-- Remember the caller's latest choice for when our countdown ends or hands back to the native widget.
+		timer.nativeHidden = wantsHidden
+		if not wantsHidden then
+			-- Blizzard wants its numbers back while ours are showing; keep ours until the handoff.
+			SetNativeNumbersHidden(cooldown, true)
+		end
 	end
 end
 
@@ -430,6 +467,9 @@ local function InstallHooks()
 		hooksecurefunc(index, "SetCooldownDuration", function(cooldown, duration, modRate)
 			StartTimer(cooldown, GetTime(), duration, modRate)
 		end)
+	end
+	if type(index.SetCooldownFromDurationObject) == "function" then
+		hooksecurefunc(index, "SetCooldownFromDurationObject", DurationObjectChanged)
 	end
 	if type(index.SetCooldownUNIX) == "function" then
 		hooksecurefunc(index, "SetCooldownUNIX", function(cooldown, start, duration, modRate)
