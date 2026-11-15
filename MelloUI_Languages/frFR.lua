@@ -3816,7 +3816,7 @@ Lang:Add("frFR", {
 	["Objective Done"] = "Objectif terminé",
 	["An objective finished: its ring closes with a flare of light, sparks and a tick, and the count turns into Complete."] = "Quand un objectif est terminé, son anneau se ferme dans un éclat de lumière, avec des étincelles et une coche ; le compteur affiche alors « Terminé ».",
 	["Quest Done"] = "Quête terminée",
-	["A quest ready to turn in: a gilded crest lands with the hand-in mark, and the quest's title opens under Quest Complete."] = "Quand une quête est prête à être rendue, un blason doré apparaît avec l’icône de remise et son titre s’affiche sous « Quête terminée »."
+	["A quest ready to turn in: a gilded crest lands with the hand-in mark, and the quest's title opens under Quest Complete."] = "Quand une quête est prête à être rendue, un blason doré apparaît avec l’icône de remise et son titre s’affiche sous « Quête terminée ».",
 	["come to Quest Moments"] = "sont prises en charge par Instants de quête",
 	["are NOT taken: the game's frame still has them"] = "ne sont PAS prises en charge : le cadre du jeu les affiche toujours",
 	["on"] = "activé",
