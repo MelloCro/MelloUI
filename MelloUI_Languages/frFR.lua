@@ -2466,7 +2466,7 @@ Lang:Add("frFR", {
 	["UI Shade: Action Bars"] = "Ombre de l'interface : barres d'actions",
 	["UI Shade: Cast Bars"] = "Ombre de l'interface : barres d'incantation",
 	["Only for the square map (Oldschool's painted Minimap is set to Round)"] = "Seulement pour la carte carrée (la minicarte peinte d'Oldschool est réglée sur Ronde)",
-	["Services Bar"] = "Barre Services",
+	["Services Bar"] = "Barre de services",
 	["Only with MelloUI's minimap on"] = "Seulement avec la minicarte de MelloUI active",
 	["Minimap Shape"] = "Forme de la minicarte",
 	["Only with the painted Minimap skin"] = "Seulement avec l'habillage peint de la minicarte",
