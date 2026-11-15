@@ -89,6 +89,7 @@ local T = {
 	SLIDE = 12,                 -- the page switch's slide (the configurator's)
 	MARK = 18,                  -- a quest's mark (track_todo / track_handin)
 	CHECK = 16,                 -- its tracked box
+	PARTY = 13,                 -- (2.1.54) the party mark beside it: someone in your group has the quest
 	TITLE_X = 35,               -- a quest's title and lines from the row's left (the mark, the gem, their gaps)
 	ROW_TOP = 7, ROW_GAP = 3, ROW_BOTTOM = 8,
 	ZONE = 28,                  -- a zone's heading
@@ -398,8 +399,20 @@ local RowClick = Perf.Shared("OnClick on the map's quest log rows", function(sel
 	end
 end, "script")
 
+-- (2.1.54, the user: "we are in a group, but I can't see who has which quest") the Quest List's group reader
+-- (MelloUI_QuestList/QuestListParty.lua), nil when that addon is off: who in your group has a quest
+local function Party()
+	local P = MelloUI.QuestParty
+	return type(P) == "table" and type(P.On) == "function" and P or nil
+end
+
 local RowEnter = Perf.Shared("OnEnter on the map's quest log rows", function(self)
-	if self.title:IsTruncated() then
+	local P = Party()
+	if P and self.id and #P.On(self.id) > 0 then
+		W.ShowTooltip(self, self.title:GetText())
+		P.TipLines(GameTooltip, self.id)
+		GameTooltip:Show()
+	elseif self.title:IsTruncated() then
 		W.ShowTooltip(self, self.title:GetText(), TEXT.rowTip)
 	end
 end, "script")
@@ -453,6 +466,15 @@ local function Row(i)
 	r.check.tex = r.check:CreateTexture(nil, "ARTWORK")
 	r.check.tex:SetAllPoints()
 	r.title:SetPoint("RIGHT", r.check, "LEFT", -6, 0)
+	-- (2.1.54) who in your group has it: the party mark and their count, left of the tracked box
+	r.party = r:CreateTexture(nil, "ARTWORK")
+	r.party:SetSize(T.PARTY, T.PARTY)
+	r.party:SetPoint("RIGHT", r.check, "LEFT", -4, 0)
+	W.Icon(r.party, "chan_party")
+	r.party:Hide()
+	r.partyCount = W.Text(r, "GameFontHighlightSmall", nil, "text")
+	r.partyCount:SetPoint("RIGHT", r.party, "LEFT", -1, 0)
+	r.partyCount:Hide()
 	r.line:SetPoint("TOPLEFT", r.title, "BOTTOMLEFT", 0, -T.ROW_GAP)
 	Perf.SetScript(r, "OnClick", RowClick)
 	Perf.SetScript(r, "OnEnter", RowEnter)
@@ -476,6 +498,18 @@ local function FillRow(r, e, width)
 		QI.RowGem(r, r.title, r.titleSize, QI.TierForQuest(e.id, e.level))
 	end
 	W.Icon(r.check.tex, Watched(e.id) and "ctl_check_on" or "ctl_check_off")
+	local P = Party()
+	local party = P and #P.On(e.id) or 0
+	r.party:SetShown(party > 0)
+	r.partyCount:SetShown(party > 0)
+	r.partyCount:SetText(party > 0 and tostring(party) or "")
+	r.title:ClearAllPoints()
+	r.title:SetPoint("TOPLEFT", r, "TOPLEFT", T.TITLE_X, -T.ROW_TOP)
+	if party > 0 then
+		r.title:SetPoint("RIGHT", r.partyCount, "LEFT", -4, 0)
+	else
+		r.title:SetPoint("RIGHT", r.check, "LEFT", -6, 0)
+	end
 	r.line:SetWidth(max(1, width - T.TITLE_X - 4))
 	r.line:SetText(QuestLine(e))
 	local on = e.id == S.selected
@@ -1086,9 +1120,23 @@ local function Events(f, on)
 	fn(f, "QUEST_WATCH_LIST_CHANGED")
 	fn(f, "SUPER_TRACKING_CHANGED")
 	fn(f, "GROUP_ROSTER_UPDATE")
+	fn(f, "UNIT_QUEST_LOG_CHANGED")   -- (2.1.54: a group member's log, for the party marks)
 end
 
-local function Column_OnEvent()
+-- (a group member's log changed: the rows again a moment later, once Questie has heard of it too)
+local function PartyLater()
+	S.partyWait = nil
+	S.dirty = true
+end
+
+local function Column_OnEvent(_, event, unit)
+	if event == "UNIT_QUEST_LOG_CHANGED" then
+		if Plain(unit) ~= "player" and not S.partyWait and Party() then
+			S.partyWait = true
+			C_Timer.After(1.5, PartyLater)
+		end
+		return
+	end
 	S.dirty = true
 end
 

@@ -680,6 +680,11 @@ function O.Tip(tip, data, Line, hints, after)
 		local name = FROM_COLOUR[s[1]] and QL.TipPaint(s[2], FROM_COLOUR[s[1]]) or s[2]
 		Line(tip, string.format("%s %s%s%s", W.Tr(FROM[s[1]] or "From"), name, levels, chance and (", " .. chance) or ""), "text", true)
 	end
+	-- (2.1.54) who in your group has the quest, with this objective's count (QuestListParty.lua; Questie's group data
+	-- counts the objectives in the quest log's order: the log line's own index, t[3], not the data's)
+	if QL.Party then
+		QL.Party.TipLines(tip, data.questID, t and t[3] or nil)
+	end
 	if hints then
 		Line(tip, W.Tr("Click to set a waypoint here."), "pinHint")
 	end
