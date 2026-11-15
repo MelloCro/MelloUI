@@ -3338,6 +3338,9 @@ Lang:Add("frFR", {
 	["Choose one:"] = "Choisissez une récompense :",
 	["%d XP"] = "%d points d'expérience",
 	["Ready to hand in"] = "À rendre",
+	["In your group"] = "Dans votre groupe", -- draft
+	["ready to hand in"] = "prête à rendre", -- draft
+	["%d of %d objectives"] = "%d objectifs sur %d", -- draft
 	["Ready to hand in: %s"] = "À rendre : %s",
 	["Routing"] = "Itinéraire actif",
 	["Tracked"] = "Suivie",

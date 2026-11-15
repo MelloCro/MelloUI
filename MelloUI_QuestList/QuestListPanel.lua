@@ -42,6 +42,7 @@ local QP = MelloUI.QuestPages
 local LEVEL_SHORTCUT = 4   -- the gear menu's level check: hide quests more than 4 (so 5 or more) levels above
 local PIN_SIZE = 14        -- the map pin of the pinned quest, after its name
 local PIN_GAP = 4          -- between the name and the pin
+local PARTY_SIZE = 13      -- (2.1.54) the party's mark of a quest someone in your group has too, after the name
 -- (0.19.9) a group's Done section's header; the header's progress bar's texture
 local DONE_SECTION = "Done (%d)"
 QL.doneOpen = QL.doneOpen or {}   -- (QuestList.lua's; here too for a panel loaded on its own)
@@ -197,6 +198,9 @@ local function RowEnter(self)
 		Line(tip, "Only during " .. (QL.Data().events[row[QL.F_EVENT]] or "its event"), "text")
 	end
 	QL.RecordLines(tip, row[QL.F_ID])   -- (0.19.9: your other characters' -- done it, or in their log)
+	if QL.Party then
+		QL.Party.TipLines(tip, row[QL.F_ID])   -- (2.1.54: who in your group has it, how far: QuestListParty.lua)
+	end
 	-- (what a click does, one line)
 	local pin
 	if QL.trackedQuestID == row[QL.F_ID] then
@@ -351,6 +355,15 @@ local function EnsureWidgets(button)
 	-- (0.25.0) the gold pin with Route's red flag of MelloUI's icon set (the map's own pin atlas until then)
 	MelloUI.Widgets.Icon(button.pin, "goal_pin")
 	button.pin:Hide()
+	-- (2.1.54) how many in your group have the quest: the party's mark and the count, after the name and the pin
+	-- (InitRow; QuestListParty.lua)
+	button.party = button:CreateTexture(nil, "OVERLAY", nil, 1)
+	button.party:SetSize(PARTY_SIZE, PARTY_SIZE)
+	MelloUI.Widgets.Icon(button.party, "chan_party")
+	button.party:Hide()
+	button.partyCount = button:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
+	button.partyCount:SetPoint("LEFT", button.party, "RIGHT", 2, 0)
+	button.partyCount:Hide()
 	-- its scripts, once (EntryClick above)
 	Perf.SetScript(button, "OnClick", EntryClick)
 	Perf.SetScript(button, "OnEnter", EntryEnter)
@@ -438,6 +451,8 @@ local function InitHeader(button, entry)
 	button.count:Show()
 	button.plus:Show()
 	button.pin:Hide()
+	button.party:Hide()   -- (2.1.54: a quest row's party mark, never a header's)
+	button.partyCount:Hide()
 	if bandOf[button] then
 		bandOf[button]:Hide()
 	end
@@ -614,19 +629,35 @@ local function InitRow(button, entry)
 	-- gem stands before the title: the title keeps the whole width)
 	-- (a pinned row's name short of the pin's room; the line under it keeps the whole width)
 	local pinRoom = pinned and (PIN_SIZE + PIN_GAP) or 0
-	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -6 - pinRoom, 0)
-	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", pinRoom, -ROW.gap)
+	-- (2.1.54) the party's mark and how many in your group have it too (QuestListParty.lua), after the name and the pin
+	local Finite = MelloUI.Safe.Finite
+	local party = QL.Party and #QL.Party.On(row[QL.F_ID]) or 0
+	local partyRoom = 0
+	button.party:SetShown(party > 0)
+	button.partyCount:SetShown(party > 0)
+	if party > 0 then
+		button.partyCount:SetText(party)
+		KeyColour(button.partyCount, "text", entry.completed and QL.DONE_ALPHA or 1)
+		partyRoom = PARTY_SIZE + 2 + (Finite(button.partyCount:GetStringWidth()) or 8) + PIN_GAP
+	end
+	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -6 - pinRoom - partyRoom, 0)
+	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", pinRoom + partyRoom, -ROW.gap)
 	QI.RowGem(button, button.title, titleSize, tier)
-	if pinned then
-		-- the pin right after the name as it shows (cut at the title's width when it is long)
-		local Finite = MelloUI.Safe.Finite
+	if pinned or party > 0 then
+		-- the pin, then the party's mark, right after the name as it shows (cut at the title's width when it is long)
 		local w = Finite(button.title:GetStringWidth()) or 0
 		local room = Finite(button.title:GetWidth())
 		if room and room > 0 and w > room then
 			w = room
 		end
-		button.pin:ClearAllPoints()
-		button.pin:SetPoint("LEFT", button.title, "LEFT", w + PIN_GAP, 0)
+		if pinned then
+			button.pin:ClearAllPoints()
+			button.pin:SetPoint("LEFT", button.title, "LEFT", w + PIN_GAP, 0)
+		end
+		if party > 0 then
+			button.party:ClearAllPoints()
+			button.party:SetPoint("LEFT", button.title, "LEFT", w + PIN_GAP + pinRoom, 0)
+		end
 	end
 	-- on the reskin's parchment: both lines in ink; a done quest faded
 	if QI.onParchment then
@@ -768,8 +799,25 @@ local function QuestsMoved()
 end
 
 local watcher = CreateFrame("Frame")
+-- (2.1.54) the group changed, or a member's quest log: the rows' party marks laid again once, a moment later (Questie's
+-- group data for it comes a little after the game's event)
+local partyDue = false
+local function PartyChanged()
+	if partyDue then
+		return
+	end
+	partyDue = true
+	C_Timer.After(1.5, function()
+		partyDue = false
+		QL.Panel:Update()
+	end)
+end
 Perf.SetScript(watcher, "OnEvent", function(_, event, questID)
-	if event == "QUEST_TURNED_IN" then
+	if event == "GROUP_ROSTER_UPDATE" or event == "UNIT_QUEST_LOG_CHANGED" then
+		if event == "GROUP_ROSTER_UPDATE" or questID ~= "player" then   -- (UNIT_QUEST_LOG_CHANGED's first: the unit)
+			PartyChanged()
+		end
+	elseif event == "QUEST_TURNED_IN" then
 		-- drawn again, and its done flag watched (it may land after this)
 		handedIn = true
 		questID = QL.Plain(questID)
@@ -1117,6 +1165,8 @@ function QL.Panel:Create(host)
 		asks, logAsks, casts, searched, handedIn = 0, 0, 0, false, false
 		watcher:RegisterEvent("QUEST_LOG_UPDATE")
 		watcher:RegisterEvent("QUEST_TURNED_IN")
+		watcher:RegisterEvent("GROUP_ROSTER_UPDATE")   -- (2.1.54: the party marks, PartyChanged)
+		watcher:RegisterEvent("UNIT_QUEST_LOG_CHANGED")
 		if watcher.RegisterUnitEvent then
 			watcher:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 		else

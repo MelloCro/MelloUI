@@ -3542,6 +3542,9 @@ Lang:Add("deDE", {
 	["Choose one:"] = "Wähle eins:",
 	["%d XP"] = "%d EP",
 	["Ready to hand in"] = "Abgabebereit",
+	["In your group"] = "In deiner Gruppe", -- draft
+	["ready to hand in"] = "abgabebereit", -- draft
+	["%d of %d objectives"] = "%d von %d Zielen", -- draft
 	["Ready to hand in: %s"] = "Abgabebereit: %s",
 	["Routing"] = "Route aktiv",
 	["Tracked"] = "Verfolgt",
