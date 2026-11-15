@@ -183,7 +183,7 @@ local CHANGELOG = {
 		"Custom Sounds: the character sheet no longer opens with a click on top of its own sound, and one window taking another's place plays only the opening.",
 		"Quest Tracker: a new Guide: Next Steps slider shows up to five of a leveling guide's next steps under its current one, dimmed, with RestedXP Guides. It starts off.",
 		"RestedXP Guides: the items a step names are now the game's item links on the Quest Tracker, with the game's tooltip, and its Active Targets wears MelloUI's look.",
-		"Bags: a split stack dropped on a + slot now goes into a free slot, not back onto its stack.",
+		"Bags: a split stack dropped on a + slot now goes into a free slot, not back onto its stack, and Discard counts the Reagent Bag's items too.",
 		"Edit Layout: hold Alt to put the dock out of the way and reach an element that lies under it.",
 		"Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.",
 		"German: the bag window, the map's quest log, the widgets, the reminders, the chat and Edit Layout are translated now.",

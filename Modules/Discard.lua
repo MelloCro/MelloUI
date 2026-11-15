@@ -41,7 +41,9 @@
 --                pays clearly more for (SELL_MARGIN, after the house's cut). Its prices show in the tooltip only,
 --                with the credit AHledger asks for (and "the copy it ships with" while it has no synced prices)
 -- Which one: the stack worth least (the vendor's price times the stack);
--- a tie: grey before white, then the first in the bags.
+-- a tie: grey before white, then the first in the bags. Where: the backpack,
+-- the four bags and (2.1.54) the Reagent Bag; the loot window's button the
+-- ordinary bags only (a Reagent Bag slot takes only crafting reagents).
 -- Asking first: a white item is named with its value and only goes on
 -- Discard (MelloUI:Confirm); a grey one goes on the click.
 -- The loot window's button (always there): it frees a slot only when
@@ -303,10 +305,14 @@ function M.Candidate(bag, slot)
 		value = unit * count, vendor = price * count, link = Value(info.hyperlink), icon = Num(info.iconFileID) }
 end
 
--- the bags' slots: the backpack and the four bags
-local function EachSlot(fn)
+-- the bags' slots: the backpack, the four bags and the Reagent Bag (2.1.54; Nixxen: a Sharp Claw at 47c in the Reagent
+-- Bag was passed over for meat at 7s 75c -- the Reagent Bag was never read): NUM_TOTAL_EQUIPPED_BAG_SLOTS, as Restock
+-- and Vendor read the bags. `ordinary`: without the Reagent Bag (the loot window's button: a slot there takes only
+-- crafting reagents, no room for the loot)
+local function EachSlot(fn, ordinary)
 	local C = C_Container
-	local last = Num(rawget(_G, "NUM_BAG_SLOTS")) or 4
+	local last = Num(rawget(_G, ordinary and "NUM_BAG_SLOTS" or "NUM_TOTAL_EQUIPPED_BAG_SLOTS"))
+		or Num(rawget(_G, "NUM_BAG_SLOTS")) or 4
 	for bag = 0, last do
 		local n = Num(Ask(C and C.GetContainerNumSlots, bag)) or 0
 		for slot = 1, n do
@@ -331,8 +337,8 @@ end
 -- the cheapest candidate; selling: whatever its value, else under the limit
 -- (a valuable stack is never thrown away). Also how many were kept for
 -- their value, for the message; (2.1.50) selling: the cheapest of those
--- held back for the auction's price and how many (AHledger)
-function M.Cheapest(selling)
+-- held back for the auction's price and how many (AHledger); ordinary: the ordinary bags only (EachSlot)
+function M.Cheapest(selling, ordinary)
 	local limit = ((Num(M.db and M.db.keepWorth) or 100) * 100)
 	local best, valuable, held, nheld = nil, 0, nil, 0
 	EachSlot(function(bag, slot)
@@ -349,8 +355,14 @@ function M.Cheapest(selling)
 				best = c
 			end
 		end
-	end)
+	end, ordinary)
 	return best, valuable, held, nheld
+end
+
+-- (2.1.54) the loot window's button throwing away (not selling): the ordinary bags only -- its tooltip, its click and
+-- its right-click name the same item
+local function Ordinary(source, selling)
+	return source == "loot" and not selling
 end
 
 -- what the loot window holds worth most: an item's vendor value times its
@@ -443,7 +455,7 @@ end
 -- the button's click: from the bags ("bags") or the loot window ("loot")
 function M.Click(source)
 	local selling = AtVendor()
-	local c, valuable, _, nheld = M.Cheapest(selling)
+	local c, valuable, _, nheld = M.Cheapest(selling, Ordinary(source, selling))
 	if not c then
 		if selling and nheld > 0 then
 			Say("Discard: nothing to sell -- what is left sells for more at the auction house (AHledger's prices).")
@@ -520,7 +532,7 @@ end
 -- auction worth and the vendor's beside it), what Sell holds back for the auction, the right-click, the credit
 local function Tip(self)
 	local selling = AtVendor()
-	local c, _, held, nheld = M.Cheapest(selling)
+	local c, _, held, nheld = M.Cheapest(selling, Ordinary(self.source, selling))
 	local P = MelloUI.Palette.text
 	local tr, tg, tb = P[1], P[2], P[3]
 	local credit = nil
@@ -563,7 +575,8 @@ end
 
 -- (2.1.50) the right-click: the item the button would take kept from now on; its tooltip names the next one
 function M.KeepClick(self)
-	local c = M.Cheapest(AtVendor())
+	local selling = AtVendor()
+	local c = M.Cheapest(selling, Ordinary(self and self.source, selling))
 	if not c then
 		return
 	end
