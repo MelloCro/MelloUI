@@ -5637,7 +5637,8 @@ end
 -- "#rrggbb" (the colour wheel's), "palette:<key>" (a palette colour, which
 -- follows the palette) or the name of one of the game's colours
 -- ("GREEN_FONT_COLOR": a default with no literal of ours; 2.1.9: "class:MAGE",
--- "power:MANA", "reaction:4", MelloUI.Colours.Game's)
+-- "power:MANA", "reaction:4", MelloUI.Colours.Game's; 2.1.53: "meaning:<key>",
+-- one of MelloUI.Meaning's fixed meaning colours)
 --   W.ColourValue(v) -> r, g, b        (white for anything else)
 --   W.ColourHex(r, g, b) -> "#rrggbb"
 --   W.ColourRow(parent, y, label, hint, desc, get, set, opts) -> row, swatch
@@ -5659,6 +5660,15 @@ function W.ColourValue(v)
 	local key = v:match("^palette:(%w+)$")
 	if key then
 		local c = MelloUI.Palette[key]
+		if type(c) == "table" and type(c[1]) == "number" then
+			return c[1], c[2], c[3]
+		end
+		return 1, 1, 1
+	end
+	-- (2.1.53: a fixed meaning colour by its key -- the nameplates' threat colours start on MelloUI.Meaning's)
+	key = v:match("^meaning:(%w+)$")
+	if key then
+		local c = MelloUI.Meaning and MelloUI.Meaning[key]
 		if type(c) == "table" and type(c[1]) == "number" then
 			return c[1], c[2], c[3]
 		end

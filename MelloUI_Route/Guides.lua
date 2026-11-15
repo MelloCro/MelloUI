@@ -5,7 +5,7 @@
 -- those coordinates and places a mark on that spot, that could work"), the
 -- others since 2026-10-21 (the user: "add compatibility like we did with
 -- restedxp for ... Follow the Arrow, TUGs Leveling Guidelime Guide ... and some
--- other"), Polestar since 2.1.0, Zygor's opt-in since 2.1.10 (its reader, below): one core for every guide,
+-- other"), Polestar since 2.1.0, Zygor since 2.1.53 (its reader, below): one core for every guide,
 -- one reader per addon. While a guide runs:
 --   * its step's spot gets the game's map pin, tracked, so the route and the
 --     World Marker lead there (Guide.Step, read by Route's ReadWaypoint on the
@@ -1881,10 +1881,16 @@ do
 end
 
 -- Zygor Guides (2.1.9; the user, 2026-11-06, a friend's screenshot: its window and arrow beside the Quest Tracker: "should
--- be integrated into quest tracker exactly like restedxp is"). A paid addon with no copy here to read: its shape from its
--- own forum's error dumps and memory of its older versions (ZGV: CurrentGuide, CurrentStep, a step's goals, a goal's
--- GetText and IsComplete, SkipStep): NOT YET SEEN ON THE REAL ADDON. /route zygor lists what is really there. Its frames
--- are veiled only while its lines read: a Zygor of another shape keeps its own window and nothing is lost.
+-- be integrated into quest tracker exactly like restedxp is"). Written first without the addon at hand; (2.1.53; the user,
+-- 2026-11-15: "we had some issues with Zygor integration, can we make sure that it works now") read against the real
+-- Zygor Guide Viewer (Forever) 1.6, ZygorGuidesViewerForever: _G.ZGV (ZygorGuidesViewer.lua), its CurrentGuide (title,
+-- title_short: Guide.lua), CurrentStepNum and CurrentStep (FocusStep), a step's goals (Step.lua), a goal's
+-- GetText(showcompleteness) / IsComplete() (its first answer) / IsVisible() and its map (an ID), x, y on 0..1
+-- (Goal.lua, Parser.lua's ParseMapXYDist), ZGV:SkipStep, ZGV.Pointer.ArrowFrame.waypoint's m, x, y (Pointer.lua),
+-- ZGV.Frame (ZygorGuidesViewerFrame, Skins/Default/Skin.lua) inside ZGV.MasterFrame (ZygorGuidesViewerFrameMaster),
+-- ZGV.GuideMenu:Show, ZGV:OpenOptions -- every one there; nothing of its goals' or steps' yields (Goal.lua, Step.lua).
+-- /route zygor lists what is really there. Its frames are veiled only while its lines read: a Zygor of another shape
+-- keeps its own window and nothing is lost.
 do
 	local zygor = { key = "zygor", name = "Zygor", section = "Zygor Guide" }
 
@@ -1905,7 +1911,8 @@ do
 		if not s then
 			return nil
 		end
-		s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|n", " ")
+		s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|n", " ")
+		s = s:gsub("|H.-|h(.-)|h", "%1")
 		s = s:gsub("^%s+", ""):gsub("%s+$", "")
 		return s ~= "" and s or nil
 	end
@@ -1941,38 +1948,21 @@ do
 	-- 'SetGuide'"): its startup is a coroutine and SetGuide yields inside it; hooksecurefunc's wrapper is a C function, and
 	-- nothing yields through one. Read on a slow ticker instead (Zygor checks its own goals once a second, its
 	-- completioninterval), a line built again only when its step reads otherwise (Quick).
-	-- OPT-IN until it is proven on the real addon (2.1.9 shipped it unproven and broke Zygor): for every player Zygor is left
-	-- alone -- no ticker, nothing read, its own window. /route zygor on follows it, for the test.
+	-- (2.1.10 to 2.1.52 an opt-in, /route zygor on, until it was proven; 2.1.53: proven on its code, above) followed as every
+	-- guide is: while Zygor is loaded and its switch on the Addons page (Use with MelloUI) is on -- off, no ticker, nothing
+	-- read, its own window; read only while guides are followed (/route guide)
 	function zygor.Hook(changed)
-		if not (Z() and M.db and M.db.zygorFollow) then
+		if not (Z() and Allowed(zygor)) then
 			return false
 		end
 		if not zygor.ticker then
 			zygor.ticker = C_Timer.NewTicker(0.5, function()
-				changed()
+				if Following() then
+					changed()
+				end
 			end)
 		end
 		return true
-	end
-
-	-- /route zygor on | off (the test's): off, its own window and arrow back at once
-	function Guide.ZygorFollow(on)
-		if not M.db then
-			return
-		end
-		M.db.zygorFollow = on and true or nil
-		if on then
-			Guide.Hook()
-		else
-			if zygor.ticker then
-				zygor.ticker:Cancel()
-				zygor.ticker = nil
-			end
-			zygor.hooked = nil
-			Guide.Forget()
-			Guide.Refresh()
-		end
-		MelloUI:Print("Following Zygor Guides: %s.", on and "on (a test)" or "off")
 	end
 
 	-- its step's signature (Read: Steps only when it changed)
@@ -2017,6 +2007,12 @@ do
 		for _, goal in ipairs(goals) do
 			if Ask(goal, "IsVisible") ~= false then
 				local text = Clean(Ask(goal, "GetText", true))
+				-- (2.1.53; the test VM, Orc & Troll Starter step 4: three lines of "?") a goal with no words of its own -- a
+				-- guide's |tip line: its text "?" -- shows its tip, as Zygor's own window does (Skins/Default/
+				-- ViewerFrame.lua: "?" skipped, goal.tooltip in its place)
+				if text == "?" then
+					text = Clean(type(goal.tooltip) == "string" and goal.tooltip or nil)
+				end
 				if text then
 					lines[#lines + 1] = { text = text, done = GoalDone(goal) }
 				end
@@ -2248,6 +2244,8 @@ do
 		-- (2.1.51; the user installed it) FlowUp: its own map pin, followed with no reader; another guide's pin
 		-- tracked stops it laying its own (it takes a tracked pin for the player's), so one guide at a time
 		{ "FlowUp", "FlowUp" },
+		-- (2.1.53: its reader proven on its code, no longer an opt-in)
+		{ "ZygorGuidesViewerForever", "Zygor Guides" },
 	}
 
 	local function AddOns()

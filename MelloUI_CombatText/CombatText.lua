@@ -982,9 +982,10 @@ local function FloatOn(style)
 	end
 end
 
+-- (2.1.53: the middle of the game's screen, where the character stands -- MelloUI:PlayPoint's rule:
+-- Offhand's main screen, never the gap between two screens)
 local function FloatHome(frame)
-	frame:ClearAllPoints()
-	frame:SetPoint("CENTER", UIParent, "CENTER", 0, -20)
+	MelloUI:PlayPoint(frame, "CENTER", "CENTER", 0, -20)
 end
 
 local function Holder(style)

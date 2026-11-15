@@ -177,6 +177,20 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.53", lines = {
+		"Map: with the addon HandyNotes: NPCs (Forever), the auction house, bank, trainers, mount sellers, inns and mailboxes show on the map and minimap in MelloUI's icons.",
+		"Map layers: a new HandyNotes group, a switch for each kind of place. Only your side's show; repair and vendors start off. Questie's inns and mailboxes are not shown a second time.",
+		"Nameplates: the cast bar in a fight now stands where the Nameplate Designer's preview shows it, and has a tab of its own with a new Height slider.",
+		"Nameplates: a new Threat Colours By Role switch colours an enemy's health bar in group fights by its threat on you. Each of the three colours has a colour wheel.",
+		"Party and raid frames: a group you join during a fight now shows its frames at once, not only when the fight is over.",
+		"Party and raid frames: the Lockouts group works now: it shows what your own spells left on a member, like Weakened Soul after your shield or Forbearance.",
+		"Party and raid frames: the starting indicators no longer lie on the name, the health text or the raid mark, and a new indicator's time and count no longer lie on each other.",
+		"Widgets: up to four loot rolls show at once, each its own row. Hovering one lists who has rolled so far: Need, Greed or Pass, and who is still deciding.",
+		"Questie's tracker: it now follows the Quest Tracker page's Width, Height, text sizes, Nearest Quest First and Reset Position. Dragging its corner sets Width and Height.",
+		"Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own until Questie's tracker shows again.",
+		"Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP. Its switch is on the Addons page.",
+		"Offhand: Quest Moments, the Level Up card, the on-screen line and Combat Text now go by your main game screen, not the gap between your two screens.",
+	} },
 	{ version = "2.1.52", lines = {
 		"Quest Moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest. Switches on the Animations page.",
 		"Quests: MelloUI's quests now come from Questie: the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI ships no quest data of its own any more.",
@@ -227,9 +241,6 @@ local CHANGELOG = {
 		"Bags: with Baganator, Bagnon, ArkInventory or BetterBags installed, MelloUI's bag window steps aside, so B opens one bag window. The Addons page lists them, each with its switch.",
 		"Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again.",
 		"Minimap: quest objectives look the same as on MelloUI's map, with the glowing quest areas, the same icons and a dot for each spot, and they show right after you log in.",
-	} },
-	{ version = "2.1.48", lines = {
-		"Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.",
 	} },
 }
 local LINKS = {

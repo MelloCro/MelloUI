@@ -637,6 +637,17 @@ local ICON = {
 	svc_mail = { atlas = "Mailbox", disc = true }, svc_proftrainer = { atlas = "Profession", disc = true },
 	svc_vendor = { atlas = "Food", disc = true }, svc_addons = { atlas = "mechagon-projects", disc = true },
 	svc_stable = { atlas = "StableMaster", disc = true },   -- (2.1.50, the pick S2: the game's horseshoe)
+	-- (2.1.53; the map's town marks, MelloUI_Map/MapTownMarks.lua's kinds: the user, 2026-11-15, "custom icons for all 3
+	-- themes as usual") the game's own pictures of the seven kinds -- its map's where it has one, else its icon of the
+	-- thing (the riding skill's, a mount's, a sword, the spirit healer's spell), cut round as the set's pins
+	-- (the tabard as its file: the atlas of that name drew nothing on this client, seen in the test client 2026-11-15)
+	svc_battlemaster = { atlas = "BattleMaster", disc = true },
+	svc_guild = { file = "Interface\\GossipFrame\\TabardGossipIcon", disc = true },
+	svc_transmog = { file = "Interface\\Minimap\\Tracking\\Transmogrifier", disc = true },
+	svc_riding = { file = I .. "Ability_Mount_RidingHorse", crop = 0.07, round = true },
+	svc_mounts = { file = I .. "INV_Misc_Foot_Kodo", crop = 0.07, round = true },
+	svc_weaponmaster = { file = I .. "INV_Sword_27", crop = 0.07, round = true },
+	svc_spirit = { file = I .. "Spell_Holy_GuardianSpirit", crop = 0.07, round = true },
 	-- quest marks and the tracker's
 	track_todo = { atlas = "QuestNormal" }, track_handin = { atlas = "QuestTurnin" }, quest_mark = { atlas = "QuestNormal" },
 	turnin_mark = { atlas = "QuestTurnin" }, ql_notyet = { atlas = "TrivialQuests" },

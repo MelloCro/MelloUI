@@ -77,10 +77,13 @@ local MEMBERS = 4
 Solo.PORTRAIT_BASE = 1.4
 -- when you show: solo (Show Yourself While Solo), in a party (Show Yourself In Your Party), or both; never in a raid
 -- (Group Frames' raid frames show there)
-local RULES = { solo = "[group] hide; show", party = "[group:raid] hide; [group] show; hide",
-	both = "[group:raid] hide; show" }
+-- (2.1.53: asked by a unit's being there, RD.IN_RAID and RD.IN_GROUP -- the game's "[group]" does not turn in a
+-- fight, so a party joined in one showed only at its end)
+local RULES = { solo = RD.IN_RAID .. " hide; " .. RD.IN_GROUP .. " hide; show",
+	party = RD.IN_RAID .. " hide; " .. RD.IN_GROUP .. " show; hide",
+	both = RD.IN_RAID .. " hide; show" }
 -- the members' holder: in a party, never in a raid (the game's ShouldShowPartyFrames)
-local PARTY_RULE = "[group:raid] hide; [group] show; hide"
+local PARTY_RULE = RULES.party
 -- the members' aura row (PartyAuraFrameTemplate: 15 x 15, 2 apart, its
 -- border the debuff overlay's; MAX_PARTY_DEBUFFS four; the row at 48,-43)
 local AURA = { size = 15, gap = 2, max = 4, x = 48, y = -43 }

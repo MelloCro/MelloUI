@@ -158,9 +158,15 @@ end
 -- read back (a frame on a nameplate answers its anchors secret), after each of the game's UpdateAnchors (this file's
 -- hook); the game's own anchoring back with the kit off (ApplyStyleAndAnchoring's, its next layout lays it again).
 local CastFit = {}
+-- (2.1.53) the cast bar the Nameplates module lays -- Own Plate Size, a place on its Designer's preview or its own
+-- height: its M.LayCast, the preview's and the plates' one path -- is that module's, never fitted here
+function CastFit.Theirs()
+	local np = MelloUI:GetModule("Nameplates")
+	return np ~= nil and type(np.OwnCast) == "function" and np.OwnCast() == true
+end
 function CastFit.Lay(uf, hb, rep)
 	local cb = uf.CastBarsContainer and uf.CastBarsContainer.castBar
-	if not (active and cb and hb) then
+	if not (active and cb and hb) or CastFit.Theirs() then
 		return
 	end
 	local m = (rep and type(rep.thicken) == "number" and not Secret(rep.thicken)) and rep.thicken / 2 or 0
@@ -177,7 +183,7 @@ end
 function CastFit.Unlay(uf)
 	local cb = uf.CastBarsContainer and uf.CastBarsContainer.castBar
 	local parent = cb and cb:GetParent()
-	if not parent then
+	if not parent or CastFit.Theirs() then
 		return
 	end
 	cb:ClearAllPoints()
@@ -1100,7 +1106,10 @@ local function SkinUnitFrame(uf)
 	end
 	local cb = uf.CastBarsContainer and uf.CastBarsContainer.castBar
 	if cb and cb.Background then
-		Replace(cb.Background, { as = "NamePlateCastBarBackground", rect = cb, alsoFade = { cb.Border }, fitHeight = Option("castBarHeight", 16) })
+		-- (2.1.53: the Nameplates module's own height while it lays the bar)
+		local np = CastFit.Theirs() and MelloUI:GetModule("Nameplates")
+		local fit = np and type(np.CastHeight) == "function" and np.CastHeight() or Option("castBarHeight", 16)
+		Replace(cb.Background, { as = "NamePlateCastBarBackground", rect = cb, alsoFade = { cb.Border }, fitHeight = fit })
 	end
 	local lf = uf.PlayerLevelDiffFrame
 	if lf and lf.playerLevelDiffIcon then

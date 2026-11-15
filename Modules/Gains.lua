@@ -411,9 +411,10 @@ local function Restyle(row)
 	Cut(row.name)   -- (measured again in the new font)
 end
 
+-- (beside the character: the middle of the game's screen -- 2.1.53, MelloUI:PlayPoint's rule: Offhand's
+-- main screen, never the gap between two screens)
 local function Home(frame)
-	frame:ClearAllPoints()
-	frame:SetPoint("TOPLEFT", UIParent, "CENTER", 110, -30)
+	MelloUI:PlayPoint(frame, "TOPLEFT", "CENTER", 110, -30)
 end
 
 -- its mover live (its plate in Edit Layout) while the module is on

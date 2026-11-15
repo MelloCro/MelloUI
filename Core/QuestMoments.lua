@@ -53,7 +53,6 @@ local M = MelloUI:RegisterModule("QuestMoments", {
 	desc = "The game's yellow quest lines in the middle of the screen become moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest.",
 	icon = "Interface\\Icons\\INV_Misc_Note_02",
 	flavour = "Every blossom counts, and you see it count.",
-	new = "2.1.52",
 	enabledByDefault = true,
 	defaults = {
 		progress = true,
@@ -61,11 +60,11 @@ local M = MelloUI:RegisterModule("QuestMoments", {
 		quest = true,
 	},
 	options = {
-		{ type = "toggle", key = "progress", play = "progress", name = "Item Picked Up", new = "2.1.52",
+		{ type = "toggle", key = "progress", play = "progress", name = "Item Picked Up",
 		  desc = "An item or a kill for a quest: its icon counts up in a gilded ring, then flies to its line in your quest tracker." },
-		{ type = "toggle", key = "objective", play = "objective", name = "Objective Done", new = "2.1.52",
+		{ type = "toggle", key = "objective", play = "objective", name = "Objective Done",
 		  desc = "An objective finished: its ring closes with a flare of light, sparks and a tick, and the count turns into Complete." },
-		{ type = "toggle", key = "quest", play = "quest", name = "Quest Done", new = "2.1.52",
+		{ type = "toggle", key = "quest", play = "quest", name = "Quest Done",
 		  desc = "A quest ready to turn in: a gilded crest lands with the hand-in mark, and the quest's title opens under Quest Complete." },
 	},
 })
@@ -530,9 +529,13 @@ end
 -- The moments (each a function of its time t, in seconds)
 --------------------------------------------------------------------------------
 
+-- where a moment plays: the middle of the GAME'S SCREEN, Q.LINE under its top -- MelloUI:PlayArea, the rule for
+-- everything placed by the screen's middle (2.1.53; the user, 2026-11-15: with Offhand's two screens the moments
+-- played between the screens, the UI's middle, as the World Marker once did); the UI whole without Offhand
 local function Middle()
-	local w, h = Num(UIParent:GetWidth()) or 1024, Num(UIParent:GetHeight()) or 768
-	return w / 2, h - Q.LINE
+	local l, b, w, h = MelloUI:PlayArea()
+	l, b, w, h = Num(l) or 0, Num(b) or 0, Num(w) or 1024, Num(h) or 768
+	return l + w / 2, b + h - Q.LINE
 end
 
 -- the count's roll: the old number up and out, the new one in from below

@@ -10760,6 +10760,9 @@ end
 -- (for the road recorder, Modules/RouteRecorder.lua) continent yards -> a
 -- map's 0..1 place, nil off that map's continent: OnMap(mapID, cont, x, y)
 M.OnMap = OnMap
+-- (2.1.53, the map's town marks on the minimap) a map's 0..1 place -> its continent, yards east, yards south; nil
+-- for a map with no place on a continent: ToYards(mapID, x, y)
+M.ToYards = ToYards
 
 function M:FollowedRemaining(questID)
 	local d = destination
@@ -12276,10 +12279,6 @@ SlashCmdList.MELLOROUTE = function(msg)
 	elseif msg == "zygor" then
 		if M.Guide and M.Guide.DumpZygor then
 			M.Guide.DumpZygor()   -- (2.1.9: what the real Zygor Guides holds, in the copy window)
-		end
-	elseif msg == "zygor on" or msg == "zygor off" then
-		if M.Guide and M.Guide.ZygorFollow then
-			M.Guide.ZygorFollow(msg == "zygor on")   -- (2.1.10: following it, opt-in until proven on the real addon)
 		end
 	elseif msg == "clear" then
 		M.StopRoute()   -- (a tracked quest's route stays stopped too)

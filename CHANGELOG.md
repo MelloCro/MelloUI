@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.1.53
+
+- Offhand: Quest Moments now play in the middle of your main game screen. With Offhand's two screens they played in the gap between the screens.
+- Offhand: the Level Up card, the on-screen line, Combat Text, Gains, the reminders and the Personal Display now start on your main game screen too, until you give them a place of your own. Places you already set stay as they are.
+- Map: important NPC places now show on MelloUI's map and on the minimap, in MelloUI's own icons, with the addon HandyNotes: NPCs (Forever) installed: the auction house, the bank, riding trainers, mount sellers, trainers of your professions and your class, innkeepers and mailboxes. Only your side's and the neutral ones are shown. Point at one for its tooltip, click it for a waypoint.
+- Map layers: a new HandyNotes group with a switch for each kind of place. Repair, stable masters, vendors by what they sell, battlemasters, weapon masters, guild masters, transmogrifiers and spirit healers start off, so a city stays readable. Stable masters start on for a hunter.
+- Map: one addon draws a kind of place. With HandyNotes: NPCs (Forever), Questie's innkeepers and mailboxes and other addons' pins of the same kinds are not shown a second time on MelloUI's map.
+- Addons page: HandyNotes: NPCs (Forever) has a card of its own. With its MelloUI's look switch off, it shows its own icons, chosen in its own menu.
+- Party and raid frames: a group you join during a fight now shows its frames at once. Before, your own frame and your party's showed only when the fight was over.
+- Party and raid frames: the Lockouts group works now. It shows the debuffs your own spells left on a member, such as Weakened Soul after your shield or Forbearance after your blessing. The game does not let a debuff be picked by its spell, so another player's are not shown, and a debuff typed as a spell of its own now says so instead of never showing.
+- Widgets: up to four loot rolls show at once, each its own row with its own ring and Need, Greed and Pass. Rolling on one takes only its row away; a fifth waits, counted on the last row.
+- Widgets: hovering a loot roll now lists who has rolled on it so far, under the item's tooltip: each player in their class colour with Need, Greed or Pass, and who is still deciding.
+- Party and raid frames: the indicators a frame starts with no longer lie on its name, its health text or its raid mark. On raid frames your heals over time stand bottom right above the bars, shields on the right edge, other players' defensives beside the raid mark and the boss debuff on the left edge. On party frames with portraits they stand in two short rows beside the frame, past the Damage Meter's values where those show. Indicators you placed yourself stay where you put them.
+- Party and raid frames: a new indicator's time left and stack count no longer lie on each other. Both are smaller, and the count hangs on the icon's corner. Indicators you already have keep their own sizes.
+- Questie's tracker: it now follows the Quest Tracker page's settings: Width or Match The Minimap's Width, Height, Text Size, Header Text Size, Nearest Quest First and Reset Position. Dragging its corner sets Width and Height. Questie's own sizes come back when MelloUI's look or Quest Tracker is switched off, and the settings Questie's tracker has nothing for are greyed out while it lists your quests.
+- Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own in the Quest Tracker's place until Questie's tracker shows again.
+- Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP, with Zygor's own window and arrow tucked away. Until now this only worked after typing /route zygor on. Its switch is on the Addons page, where Show its own arrow too keeps Zygor's arrow beside MelloUI's World Marker, and with more than one guide on, the question at login lists Zygor too.
+- Nameplates: the cast bar in a fight now stands where the Nameplate Designer's preview shows it. With Own Plate Size on, or the cast bar moved on the preview, it lay behind the health bar. While you have not changed it, the preview now shows the game's own cast bar layout.
+- Nameplates: the Cast bar has a tab of its own on the Nameplates page, with a new Height slider for the preview and every enemy plate alike. Game's keeps the height the game gives it.
+- Nameplates: a new Threat Colours By Role switch on the Health bar tab colours an enemy's health bar in group fights by its threat on you. Tanks see the mobs they hold, are losing and have lost; healers and damage dealers see the mobs close to turning on them and the ones that have. Green, amber and red to start, each with a colour wheel of its own.
+
 ## 2.1.52
 
 - Quest Moments: the game's yellow quest lines in the middle of the screen become moments. An item picked up counts up in a gilded ring and flies to its line in your quest tracker, a finished objective closes its ring with a flare of light and a tick, and a finished quest lands a gilded crest with its title. Each can be switched off on the Animations page.

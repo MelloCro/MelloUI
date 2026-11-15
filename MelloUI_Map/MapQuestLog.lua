@@ -143,6 +143,10 @@ local TEXT = {
 	trackBox = "Tracked in the Quest Tracker: click to take it off, or to show it there",
 	collapse = "Click: fold or unfold this zone",
 	needsQuestie = "Quests on the map come from Questie.",   -- (2.1.52, stage 2: the layers' page without Questie)
+	-- (2.1.53) the layers' page's HandyNotes group without its plugin, and with MelloUI's look of it off
+	needsTown = "These places come from the addon HandyNotes: NPCs (Forever).",
+	townOff = "HandyNotes: NPCs (Forever) shows its own icons: MelloUI's look of it is off.",
+	addons = "Addons",
 }
 
 -- the state: one table (the file's locals stay few)
@@ -190,8 +194,7 @@ end
 
 -- the thin bar follows the pager's scroll, its range worked out from the page's height (the scroll frame's own range
 -- follows the child's size a frame later); dragged, the scroll follows it
-local function SyncBar()
-	local bar, pager = S.bar, S.pager
+local function BarSync(bar, pager)
 	if not bar then
 		return
 	end
@@ -207,6 +210,13 @@ local function SyncBar()
 	bar.laying = false
 	bar.thumb:SetHeight(max(16, (Finite(bar:GetHeight()) or view) * view / (view + range)))
 	bar:Show()
+end
+local function SyncBar()
+	BarSync(S.bar, S.pager)
+end
+-- (2.1.53) the layers' page's own scroll and bar (the town kinds make it longer than the column)
+local function SyncLayersBar()
+	BarSync(S.layersBar, S.layersPager)
 end
 
 -- a page's height: the pager's canvas follows it (the page on show), the bar too
@@ -1065,7 +1075,8 @@ end, "script")
 
 local function BarChanged(self, value)
 	if not self.laying then
-		S.pager:ScrollTo(Finite(value) or 0, true)
+		local pager = self.pager or S.pager   -- (2.1.53: the layers' page's bar its own pager)
+		pager:ScrollTo(Finite(value) or 0, true)
 	end
 end
 
@@ -1367,25 +1378,68 @@ local function NoQuests()
 	return false
 end
 
-local GetQuestieClick = Perf.Shared("OnClick on the map's Get Questie", function()
+-- (2.1.53) the button under a group's dimmed rows: the Addons page, where that addon's card or line is (its `addon`)
+local GetAddonClick = Perf.Shared("OnClick on the map's layers page's Get button", function(self)
 	MelloUI:PlayUISound("click")
-	MelloUI.Integrations.Open("Questie")
+	MelloUI.Integrations.Open(self.addon)
 end, "script")
+
+-- the button's words for an addon that is not there: Get <its name> (a world without the Addons page: its name)
+local function GetLabel(key)
+	local I = rawget(MelloUI, "Integrations")
+	return I and I.GetLabel(key) or key
+end
+
+-- (2.1.53) what a row's marks need that is not there now: the line to say so, the button's words and the addon's key
+-- on the Addons page; nil while the row works. `questie`: Questie's quest data; `town`: the town marks' plugin
+-- (MapTownMarks), missing or with MelloUI's look of it off
+local function Missing(s)
+	if s.questie then
+		local QS = MelloUI.QuestSource
+		if QS ~= nil and not QS.Questie() then
+			return TEXT.needsQuestie, GetLabel("Questie"), "Questie"
+		end
+	elseif s.town then
+		local Town = ns.TownMarks
+		if not Town.There() then
+			return TEXT.needsTown, GetLabel(Town.T.USE), Town.T.USE
+		elseif not Town.Used() then
+			return TEXT.townOff, TEXT.addons, Town.T.USE
+		end
+	end
+	return nil
+end
 
 -- (2.1.52, stage 2; the user's pick A of the sketch, 2026-11-14: "The rows stay, dimmed") without Questie there are
 -- no quests on the map (Core/QuestSource.lua): the rows whose marks are Questie's (`questie`) stand dimmed and off,
 -- their group's last row followed by the line that says so and Get Questie (the Addons page, on Questie's card); the
 -- rest of the page moves down. Questie is there or not for the whole session, so the page is laid once
+-- (2.1.53) the HandyNotes group's rows the same way without their plugin, or with MelloUI's look of it off; the page
+-- one page of a pager of its own with the thin bar beside it: with the town kinds it is longer than the column
 local function LayersPage()
-	local spec, pane = S.layers, S.paneY
+	local spec = S.layers
 	if S.layerRows or not spec then
 		return
 	end
 	S.layerRows = {}
 	local Icons = MelloUI.Icons
-	local width = T.W - 2 * T.PAD
-	local QS = MelloUI.QuestSource
-	local none = QS ~= nil and not QS.Questie()
+	local pager = W.Pager(S.paneY, { step = 80 })
+	S.layersPager = pager
+	local scroll = pager.scroll
+	scroll:SetPoint("TOPLEFT", S.paneY, "TOPLEFT", 0, 0)
+	scroll:SetPoint("BOTTOMRIGHT", S.paneY, "BOTTOMRIGHT", -2 * T.BAR, 0)
+	local width = T.W - 2 * T.PAD - 2 * T.BAR
+	local pane = pager:NewPage()
+	pane:SetWidth(width)
+	local bar = W.ThinScrollBar(S.paneY, T.BAR)
+	bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", T.BAR, 0)
+	bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", T.BAR, 0)
+	bar:Hide()
+	bar.pager = pager
+	Perf.SetScript(bar, "OnValueChanged", BarChanged)
+	S.layersBar = bar
+	Perf.hooksecurefunc(scroll, "SetVerticalScroll", SyncLayersBar)
+	Perf.SetScript(scroll, "OnSizeChanged", SyncLayersBar)
 	local y = 0
 	for g, name in ipairs(spec.groups) do
 		local h = HeadLook(CreateFrame("Frame", nil, pane))
@@ -1393,12 +1447,15 @@ local function LayersPage()
 		h:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -y)
 		h:SetWidth(width)
 		y = y + T.ZONE + 2
-		local hint = false
+		local hint, hintButton, hintAddon = nil, nil, nil
 		for _, s in ipairs(spec.switches) do
 			if s.group == g then
 				local key = s.key
-				local off = none and s.questie and true or false
-				hint = hint or off
+				local why, words, addon = Missing(s)
+				local off = why ~= nil
+				if off then
+					hint, hintButton, hintAddon = why, words, addon
+				end
 				local r = CreateFrame("Button", nil, pane)
 				r:SetSize(width, T.LAYER_ROW)
 				r:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -y)
@@ -1406,7 +1463,8 @@ local function LayersPage()
 				r.icon = r:CreateTexture(nil, "ARTWORK")
 				r.icon:SetSize(T.LAYER_ICON, T.LAYER_ICON)
 				r.icon:SetPoint("LEFT", r, "LEFT", 4, 0)
-				Icons.Set(r.icon, s.icon, T.LAYER_ICON)
+				-- (2.1.53: a town kind's picture as its marks wear it, MapTownMarks' Icon)
+				Icons.Set(r.icon, s.town and ns.TownMarks.Icon(s.town) or s.icon, T.LAYER_ICON)
 				r.label = W.Text(r, "GameFontHighlight", s.label, "text")
 				r.label:SetPoint("LEFT", r, "LEFT", 4 + T.LAYER_ICON + 10, 0)
 				r.switch = W.Switch(r, off and NoQuests or function()
@@ -1423,7 +1481,8 @@ local function LayersPage()
 					r.switch:Disable()
 					r.switch:EnableMouse(false)
 					r:SetAlpha(T.LAYER_DIM)
-					r.needsQuestie = true
+					r.needsQuestie = s.questie and true or nil
+					r.needs = addon   -- (2.1.53: the addon its marks wait for, by its key on the Addons page)
 				else
 					Perf.SetScript(r, "OnClick", LayerRowClick)
 					W.RowPlate(r)
@@ -1434,18 +1493,24 @@ local function LayersPage()
 			end
 		end
 		if hint then
-			local line = W.Text(pane, "GameFontHighlight", TEXT.needsQuestie, "text")
+			local line = W.Text(pane, "GameFontHighlight", hint, "text")
 			line:SetPoint("TOPLEFT", pane, "TOPLEFT", 4, -(y + 4))
 			line:SetWidth(width - 8)
 			line:SetJustifyH("LEFT")
 			line:SetWordWrap(true)
-			local b = W.Button(pane, MelloUI.Integrations.GetLabel("Questie"), 60, nil, { onClick = GetQuestieClick, height = T.HINT_BUTTON })
-			b:SetWidth(max(60, floor((b:GetFontString():GetStringWidth() or 40) + 0.5) + 26))
-			b:SetPoint("TOPLEFT", pane, "TOPLEFT", 4, -(y + 4 + T.HINT_LINE))
-			y = y + 4 + T.HINT_LINE + T.HINT_BUTTON + T.HINT_GAP
+			-- (a line that takes two rows of the column: the button under it)
+			local tall = max(T.HINT_LINE, ceil((Finite(line:GetStringHeight()) or 0) + 6))
+			local b = W.Button(pane, hintButton, 60, nil, { onClick = GetAddonClick, height = T.HINT_BUTTON })
+			b.addon = hintAddon
+			b:SetWidth(min(width - 8, max(60, floor((b:GetFontString():GetStringWidth() or 40) + 0.5) + 26)))
+			b:SetPoint("TOPLEFT", pane, "TOPLEFT", 4, -(y + 4 + tall))
+			y = y + 4 + tall + T.HINT_BUTTON + T.HINT_GAP
 		end
 		y = y + 8
 	end
+	pager:SetPageHeight(pane, y)
+	pager:Show(pane, 0, true)
+	SyncLayersBar()
 end
 
 function Log.Layers(spec)

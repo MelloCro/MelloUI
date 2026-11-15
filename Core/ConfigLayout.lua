@@ -251,7 +251,10 @@ L.pages = {
 				{ key = "combo", label = "Combo points", stage = "combo" },
 				{ key = "cc", label = "CC icon", stage = "cc" }, { key = "quest", label = "Quest icon", stage = "quest" },
 				{ key = "debuffs", label = "Your debuffs", stage = "debuffs" }, { key = "auras", label = "The game's auras" },
-				{ key = "swing", label = "Swing badge", stage = "swing" } } },   -- (2.1.19)
+				{ key = "swing", label = "Swing badge", stage = "swing" },   -- (2.1.19)
+				-- (2.1.53; the user: "i have no options to resize the height of the Cast bar") its own tab: its height,
+				-- its Show and its Place
+				{ key = "cast", label = "Cast bar", stage = "cast" } } },
 			-- (`sample`: Party Markers' own medallion sample in the slot -- Modules/PartyMarkers.lua's corner kind)
 			{ key = "friendly", label = "Friendly players", line = "A class medallion over friendly players' names, in the open world",
 				sample = { kind = "partymarker", pick = "marker" },
@@ -874,6 +877,13 @@ function L.Define(R, Link)
 	Link("Nameplates", "enemies:health", "Look", "BarTextures.nameplatesTexture", "Bar Texture")
 	R("Nameplates", "enemies:element", "Behaviour", "Nameplates.hover")   -- (1.2.4: every plate's, the user)
 	-- (2.1.24, the Nameplate Designer's stage 2: the plate's width and height, on its health bar's part)
+	-- (2.1.53; the user: "a checkbox to enable Custom Threat Nameplate Healthbar colours depending on the Role")
+	R("Nameplates", "enemies:health", "Look", "Nameplates.threatColours")
+	-- (the user's pick A, one colour a state for every role, then "Yes, add wheels")
+	local THREAT_ON = { key = "Nameplates.threatColours", value = true, line = "Only with Threat Colours By Role on" }
+	for _, key in ipairs({ "threatSafeColour", "threatCloseColour", "threatAggroColour" }) do
+		R("Nameplates", "enemies:health", "Look", "Nameplates." .. key, { when = THREAT_ON })
+	end
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateSize")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateWidth")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateHeight")
@@ -898,6 +908,7 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:debuffs", "Behaviour", "Auras.nameplateOnlyMine",   -- (2.1.19: the user)
 		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
 	R("Nameplates", "enemies:swing", "Layout", "Nameplates.swingSize")   -- (2.1.19: the user, 50 - 200 %)
+	R("Nameplates", "enemies:cast", "Layout", "Nameplates.castHeight", { name = "Height" })   -- (2.1.53: the user)
 	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates", { gate = NP_AREA })   -- (the Bars audit: Cooldown Timers' switch here)
 	-- Friendly players: Party Markers' switch first
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers", gate = NP_AREA })
@@ -1337,14 +1348,21 @@ function L.Define(R, Link)
 		line = "Only while the tracker does not match the minimap (Match Minimap or MelloUI's minimap off)" } })
 	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.maxHeight")
 	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.#Reset Position")
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.itemButtons")
+	-- (2.1.53; the user, 2026-11-15: "the Questie Custom Quest Tracker does not Respond to Any setting in the Quest
+	-- Tracker category") while Questie's tracker lists the quests in MelloUI's look, the rows above, the text sizes and
+	-- Nearest Quest First are written into Questie's (Core/QuestieLook.lua); the ones its tracker has nothing for sleep
+	local OWN_LINES = { key = "QuestTracker.ownLines", value = true,
+		line = "Only while MelloUI's tracker lists the quests (Questie's tracker has none of it)" }
+	L.unplaced["QuestTracker.ownLines"] = "asked by the Quest Tracker rows' `when` only: no setting to offer"
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.itemButtons", { when = OWN_LINES })
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.nearestFirst")
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.nearestTurnIn")   -- (2.1.50, Tereith's request)
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showDistance")
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showXP")   -- (2.1.39: the user)
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.turnInLine")
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.nearestTurnIn", { when = OWN_LINES })   -- (2.1.50, Tereith's request)
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showDistance", { when = OWN_LINES })
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showXP", { when = OWN_LINES })   -- (2.1.39: the user)
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.turnInLine", { when = OWN_LINES })
+	-- (Guide: Next Steps: a leveling guide's steps are MelloUI's tracker's beside Questie's too, so never asleep)
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.guideNext")
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.scrollStep")
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.scrollStep", { when = OWN_LINES })
 	R("QuestTracker", "Objective Tracker", "Look", "UIModifications.TrackerPanel", { name = "Painted Skin", when = GAME_TRACKER })
 
 	-- Quest List (header: its module's switch)
@@ -1496,7 +1514,7 @@ function L.Define(R, Link)
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.itemsGlide", { free = true, card = "Bag Window" })
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.moneyRoll", { free = true, card = "Bag Window" })
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.fullWarning", { free = true, card = "Bag Window" })
-	R("Animations", "Bars & Windows", "Look", "QuestTracker.progressMotion", { card = "Quest Tracker" })
+	R("Animations", "Bars & Windows", "Look", "QuestTracker.progressMotion", { card = "Quest Tracker", when = OWN_LINES })
 	-- (2.1.52, the user's picks "C, A, A" to the Quest Moments sketch: the game's yellow quest lines played as moments)
 	R("Animations", "Bars & Windows", "Look", "QuestMoments.!enabled", { name = "Quest Moments", card = "Quest Moments" })
 	R("Animations", "Bars & Windows", "Look", "QuestMoments.progress", { card = "Quest Moments" })

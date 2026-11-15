@@ -51,6 +51,10 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		questIcon = true,
 		questIconSize = 22,
 		threatLine = true,
+		threatColours = false,   -- (2.1.53) the health bar coloured by threat and your role
+		-- (2.1.53) its three colours, each a colour wheel's (W.ColourValue), starting on the meaning colours
+		threatSafeColour = "meaning:threatSafe", threatCloseColour = "meaning:threatClose",
+		threatAggroColour = "meaning:threatAggro",
 		comboPoints = true,
 		comboSize = 90,
 		comboX = 0, comboY = 0,   -- (2.1.19) the row moved off the bar's top edge
@@ -58,6 +62,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		hover = true,   -- (1.2.4: the mouseover highlight, MelloUI.FrameHover)
 		-- (2.1.24, the Nameplate Designer's stage 2) the enemy plates' own width and height, off: the game's
 		plateSize = false, plateWidth = 166, plateHeight = 12,
+		-- (2.1.53) the cast bar's own height, 0: the game's
+		castHeight = 0,
 		-- (the band behind the names: Text Shade's, Look > General > Text -- the
 		-- user, 2026-10-16; Name Shade's key dropped by Core.lua's MERGES)
 	},
@@ -69,6 +75,11 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  desc = "The whole plate's width: the health bar and the level badge's room beside it." },
 		{ type = "slider", key = "plateHeight", parent = "plateSize", name = "Plate Height", min = 4, max = 40, step = 1,
 		  desc = "The health bar's height." },
+		-- (2.1.53; the user, 2026-11-15: "i have no options to resize the height of the Cast bar") the preview's cast
+		-- bar and every enemy plate's alike (M.CastHeight); the wheel on the preview's cast bar sets it too
+		{ type = "slider", key = "castHeight", name = "Cast Bar Height", min = 0, max = 30, step = 1, new = "2.1.53",
+		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Game's" or string.format("%d px", v) end,
+		  desc = "The height of the cast bar on enemy nameplates. Game's: the height the game gives it." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",
 		  desc = "A large crowd-control icon above the name. Needs the game's Crowd Control nameplate option on." },
@@ -89,6 +100,18 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		{ type = "header", name = "Threat" },
 		{ type = "toggle", key = "threatLine", name = "Threat Line",
 		  desc = "In group fights, a thin line on an enemy's bar showing how close it is to turning on you. For tanks, it turns red when you lose a mob." },
+		-- (2.1.53; the user, 2026-11-15: "i need a checkbox to enable Custom Threat Nameplate Healthbar colours depending
+		-- on the Role") M.THREAT_TINT
+		{ type = "toggle", key = "threatColours", name = "Threat Colours By Role", new = "2.1.53",
+		  desc = "In group fights, an enemy's health bar takes a colour by its threat on you and your role. Tanks see the mobs they hold, are losing and have lost; healers and damage dealers see the mobs about to turn on them and the ones that have." },
+		-- (2.1.53; the user's pick A of the Threat Colours Picks sketch, one colour a state for every role, then "Yes, add
+		-- wheels")
+		{ type = "colour", key = "threatSafeColour", parent = "threatColours", name = "Safe Colour", new = "2.1.53",
+		  desc = "Threat Colours By Role: a mob that is safe. For a tank, one it holds; for a healer or damage dealer, one nowhere near turning on them." },
+		{ type = "colour", key = "threatCloseColour", parent = "threatColours", name = "Close Colour", new = "2.1.53",
+		  desc = "Threat Colours By Role: a mob a tank is losing, or one close to turning on a healer or damage dealer." },
+		{ type = "colour", key = "threatAggroColour", parent = "threatColours", name = "Aggro Colour", new = "2.1.53",
+		  desc = "Threat Colours By Role: a mob a tank has lost, or one that has turned on a healer or damage dealer." },
 		{ type = "header", name = "Combo Points" },
 		{ type = "toggle", key = "comboPoints", name = "Combo Points",
 		  desc = "Rogues and cat druids: your combo points on your target's nameplate." },
@@ -104,7 +127,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		-- Designer's preview its place is theirs, and the two Offset sliders stood awake and moved nothing) what those
 		-- two rows ask (Core/ConfigLayout.lua's `when`): the combo points stand at the code's own place, at your offsets
 		-- -- false while the preview has given them a place. Read only, never a row of its own (L.unplaced), never saved
-		{ type = "toggle", key = "comboAtOffsets", name = "Combo Points At Their Offsets", new = "2.1.52",
+		{ type = "toggle", key = "comboAtOffsets", name = "Combo Points At Their Offsets",
 		  get = function(db)
 			local parts = db and db.parts
 			return not (type(parts) == "table" and type(parts.combo) == "table")
@@ -247,7 +270,7 @@ end
 -- alike; none: the code's own place, as before (nothing moves for anyone who never drags). A part's size stays its own
 -- option's (CC Icon Size, Quest Icon Size): the stage reads and writes it through the place
 --------------------------------------------------------------------------------
-M.PART_SIZE = { cc = "ccSize", quest = "questIconSize" }
+M.PART_SIZE = { cc = "ccSize", quest = "questIconSize", cast = "castHeight" }   -- (2.1.53: the cast bar's height)
 -- (2.1.52; the configurator pass in the test VM, 2026-11-14: two switches hid one part -- the preview's Show and the
 -- module's own; the user: "Yes, go ahead") a part with a switch of the module's own is shown and hidden by that
 -- switch alone: the preview offers no Show row and no Hide for it (Stage.Part), its row on the part's tab the one. A
@@ -277,12 +300,28 @@ function M.FoldShow()
 			found = true
 		end
 	end
-	if not found then
+	-- (2.1.53) a size kept in the cast bar's place from before (the preview's wheel) goes over to Cast Bar Height once
+	local cast = all.cast
+	local castSize = type(cast) == "table" and Num(cast.size)
+	if not (found or castSize) then
 		return
 	end
 	local fresh = {}
 	for k, v in pairs(all) do
 		fresh[k] = v
+	end
+	if castSize then
+		local copy = {}
+		for k, v in pairs(cast) do
+			if k ~= "size" then
+				copy[k] = v
+			end
+		end
+		fresh.cast = copy
+		local size = math.floor(castSize + 0.5)
+		if (Num(db.castHeight) or 0) <= 0 and size ~= math.floor(M.CastHeight() + 0.5) then
+			MelloUI:NotifySettingChanged("Nameplates", "castHeight", size)
+		end
 	end
 	for key, switch in pairs(M.PART_SHOW) do
 		local t = all[key]
@@ -310,7 +349,13 @@ function M.SetPartPlace(key, t)
 	end
 	local sizeKey = M.PART_SIZE[key]
 	if type(t) == "table" and sizeKey and Num(t.size) then
-		MelloUI:NotifySettingChanged("Nameplates", sizeKey, math.floor(Num(t.size) + 0.5))
+		-- (2.1.53) only a size that changed: a drag carries the part's size along, and the cast bar's height left at
+		-- the game's (Cast Bar Height 0) stays the game's
+		local size = math.floor(Num(t.size) + 0.5)
+		local now = key == "cast" and M.CastHeight() or Num(db[sizeKey])
+		if size ~= (now and math.floor(now + 0.5)) then
+			MelloUI:NotifySettingChanged("Nameplates", sizeKey, size)
+		end
 	end
 	local all = {}
 	for k, v in pairs(type(db.parts) == "table" and db.parts or {}) do
@@ -341,7 +386,104 @@ end
 -- (2.1.24, stage 2) the plates' layout is MelloUI's to keep after the game's: a part placed, or Own Plate Size on
 function M.HasLayout()
 	local db = M.db
-	return db ~= nil and ((type(db.parts) == "table" and next(db.parts) ~= nil) or db.plateSize == true)
+	return db ~= nil and ((type(db.parts) == "table" and next(db.parts) ~= nil) or db.plateSize == true
+		or (Num(db.castHeight) or 0) > 0)
+end
+
+-- (2.1.53; the user, 2026-11-15: "the CastBar shown in the Preview does not match in actual Combat, the castbar is
+-- hidden behind the Nameplate, that should not be the case ever, how it looks in the preview should reflect how it
+-- looks in game") the cast bar is MelloUI's to lay while Own Plate Size is on, the cast bar has a place or its own
+-- height (`db`: the stage's, else the module's); else the game lays it, and the preview draws the game's layout
+function M.OwnCast(db)
+	db = db or M.db
+	return type(db) == "table" and (db.plateSize == true or (Num(db.castHeight) or 0) > 0 or M.PartPlace("cast") ~= nil)
+end
+
+-- the cast bar's height: Cast Bar Height, at least 3; 0 the game's (NamePlateSetupOptions.castBarHeight)
+function M.CastHeight()
+	local db = M.db or MelloUI:GetModuleDB("Nameplates")
+	local v = db and Num(db.castHeight)
+	if v and v > 0 then
+		return math.max(3, v)
+	end
+	return SetupOption("castBarHeight", 6)
+end
+
+-- (2.1.53) the cast bar where MelloUI lays it: ONE path for the live plate's (the game's castBar, its Icon and its
+-- Text) and the preview's sample (f.cast, f.castIcon, f.castText) -- on its place on the health bar `box`, else under
+-- it; as wide as the bar `w` less its icon, `h` high; the icon left of it as high as the bar, the spell's name inside
+-- it. (Before, the live plate laid the game's container on the place, `h` high, and the game's bar stood on its icon
+-- inside the container, its 10 units up: over the health bar.)
+function M.LayCast(bar, icon, text, box, place, h, w)
+	bar:ClearAllPoints()
+	if place then
+		M.LayPart(bar, box, place)
+		bar:SetSize(math.max(10, w - h - 1), h)
+	else
+		local y = -(SetupOption("castBarToHealthBarSpacing", 2) + 4)
+		bar:SetPoint("TOPLEFT", box, "BOTTOMLEFT", h + 1, y)
+		bar:SetPoint("TOPRIGHT", box, "BOTTOMRIGHT", 0, y)
+		bar:SetHeight(h)
+	end
+	if icon then
+		icon:ClearAllPoints()
+		icon:SetPoint("RIGHT", bar, "LEFT", -1, 0)
+		icon:SetSize(h, h)
+	end
+	if text then
+		text:ClearAllPoints()
+		text:SetPoint("LEFT", bar, "LEFT", 3, 0)
+	end
+end
+
+-- (2.1.53) the game's own cast bar layout on its container `box` (Blizzard_NamePlateCastingBar.lua
+-- ApplyStyleAndAnchoring, never called; its heights ApplyFrameOptions'): the live plate's anchors given back when
+-- MelloUI stops laying it, and the preview's sample while the game lays it. `border`: the classic style's frame (the
+-- sample has none: the box's centre, the border's width)
+function M.GameCast(bar, icon, text, box, border)
+	local opts = rawget(_G, "NamePlateSetupOptions")
+	local classic = type(opts) == "table" and opts.useClassicCastBar
+	local inside = type(opts) == "table" and opts.spellNameInsideCastBar
+	classic = not Secret(classic) and classic == true
+	inside = not Secret(inside) and inside == true
+	bar:ClearAllPoints()
+	bar:SetHeight(SetupOption("castBarHeight", 6))
+	icon:ClearAllPoints()
+	icon:SetSize(SetupOption("castIconWidth", 10), SetupOption("castIconHeight", 10))
+	text:ClearAllPoints()
+	if classic then
+		local hs, vs = SetupOption("horizontalScale", 1), SetupOption("verticalScale", 1)
+		bar:SetPoint("TOPLEFT", box, "TOPLEFT", 20.75 * hs, 0.5 * vs)
+		bar:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -3.5 * hs, 0.5 * vs)
+		if border then
+			icon:SetPoint("CENTER", border, "LEFT", 11.5 * hs, 0)
+		else
+			icon:SetPoint("CENTER", box, "CENTER", -SetupOption("castBarBorderWidth", 128) / 2 + 11.5 * hs, 0)
+		end
+		text:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, -1 * vs)
+		text:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, -1 * vs)
+		return
+	end
+	if inside then
+		bar:SetPoint("TOPLEFT", box, "TOPLEFT", 0, 0)
+		bar:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", 0, 0)
+		icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
+	else
+		icon:SetPoint("BOTTOMLEFT", box, "BOTTOMLEFT", 0, 0)
+		bar:SetPoint("BOTTOM", icon, "TOP", 0, 0)
+		bar:SetPoint("LEFT", box, "BOTTOMLEFT", 0, 0)
+		bar:SetPoint("RIGHT", box, "BOTTOMRIGHT", 0, 0)
+	end
+	text:SetPoint("LEFT", icon, "RIGHT", 2, 0)
+end
+
+-- the game's container's height for its layout (ApplyFrameOptions': the bar, and the icon's row under it unless the
+-- name is inside the bar)
+function M.GameCastRoom()
+	local opts = rawget(_G, "NamePlateSetupOptions")
+	local inside = type(opts) == "table" and opts.spellNameInsideCastBar
+	inside = not Secret(inside) and inside == true
+	return SetupOption("castBarHeight", 6) + (inside and 0 or SetupOption("castIconHeight", 10))
 end
 
 -- (2.1.24, stage 2) the game's own parts at their places, after its UpdateAnchors: the level badge and the raid
@@ -404,29 +546,34 @@ local function LevelRoom(uf)
 end
 
 -- the bars: Own Plate Size's width (the whole plate: the bar and the level badge's room) and height, and the cast
--- bar's place -- the health bar held on the frame where it stood (over the cast bar's room), the cast bar on its place
--- or along the frame's bottom; none of those set: the game's own anchors again
+-- bar -- the health bar held on the frame where it stood (over the game's cast bar room), the game's cast bar itself
+-- laid as the preview lays its sample (M.LayCast: its place, else under the health bar; Cast Bar Height), its
+-- container left where the game put it (shown or hidden by the place's Show); none of those set: the game's own
+-- anchors again
 function M.LayBars(uf, hb)
-	local cast = uf.CastBarsContainer
-	if not cast then
+	local container = uf.CastBarsContainer
+	if not container then
 		return
 	end
+	local cb = container.castBar
 	local db = M.db
 	local own = db.plateSize == true
 	local place = M.PartPlace("cast")
 	local inset = SetupOption("insetWidth", 12)
 	local gap = SetupOption("castBarToHealthBarSpacing", 2)
-	local castH = SetupOption("castBarHeight", 16)
-	if not (own or place) then
+	if not M.OwnCast(db) then
 		if M.barsLaid[uf] then
 			M.barsLaid[uf] = nil
-			cast:ClearAllPoints()
-			cast:SetPoint("BOTTOMLEFT", uf, "BOTTOMLEFT", inset, 0)
-			cast:SetPoint("BOTTOMRIGHT", uf, "BOTTOMRIGHT", -inset, 0)
-			cast:SetAlpha(1)
+			container:ClearAllPoints()
+			container:SetPoint("BOTTOMLEFT", uf, "BOTTOMLEFT", inset, 0)
+			container:SetPoint("BOTTOMRIGHT", uf, "BOTTOMRIGHT", -inset, 0)
+			container:SetAlpha(1)
+			if cb and cb.Icon and cb.Text then
+				M.GameCast(cb, cb.Icon, cb.Text, container, cb.Border)
+			end
 			hb:ClearAllPoints()
-			hb:SetPoint("BOTTOMLEFT", cast, "TOPLEFT", 0, gap)
-			hb:SetPoint("BOTTOMRIGHT", cast, "TOPRIGHT", -LevelRoom(uf), gap)
+			hb:SetPoint("BOTTOMLEFT", container, "TOPLEFT", 0, gap)
+			hb:SetPoint("BOTTOMRIGHT", container, "TOPRIGHT", -LevelRoom(uf), gap)
 			hb:SetHeight(SetupOption("healthBarHeight", 20))
 		end
 		return
@@ -435,21 +582,29 @@ function M.LayBars(uf, hb)
 	local ok, ufW = pcall(uf.GetWidth, uf)
 	local w = (own and Num(db.plateWidth)) or ((ok and Num(ufW)) and (ufW - 2 * inset)) or 166
 	local h = (own and Num(db.plateHeight)) or SetupOption("healthBarHeight", 20)
-	local room = LevelRoom(uf)
+	local barW = math.max(10, w - LevelRoom(uf))
 	hb:ClearAllPoints()
-	hb:SetPoint("BOTTOMLEFT", uf, "BOTTOM", -w / 2, castH + gap)
-	hb:SetSize(math.max(10, w - room), h)
-	cast:ClearAllPoints()
-	if place then
-		M.LayPart(cast, hb, place)
-		cast:SetSize(math.max(10, w - room), Num(place.size) or castH)
-		cast:SetAlpha(place.show == false and 0 or 1)
-	else
-		cast:SetPoint("BOTTOMLEFT", uf, "BOTTOM", -w / 2, 0)
-		cast:SetSize(w, castH)
-		cast:SetAlpha(1)
+	hb:SetPoint("BOTTOMLEFT", uf, "BOTTOM", -w / 2, SetupOption("castBarHeight", 16) + gap)
+	hb:SetSize(barW, h)
+	-- (the container along the frame's bottom at the plate's width and the game's own height for it: the cast bar no
+	-- longer stands in it, it only carries the place's Show)
+	container:ClearAllPoints()
+	container:SetPoint("BOTTOMLEFT", uf, "BOTTOM", -w / 2, 0)
+	container:SetSize(w, M.GameCastRoom())
+	container:SetAlpha(place and place.show == false and 0 or 1)
+	if not cb then
+		return
+	end
+	M.LayCast(cb, cb.Icon, cb.Text, hb, place, M.CastHeight(), barW)
+	-- never under the health bar's own parts (the threat line, the combo points, the rims: a few levels over it)
+	local okC, lc = pcall(cb.GetFrameLevel, cb)
+	local okH, lh = pcall(hb.GetFrameLevel, hb)
+	lc, lh = okC and Num(lc), okH and Num(lh)
+	if lc and lh and lc < lh + M.CAST_OVER then
+		cb:SetFrameLevel(lh + M.CAST_OVER)
 	end
 end
+M.CAST_OVER = 14   -- (levels over the health bar: past the threat line's 5 and the combo points' 8-12)
 
 function M.LayGameParts(uf)
 	local hb = uf and uf.HealthBarsContainer
@@ -1871,8 +2026,10 @@ function M.ThreatLineHere()
 	return not MelloUI.Retail
 end
 
+-- (2.1.53: the threat line, or Threat Colours By Role)
 local function ThreatOn()
-	return M.isEnabled and M.db ~= nil and M.db.threatLine ~= false and M.ThreatLineHere()
+	return M.isEnabled and M.db ~= nil and (M.db.threatLine ~= false or M.db.threatColours == true)
+		and M.ThreatLineHere()
 end
 
 -- a group fight: the player in combat, in a party or a raid
@@ -1946,11 +2103,121 @@ local function HangThreat(uf, line)
 	line.edge:SetShown(not rail)
 end
 
+-- (2.1.53; the user, 2026-11-15: "i need a checkbox to enable Custom Threat Nameplate Healthbar colours depending on
+-- the Role") Threat Colours By Role: in a group fight, the health bar of an enemy whose list you are on takes a colour
+-- by the threat (MelloUI.Threat's state, the threat line's; your role decides what counts as safe: Threat.Role), in
+-- the colour its state wears (M.THREAT_TINT: the user's pick A of the Threat Colours Picks sketch, one colour a state
+-- for every role; then "Yes, add wheels": each a colour option, W.ColourValue's string, starting on MelloUI.Meaning's
+-- threatSafe, threatClose and threatAggro). A COVER over the game's fill, never a colour
+-- written on the game's bar: the game colours its bar again on its threat events (CompactUnitFrame_UpdateHealthColor,
+-- UNIT_THREAT_LIST_UPDATE with considerSelectionInCombatAsHostile), so a colour of ours there would be undone and
+-- written back on each (hard rule 1). Our texture lies over the fill in the fill's own art (its atlas or file, read
+-- plain), cut to the fill's rect by a mask on it (the engine moves the fill with the value, a secret one too) and by
+-- the fill's own masks; made on a plate's first colour, kept in this file's table (nothing on the game's frame),
+-- written only on a change
+M.THREAT_TINT = { safe = "threatSafeColour", close = "threatCloseColour", aggro = "threatAggroColour" }
+M.THREAT_KEYS = { threatSafeColour = true, threatCloseColour = true, threatAggroColour = true }
+M.GAME_BAR_ATLAS = "UI-HUD-CoolDownManager-Bar"   -- (the game's own fill: Blizzard_NamePlates.xml)
+local tints = setmetatable({}, { __mode = "k" })   -- [the plate's UnitFrame] = { tex, fill, masks, art, r, g, b, shown }
+M.tints = tints   -- (the tests' and /npdump's: read only)
+
+local function TintOf(uf)
+	local t = tints[uf]
+	if t then
+		return t
+	end
+	local hbar = uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar
+	local fill = hbar and hbar.GetStatusBarTexture and hbar:GetStatusBarTexture()
+	if not (fill and hbar.CreateMaskTexture) then
+		return nil
+	end
+	local okL, layer, sub = pcall(fill.GetDrawLayer, fill)
+	if not okL or Secret(layer) or type(layer) ~= "string" then
+		layer, sub = "ARTWORK", 0
+	end
+	local tex = hbar:CreateTexture(nil, layer, nil, math.min(7, (Num(sub) or 0) + 1))
+	tex:SetAllPoints(hbar)
+	local crop = hbar:CreateMaskTexture()
+	crop:SetTexture(WHITE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	crop:SetPoint("TOPLEFT", fill, "TOPLEFT")
+	crop:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+	tex:AddMaskTexture(crop)
+	t = { tex = tex, fill = fill, masks = { [crop] = true }, shown = true }
+	tints[uf] = t
+	return t
+end
+
+-- the fill's art as it is now: its atlas, else its file, else the game's own
+local function TintArt(fill)
+	local okA, atlas = pcall(fill.GetAtlas, fill)
+	if okA and not Secret(atlas) and type(atlas) == "string" and atlas ~= "" then
+		return atlas, true
+	end
+	local okT, file = pcall(fill.GetTexture, fill)
+	if okT and not Secret(file) and (type(file) == "string" or type(file) == "number") then
+		return file, false
+	end
+	return M.GAME_BAR_ATLAS, true
+end
+
+local function TintHide(uf)
+	local t = tints[uf]
+	if t and t.shown then
+		t.shown = false
+		t.tex:Hide()
+	end
+end
+
+-- a plate's colour for a threat state (nil: the cover hidden)
+local function TintPlate(uf, state)
+	local key = state and M.THREAT_TINT[state]
+	if not key then
+		TintHide(uf)
+		return
+	end
+	local t = TintOf(uf)
+	if not t then
+		return
+	end
+	-- (the fill's own masks: a bar shape, soft ends -- added once each)
+	local okN, n = pcall(t.fill.GetNumMaskTextures, t.fill)
+	for i = 1, (okN and Num(n)) or 0 do
+		local okM, mask = pcall(t.fill.GetMaskTexture, t.fill, i)
+		if okM and mask and not t.masks[mask] then
+			t.masks[mask] = true
+			pcall(t.tex.AddMaskTexture, t.tex, mask)
+		end
+	end
+	local art, isAtlas = TintArt(t.fill)
+	if t.art ~= art then
+		t.art = art
+		if isAtlas then
+			t.tex:SetAtlas(art)
+		else
+			t.tex:SetTexture(art)
+		end
+	end
+	local v = M.db[key]
+	if type(v) ~= "string" then
+		v = M.defaults and M.defaults[key]
+	end
+	local r, g, b = W.ColourValue(v)
+	if t.r ~= r or t.g ~= g or t.b ~= b then
+		t.r, t.g, t.b = r, g, b
+		t.tex:SetVertexColor(r, g, b)
+	end
+	if not t.shown then
+		t.shown = true
+		t.tex:Show()
+	end
+end
+
 local function HideThreat(uf)
 	local line = threatLines[uf]
 	if line then
 		line:Hide()
 	end
+	TintHide(uf)
 end
 
 -- one plate as the fight stands now (tank, fight: read once for all plates)
@@ -1971,9 +2238,18 @@ local function ThreatPlate(uf, unit, tank, fight)
 		HideThreat(uf)
 		return
 	end
+	local state = Threat.State(status, fraction, tank)
+	TintPlate(uf, M.db.threatColours == true and state or nil)
+	if M.db.threatLine == false then
+		local off = threatLines[uf]
+		if off then
+			off:Hide()
+		end
+		return
+	end
 	local line = ThreatLine(uf)
 	HangThreat(uf, line)
-	local r, g, b = Threat.Colour(Threat.State(status, fraction, tank) or "safe")
+	local r, g, b = Threat.Colour(state or "safe")
 	local bar = line.bar
 	if tank and tanking then
 		bar:SetValue(100)
@@ -1990,12 +2266,12 @@ local function ThreatUnit(unit)
 	local plate = C_NamePlate.GetNamePlateForUnit(unit)
 	local uf = plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame
 	if uf then
-		ThreatPlate(uf, unit, Threat.IsTank(), GroupFight())
+		ThreatPlate(uf, unit, Threat.Role() == "TANK", GroupFight())
 	end
 end
 
 local function ThreatAll()
-	local tank, fight = Threat.IsTank(), GroupFight()
+	local tank, fight = Threat.Role() == "TANK", GroupFight()
 	for i = 1, #PLATE_UNITS do
 		local unit = PLATE_UNITS[i]
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
@@ -2009,6 +2285,9 @@ end
 local function HideAllThreat()
 	for uf in pairs(threatLines) do
 		HideThreat(uf)
+	end
+	for uf in pairs(tints) do
+		TintHide(uf)
 	end
 end
 
@@ -3091,9 +3370,10 @@ function M:OnSettingChanged(key, value, db)
 		Plate.All()
 		return
 	end
-	if key == "threatLine" then
-		RegisterThreatEvents(value ~= false)
-		if value ~= false then
+	-- (2.1.53: either switch keeps the threat events; a threat colour picked: the plates coloured again)
+	if key == "threatLine" or key == "threatColours" or M.THREAT_KEYS[key] then
+		RegisterThreatEvents(ThreatOn())
+		if ThreatOn() then
 			ThreatAll()
 		end
 		return
@@ -3120,7 +3400,7 @@ function M:OnSettingChanged(key, value, db)
 		end
 		return
 	end
-	if key == "parts" or key == "plateSize" or key == "plateWidth" or key == "plateHeight" then
+	if key == "parts" or key == "plateSize" or key == "plateWidth" or key == "plateHeight" or key == "castHeight" then
 		-- (2.1.52: places written whole -- a profile's -- may hold a `show` of a part its own switch shows: folded
 		-- into that switch; it writes the places again without it, and this pass runs once more for them)
 		if key == "parts" then
@@ -3135,7 +3415,7 @@ function M:OnSettingChanged(key, value, db)
 			UpdateAllQuestIcons()
 		end
 		Combo.Update()
-		if db.threatLine ~= false then
+		if ThreatOn() then
 			ThreatAll()
 		end
 		local sb = MelloUI.SwingBadge
@@ -3356,12 +3636,13 @@ do
 		cbg:SetAllPoints(f.cast)
 		cbg:SetTexture(WHITE)
 		W.Paint(cbg, "innerPanel", "vertex", 0.9)
-		f.castIcon = f.cast:CreateTexture(nil, "ARTWORK")
+		f.castIcon = f.cast:CreateTexture(nil, "ARTWORK", nil, 1)
 		f.castIcon:SetTexture(Stage.CAST_ICON)
-		f.castIcon:SetPoint("RIGHT", f.cast, "LEFT", -1, 0)
 		f.castText = Stage.Text(f.cast, "SystemFont_NamePlateCastBar")
-		f.castText:SetPoint("LEFT", f.cast, "LEFT", 3, 0)
 		f.castText:SetText(Stage.CAST_NAME)
+		-- (2.1.53) the game's cast bar container, for the game's own layout (M.GameCast); laid each paint
+		f.castBox = CreateFrame("Frame", nil, f.bar)
+		f.castBox:EnableMouse(false)
 		-- (2.1.19) the swing badge right of the level box, as Core/SwingBadge.lua lays it on your target's plate
 		local sb = MelloUI.SwingBadge
 		f.swing = MelloUI.Widgets.RoundIcon(f.top, (sb and sb.T and sb.T.badge) or 24, nil)
@@ -3541,12 +3822,20 @@ do
 		f.elite:SetPoint("RIGHT", f.bar, "LEFT", -Stage.RAID, 0)
 		f.buffs:ClearAllPoints()
 		f.buffs:SetPoint("RIGHT", f.elite, "LEFT", -Stage.BUFF_GAP, 0)
-		local castH = SetupOption("castBarHeight", 10)
-		f.cast:ClearAllPoints()
-		f.cast:SetPoint("TOPLEFT", f.bar, "BOTTOMLEFT", castH + 1, -SetupOption("castBarToHealthBarSpacing", 2) - 4)
-		f.cast:SetPoint("TOPRIGHT", f.bar, "BOTTOMRIGHT", 0, -SetupOption("castBarToHealthBarSpacing", 2) - 4)
-		f.cast:SetHeight(castH)
-		f.castIcon:SetSize(castH, castH)
+		-- (2.1.53; the user: "how it looks in the preview should reflect how it looks in game") the cast bar by the live
+		-- plates' own two paths: MelloUI's layout while it is MelloUI's to lay (M.LayCast; its place laid in
+		-- Stage.Places), else the game's on its container under the bar -- the bar's width and the level badge's room
+		if ours and M.OwnCast(db) then
+			M.LayCast(f.cast, f.castIcon, f.castText, f.bar, nil, M.CastHeight(), barW)
+		else
+			local castGap = SetupOption("castBarToHealthBarSpacing", 2)
+			local room = M.PartPlace("level") and 0 or Stage.LEVEL_GAP + Stage.LEVEL_W
+			f.castBox:ClearAllPoints()
+			f.castBox:SetPoint("TOPLEFT", f.bar, "BOTTOMLEFT", 0, -castGap)
+			f.castBox:SetPoint("TOPRIGHT", f.bar, "BOTTOMRIGHT", room, -castGap)
+			f.castBox:SetHeight(M.GameCastRoom())
+			M.GameCast(f.cast, f.castIcon, f.castText, f.castBox, nil)
+		end
 		-- the quest icon (the option on), left of the bar (of the raid marker's room, as the live plates')
 		local quest = ours and db.questIcon ~= false
 		local qs = Num(db.questIconSize) or 22
@@ -3600,17 +3889,14 @@ do
 				elseif (key == "level" or key == "raid" or key == "elite") and size then
 					r:SetSize(size, size)
 				elseif key == "cast" then
-					r:SetWidth(barW - (Fin(r:GetHeight()) or 10) - 1)
-					if size then
-						r:SetHeight(size)
-						f.castIcon:SetSize(size, size)
-					end
+					-- (2.1.53: the live plates' one path; its height Cast Bar Height's)
+					M.LayCast(r, f.castIcon, f.castText, f.bar, place, M.CastHeight(), barW)
 				elseif key == "threat" then
 					r:SetWidth(barW)
 				end
 			end
 		end
-		for _, field in pairs(Stage.MOVES) do
+		for _, field in pairs(Stage.BOUNDS) do
 			local r = f[field]
 			if r and r:IsShown() then
 				local x, y, w, h = Stage.Rect(f, r)
@@ -3657,6 +3943,11 @@ do
 	-- and the combo points and the threat line; the health bar's size is Own Plate Size's)
 	Stage.MOVES = { name = "name", cc = "cc", quest = "quest", swing = "swing", level = "level", raid = "raid",
 		debuffs = "debuffs", buffs = "buffs", cast = "cast", combo = "combo", threat = "threat", elite = "elite" }
+	-- what the sample grows round: the parts, and the cast bar's icon (beside its bar, or under it in the game's layout)
+	Stage.BOUNDS = { "castIcon" }
+	for _, field in pairs(Stage.MOVES) do
+		Stage.BOUNDS[#Stage.BOUNDS + 1] = field
+	end
 	Stage.SIZES = { cc = { min = 16, max = 80, step = 1 }, quest = { min = 10, max = 48, step = 1 },
 		level = { min = 8, max = 40, step = 1 }, raid = { min = 8, max = 48, step = 1 }, cast = { min = 4, max = 30, step = 1 },
 		elite = { min = 8, max = 48, step = 1 } }
@@ -3691,7 +3982,9 @@ do
 				local sizeKey = M.PART_SIZE[key]
 				if sizeKey then
 					local db = Stage.DB("Nameplates")
-					t.size = Num(db[sizeKey]) or (Stage.homes[key] and Stage.homes[key].size)
+					-- (2.1.53: Cast Bar Height's 0 is the game's height: its home's)
+					local v = Num(db[sizeKey])
+					t.size = (v and v > 0) and v or (Stage.homes[key] and Stage.homes[key].size)
 				end
 				return t
 			end, set = function(_, t)

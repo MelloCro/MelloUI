@@ -705,13 +705,9 @@ end
 
 -- where the spark starts: the character's chest, as Route's wisp has it -- the screen's middle, WISP_FROM under it
 local function SparkFrom()
-	-- (2.1.51) the world's screen's middle: Offhand's main screen while it runs (MelloUI.Integrations.PlayArea)
-	local I = rawget(MelloUI, "Integrations")
-	if I and I.PlayArea then
-		local l, b, w, h = I.PlayArea()
-		return l + w / 2, b + h / 2 + Card.WISP_FROM
-	end
-	return UIParent:GetWidth() / 2, UIParent:GetHeight() / 2 + Card.WISP_FROM
+	-- (2.1.51) the world's screen's middle: Offhand's main screen while it runs (MelloUI:PlayArea)
+	local l, b, w, h = MelloUI:PlayArea()
+	return l + w / 2, b + h / 2 + Card.WISP_FROM
 end
 
 -- the rule's middle in UIParent's units (our own frame: plain)
@@ -852,9 +848,10 @@ local Done = Shared("the level card's entrance done", function()
 end, "callback")
 
 -- its home: the top middle, Card.TOP under the screen's top (its place's while none is saved; a Reset's preview)
+-- (2.1.53: of the game's screen -- MelloUI:PlayPoint's rule: Offhand's main screen, never the gap
+-- between two screens)
 local function Home(f)
-	f:ClearAllPoints()
-	f:SetPoint("TOP", UIParent, "TOP", 0, -Card.TOP)
+	MelloUI:PlayPoint(f, "TOP", "TOP", 0, -Card.TOP)
 	return true
 end
 
@@ -899,8 +896,9 @@ local function Place()
 	Home(place)
 	MelloUI.Kit:SetFrameScale(place, 1)
 	MelloUI.Kit:SetFrameScale(win, 1)
-	local room = UIParent:GetHeight() - win:GetHeight() - Card.KEEP
-	win:SetPoint("TOP", UIParent, "TOP", 0, -max(Card.KEEP, min(Card.TOP, room)))
+	local _, _, _, screenH = MelloUI:PlayArea()
+	local room = screenH - win:GetHeight() - Card.KEEP
+	MelloUI:PlayPoint(win, "TOP", "TOP", 0, -max(Card.KEEP, min(Card.TOP, room)))
 end
 
 -- Edit Layout's plate: the card's place made when it opens, while the card is on (never at login)

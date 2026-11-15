@@ -787,15 +787,16 @@ local function LayStack(ui)
 end
 
 local function Home(kind)
+	-- (2.1.53: the character stands in the middle of the GAME'S screen -- MelloUI:PlayPoint's rule:
+	-- Offhand's main screen, never the gap between two screens)
 	return function(holder)
-		holder:ClearAllPoints()
 		if kind == "bars" then
 			-- under the character's feet as the default camera shows them (the user, 2026-10-12: "more under the feet
 			-- of the character ... i dont want them covering my character model"; Follow Camera Zoom keeps them there)
-			holder:SetPoint("TOP", UIParent, "CENTER", 0, -105)
+			MelloUI:PlayPoint(holder, "TOP", "CENTER", 0, -105)
 		else
 			-- the shield column on the character's right
-			holder:SetPoint("LEFT", UIParent, "CENTER", 55, -10)
+			MelloUI:PlayPoint(holder, "LEFT", "CENTER", 55, -10)
 		end
 		return true
 	end
@@ -2446,9 +2447,10 @@ local function Place()
 	end
 	-- (the float's lift: the hop, a heavy blow's dip, the settle's drop -- Motion)
 	local k, hop = Zoom.Factor(), (S.hopY or 0) + (S.dipY or 0) + (S.settleY or 0)
+	-- (2.1.53: the character's place is the middle of the game's screen -- MelloUI:PlayArea)
 	local us = UIParent:GetEffectiveScale()
-	local mx, my = UIParent:GetCenter()
-	mx, my = mx * us, my * us
+	local al, ab, aw, ah = MelloUI:PlayArea()
+	local mx, my = (al + aw / 2) * us, (ab + ah / 2) * us
 	local h = ui.holder
 	local hs = h:GetEffectiveScale()
 	local l, r, t = h:GetLeft(), h:GetRight(), h:GetTop()

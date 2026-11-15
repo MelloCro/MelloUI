@@ -7,7 +7,7 @@
 -- (MelloUIDB.integrations[key] = false: off; on until switched), read where MelloUI meets that addon (I.Use(key)):
 -- Questie in Core/QuestSource.lua, Core/QuestieLook.lua, MelloUI_Map/MapAddonPins.lua and Modules/Nameplates.lua;
 -- RareScanner in Core/RareScannerLook.lua; Polestar in Core/Overlaps.lua; GatherMate2 and HandyNotes in
--- MapAddonPins' sources; the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
+-- MapAddonPins' sources; HandyNotes: NPCs (Forever) in MelloUI_Map/MapTownMarks.lua (2.1.53); the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
 -- MelloUI:ClickCast; SharedMedia in Core/SharedMedia.lua (2.1.45: the sounds too); the bag addons in Core/Overlaps.lua's
 -- "bags" job (2.1.49: MelloUI's bag window steps aside); AHledger's auction prices in Modules/Discard.lua (2.1.50). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
 -- but two quest trackers never show at once (Core/Overlaps.lua's questTracker stays).
@@ -105,7 +105,9 @@ I.LIST = {
 	  does = {
 		"Its quest data feeds MelloUI's Quest List, map marks and Route.",
 		"Its icons and its tracker wear MelloUI's look.",
-		"Leveling guide steps dock under its tracker.",
+		-- (2.1.53; the user: "Yes, write them") Core/QuestieLook.lua's Apply / Give
+		"Its tracker follows the Quest Tracker page's width, height, text sizes, Nearest Quest First and Reset Position; its own come back with the look off.",
+		"Leveling guide steps dock under its tracker, and stand on their own while it has no quest.",
 	  },
 	  short = "Its quest data for MelloUI's quests; its icons and its tracker in MelloUI's look",
 	  links = { { "Quest List > Map", id = "QuestList.mapPins" }, { "Quest Tracker", id = "QuestTracker.showXP" },
@@ -273,11 +275,34 @@ I.LIST = {
 		local hn = Ace("HandyNotes")
 		return hn ~= nil and type(hn.plugins) == "table"
 	  end } } },
+	-- (2.1.53; the user, 2026-11-15: "people were asking for Important NPC locations on the Map and minimap, can we
+	-- utilize HandyNotes Addon for this", "Yes, MelloUI Decides") the HandyNotes plugin with the town NPCs' places:
+	-- MelloUI_Map/MapTownMarks.lua reads its places and shows them by the map's layers page's switches, in MelloUI's
+	-- icons, one owner a kind across the addons. Its switch is the look only: off, it shows its own way
+	{ key = "HandyNotesNPCs", name = "HandyNotes: NPCs (Forever)", folders = { "HandyNotes_NPCs_Forever" }, group = "map",
+	  url = "https://www.curseforge.com/wow/addons/handynotes-npcs-forever",
+	  use = "MelloUI's look",
+	  offPill = "Its own look",
+	  offLine = "It shows its own icons, chosen in its own menu, on MelloUI's map and on the minimap.",
+	  does = {
+		"Its places of the auction house, the bank, trainers, mount sellers and more on MelloUI's map and the minimap, in MelloUI's icons.",
+		"The map's layers page chooses which kinds show, under HandyNotes: your side's only, and trainers of your own professions and class.",
+		"One addon draws a kind of place: its places stand before Questie's innkeepers and mailboxes and other addons' pins of the same kind.",
+	  },
+	  short = "Its town NPC places in MelloUI's icons, chosen on the map's layers page",
+	  links = { { "Map layers", map = true } },
+	  parts = { { "its places", function()
+		local hn = Ace("HandyNotes")
+		local handler = hn and type(hn.plugins) == "table" and hn.plugins.HandyNotes_NPCs_Forever
+		return type(handler) == "table" and type(handler.GetNodes2) == "function"
+	  end } } },
 	-- (2.1.51; Shumi's report) Offhand keeps the game on one screen and panels on another: what centres on the character
-	-- centres on its main screen (I.PlayArea)
+	-- centres on its main screen (I.PlayArea); (2.1.53) THE RULE for every animation and every place by the screen's
+	-- middle (I.PlayPoint, below)
 	{ key = "Offhand", name = "Offhand", folders = { "Offhand" }, group = "frames",
 	  url = "https://offhand-wow.onrender.com/",   -- (its TOC's X-Website)
-	  does = { "The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens." },
+	  does = { "The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens.",
+		"Quest Moments play on that screen too, and the Level Up card, the on-screen line, Combat Text, Gains, the reminders and the Personal Display start there until you give them a place of your own." },
 	  short = "MelloUI's character-centered parts on its main screen",
 	  links = {},
 	  parts = { { "its main screen", function()
@@ -386,13 +411,30 @@ end
 -- height: Offhand's main screen (its OffhandMainhandFrame, Offhand.API.GetMainhandFrame) while Offhand runs with its
 -- switch on, else UIParent whole. What centres on the character reads it: the World Marker's ring and wisp
 -- (MelloUI_Route), the Level Up card's wisp (Core/LevelCard.lua)
-function I.PlayArea()
-	local W, H = UIParent:GetWidth(), UIParent:GetHeight()
+--
+-- THE RULE (2.1.53; the user, 2026-11-15, after the Quest Moments played between the screens: "we have fixed that
+-- but we didnt make it a rule for future animations to follow the same rule"): whatever MelloUI places by the
+-- screen's middle -- a moment's animation, what centres on the character, an element's place before the player gave
+-- it one -- goes by the GAME'S SCREEN, never by the whole UI's middle (with Offhand the UI spans two screens and its
+-- middle is the gap between them):
+--   I.PlayArea()                          the rect, for a place that is worked out (a moment's middle)
+--   I.PlayPoint(frame, point, rel, x, y)  an anchor: `point` of the frame on the game's screen's `rel`, x, y from it
+-- Tools/lint/check_panels.py's "screen-middle" counts the code that still goes by the whole UI's middle (windows,
+-- the HUD's bars); one more fails the check.
+local function OffhandAPI()
 	local O = Global("Offhand")
 	local api = O and rawget(O, "API")
-	local get = type(api) == "table" and api.GetMainhandFrame
-	if type(get) == "function" and I.Use("Offhand") then
-		local ok, f = pcall(get)
+	if type(api) == "table" and type(api.GetMainhandFrame) == "function" and I.Use("Offhand") then
+		return api
+	end
+	return nil
+end
+
+function I.PlayArea()
+	local W, H = UIParent:GetWidth(), UIParent:GetHeight()
+	local api = OffhandAPI()
+	if api then
+		local ok, f = pcall(api.GetMainhandFrame)
 		if ok and type(f) == "table" and f.GetRect then
 			local okR, l, b, w, h = pcall(f.GetRect, f)
 			local Finite = MelloUI.Safe.Finite
@@ -403,6 +445,70 @@ function I.PlayArea()
 		end
 	end
 	return 0, 0, W, H
+end
+
+-- a point's share of a rect's width and height, from its bottom left
+local SHARE_X = { LEFT = 0, TOPLEFT = 0, BOTTOMLEFT = 0, CENTER = 0.5, TOP = 0.5, BOTTOM = 0.5, RIGHT = 1, TOPRIGHT = 1,
+	BOTTOMRIGHT = 1 }
+local SHARE_Y = { BOTTOM = 0, BOTTOMLEFT = 0, BOTTOMRIGHT = 0, CENTER = 0.5, LEFT = 0.5, RIGHT = 0.5, TOP = 1, TOPLEFT = 1,
+	TOPRIGHT = 1 }
+-- [frame] = { point, rel, x, y; at = where it was put }: placed by I.PlayPoint while Offhand runs, for Offhand's
+-- next layout of its main screen (it lays it after the login, and again as its screens or the UI's scale change)
+local placed = setmetatable({}, { __mode = "k" })
+local listening = false
+
+-- on UIParent always: on its own point while the game's screen is the UI whole (as without Offhand: it follows the
+-- UI's size by itself), else by the screen's rect from the UI's bottom left -- never on Offhand's own frame, which a
+-- secure frame hung on it would tie down
+local function LayPoint(frame, p)
+	local l, b, w, h = I.PlayArea()
+	frame:ClearAllPoints()
+	local at = p.at
+	if l == 0 and b == 0 and w == UIParent:GetWidth() and h == UIParent:GetHeight() then
+		at[1], at[2], at[3] = p[2], p[3], p[4]
+	else
+		at[1], at[2], at[3] = "BOTTOMLEFT", l + w * SHARE_X[p[2]] + p[3], b + h * SHARE_Y[p[2]] + p[4]
+	end
+	frame:SetPoint(p[1], UIParent, at[1], at[2], at[3])
+end
+
+-- Offhand laid its main screen anew: each frame still standing where PlayPoint put it, put again; one that was
+-- moved since (the player's drag, a saved place) is let go
+local function LayAgain()
+	local Finite = MelloUI.Safe.Finite
+	for frame, p in pairs(placed) do
+		local ok, point, relTo, rel, x, y = pcall(frame.GetPoint, frame, 1)
+		x, y = ok and Finite(x), ok and Finite(y)
+		local at = p.at
+		if ok and frame:GetNumPoints() == 1 and point == p[1] and relTo == UIParent and rel == at[1] and x and y
+			and math.abs(x - at[2]) < 0.5 and math.abs(y - at[3]) < 0.5 then
+			LayPoint(frame, p)
+		else
+			placed[frame] = nil
+		end
+	end
+end
+
+local function OnGeometry()
+	-- (a secure frame is only placed out of a fight: Core/Schedule.lua's queue)
+	MelloUI.Schedule:WhenOutOfCombat(LayAgain, "Integrations.PlayPoint")
+end
+
+function I.PlayPoint(frame, point, rel, x, y)
+	rel, x, y = rel or point, x or 0, y or 0
+	local api = OffhandAPI()
+	if not api then
+		frame:ClearAllPoints()
+		frame:SetPoint(point, UIParent, rel, x, y)
+		return
+	end
+	local p = { point, rel, x, y, at = {} }
+	LayPoint(frame, p)
+	placed[frame] = p
+	if not listening and type(api.RegisterGeometryCallback) == "function" then
+		local ok, kept = pcall(api.RegisterGeometryCallback, "MelloUI", OnGeometry)
+		listening = ok and kept == true
+	end
 end
 
 function I.Use(key)
@@ -429,8 +535,11 @@ end
 -- (2.1.52, stage 2) a needed addon's card (the map's layers page and the Quest List without Questie: Get Questie):
 -- the Addons page on its Installed tab, at its top -- the needed addons' cards stand first there, installed or not
 -- (Core/AddonsPage.lua). The button's words: Get <its name>
-function I.Open()
-	MelloUI:OpenConfig("installed addons")
+-- (2.1.53) `key`: an addon that is not installed and has no card of its own there (not `needed`: the town marks'
+-- plugin) is on the Compatibility tab, with its link
+function I.Open(key)
+	local e = key and I.ByKey[key]
+	MelloUI:OpenConfig((e and not e.needed and not I.Installed(e)) and "compatibility" or "installed addons")
 	local okT, tour = pcall(MelloUI.ConfigTour, MelloUI)
 	local page = okT and type(tour) == "table" and type(tour.page) == "function" and tour.page("Addons")
 	if type(page) == "table" and page.pager and page.pager.ScrollTo then
@@ -538,6 +647,13 @@ function I.Jobs()
 			or (quests == "questie" and "Questie, in its own look" or "Not shown (Questie adds them)") }
 	rows[#rows + 1] = { "Flight masters on MelloUI's map", "MelloUI",
 		questie and "Questie's hidden while the Flight masters layer is on" or nil }
+	-- (2.1.53) the town NPCs' places: one owner a kind (MelloUI_Map/MapTownMarks.lua)
+	local places = Used("HandyNotes") and Used("HandyNotesNPCs")
+	local installed = I.Installed(I.ByKey.Questie) ~= nil
+	rows[#rows + 1] = { "Auction houses, banks, trainers, inns and mailboxes on the maps",
+		places and "HandyNotes: NPCs (Forever), in MelloUI's icons"
+			or (installed and "Questie's innkeepers and mailboxes" or "Not shown (HandyNotes: NPCs (Forever) adds them)"),
+		places and installed and "Questie's of the same kinds hidden on MelloUI's map" or nil }
 	if By("rare") == "Polestar" then
 		rows[#rows + 1] = { "Rare alerts", "Polestar", "MelloUI's Rare Alert steps aside" }
 	else

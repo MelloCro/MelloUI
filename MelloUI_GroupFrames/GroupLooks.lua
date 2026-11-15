@@ -56,6 +56,7 @@ local KIND_ICON = {
 	Poison = "Interface\\Icons\\Spell_Nature_CorrosiveBreath",    -- look-ok: a sample's picture
 	boss = "Interface\\Icons\\Spell_Shadow_ShadowWordPain",       -- look-ok: a sample's picture
 	cc = "Interface\\Icons\\Spell_Nature_Polymorph",              -- look-ok: a sample's picture
+	lockout = "Interface\\Icons\\Spell_Holy_AshesToAshes",        -- a sample's picture (Weakened Soul's)
 }
 local KIND_SAMPLE_TYPE = { group = "Magic", mine = "Magic", any = "Magic", Magic = "Magic", Curse = "Curse",
 	Disease = "Disease", Poison = "Poison" }

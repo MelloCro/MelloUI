@@ -119,6 +119,11 @@ CEILINGS = {
     "blizz-layout-field": 0,
     "panel-call": 0,
     "map-pool-call": 0,
+    # (2.1.53; the user, 2026-11-15: the Quest Moments played between Offhand's two screens, "we didnt make it a rule
+    # for future animations to follow the same rule") places taken from the middle of the WHOLE UI: what is left are
+    # the windows' first places, the HUD's bottom bars and Edit Layout's own bars (the user, asked whether those
+    # should go by the game's screen too: "Leave them") -- a new one is the game's screen's
+    "screen-middle": 19,
     # Edit Layout (0.15.0): its three new files start at 0; its one key frame
     # and the secure buttons in their three homes
     "colour:Core/EditLayout.lua": 0,
@@ -334,6 +339,17 @@ CHECKS = {
                       "the map's pin pool outside the Quest List's marks (Modules/QuestListMap.lua, which "
                       "keep out of it in the Gamepad UI): MelloUI's own layer on the map canvas, as Route "
                       "draws its line"),
+    # (2.1.53) THE RULE of the game's screen (Core/Integrations.lua): an anchor on the whole UI's middle (its CENTER,
+    # TOP or BOTTOM), the UI's or the world frame's centre read, or half the UI's or the screen's width or height.
+    # With Offhand the UI spans two screens and that middle is the gap between them
+    "screen-middle": (r'SetPoint\(\s*"(?:CENTER|TOP|BOTTOM)"\s*,\s*UIParent\s*,\s*"(?:CENTER|TOP|BOTTOM)"'
+                      r"|(?:UIParent|WorldFrame):GetCenter\(\)"
+                      r"|(?:UIParent:Get(?:Width|Height)\(\)|GetScreen(?:Width|Height)\(\))\s*(?:/\s*2\b|\*\s*0?\.5\b)",
+                      {"skip": ["Core/Integrations.lua"]},
+                      "a place by the middle of the whole UI: the game's screen instead -- "
+                      "MelloUI:PlayPoint(frame, point, rel, x, y) for an anchor, MelloUI:PlayArea() for a place "
+                      "that is worked out (Core.lua; Offhand's main screen: the UI's middle is the gap between its two "
+                      "screens). A window's first place is Kit:OwnWindow's"),
 }
 
 # Own windows: MelloUI's windows, whose colours come from the palette only

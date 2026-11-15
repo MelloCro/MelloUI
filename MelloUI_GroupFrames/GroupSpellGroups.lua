@@ -15,16 +15,23 @@
 -- by Tools/group_spells_forever.py; Forever has no specs: a class's own).
 -- Yours (your class's): Heals over time, Shields, Your other buffs. Everyone's
 -- (any member, any class): Defensives from others, Their own defensives, Group
--- defensives, Haste and power, Speed and freedom, Group buffs, Lockouts (one
--- with no spell in the data is left out of the tray). Debuffs by their kind
--- (the game never lets a friend's debuff be picked by spell): Dispellable,
--- Boss, Crowd control. A lockout is picked by spell only where the game says
--- its spell is never secret (C_Secrets.GetSpellAuraSecrecy: AuraContainerUtil's
--- CanApplyIdentityCandidateFilters).
+-- defensives, Haste and power, Speed and freedom, Group buffs (one with no
+-- spell in the data is left out of the tray). Debuffs by their kind (the game
+-- never lets a friend's debuff be picked by spell: AuraContainerUtil's
+-- CanApplyIdentityCandidateFilters): Dispellable, Boss, Crowd control,
+-- Lockouts.
+-- (2.1.53; CurseForge, 2026-11-14: "i cant seem to get weakened soul to show
+-- up on my raid/party bars", "even did a custom spell"; the user: "Yes, yours
+-- on them") Lockouts was a group picked by spell, kept to the spells the game
+-- calls never secret -- on WoW Forever Weakened Soul and Forbearance are
+-- contextually secret (C_Secrets.GetSpellAuraSecrecy, asked in the game), so
+-- it showed nothing. It is a debuff group by kind now: the debuffs YOU cast on
+-- the member (the game's filter word PLAYER), which is what your own shield or
+-- blessing left on them. A lockout typed as a spell is told so (SG.Lockout).
 --   SG.DEFS / SG.DEF[key]            the groups: key, label, scope, tip
 --   SG.List(ind, specKey) -> entries  a placed group's spells (its adds, its
 --                                      order; without the ones taken out)
---   SG.IsOn(ind, e), SG.Trackable(ind, e)
+--   SG.IsOn(ind, e), SG.Lockout(id)
 --   SG.Filter(ind), SG.Candidates(ind) -> cand, sig, SG.SlotEntries(ind)
 --   SG.Starter(class) -> list         a class's spell groups to start with
 --   SG.New(group, point) -> fields    a group put on the frame
@@ -65,11 +72,11 @@ SG.DEFS = {
 	  tip = "Speed and freedom on them: Blessing of Freedom, Aspect of the Pack." },
 	{ key = "raidbuff", label = "Group buffs", scope = "all",
 	  tip = "The lasting buffs the group shares: Power Word: Fortitude, Blessing of Kings, Battle Shout." },
-	{ key = "lockout", label = "Lockouts", scope = "all", harmful = true,
-	  tip = "What they cannot have again yet: Forbearance, Weakened Soul. The game shows only those it never hides." },
 	{ key = "dispel", label = "Dispellable debuffs", scope = "debuff", tip = "A debuff on them by its kind." },
 	{ key = "boss", label = "Boss debuffs", scope = "debuff", tip = "A boss's debuffs on them." },
 	{ key = "cc", label = "Crowd control", scope = "debuff", tip = "Stuns, roots and fears on them." },
+	{ key = "lockout", label = "Lockouts", scope = "debuff",
+	  tip = "What your own spells left on them: Weakened Soul after your shield, Forbearance after your blessing. The game does not let a debuff be picked by its spell, so another player's are not shown." },
 }
 SG.DEF = {}
 for _, d in ipairs(SG.DEFS) do
@@ -230,21 +237,42 @@ function SG.Icon(e)
 	return ok and Plain(tex) or nil
 end
 
--- a lockout the game lets be picked on a friend: its spell never secret
-local never = {}
-function SG.NeverSecret(id)
-	local v = never[id]
-	if v == nil then
-		v = false
-		local S, E = rawget(_G, "C_Secrets"), rawget(_G, "Enum")
-		local level = E and E.SecrecyLevel and E.SecrecyLevel.NeverSecret
-		if S and type(S.GetSpellAuraSecrecy) == "function" and level ~= nil then
-			local ok, got = pcall(S.GetSpellAuraSecrecy, id)
-			v = ok and Plain(got) == level or false
+-- (2.1.53) the data's lockouts -- what a class's own spells leave on a friend: Weakened Soul, Forbearance. Debuffs:
+-- the game never lets one be picked by its spell on a friend, so one typed into a group or as a spell of its own
+-- could never show (the page tells the player, and points at the Lockouts group)
+-- (by its ID, or by its name: a name the character does not know is typed with no ID -- RD:Resolve hands it back as
+-- it was typed -- and "Weakened Soul" typed so was added as a buff that could never show: seen in the game)
+local lockouts, lockoutMains = nil, nil
+function SG.Lockout(id, name)
+	if not lockouts then
+		lockouts, lockoutMains = {}, {}
+		for _, class in ipairs(SG.Classes()) do
+			for _, e in ipairs(Parse(class).lockout or EMPTY) do
+				if not lockouts[e.main] then
+					lockoutMains[#lockoutMains + 1] = e.main
+				end
+				lockouts[e.main] = true
+				for _, sid in ipairs(e.ids) do
+					lockouts[sid] = true
+				end
+			end
 		end
-		never[id] = v
 	end
-	return v
+	if id ~= nil and lockouts[id] == true then
+		return true
+	end
+	name = Text(name)
+	if name then
+		name = name:lower()
+		-- (the game's names, asked each time: one not loaded yet is there on the next ask; a handful of spells)
+		for _, main in ipairs(lockoutMains) do
+			local known = RD:SpellName(main)
+			if known and known:lower() == name then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 --------------------------------------------------------------------------------
@@ -340,26 +368,15 @@ function SG.IsOn(ind, e)
 	return not e.off
 end
 
--- a spell the game lets the group show (a lockout: never secret)
-function SG.Trackable(ind, e)
-	if ind.group ~= "lockout" or e.kind then
-		return true
-	end
-	for _, id in ipairs(e.ids) do
-		if SG.NeverSecret(id) then
-			return true
-		end
-	end
-	return false
-end
-
 function SG.Filter(ind)
 	local g = ind.group
 	if g == "dispel" then
 		local k = RD.KIND[ind.what]
 		return k and k.filter or "HARMFUL|RAID"
-	elseif g == "boss" or g == "lockout" then
+	elseif g == "boss" then
 		return "HARMFUL"
+	elseif g == "lockout" then
+		return "HARMFUL|PLAYER"   -- (2.1.53: the debuffs you cast on them -- the game's own word, no spell named)
 	elseif g == "cc" then
 		return "HARMFUL|CROWD_CONTROL"
 	end
@@ -382,12 +399,9 @@ end
 
 local answers = setmetatable({}, { __mode = "k" })   -- [ind] = { ver, cand, sig, slots }
 
-local function IdsOf(ind, e, set)
-	local lockout = ind.group == "lockout"
+local function IdsOf(e, set)
 	for _, id in ipairs(e.ids) do
-		if not lockout or SG.NeverSecret(id) then
-			set[id] = true
-		end
+		set[id] = true
 	end
 end
 
@@ -411,8 +425,8 @@ local function Answer(ind)
 	local g = ind.group
 	if g == "boss" then
 		a.cand, a.sig = { isBossAura = true }, "boss"
-	elseif g == "cc" then
-		a.cand, a.sig = nil, "cc"
+	elseif g == "cc" or g == "lockout" then
+		a.cand, a.sig = nil, g   -- (its filter's own word says it all: no candidates)
 	elseif g == "dispel" then
 		local types = {}
 		for _, e in ipairs(list) do
@@ -425,11 +439,11 @@ local function Answer(ind)
 		local set = {}
 		for _, e in ipairs(list) do
 			if SG.IsOn(ind, e) then
-				IdsOf(ind, e, set)
+				IdsOf(e, set)
 				-- (your order: each spell its own slot, up to the most shown)
-				if #a.slots < (ind.max or 3) and SG.Trackable(ind, e) then
+				if #a.slots < (ind.max or 3) then
 					local one = {}
-					IdsOf(ind, e, one)
+					IdsOf(e, one)
 					a.slots[#a.slots + 1] = { e = e, cand = { includeSpellIDs = one }, sig = SigOf(one) }
 				end
 			end
@@ -476,7 +490,7 @@ function SG.Fill(t)
 	t.max = Clamp(t.max, 1, 10, 3)
 	t.spacing = Clamp(t.spacing, 0, 8, 1)
 	t.order = ORDER_OK[t.order] and t.order or "time"
-	if def.scope ~= "debuff" and not def.harmful then
+	if def.scope ~= "debuff" then
 		t.colourBy = "mine"
 	end
 	t.what = t.group == "dispel" and (DISPEL_OK[t.what] and t.what or "mine") or nil
@@ -513,6 +527,15 @@ local function G(group, point, extra)
 	return t
 end
 
+-- (2.1.53, the user's pick A of the Indicator Places sketch, "Edges": the starter's CENTER group lay on the health
+-- text and its TOPRIGHT one on the raid mark) the spots keep clear of the frame's own parts -- the name along the top,
+-- the health text in the middle, the raid mark top right: yours bottom right above the bars (SG.ABOVE_BARS), shields
+-- on the right edge, others' defensives top right beside the mark (SG.BESIDE_MARK), the boss's debuff on the left
+-- edge. A set with nothing of yours (no heals over time, no shields) has their own defensive where yours would be.
+-- The shields' squares show their time left too (pick 2: both numbers on every indicator)
+SG.EDGE = 2            -- an edge group's room from the frame's side
+SG.ABOVE_BARS = 10     -- a bottom group's room from the frame's foot: the dispel bar and a power bar under it
+SG.BESIDE_MARK = -17   -- the top right group's x: left of the raid mark (GroupParts.lua: 12 wide, 3 in)
 function SG.Starter(class)
 	if not class then
 		return nil
@@ -521,20 +544,22 @@ function SG.Starter(class)
 	local hots, shields = SG.ClassCount("hot", class), SG.ClassCount("shield", class)
 	if hots + shields > 0 then
 		if hots > 0 then
-			out[#out + 1] = G("hot", "TOPRIGHT", { grow = "LEFT", max = 3, size = 10, colour = "GREEN_FONT_COLOR" })
+			out[#out + 1] = G("hot", "BOTTOMRIGHT", { x = -SG.EDGE, y = SG.ABOVE_BARS, grow = "LEFT", max = 3, size = 10,
+				colour = "GREEN_FONT_COLOR" })
 		end
 		if shields > 0 then
-			out[#out + 1] = G("shield", "RIGHT", { grow = "LEFT", max = 2, size = 8, look = "square",
-				colour = "NORMAL_FONT_COLOR" })
+			out[#out + 1] = G("shield", "RIGHT", { x = -SG.EDGE, grow = "LEFT", max = 2, size = 8, look = "square",
+				colour = "NORMAL_FONT_COLOR", text = { show = true, point = "CENTER", x = 0, y = 0 } })
 		end
-		out[#out + 1] = G("external", "CENTER", { grow = "RIGHT", max = 1, size = 13 })
+		out[#out + 1] = G("external", "TOPRIGHT", { x = SG.BESIDE_MARK, y = -SG.EDGE, grow = "LEFT", max = 1, size = 13 })
 		out[#out + 1] = G("dispel", "BOTTOM", { grow = "UP", max = 2, size = 2, look = "bar", what = "mine" })
 	else
-		out[#out + 1] = G("defensive", "CENTER", { grow = "RIGHT", max = 1, size = 13 })
-		out[#out + 1] = G("external", "TOPRIGHT", { grow = "LEFT", max = 2, size = 10 })
+		out[#out + 1] = G("defensive", "BOTTOMRIGHT", { x = -SG.EDGE, y = SG.ABOVE_BARS, grow = "LEFT", max = 1,
+			size = 13 })
+		out[#out + 1] = G("external", "TOPRIGHT", { x = SG.BESIDE_MARK, y = -SG.EDGE, grow = "LEFT", max = 2, size = 10 })
 		out[#out + 1] = G("dispel", "BOTTOM", { grow = "UP", max = 2, size = 2, look = "bar", what = "group" })
 	end
-	out[#out + 1] = G("boss", "LEFT", { grow = "RIGHT", max = 1, size = 12 })
+	out[#out + 1] = G("boss", "LEFT", { x = SG.EDGE, grow = "RIGHT", max = 1, size = 12 })
 	return out
 end
 
@@ -581,6 +606,10 @@ end
 -- no spell of that name
 function SG.Add(ind, typed)
 	local id, name = RD:Resolve(typed)
+	-- (2.1.53) a lockout is a debuff, never picked by its spell on a friend: not added, its name handed back
+	if SG.Lockout(id, name) then
+		return nil, name or SG.Name({ main = id })
+	end
 	if not id then
 		return nil
 	end

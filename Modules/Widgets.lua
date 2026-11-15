@@ -8,8 +8,11 @@
 -- no window, frame or look of its own. In the column (column = true):
 --   Loot Rolls      a roll waiting (START_LOOT_ROLL): the item in its quality
 --                   colour, the ring the roll's time, Need / Greed / Pass
---                   (RollOnLoot), the count the rolls waiting. The game's own
---                   roll windows stay (a faded one would still take clicks)
+--                   (RollOnLoot); (2.1.53) up to four rolls at once, a row
+--                   each, the count on the last the rolls waiting past them;
+--                   its tooltip who has rolled so far (the loot history). The
+--                   game's own roll windows stay (a faded one would still take
+--                   clicks)
 --   Corpse Run      a ghost: how far the body is and which way, the ring the
 --                   corpse recovery delay; a click shows the way (Route)
 --   Timed Quests    a quest with a time limit (C_QuestLog.GetQuestTimers): the
@@ -259,6 +262,8 @@ local TEXT = {
 	rareTestOff = "Rare Alert is off (Reminders > Widgets).",
 	loot = "Loot Rolls", lootLine = "Roll before the ring runs out", lootMine = "On your list: roll Need", need = "Need", needDesc = "Roll for it as Need.",
 	greed = "Greed", greedDesc = "Roll for it as Greed.", pass = "Pass", passDesc = "Pass on it.",
+	rolls = "Rolls", rollsOf = "%d of %d", rollsDeciding = "Deciding", rollsYou = "(you)", rollsMore = "+%d more",
+	rollsPassed = "%d passed", rollsWaiting = "%d still deciding",
 	corpse = "Your corpse", corpseLabel = "Corpse Run", corpseFar = "%s, to the %s", corpseNear = "Your body is near",
 	corpseLine = "Go back to your body", way = "Show the way", wayCorpse = "The arrow points at your corpse.",
 	corpseRes = "Resurrect", corpseResDesc = "Come back to life here.", corpseReady = "Resurrect now",
@@ -314,6 +319,18 @@ M.TEXT = TEXT
 --------------------------------------------------------------------------------
 
 local loot = { rolls = {}, n = 0 }   -- rolls[1..n] = { id, startAt, total }, the soonest to end first
+
+-- (2.1.53; the user, 2026-11-15: "i want to see more roll widgets at the same time", pick A of Loot Roll Picks, fixed
+-- at 4) up to loot.ROWS rolls in the column at once, each its own row. Slot i holds one roll's ID for as long as that
+-- roll waits, so a roll answered or over takes only its own row away and the others stay where they are. A roll past
+-- the fourth waits for a slot (the count on the last row says how many); a slot let go takes the next roll loot.REST
+-- later, so its row goes out and a new one comes in instead of the item changing in place. Four loot rows are "now"
+-- rows, so the column's cap folds the other widgets into "+N more" until the rolls are done (Core/Reminders.lua).
+-- (its constants and state on `loot`: the file is near Lua's 200 locals)
+loot.ROWS, loot.REST, loot.KEYS = 4, 0.6, { "loot", "loot2", "loot3", "loot4" }
+loot.slots = {}       -- slots[i] = the roll ID slot i shows, or nil
+loot.restUntil = {}   -- restUntil[i] = the GetTime() before which slot i takes no new roll
+loot.fresh = {}       -- fresh[i] = true: slot i took a roll since it was last refreshed (a new moment: raised)
 
 local function LootFind(id)
 	for i = 1, loot.n do
@@ -371,8 +388,87 @@ local function LootRead()
 	end
 end
 
-local function LootInfo()
-	local r = loot.rolls[1]
+-- the roll slot i shows (nil: none, or its roll gone)
+local function SlotRoll(i)
+	local id = loot.slots[i]
+	local j = id and LootFind(id)
+	return j and loot.rolls[j] or nil
+end
+
+-- the slots matched to the rolls: a roll gone lets its slot go (resting loot.REST), a roll not shown takes the lowest
+-- free slot, the soonest to end first. True while a roll waits for a resting slot.
+local function LootSlots()
+	local now = GetTime()
+	for i = 1, loot.ROWS do
+		local id = loot.slots[i]
+		if id and not LootFind(id) then
+			loot.slots[i] = nil
+			loot.restUntil[i] = now + loot.REST
+		end
+	end
+	local waiting = false
+	for j = 1, loot.n do
+		local id, held = loot.rolls[j].id, false
+		for i = 1, loot.ROWS do
+			if loot.slots[i] == id then
+				held = true
+				break
+			end
+		end
+		if not held then
+			local free, resting = nil, false
+			for i = 1, loot.ROWS do
+				if not loot.slots[i] then
+					if (loot.restUntil[i] or 0) <= now then
+						free = i
+						break
+					end
+					resting = true
+				end
+			end
+			if free then
+				loot.slots[free], loot.fresh[free] = id, true
+			elseif resting then
+				waiting = true
+			end
+		end
+	end
+	return waiting
+end
+
+-- every loot row looked at again (raise: a new moment for all of them; a slot that took a roll is one anyway), and a
+-- roll waiting for a resting slot given it once the slot has rested
+local RefreshLoot
+loot.timer = false
+function loot.Rested()
+	loot.timer = false
+	RefreshLoot()
+end
+RefreshLoot = function(raise)
+	local waiting = LootSlots()
+	for i = 1, loot.ROWS do
+		local fresh = loot.fresh[i]
+		loot.fresh[i] = nil
+		Refresh(loot.KEYS[i], raise or fresh)
+	end
+	if waiting and not loot.timer then
+		loot.timer = true
+		C_Timer.After(loot.REST + 0.05, loot.Rested)
+	end
+end
+
+-- the rolls waiting past the four rows, and the slot of the last row shown (where its count goes)
+local function LootWaiting()
+	local held, last = 0, nil
+	for i = 1, loot.ROWS do
+		if SlotRoll(i) then
+			held, last = held + 1, i
+		end
+	end
+	return loot.n - held, last
+end
+
+local function LootInfo(r)
 	if not r then
 		return nil
 	end
@@ -390,8 +486,7 @@ end
 
 -- (1.2.0, the user's pick B of journal_loot_trip) the roll's item on your Dungeon Info list (MelloUI_DungeonInfo): its
 -- row marked -- the star on the item, the sun rays as it comes, the rim lit -- its line saying so, Need out and lit
-local function LootMine()
-	local r = loot.rolls[1]
+local function LootMine(r)
 	local J = rawget(MelloUI, "DungeonInfo")
 	if not (r and type(J) == "table" and J.IsTracked and J.LinkID and J.M and J.M.isEnabled) then
 		return false
@@ -400,88 +495,290 @@ local function LootMine()
 	return id ~= nil and J.IsTracked(id)
 end
 
-local function Roll(kind)
-	local r = loot.rolls[1]
+local function Roll(r, kind)
 	if not r then
 		return
 	end
 	local ok = pcall(_G.RollOnLoot, r.id, kind)
 	if ok then
 		LootDrop(r.id)
-		Refresh("loot")
+		RefreshLoot()
 	end
 end
 
-local LOOT = {
-	key = "loot", column = true, label = TEXT.loot, priority = "now",
-	check = function()
-		return loot.n > 0
-	end,
-	title = function()
-		local _, _, name, count, quality = LootInfo()
+-- (2.1.53; asked on Discord by Nixxen: "When hovering an item in the widget, it would be nice to see who has rolled
+-- on it already, at a glance. A bit like the /loot window") who has rolled so far, under the roll's item tooltip,
+-- from the game's loot history (what /loot shows): the list by roll ID (C_LootHistory.GetItem) where the game has
+-- it, else its encounters' drops (C_LootHistory.GetSortedDropsForEncounter), the drop matched by the item's link and
+-- not yet won. Read only while the tooltip shows (again as the history changes: Rem:Retip); nothing kept.
+do
+	local LH = _G.C_LootHistory
+	local who = { n = 0 }   -- who[1..n] = { name, class, kind = "need" | "greed" | "pass" | "wait", roll, self } (reused)
+	local KIND_BY_TYPE = { [0] = "pass", [1] = "need", [2] = "greed", [3] = "greed" }   -- (3: disenchant, a greed)
+	local KIND_BY_STATE = nil   -- Enum.EncounterLootDropRollState's values, made the first time
+	local KIND_RANK = { need = 1, greed = 2, pass = 3, wait = 4 }
+	local KIND_ICON = { need = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", greed = "Interface\\Buttons\\UI-GroupLoot-Coin-Up",
+		pass = "Interface\\Buttons\\UI-GroupLoot-Pass-Up",
+		wait = "Interface\\Buttons\\UI-GroupLoot-Dice-Up:14:14:0:0:32:32:0:32:0:32:90:90:90" }   -- (still deciding: the dice greyed)
+	local LIST_ALL, LIST_MOST = 8, 10   -- a group this size or under: everyone listed; else Need and Greed, at most LIST_MOST
+
+	local function WhoAdd(name, class, kind, roll, isSelf)
 		name = Text(name)
 		if not name then
-			return TEXT.loot
+			return
 		end
-		if Num(count) and count > 1 then
-			name = name .. " x" .. count
+		local n = who.n + 1
+		local e = who[n] or {}
+		who[n] = e
+		e.name, e.class, e.kind, e.roll, e.self = name, Text(class), kind, Num(roll), not Secret(isSelf) and isSelf == true
+		who.n = n
+	end
+
+	local function WhoByID(rollID)
+		if not (type(LH) == "table" and type(LH.GetNumItems) == "function" and type(LH.GetItem) == "function"
+			and type(LH.GetPlayerInfo) == "function") then
+			return false
 		end
-		quality = Num(quality)
-		local fn = C_Item and C_Item.GetItemQualityColor or _G.GetItemQualityColor
-		if quality and fn then
-			local r, g, b = Ask(fn, quality)
-			if Num(r) and Num(g) and Num(b) then
-				return name, r, g, b
+		local me = Text((Ask(_G.UnitName, "player")))
+		for i = 1, Num((Ask(LH.GetNumItems))) or 0 do
+			local id, _, players = Ask(LH.GetItem, i)
+			if Num(id) == rollID then
+				for p = 1, Num(players) or 0 do
+					local name, class, rollType, roll = Ask(LH.GetPlayerInfo, i, p)
+					local t = Num(rollType)
+					WhoAdd(name, class, t and KIND_BY_TYPE[t] or "wait", roll, me ~= nil and Text(name) == me)
+				end
+				return true
 			end
 		end
-		return name
-	end,
-	text = function()
-		return LootMine() and TEXT.lootMine or TEXT.lootLine
-	end,
-	mark = LootMine,
-	icon = function()
-		local _, texture = LootInfo()
-		return (not Secret(texture) and texture) or "Interface\\Buttons\\UI-GroupLoot-Dice-Up"
-	end,
-	count = function()
-		return loot.n > 1 and loot.n or nil
-	end,
-	progress = function()
-		local r = loot.rolls[1]
-		if r then
-			return r.startAt, r.total
+		return false
+	end
+
+	local function KindOfState(rollState)
+		if not KIND_BY_STATE then
+			local E = type(_G.Enum) == "table" and _G.Enum.EncounterLootDropRollState
+			E = type(E) == "table" and E or {}
+			KIND_BY_STATE = {}
+			KIND_BY_STATE[Num(E.NeedMainSpec) or 0] = "need"
+			KIND_BY_STATE[Num(E.NeedOffSpec) or 1] = "need"
+			KIND_BY_STATE[Num(E.Transmog) or 2] = "greed"
+			KIND_BY_STATE[Num(E.Greed) or 3] = "greed"
+			KIND_BY_STATE[Num(E.NoRoll) or 4] = "wait"
+			KIND_BY_STATE[Num(E.Pass) or 5] = "pass"
 		end
-	end,
-	tooltip = function(_, tip)
-		local r = loot.rolls[1]
-		if r and tip.SetLootRollItem then
-			pcall(tip.SetLootRollItem, tip, r.id)
+		return rollState and KIND_BY_STATE[rollState] or "wait"
+	end
+
+	local function WhoByLink(link)
+		if not (link and type(LH) == "table" and type(LH.GetAllEncounterInfos) == "function"
+			and type(LH.GetSortedDropsForEncounter) == "function") then
+			return false
 		end
-	end,
-	-- (2.1.50, asked on Discord: "CTRL + Click to show how items look on your character in the need and greed loot roll
-	-- window") Ctrl-click: the item tried on in the dressing room, Shift-click: linked in the chat -- the game's own
-	-- modified clicks (HandleModifiedItemClick); a plain click does nothing, as before
-	onClick = function()
-		local r = loot.rolls[1]
-		local link = r and Text((Ask(_G.GetLootRollItemLink, r.id)))
-		local fn = rawget(_G, "HandleModifiedItemClick")
-		if link and fn then
-			pcall(fn, link)
+		local encounters = Ask(LH.GetAllEncounterInfos)
+		if type(encounters) ~= "table" then
+			return false
 		end
-	end,
-	actions = {
-		{ icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", tip = TEXT.need, desc = TEXT.needDesc,
-		  shown = function() local _, _, _, _, _, canNeed = LootInfo() return canNeed == true end,
-		  lit = LootMine,
-		  fn = function() Roll(1) end },
-		{ icon = "Interface\\Buttons\\UI-GroupLoot-Coin-Up", tip = TEXT.greed, desc = TEXT.greedDesc,
-		  shown = function() local _, _, _, _, _, _, canGreed = LootInfo() return canGreed ~= false end,
-		  fn = function() Roll(2) end },
-		{ icon = "Interface\\Buttons\\UI-GroupLoot-Pass-Up", tip = TEXT.pass, desc = TEXT.passDesc,
-		  fn = function() Roll(0) end },
-	},
-}
+		for e = #encounters, 1, -1 do
+			local enc = encounters[e]
+			local drops = type(enc) == "table" and Ask(LH.GetSortedDropsForEncounter, enc.encounterID)
+			if type(drops) == "table" then
+				for d = 1, #drops do
+					local drop = drops[d]
+					-- (still being rolled on: no winner yet, not passed by all -- each tested for a secret first)
+					if type(drop) == "table" and Text(drop.itemHyperlink) == link
+						and not Secret(drop.winner) and drop.winner == nil
+						and not Secret(drop.allPassed) and drop.allPassed ~= true and type(drop.rollInfos) == "table" then
+						for k = 1, #drop.rollInfos do
+							local ri = drop.rollInfos[k]
+							if type(ri) == "table" then
+								WhoAdd(ri.playerName, ri.playerClass, KindOfState(Num(ri.state)), ri.roll, ri.isSelf)
+							end
+						end
+						return true
+					end
+				end
+			end
+		end
+		return false
+	end
+
+	local function WhoRead(r)
+		who.n = 0
+		if not WhoByID(r.id) then
+			WhoByLink(Text((Ask(_G.GetLootRollItemLink, r.id))))
+		end
+		-- Need, Greed, Pass, still deciding (an insertion sort: a group at most)
+		for i = 2, who.n do
+			local e, j = who[i], i
+			while j > 1 and KIND_RANK[who[j - 1].kind] > KIND_RANK[e.kind] do
+				who[j] = who[j - 1]
+				j = j - 1
+			end
+			who[j] = e
+		end
+		return who.n
+	end
+
+	function loot.WhoTip(tip, r)
+		if not (r and WhoRead(r) > 0) then
+			return
+		end
+		-- (the title's gold and the lines' text from the tooltips' palette, as every tooltip MelloUI writes)
+		local P = MelloUI.Look.TipPalette()
+		local gold, soft = P.selectedTrim, P.text
+		local rolled, passed, deciding = 0, 0, 0
+		for i = 1, who.n do
+			local kind = who[i].kind
+			if kind ~= "wait" then
+				rolled = rolled + 1
+			end
+			if kind == "pass" then
+				passed = passed + 1
+			elseif kind == "wait" then
+				deciding = deciding + 1
+			end
+		end
+		tip:AddLine(" ")
+		tip:AddDoubleLine(TEXT.rolls, TEXT.rollsOf:format(rolled, who.n), gold[1], gold[2], gold[3], soft[1], soft[2], soft[3])
+		local all, listed, more = who.n <= LIST_ALL, 0, 0
+		local Colours = MelloUI.Colours
+		for i = 1, who.n do
+			local e = who[i]
+			if all or e.kind == "need" or e.kind == "greed" then
+				if all or listed < LIST_MOST then
+					listed = listed + 1
+					local icon = KIND_ICON[e.kind]
+					icon = e.kind == "wait" and icon or (icon .. ":14:14")
+					local left = "|T" .. icon .. "|t " .. e.name .. (e.self and (" " .. TEXT.rollsYou) or "")
+					local right = TEXT[e.kind == "wait" and "rollsDeciding" or e.kind]
+					if e.roll then
+						right = right .. " " .. e.roll
+					end
+					local cr, cg, cb
+					if Colours and type(Colours.Class) == "function" then
+						cr, cg, cb = Colours.Class(e.class)
+					end
+					if not (Num(cr) and Num(cg) and Num(cb)) then
+						cr, cg, cb = soft[1], soft[2], soft[3]
+					end
+					tip:AddDoubleLine(left, right, cr, cg, cb, soft[1], soft[2], soft[3])
+				else
+					more = more + 1
+				end
+			end
+		end
+		if not all then
+			local parts = {}
+			if more > 0 then
+				parts[#parts + 1] = TEXT.rollsMore:format(more)
+			end
+			if passed > 0 then
+				parts[#parts + 1] = TEXT.rollsPassed:format(passed)
+			end
+			if deciding > 0 then
+				parts[#parts + 1] = TEXT.rollsWaiting:format(deciding)
+			end
+			if parts[1] then
+				tip:AddLine(table.concat(parts, ", "), soft[1], soft[2], soft[3], true)
+			end
+		end
+	end
+
+	-- the loot history changed: an open roll tooltip drawn again
+	function loot.WhoChanged()
+		local r = Rem()
+		if r and type(r.Retip) == "function" and state.registered then
+			for i = 1, loot.ROWS do
+				r:Retip(loot.KEYS[i])
+			end
+		end
+	end
+end
+
+-- slot i's row: one roll, its item in its quality colour, the ring its time, Need / Greed / Pass
+local function LootSpec(i)
+	local function R()
+		return SlotRoll(i)
+	end
+	local function Mine()
+		return LootMine(R())
+	end
+	return {
+		key = loot.KEYS[i], column = true, label = TEXT.loot, priority = "now",
+		check = function()
+			return R() ~= nil
+		end,
+		title = function()
+			local _, _, name, count, quality = LootInfo(R())
+			name = Text(name)
+			if not name then
+				return TEXT.loot
+			end
+			if Num(count) and count > 1 then
+				name = name .. " x" .. count
+			end
+			quality = Num(quality)
+			local fn = C_Item and C_Item.GetItemQualityColor or _G.GetItemQualityColor
+			if quality and fn then
+				local r, g, b = Ask(fn, quality)
+				if Num(r) and Num(g) and Num(b) then
+					return name, r, g, b
+				end
+			end
+			return name
+		end,
+		text = function()
+			return Mine() and TEXT.lootMine or TEXT.lootLine
+		end,
+		mark = Mine,
+		icon = function()
+			local _, texture = LootInfo(R())
+			return (not Secret(texture) and texture) or "Interface\\Buttons\\UI-GroupLoot-Dice-Up"
+		end,
+		-- the rolls waiting past the four rows: on the last row shown
+		count = function()
+			local waiting, last = LootWaiting()
+			return last == i and waiting > 0 and waiting or nil
+		end,
+		progress = function()
+			local r = R()
+			if r then
+				return r.startAt, r.total
+			end
+		end,
+		tooltip = function(_, tip)
+			local r = R()
+			if r and tip.SetLootRollItem then
+				pcall(tip.SetLootRollItem, tip, r.id)
+			end
+			loot.WhoTip(tip, r)
+		end,
+		-- (2.1.50, asked on Discord: "CTRL + Click to show how items look on your character in the need and greed loot
+		-- roll window") Ctrl-click: the item tried on in the dressing room, Shift-click: linked in the chat -- the game's
+		-- own modified clicks (HandleModifiedItemClick); a plain click does nothing, as before
+		onClick = function()
+			local r = R()
+			local link = r and Text((Ask(_G.GetLootRollItemLink, r.id)))
+			local fn = rawget(_G, "HandleModifiedItemClick")
+			if link and fn then
+				pcall(fn, link)
+			end
+		end,
+		actions = {
+			{ icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", tip = TEXT.need, desc = TEXT.needDesc,
+			  shown = function() local _, _, _, _, _, canNeed = LootInfo(R()) return canNeed == true end,
+			  lit = Mine,
+			  fn = function() Roll(R(), 1) end },
+			{ icon = "Interface\\Buttons\\UI-GroupLoot-Coin-Up", tip = TEXT.greed, desc = TEXT.greedDesc,
+			  shown = function() local _, _, _, _, _, _, canGreed = LootInfo(R()) return canGreed ~= false end,
+			  fn = function() Roll(R(), 2) end },
+			{ icon = "Interface\\Buttons\\UI-GroupLoot-Pass-Up", tip = TEXT.pass, desc = TEXT.passDesc,
+			  fn = function() Roll(R(), 0) end },
+		},
+	}
+end
+
+local LOOT = LootSpec(1)
 
 --------------------------------------------------------------------------------
 -- Corpse run
@@ -2980,25 +3277,31 @@ local RARE = {
 -- The specs, the events
 --------------------------------------------------------------------------------
 
-local ORDER = { "loot", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper", "pet", "auction", "craft",
+local ORDER = { "loot", "loot2", "loot3", "loot4", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper",
+	"pet", "auction", "craft",
 	"cooldown", "questItem", "healer", "rare", "bags", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }
-local SPECS = { loot = LOOT, corpse = CORPSE, timed = TIMED, summon = SUMMON, resurrect = RESURRECT, ready = READY,
-	threat = THREAT,
+local SPECS = { loot = LOOT, loot2 = LootSpec(2), loot3 = LootSpec(3), loot4 = LootSpec(4), corpse = CORPSE, timed = TIMED,
+	summon = SUMMON, resurrect = RESURRECT, ready = READY, threat = THREAT,
 	whisper = WHISPER, pet = PET, auction = AUCTION, craft = CRAFT, cooldown = COOLDOWN, questItem = QITEM,
 	healer = HEALER, rare = RARE, bags = BAGS, talents = TALENTS,
 	wellfed = WELLFED, weapon = WEAPON, buffs = BUFFS_SPEC, groupBuffs = GROUP }
+-- (2.1.53) the loot rows past the first: on and off with Loot Rolls' one switch
+local LOOT_USE = { loot2 = "loot", loot3 = "loot", loot4 = "loot" }
 for _, key in ipairs(ORDER) do
 	local spec = SPECS[key]
 	if spec.column then
+		local use = LOOT_USE[key] or key
 		spec.enabled = function()
-			return On(key)
+			return On(use)
 		end
 	end
 end
 M.SPECS = SPECS   -- (read only: the tests, a dump)
 
 local EVENTS = {
-	loot = { "START_LOOT_ROLL", "CANCEL_LOOT_ROLL", "CANCEL_ALL_LOOT_ROLLS" },
+	-- (2.1.53) the loot history: an open roll tooltip's list of who rolled drawn again (each flavour has some of these)
+	loot = { "START_LOOT_ROLL", "CANCEL_LOOT_ROLL", "CANCEL_ALL_LOOT_ROLLS", "LOOT_HISTORY_ROLL_CHANGED", "LOOT_HISTORY_ROLL_COMPLETE",
+		"LOOT_HISTORY_FULL_UPDATE", "LOOT_HISTORY_UPDATE_DROP", "LOOT_HISTORY_UPDATE_ENCOUNTER" },
 	corpse = { "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "ZONE_CHANGED_NEW_AREA", "CORPSE_IN_RANGE", "CORPSE_OUT_OF_RANGE" },
 	timed = { "QUEST_LOG_UPDATE" },
 	summon = { "CONFIRM_SUMMON", "CANCEL_SUMMON" },
@@ -3064,17 +3367,22 @@ local function OnEvent(_, event, a1, a2, a3)
 	end
 	if event == "START_LOOT_ROLL" then
 		LootAdd(a1, a2)
-		Refresh("loot", true)
+		RefreshLoot()
 	elseif event == "CANCEL_LOOT_ROLL" then
 		local id = Num(a1)
 		if id then
 			LootDrop(id)
-			Refresh("loot")
+			RefreshLoot()
 		end
 	elseif event == "CANCEL_ALL_LOOT_ROLLS" then
 		loot.n = 0
 		wipe(loot.rolls)
-		Refresh("loot")
+		RefreshLoot()
+	elseif event == "LOOT_HISTORY_ROLL_CHANGED" or event == "LOOT_HISTORY_ROLL_COMPLETE" or event == "LOOT_HISTORY_FULL_UPDATE"
+		or event == "LOOT_HISTORY_UPDATE_DROP" or event == "LOOT_HISTORY_UPDATE_ENCOUNTER" then
+		if loot.n > 0 then
+			loot.WhoChanged()
+		end
 	elseif event == "CORPSE_IN_RANGE" or event == "CORPSE_OUT_OF_RANGE" then
 		corpse.near = event == "CORPSE_IN_RANGE" and corpse.ghost
 		Refresh("corpse", corpse.near)
@@ -3376,6 +3684,8 @@ end
 local function Read(key)
 	if key == "loot" then
 		LootRead()
+		RefreshLoot()
+		return
 	elseif key == "corpse" then
 		CorpseState()
 	elseif key == "pet" then
@@ -3538,7 +3848,7 @@ function M:OnInit(db)
 	-- (1.2.0) a star put on or taken off in Dungeon Info: a roll up for that item marked again
 	MelloUI:On("dungeonInfo:tracked", function()
 		if loot.n > 0 then
-			Refresh("loot")
+			RefreshLoot()
 		end
 	end, "Widgets: loot rolls")
 	-- a guide's items for its step (qitem.Guide)
@@ -3600,7 +3910,11 @@ function M:OnSettingChanged(key, value, db)
 			elseif key == "questItem" then
 				qitem.Where(false)
 			end
-			Refresh(key)
+			if key == "loot" then
+				RefreshLoot()
+			else
+				Refresh(key)
+			end
 		end
 	elseif key == "bagsAt" then
 		Refresh("bags", true)

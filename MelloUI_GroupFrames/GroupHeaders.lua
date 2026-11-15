@@ -15,8 +15,9 @@
 -- Frames"), where the game's own stand by default. Every button is made out
 -- of a fight when the headers are made (the header's startingIndex walked back
 -- over all its buttons once), then dressed in Lua (GroupButton.lua): nothing
--- is made in a fight. A header shows by the game's state driver ("[group:raid]
--- hide; show" / "[group:raid] show; hide"), in a fight too. Their layout and
+-- is made in a fight. A header shows by the game's state driver, in a fight too
+-- (2.1.53: its rule asks whether the raid's first unit is there, RD.IN_RAID --
+-- "[group:raid]" does not turn while you fight). Their layout and
 -- the buttons' size are set out of a fight only: a change in a fight waits for
 -- its end. A button's unit is the header's (its "unit" attribute, followed by
 -- an attribute hook); the units' events reach the buttons that show them.
@@ -515,8 +516,10 @@ end
 
 -- (In A Party: Raid Frames -- ours in a party and solo -- or Party Frames: the
 -- portrait party frames of ours, GroupSolo.lua: this header never)
+-- (2.1.53: in a raid asked by its first unit's being there, RD.IN_RAID -- the game's "[group:raid]" does not turn in
+-- a fight)
 local function PartyRule()
-	return DB().partyStyle == "party" and "hide" or "[group:raid] hide; show"
+	return DB().partyStyle == "party" and "hide" or (RD.IN_RAID .. " hide; show")
 end
 
 local function SoloUpdate()
@@ -528,7 +531,7 @@ end
 local function Drive(on)
 	for kind, h in pairs(headers) do
 		if on then
-			RegisterStateDriver(h, "visibility", kind == "party" and PartyRule() or "[group:raid] show; hide")
+			RegisterStateDriver(h, "visibility", kind == "party" and PartyRule() or (RD.IN_RAID .. " show; hide"))
 		else
 			UnregisterStateDriver(h, "visibility")
 			h:Hide()
