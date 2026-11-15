@@ -51,7 +51,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 		otherClass = false,
 		levelAbove = 0,
 		mapPins = true,
-		pinCompleted = false,
 		zoneBadges = true,
 		zoneProgress = true,
 		entrancePins = true,
@@ -60,7 +59,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 		objectiveTrackedOnly = false,
 		objectiveMinimap = true,
 		hideGameObjectives = true,
-		hideGrey = false,
 		dungeonSummary = true,
 		tipQuestItems = true,
 		tipTurnIn = true,
@@ -76,7 +74,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 			{ value = "class", label = "Class quests" },
 			{ value = "dungeons", label = "Dungeons" },
 			{ value = "raids", label = "Raids" },
-			{ value = "attunements", label = "Attunements" },
 			{ value = "events", label = "Events" },
 		  },
 		  desc = "Which quests the list shows. The dropdown on the list does the same." },
@@ -101,11 +98,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Leaves out quests more than this many levels above you." },
 		{ type = "header", name = "Map" },
 		{ type = "toggle", key = "mapPins", name = "Quest Givers On Zone Maps",
-		  desc = "Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it." },
-		{ type = "toggle", key = "pinCompleted", parent = "mapPins", name = "Include Givers You Are Done With",
-		  desc = "Also marks givers whose quests you have all done, with a grey tick." },
-		{ type = "toggle", key = "hideGrey", parent = "mapPins", name = "Hide Grey Quests",
-		  desc = "Leaves quests far below your level off the map." },
+		  desc = "Shows Questie's quest givers on the game's zone map as ! and ?. Point at one for its quests. Only with Questie in MelloUI's look." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
 		  desc = "A done / total badge on each zone of the continent map." },
 		{ type = "toggle", key = "zoneProgress", name = "Zone Progress On Zone Maps",
@@ -156,8 +149,9 @@ local IsSecret = MelloUI.Safe.IsSecret
 QL.Plain = MelloUI.Safe.Value
 
 -- Row fields in MelloUI_QuestListData.quests
-QL.F_ID, QL.F_TITLE, QL.F_LEVEL, QL.F_REQ, QL.F_SIDE, QL.F_CLASS, QL.F_ZONE, QL.F_GIVERZONE, QL.F_GIVER, QL.F_X, QL.F_Y, QL.F_KIND, QL.F_EVENT, QL.F_CHAIN, QL.F_DUNGEON, QL.F_ATTUNE, QL.F_PREV, QL.F_CONT, QL.F_WX, QL.F_WY =
-	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+-- (16, the attunement flag of MelloUI's own rows: 0 in every row since 2.1.52, its name went with the Attunements view)
+QL.F_ID, QL.F_TITLE, QL.F_LEVEL, QL.F_REQ, QL.F_SIDE, QL.F_CLASS, QL.F_ZONE, QL.F_GIVERZONE, QL.F_GIVER, QL.F_X, QL.F_Y, QL.F_KIND, QL.F_EVENT, QL.F_CHAIN, QL.F_DUNGEON, QL.F_PREV, QL.F_CONT, QL.F_WX, QL.F_WY =
+	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20
 -- giver NPC id; turn-in: name, NPC id, zone (build-time guess), continent, world x, world y
 QL.F_NPC, QL.F_ENDER, QL.F_ENDERNPC, QL.F_ENDERZONE, QL.F_ENDERCONT, QL.F_ENDERWX, QL.F_ENDERWY = 21, 22, 23, 24, 25, 26, 27
 -- origin: 1 Classic (classic-db has the quest), 2 Forever's own (the data's;
@@ -186,7 +180,6 @@ QL.RowByID = RowByID   -- (the quest tooltips read the turn-ins of the log's que
 -- (2.1.39) the rows made from QuestieDB in their place (Core/QuestSource.lua): the lookup made again on next use
 MelloUI:On("questsource", function()
 	rowByID = nil
-	QL.ForgetNeeds()
 end, "Quest List: the quests' rows")
 
 -- Who takes a quest back, and where (0.14.0, the tracker's turn-in line):
@@ -201,7 +194,7 @@ function MelloUI:QuestTurnIn(questID)
 		return nil
 	end
 	-- (2.1.39; the user, 2026-11-10: Questie's info in MelloUI's tracker) the rows from the player's QuestieDB made
-	-- when the tracker first asks, the Quest List on or off (Core/QuestSource.lua); MelloUI's own until they are
+	-- when the tracker first asks, the Quest List on or off (Core/QuestSource.lua); none until they are (2.1.52)
 	local QS = MelloUI.QuestSource
 	if QS and not QS.Ready() and QS.Lib() then
 		QS.WhenReady(function() end)
@@ -533,11 +526,6 @@ local STARTER_ICON = { drop = "loot", pickup = "ql_chest", dungeon = "pin_dungeo
 function QL.StarterIconMarkup(key, size)
 	local name = key == "giver" and "quest_mark" or key == "unknown" and "ql_notyet" or STARTER_ICON[key]
 	return name and MelloUI.Widgets.IconMarkup(name, size or 14) or ""
-end
-
--- the set's icon a start shows (false for none): its lift on the maps (MelloUI.Shade:Lift)
-function QL.StarterIconName(key)
-	return STARTER_ICON[key] or false
 end
 
 function QL.SetStarterIcon(tex, key)
@@ -992,28 +980,11 @@ local function TakenOrDone(questID)
 	return QL.IsCompleted(questID) or QL.IsOnQuest(questID)
 end
 
--- [questID] = its group of the data's `exclusive`, made on first use; (2.1.39) a quest of QuestieDB's: its own
--- group (exclusiveOf, Core/QuestSource.lua), or none
-local exclusiveOf = nil
+-- (2.1.39) a quest's group of which only one can be done: QuestieDB's (exclusiveOf, Core/QuestSource.lua), or none.
+-- (2.1.52: MelloUI's own groups -- the data's `exclusive`, a lookup made on first use -- went with its quest data)
 local function ExclusiveOf(questID)
-	local needs = Needs()
-	if needs.fromQuestie and needs.fromQuestie[questID] then
-		return needs.exclusiveOf and needs.exclusiveOf[questID]
-	end
-	if not exclusiveOf then
-		exclusiveOf = {}
-		for _, members in ipairs(Needs().exclusive or NO_NEEDS) do
-			for _, id in ipairs(members) do
-				exclusiveOf[id] = members
-			end
-		end
-	end
-	return exclusiveOf[questID]
-end
-
--- (2.1.39) the needs read again (the rows and needs made from QuestieDB: Core/QuestSource.lua)
-function QL.ForgetNeeds()
-	exclusiveOf = nil
+	local of = Needs().exclusiveOf
+	return of and of[questID]
 end
 
 -- The character's standing with a faction (the reputation bar's value: 0 is
@@ -1083,7 +1054,7 @@ function QL.Closed(row)
 	end
 	local maxLevel = needs.maxLevel and needs.maxLevel[id]
 	local target = needs.breadcrumbs and needs.breadcrumbs[id]
-	local group = needs.exclusive and ExclusiveOf(id)
+	local group = ExclusiveOf(id)
 	local rep = needs.reps and needs.reps[id]
 	local below = rep and rep[3] ~= 0
 	-- (0.19.5; user, 2026-10-06: "only the ones i can pick up") the next
@@ -1157,120 +1128,13 @@ local function AfterName(choice)
 	return math.abs(choice)
 end
 
--- (0.19.5) a quest's condition: the data's `cond`, the server's own from
--- classic-db's conditions table (build_quest_list.py condition_tree). True,
--- false, or nil when it cannot be told from here (a place, an instance
--- script, the war effort's supplies, an aura that reads secret): nil never
--- holds a quest back. `depth` bounds a condition that asks whether another
--- quest can be picked up (leaf 19), whose own needs may ask again.
--- Leaves: {8, quest, rev} rewarded, {9, quest, rev} taken, {19, quest}
--- available, {23, item, count, rev} items with the bank (rev: fewer than),
--- {1, spell, rev} the player's aura; {0} cannot tell.
-local function ItemCount(itemID)
-	local f = C_Item and C_Item.GetItemCount or GetItemCount
-	if type(f) ~= "function" then
-		return nil
-	end
-	local ok, n = pcall(f, itemID, true)
-	n = ok and QL.Plain(n)
-	return type(n) == "number" and n or nil
-end
-
-function QL.CondMet(t, depth)
-	local kind = t[1]
-	if kind == "and" or kind == "or" then
-		local unknown = false
-		for i = 2, #t do
-			local v = QL.CondMet(t[i], depth)
-			if v == (kind == "or") then
-				return v
-			elseif v == nil then
-				unknown = true
-			end
-		end
-		if unknown then
-			return nil
-		end
-		return kind == "and"
-	elseif kind == "not" then
-		local v = QL.CondMet(t[2], depth)
-		if v == nil then
-			return nil
-		end
-		return not v
-	elseif kind == 8 or kind == 9 then
-		local v = (kind == 8 and QL.IsCompleted or QL.IsOnQuest)(t[2])
-		return (t[3] == 1) ~= v
-	elseif kind == 23 then
-		local n = ItemCount(t[2])
-		if not n then
-			return nil
-		end
-		local have = n >= math.max(t[3] or 1, 1)
-		return (t[4] == 1) ~= have
-	elseif kind == 1 then
-		if not (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) then
-			return nil
-		end
-		local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, t[2])
-		if not ok or IsSecret(aura) then
-			return nil
-		end
-		return (t[3] == 1) ~= (aura ~= nil)
-	elseif kind == 19 then
-		depth = (depth or 0) + 1
-		local row = RowByID()[t[2]]
-		if not row or depth > 3 then
-			return nil
-		end
-		if TakenOrDone(t[2]) then
-			return false
-		end
-		return QL.Eligible(row) and QL.Unmet(row, depth) == nil
-	end
-	return nil
-end
-
--- The words for a condition not met: its first leaf that is false
-local function CondWhy(t, depth)
-	local kind = t[1]
-	if kind == "and" or kind == "or" then
-		for i = 2, #t do
-			if QL.CondMet(t[i], depth) == false then
-				return CondWhy(t[i], depth)
-			end
-		end
-		return nil
-	elseif kind == "not" then
-		return "Not yet offered to you"
-	end
-	local rev = (kind == 23 and t[4] or t[3]) == 1
-	if kind == 8 or kind == 9 or kind == 19 then
-		local other = RowByID()[t[2]]
-		local title = other and other[QL.F_TITLE] or "another quest"
-		if kind == 8 then
-			return (rev and "Only before you hand in %s" or "After %s"):format(title)
-		elseif kind == 9 then
-			return (rev and "Not while you have %s in your log" or "While you have %s in your log"):format(title)
-		end
-		return ("While %s can still be picked up"):format(title)
-	elseif kind == 23 then
-		local ok, name = pcall(C_Item.GetItemNameByID, t[2])
-		name = ok and QL.Plain(name) or "an item"
-		return (rev and "Only without %s in your bags" or "Needs %s"):format(name)
-	elseif kind == 1 then
-		return "Needs a special effect on you"
-	end
-	return nil
-end
-
 -- For a quest neither taken nor done (the callers have asked already): nil
 -- when the game would offer it now (its level aside: the callers compare
 -- that), else why not: "after", questID, inLog (the quest to do first, or to
 -- have in the log) / "skill", skill line, skill / "rep", faction, standing /
--- "crumb", questID (a breadcrumb leading to it is in the log) / "cond", its
--- words (the server's condition) / "refused", npc id, giver's name (not
--- offered the last time it was asked)
+-- "crumb", questID (a breadcrumb leading to it is in the log) / "refused", npc
+-- id, giver's name (not offered the last time it was asked). (2.1.52: the
+-- server's condition trees, "cond", went with MelloUI's own quest data)
 function QL.Unmet(row, depth)
 	local id = row[QL.F_ID]
 	local needs = Needs()
@@ -1322,11 +1186,6 @@ function QL.Unmet(row, depth)
 	if disabledBy and QL.IsOnQuest(disabledBy) then
 		return "notwhile", disabledBy
 	end
-	-- (0.19.5) the server's condition, where the client can tell
-	local cond = needs.cond and needs.cond[id]
-	if cond and QL.CondMet(cond, depth) == false then
-		return "cond", CondWhy(cond, depth) or "Not yet offered to you"
-	end
 	-- (and what the data cannot know: its giver did not offer it, Offers below)
 	local npc = QL.RefusedBy(id)
 	if npc then
@@ -1370,8 +1229,6 @@ function QL.UnmetText(kind, a, b)
 	elseif kind == "crumb" then
 		local crumb = RowByID()[a]
 		return ("Hand in %s first"):format(crumb and crumb[QL.F_TITLE] or "the quest that leads here")
-	elseif kind == "cond" then
-		return a
 	elseif kind == "spell" then
 		local CS = rawget(_G, "C_Spell")
 		local fn = (type(CS) == "table" and CS.GetSpellName) or rawget(_G, "GetSpellInfo")
@@ -1508,22 +1365,6 @@ function QL.ToggleHidden(row)
 	local on = not QL.IsHidden(id)
 	QL.SetHidden(id, on)
 	HiddenChanged((on and "Hidden: " or "Shown again: ") .. row[QL.F_TITLE], on)
-end
-
--- a giver mark's Alt-click: its quests not taken yet hidden (the map's mark
--- groups a giver's quests: { row, state } each)
-function QL.HideGiver(group)
-	local n, first = 0, nil
-	for _, q in ipairs(group.quests or {}) do
-		if q.state == "available" or q.state == "locked" then
-			QL.SetHidden(q.row[QL.F_ID], true)
-			n = n + 1
-			first = first or q.row[QL.F_TITLE]
-		end
-	end
-	if n > 0 then
-		HiddenChanged(n == 1 and ("Hidden: " .. first) or string.format("Hidden: %d quests from %s", n, group.giver or "this giver"), true)
-	end
 end
 
 --------------------------------------------------------------------------------
@@ -1974,43 +1815,6 @@ function QL.ColourLevel(row)
 	return level
 end
 
--- A quest grey for you, as the game colours it (DifficultyUtil.
--- GetRelativeDifficultyColor: more than 4 levels under yours and further
--- than your trivial range, UnitQuestTrivialLevelRange); where the client
--- has no range, QL.DifficultyColor's own steps. A quest of no known level
--- is never grey.
-function QL.IsGrey(row)
-	local level = row[QL.F_LEVEL]
-	local mine = type(UnitEffectiveLevel) == "function" and QL.Plain(UnitEffectiveLevel("player")) or nil
-	if type(mine) ~= "number" then
-		mine = QL.Plain(UnitLevel("player"))
-	end
-	if type(level) ~= "number" or level <= 0 or type(mine) ~= "number" then
-		return false
-	end
-	local below = mine - level
-	if below <= 4 then
-		return false
-	end
-	local range
-	if type(UnitQuestTrivialLevelRange) == "function" then
-		local ok, r = pcall(UnitQuestTrivialLevelRange, "player")
-		range = ok and QL.Plain(r) or nil
-	end
-	if type(range) == "number" then
-		return below > range
-	end
-	local trivial = mine >= 40 and 12 or mine >= 30 and 9 or mine >= 20 and 7 or mine >= 10 and 6 or 5
-	return below >= trivial
-end
-
--- (0.19.5, the user's Hide Grey Quests; Questie hides them by default) a
--- quest not taken yet that the map leaves out for being grey -- never one in
--- the log, never the tracked one
-function QL.GreyHidden(row, state)
-	return state == "available" and M.db.hideGrey == true and QL.trackedQuestID ~= row[QL.F_ID] and QL.IsGrey(row)
-end
-
 function QL.DifficultyColor(level)
 	if level <= 0 then
 		return 0.75, 0.61, 0
@@ -2256,13 +2060,14 @@ function QL.SetWaypoint(row, atEnder)
 		local icon = W.IconMarkup(atEnder and "turnin_mark" or "quest_mark", 16) .. " "
 		local label = icon .. row[QL.F_TITLE] .. (who ~= "" and (" - " .. who) or "")
 		local what = atEnder and "turn-in" or QL.IsItemStart(row) and "item" or "quest giver"
-		local text = string.format("%sTracking %s %s for %s, {dist} away", icon, what, who ~= "" and who or "", row[QL.F_TITLE])
+		local text = icon .. string.format(MelloUI.Widgets.Tr("Tracking %s %s for %s, {dist} away"),
+			MelloUI.Widgets.Tr(what), who ~= "" and who or "", row[QL.F_TITLE])
 		if instance then
 			local kind = QL.IsRaid(instance) and "raid" or "dungeon"
 			icon = W.IconMarkup(QL.IsRaid(instance) and "pin_raid" or "pin_dungeon", 16) .. " "
 			label = icon .. row[QL.F_TITLE] .. " - " .. QL.Data().dungeons[instance]
-			text = string.format("%sTracking the %s entrance of %s for %s (%s is found inside), {dist} away", icon, kind,
-				QL.Data().dungeons[instance], row[QL.F_TITLE], who)
+			text = icon .. string.format(MelloUI.Widgets.Tr("Tracking the %s entrance of %s for %s (%s is found inside), {dist} away"),
+				MelloUI.Widgets.Tr(kind == "dungeon" and "Dungeon" or "Raid"), QL.Data().dungeons[instance], row[QL.F_TITLE], who)
 		end
 		if R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, text) then
 			QL.trackedQuestID = row[QL.F_ID]
@@ -2497,6 +2302,10 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- (2.1.52, stage 2) Attunements went with MelloUI's own quest data: a list left on it shows the zone again
+	if db.filter == "attunements" then
+		db.filter = "zone"
+	end
 	if type(MelloUI_QuestListData) ~= "table" then
 		MelloUI:Print("Quest List: its quest data (Media\\QuestListData.lua) is missing, so the list stays off. Reinstall MelloUI from its download, copying every folder.")
 		return
