@@ -179,6 +179,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "2.1.53", lines = {
 		"Party and raid frames: a group you join during a fight now shows its frames at once, not only when the fight is over.",
+		"Party and raid frames: the Lockouts group works now: it shows what your own spells left on a member, like Weakened Soul after your shield or Forbearance.",
 		"Widgets: up to four loot rolls show at once, each its own row with its own ring and Need, Greed and Pass. Rolling on one takes only its row away; a fifth waits, counted on the last row.",
 		"Widgets: hovering a loot roll now lists who has rolled on it so far, under the item's tooltip: each player in their class colour with Need, Greed or Pass, and who is still deciding.",
 		"Party and raid frames: the starting indicators no longer lie on the name, the health text or the raid mark. On party frames with portraits they stand beside the frame.",

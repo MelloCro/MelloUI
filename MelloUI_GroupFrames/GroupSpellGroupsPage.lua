@@ -47,13 +47,14 @@ local TEXT = {
 	unplaced = "Not on the frame yet: drag its card onto the frame, or put it on.",
 	reset = "Reset group", resetTip = "Every spell back as it started: switched, moved, added and your order.",
 	off = "Off the frame", on = "Onto the frame", remove = "Remove",
-	spellHint = "Spell name or ID", add = "+ Add", single = "+ Spell",
+	spellHint = "Buff name or ID", add = "+ Add", single = "+ Spell",
 	noSpell = "No spell of that name: type it as the game writes it, or its spell ID.",
+	-- (2.1.53; CurseForge: Weakened Soul typed as "a custom spell" never showed, and nothing said why)
+	debuffSpell = "%s is a debuff: the game does not let a debuff be picked by its spell. Put the Lockouts group on the frame: it shows the ones you cast.",
 	look = "Look", size = "Size", spot = "Place", offset = "X / Y", grow = "Grow", most = "Most shown",
 	perLine = "Per line", spacing = "Room", whose = "Whose", which = "Which", order = "Order", when = "When",
 	time = "Its time", stacks = "Its stacks", colour = "Colour", colourOf = "Colour: %s", strength = "Strength",
 	colourBy = "Colour from",
-	hidden = "The game hides this one on others: it cannot show here.",
 	startsOff = "Off from the start: a lockout of your own.",
 	moveTip = "Drag it onto another group's card to move it there, onto another row for your order, onto the frame for a spell of its own.",
 	added = "Added by you",
@@ -162,7 +163,7 @@ function Page.SampleGroup(f, m, ind, frac, fill)
 	local shown = {}
 	local most = ind.look == "health" and 1 or (ind.max or 3)
 	for _, e in ipairs(SG.List(ind)) do
-		if #shown < most and SG.IsOn(ind, e) and SG.Trackable(ind, e) then
+		if #shown < most and SG.IsOn(ind, e) then
 			shown[#shown + 1] = e
 		end
 	end
@@ -591,6 +592,11 @@ function Page.BuildGroups(canvas, width)
 		if not (id or name) then
 			return
 		end
+		-- (2.1.53) a lockout is a debuff: never a spell of its own (a single spell is a buff: filter HELPFUL)
+		if SG.Lockout(id, name) then
+			MelloUI:Print(string.format(TEXT.debuffSpell, name or SG.Name({ main = id })))
+			return
+		end
 		local ind = RD:Add({ kind = "buff", spell = id, name = name, look = "icon", point = FreeSpot() }, Key())
 		single:SetText("")
 		single:ClearFocus()
@@ -736,9 +742,6 @@ function Page.BuildGroups(canvas, width)
 		if e.off then
 			body_[#body_ + 1] = TEXT.startsOff
 		end
-		if not SG.Trackable(Sel(), e) then
-			body_[#body_ + 1] = TEXT.hidden
-		end
 		if not e.kind and inst.ind then
 			body_[#body_ + 1] = TEXT.moveTip
 		end
@@ -880,7 +883,7 @@ function Page.BuildGroups(canvas, width)
 				r.icon:SetTexture(e.kind and Looks.KIND_ICON[e.kind] or SG.Icon(e) or Looks.UNKNOWN_ICON)
 				r.name:SetText(SG.Name(e))
 				r.name:Show()
-				W.Paint(r.name, SG.Trackable(sel, e) and SG.IsOn(sel, e) and "text" or "mutedText", "text")
+				W.Paint(r.name, SG.IsOn(sel, e) and "text" or "mutedText", "text")
 				r.handle:SetShown(inst.ind ~= nil and not e.kind)
 				r.swatch:SetShown(own and not e.kind or false)
 				if own and not e.kind then
@@ -959,13 +962,14 @@ function Page.BuildGroups(canvas, width)
 		if not inst.ind then
 			return
 		end
-		if SG.Add(inst.ind, typed:GetText()) then
+		local id, debuff = SG.Add(inst.ind, typed:GetText())
+		if id then
 			typed:SetText("")
 			typed:ClearFocus()
 			typedMsg:SetText("")
 			Changed(inst.ind)
 		else
-			typedMsg:SetText(TEXT.noSpell)
+			typedMsg:SetText(debuff and string.format(TEXT.debuffSpell, debuff) or TEXT.noSpell)
 		end
 	end
 	local addY = top + 20 + G.rows * G.rowH + 6
@@ -1278,7 +1282,7 @@ function Page.BuildGroups(canvas, width)
 				ShowControl(controls[k], isGroup)
 				labels[LABELS[k]]:SetShown(isGroup)
 			end
-			local buffs = (isGroup and not debuff and key ~= "lockout") or ind.kind == "buff"
+			local buffs = (isGroup and not debuff) or ind.kind == "buff"
 			ShowControl(controls.whose, buffs)
 			ShowControl(controls.which, isGroup and key == "dispel")
 			ShowControl(controls.kind, ind.kind == "debuff")
@@ -1298,7 +1302,7 @@ function Page.BuildGroups(canvas, width)
 			local e = inst.colourSpell and ind.order == "list" and inst.colourSpell
 			colourLabel:SetText(e and string.format(TEXT.colourOf, SG.Name({ main = e })) or TEXT.colour)
 		end
-		local typedColour = ind ~= nil and (ind.kind == "debuff" or (isGroup and (debuff or key == "lockout")))
+		local typedColour = ind ~= nil and (ind.kind == "debuff" or (isGroup and debuff))
 		byLabel:SetShown(typedColour)
 		controls.colourBy:SetShown(typedColour)
 		if typedColour then
