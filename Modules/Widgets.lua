@@ -308,6 +308,17 @@ local TEXT = {
 	DIRS = { "north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west" },
 }
 M.TEXT = TEXT
+-- a TEXT line in the language in use, translated before it is filled in ("%s, to the %s"); a name, a quest's title
+-- or an item as it is (MelloUI.Widgets.Tr; on M, not a new file local)
+function M.Tr(s)
+	return MelloUI.Widgets.Tr(s)
+end
+-- string.format of a TEXT template in the language in use, its string arguments looked up too (Lang.F: "Main hand", a
+-- direction; a name or an item the table lacks as it is)
+function M.F(fmt, ...)
+	MelloUI.Widgets.Tr(fmt)   -- (the language's table loaded first)
+	return MelloUI.Lang.F(fmt, ...)
+end
 
 --------------------------------------------------------------------------------
 -- Loot rolls
@@ -570,18 +581,18 @@ local function CorpseWay()
 	end
 	local R, c = Route(), CorpseCandidate()
 	if not c then
-		MelloUI:Announce(TEXT.corpseUnknown, "fail")
+		MelloUI:Announce(M.Tr(TEXT.corpseUnknown), "fail")
 		return
 	end
 	if not (R and type(R.SetDestinationTo) == "function") then
-		MelloUI:Announce(TEXT.corpseNoWay, "fail")
+		MelloUI:Announce(M.Tr(TEXT.corpseNoWay), "fail")
 		return
 	end
 	local ok, placed = pcall(R.SetDestinationTo, R, c, TEXT.corpse, true)
 	if not ok then
 		geterrorhandler()(placed)
 	elseif placed == false then
-		MelloUI:Announce(TEXT.corpseNoWay, "fail")
+		MelloUI:Announce(M.Tr(TEXT.corpseNoWay), "fail")
 	end
 end
 
@@ -605,7 +616,7 @@ local function Bearing(mapID, x, y)
 		return nil
 	end
 	local angle = math.deg(math.atan2(dx, dy)) % 360   -- 0 = north, clockwise
-	return TEXT.DIRS[floor((angle + 22.5) / 45) % 8 + 1]
+	return M.Tr(TEXT.DIRS[floor((angle + 22.5) / 45) % 8 + 1])
 end
 
 -- the game's own Resurrect at the body (RetrieveCorpse: no restriction)
@@ -639,7 +650,7 @@ local CORPSE = {
 				end
 				local yards = type(R.YardsText) == "function" and R:YardsText(d) or (floor(d) .. " yd")
 				local dir = Bearing(corpse.mapID, corpse.x, corpse.y)
-				return dir and W.Tr(TEXT.corpseFar):format(yards, W.Tr(dir)) or yards
+				return dir and M.F(TEXT.corpseFar, yards, dir) or yards
 			end
 		end
 		return TEXT.corpseLine
@@ -802,10 +813,10 @@ local SUMMON = {
 		return Live(summon)
 	end,
 	title = function()
-		return TEXT.summons:format(summon.who or TEXT.someone)
+		return M.F(TEXT.summons, summon.who or TEXT.someone)
 	end,
 	text = function()
-		return summon.where and TEXT.summonLine:format(summon.where) or ""
+		return summon.where and M.F(TEXT.summonLine, summon.where) or ""
 	end,
 	icon = "Interface\\Icons\\Spell_Shadow_Twilight",
 	progress = function()
@@ -814,7 +825,7 @@ local SUMMON = {
 		end
 	end,
 	actions = {
-		{ glyph = "check", tip = TEXT.accept, desc = function() return TEXT.summonAccept:format(summon.where or "") end,
+		{ glyph = "check", tip = TEXT.accept, desc = function() return M.F(TEXT.summonAccept, summon.where or "") end,
 		  fn = function()
 			if C_SummonInfo and pcall(C_SummonInfo.ConfirmSummon) then
 				summon.at = nil
@@ -837,7 +848,7 @@ local RESURRECT = {
 		return Live(res)
 	end,
 	title = function()
-		return TEXT.resurrects:format(res.who or TEXT.someone)
+		return M.F(TEXT.resurrects, res.who or TEXT.someone)
 	end,
 	text = TEXT.resLine,
 	icon = "Interface\\Icons\\Spell_Holy_Resurrection",
@@ -885,7 +896,7 @@ local READY = {
 	end,
 	title = TEXT.readyTitle,
 	text = function()
-		return ready.who and TEXT.readyLine:format(ready.who) or ""
+		return ready.who and M.F(TEXT.readyLine, ready.who) or ""
 	end,
 	icon = MelloUI.Widgets.IconPath("turnin_mark"),   -- (0.25.0: the set's ?, as the game's waiting one; its 1x file until then)
 	progress = function()
@@ -985,7 +996,7 @@ end
 
 local function Coloured(kind, text)
 	local c = kind == "aggro" and MelloUI.Meaning.threatAggro or MelloUI.Meaning.threatClose
-	return "|cff" .. c.hex .. text .. "|r"
+	return "|cff" .. c.hex .. M.Tr(text) .. "|r"
 end
 
 -- the tray: the group's threat on the player's target, highest first
@@ -1015,14 +1026,14 @@ local function ThreatTray(_, rows)
 		local r = rows[i] or {}
 		rows[i] = r
 		r.glyph, r.icon, r.onClick = nil, nil, nil
-		r.text = e.tanking and TEXT.threatTank:format(e.name) or e.name
+		r.text = e.tanking and M.F(TEXT.threatTank, e.name) or e.name
 		r.right = Percent(e.fraction) .. "%"
 	end
 	rows.n = n
 	if n == 0 then
 		return TEXT.threatNone
 	end
-	return TEXT.threatFoot:format(threat.name or (Text((Ask(UnitName, "target"))) or TEXT.someone))
+	return M.F(TEXT.threatFoot, threat.name or (Text((Ask(UnitName, "target"))) or TEXT.someone))
 end
 
 local THREAT = {
@@ -1033,23 +1044,23 @@ local THREAT = {
 	end,
 	title = function()
 		if threat.tank then
-			return threat.loose == 1 and TEXT.threatLooseOne or TEXT.threatLoose:format(threat.loose)
+			return threat.loose == 1 and TEXT.threatLooseOne or M.F(TEXT.threatLoose, threat.loose)
 		end
 		return threat.name or TEXT.threatLabel
 	end,
 	text = function()
 		if threat.tank then
 			if threat.looseName and threat.looseOn then
-				return TEXT.threatOn:format(threat.looseName, threat.looseOn)
+				return M.F(TEXT.threatOn, threat.looseName, threat.looseOn)
 			end
 			return threat.looseName or ""
 		end
 		if threat.state == "aggro" then
 			return TEXT.threatOnYou
 		elseif threat.fraction and threat.holder then
-			return TEXT.threatOf:format(Percent(threat.fraction), threat.holder)
+			return M.F(TEXT.threatOf, Percent(threat.fraction), threat.holder)
 		elseif threat.fraction then
-			return TEXT.threatPct:format(Percent(threat.fraction))
+			return M.F(TEXT.threatPct, Percent(threat.fraction))
 		end
 		return TEXT.threatClose
 	end,
@@ -1182,7 +1193,7 @@ local PET = {
 		return pet.happiness ~= nil and pet.happiness < 3
 	end,
 	title = function()
-		return TEXT.petTitle:format(pet.name or TEXT.petLabel)
+		return M.F(TEXT.petTitle, pet.name or TEXT.petLabel)
 	end,
 	text = function()
 		return pet.happiness == 1 and TEXT.petUnhappy or TEXT.petContent
@@ -1286,7 +1297,7 @@ local AUCTION = {
 	title = TEXT.auctionLabel,
 	text = function()
 		local e = auction.list[1]
-		return e and AUCTION_WORD[e.kind]:format(e.item) or ""
+		return e and M.F(AUCTION_WORD[e.kind], e.item) or ""
 	end,
 	icon = "Interface\\Icons\\INV_Misc_Coin_02",
 	count = function()
@@ -1300,7 +1311,7 @@ local AUCTION = {
 			local r = rows[i] or {}
 			rows[i] = r
 			r.glyph, r.icon, r.right = nil, nil, ""
-			r.text = AUCTION_WORD[e.kind]:format(e.item)
+			r.text = M.F(AUCTION_WORD[e.kind], e.item)
 			r.onClick = Mailbox
 		end
 		rows.n = #auction.list
@@ -1372,7 +1383,7 @@ local CRAFT = {
 		return craft.name or TEXT.craftLabel
 	end,
 	text = function()
-		return TEXT.crafting:format(math.min(craft.done + 1, craft.total), craft.total)
+		return M.F(TEXT.crafting, math.min(craft.done + 1, craft.total), craft.total)
 	end,
 	icon = function()
 		return craft.icon or "Interface\\Icons\\Trade_BlackSmithing"
@@ -1393,10 +1404,10 @@ local CRAFT = {
 	time = function(_, left)
 		local per = craft.castFor
 		if not per then
-			return left and TEXT.craftLeft:format(Clock(left)) or nil
+			return left and M.F(TEXT.craftLeft, Clock(left)) or nil
 		end
 		local after = math.max(0, craft.total - craft.done - 1)
-		return TEXT.craftLeft:format(Clock((left or per) + after * per))
+		return M.F(TEXT.craftLeft, Clock((left or per) + after * per))
 	end,
 	actions = {
 		{ glyph = "stop", tip = TEXT.stop, desc = TEXT.stopDesc, secure = function() return "/stopcasting" end },
@@ -1552,11 +1563,11 @@ local COOLDOWN = {
 	end,
 	title = function()
 		local e = CdReady()
-		return TEXT.cdReady:format(e and e.name or TEXT.cdLabel)
+		return M.F(TEXT.cdReady, e and e.name or TEXT.cdLabel)
 	end,
 	text = function()
 		local e = CdReady()
-		return (e and e.prof) and TEXT.cdLine:format(e.prof) or TEXT.cdLineItem
+		return (e and e.prof) and M.F(TEXT.cdLine, e.prof) or TEXT.cdLineItem
 	end,
 	icon = function()
 		local e = CdReady()
@@ -1620,7 +1631,7 @@ local BAGS = {
 	end,
 	text = function()
 		local f = portrait.free or 0
-		return f == 0 and TEXT.bagsFull or (f == 1 and TEXT.bagsOne or TEXT.bags:format(f))
+		return f == 0 and TEXT.bagsFull or (f == 1 and TEXT.bagsOne or M.F(TEXT.bags, f))
 	end,
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
 	-- (user, 2026-09-30: it stays the whole time the bags are at or under
@@ -1649,7 +1660,7 @@ local TALENTS = {
 		return portrait.points ~= nil and portrait.points > 0
 	end,
 	text = function()
-		return TEXT.talents:format(portrait.points or 0)
+		return M.F(TEXT.talents, portrait.points or 0)
 	end,
 	icon = "Interface\\Icons\\Ability_Marksmanship",
 	persistent = function(key)
@@ -1704,7 +1715,7 @@ local WELLFED = {
 		return left ~= nil and left > 0 and left <= FED_WARN
 	end,
 	text = function()
-		return TEXT.wellfed:format(Clock(math.max(0, portrait.fedLeft or 0)))
+		return M.F(TEXT.wellfed, Clock(math.max(0, portrait.fedLeft or 0)))
 	end,
 	icon = "Interface\\Icons\\Spell_Misc_Food",
 }
@@ -1954,9 +1965,9 @@ local function WeaponLine(slot)
 	local hand = slot == BUFF.HANDS[1] and TEXT.mainHand or TEXT.offHand
 	local name = weapon.name[slot] or TEXT.anEnchant
 	if weapon.left[slot] then
-		return TEXT.weaponLeft:format(hand, name, Clock(math.max(0, weapon.left[slot])))
+		return M.F(TEXT.weaponLeft, hand, name, Clock(math.max(0, weapon.left[slot])))
 	end
-	return TEXT.weaponOut:format(hand, name)
+	return M.F(TEXT.weaponOut, hand, name)
 end
 
 -- whether the game shows auras plainly now (out of combat, and not held
@@ -2215,12 +2226,12 @@ local function Names(list)
 		return table.concat(list, ", ")
 	end
 	local shown = table.concat(list, ", ", 1, BUFF.NAMES_SHOWN)
-	return TEXT.groupMore:format(shown, #list - BUFF.NAMES_SHOWN)
+	return M.F(TEXT.groupMore, shown, #list - BUFF.NAMES_SHOWN)
 end
 
 local function TipLine(tip, line)
 	local c = MelloUI.Look.TipPalette().text
-	tip:AddLine(line, c[1], c[2], c[3], true)
+	tip:AddLine(M.Tr(line), c[1], c[2], c[3], true)
 end
 
 local WEAPON = {
@@ -2266,11 +2277,11 @@ local BUFFS_SPEC = {
 	text = function()
 		local m = buffs.missing
 		if #m == 1 then
-			return TEXT.buffOne:format((BuffName(m[1])))
+			return M.F(TEXT.buffOne, (BuffName(m[1])))
 		elseif #m == 2 then
-			return TEXT.buffTwo:format((BuffName(m[1])), (BuffName(m[2])))
+			return M.F(TEXT.buffTwo, (BuffName(m[1])), (BuffName(m[2])))
 		end
-		return TEXT.buffMany:format(#m)
+		return M.F(TEXT.buffMany, #m)
 	end,
 	icon = function()
 		local b = buffs.missing[1]
@@ -2308,16 +2319,16 @@ local GROUP = {
 	text = function()
 		local b = group.order[1]
 		if not b then
-			return TEXT.groupAll:format(0)
+			return M.F(TEXT.groupAll, 0)
 		end
 		if #group.order > 1 then
-			return TEXT.groupAll:format(group.count)
+			return M.F(TEXT.groupAll, group.count)
 		end
 		local list = group.lists[b]
 		if #list == 1 then
-			return TEXT.groupOne:format(list[1], (BuffName(b)))
+			return M.F(TEXT.groupOne, list[1], (BuffName(b)))
 		end
-		return TEXT.groupMany:format(#list, (BuffName(b)))
+		return M.F(TEXT.groupMany, #list, (BuffName(b)))
 	end,
 	icon = function()
 		local b = group.order[1]
@@ -2327,7 +2338,7 @@ local GROUP = {
 	tooltip = function(_, tip)
 		for i = 1, #group.order do
 			local b = group.order[i]
-			TipLine(tip, TEXT.groupList:format((BuffName(b)), Names(group.lists[b])))
+			TipLine(tip, M.F(TEXT.groupList, (BuffName(b)), Names(group.lists[b])))
 		end
 	end,
 	secure = function()
@@ -2553,10 +2564,10 @@ local QITEM = {
 	tooltip = function(_, tip)
 		local text = MelloUI.Look.TipPalette().text
 		if qitem.title then
-			tip:AddLine(TEXT.qiFor:format(qitem.title), text[1], text[2], text[3], true)
+			tip:AddLine(M.F(TEXT.qiFor, qitem.title), text[1], text[2], text[3], true)
 		end
 		if not qitem.spell then
-			tip:AddLine(TEXT.qiBags:format(qitem.have), text[1], text[2], text[3], true)
+			tip:AddLine(M.F(TEXT.qiBags, qitem.have), text[1], text[2], text[3], true)
 		end
 	end,
 }
@@ -2632,11 +2643,11 @@ local HEALER = {
 	title = function()
 		local n, names = healer.n, healer.names
 		if n == 1 then
-			return TEXT.healerOne:format(names[1])
+			return M.F(TEXT.healerOne, names[1])
 		elseif n == 2 then
-			return TEXT.healerTwo:format(names[1], names[2])
+			return M.F(TEXT.healerTwo, names[1], names[2])
 		end
-		return TEXT.healerMany:format(n)
+		return M.F(TEXT.healerMany, n)
 	end,
 	text = TEXT.healerLine,
 	icon = function()
@@ -2650,7 +2661,7 @@ local HEALER = {
 		if healer.n > 2 then
 			tip:AddLine(table.concat(healer.names, ", "), text[1], text[2], text[3], true)
 		end
-		tip:AddLine(TEXT.healerWhy, text[1], text[2], text[3], true)
+		tip:AddLine(M.Tr(TEXT.healerWhy), text[1], text[2], text[3], true)
 	end,
 }
 
@@ -2864,7 +2875,7 @@ end
 -- sound and the pulse each time. It goes 60 s later, as a unit seen.
 function M:TestRare(elite)
 	if not On("rare") then
-		MelloUI:Print(TEXT.rareTestOff)
+		MelloUI:Print(M.Tr(TEXT.rareTestOff))
 		return
 	end
 	local name = Text((Ask(UnitName, "target")))
@@ -2886,7 +2897,7 @@ function M:TestRare(elite)
 	rare.now = nil
 	rare.alerted[npc or name] = nil
 	rare.Spot(elite and "rareelite" or "rare", name, npc, nil, mapID, x, y)
-	MelloUI:Print(TEXT.rareTest:format(name))
+	MelloUI:Print(M.F(TEXT.rareTest, name))
 end
 
 -- (the /mello handler's "<module> <word>": Core/Config.lua reads a module's
@@ -2942,11 +2953,11 @@ local RARE = {
 				where = type(R.YardsText) == "function" and R:YardsText(d) or (floor(d) .. " yd")
 				local dir = Bearing(r.mapID, r.x, r.y)
 				if dir then
-					where = TEXT.rareFar:format(where, dir)
+					where = M.F(TEXT.rareFar, where, dir)
 				end
 			end
 		end
-		return TEXT.rareLine:format(what, where)
+		return M.F(TEXT.rareLine, what, where)
 	end,
 	model = function()
 		return rare.now and rare.now.npc
@@ -3403,7 +3414,7 @@ local function PvWanted(key)
 end
 
 local function PvClick()
-	MelloUI:Announce(TEXT.pvClick, "info")
+	MelloUI:Announce(M.Tr(TEXT.pvClick), "info")
 end
 
 local PV = {
@@ -3420,7 +3431,7 @@ local PV = {
 		title = function()
 			local P = MelloUI.Preview
 			local h = P and P.PARTY[4]
-			return TEXT.healerOne:format(h and h.name or "")
+			return M.F(TEXT.healerOne, h and h.name or "")
 		end,
 		text = function() return TEXT.healerLine end,
 		icon = function() return SpellIcon(healer.DRINK) end },
@@ -3444,12 +3455,12 @@ local PV = {
 		} },
 	buffs = { key = "preview:buffs", label = TEXT.buffsLabel, urgency = 12,
 		check = PvWanted("buffs"), onClick = PvClick, persistent = PvWanted("buffs"),
-		text = function() return TEXT.buffOne:format(pv.buffName or "") end,
+		text = function() return M.F(TEXT.buffOne, pv.buffName or "") end,
 		icon = function() return pv.buffIcon end },
 	groupBuffs = { key = "preview:groupBuffs", label = TEXT.groupLabel, urgency = 10,
 		check = PvWanted("groupBuffs"), onClick = PvClick, persistent = PvWanted("groupBuffs"),
 		fight = PvWanted("groupBuffs"),
-		text = function() return TEXT.groupOne:format(TEXT.pvGroupWho, pv.groupName or "") end,
+		text = function() return M.F(TEXT.groupOne, TEXT.pvGroupWho, pv.groupName or "") end,
 		icon = function() return pv.groupIcon end },
 }
 local PV_ORDER = { "questItem", "healer", "loot", "buffs", "groupBuffs" }
