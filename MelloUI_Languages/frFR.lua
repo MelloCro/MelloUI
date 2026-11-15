@@ -4004,6 +4004,7 @@ Lang:Add("frFR", {
 	["%s, %s and %d more"] = "%s, %s et %d de plus",
 	["vendor with %s"] = "vendeur de %s",
 	["That animation could not play: %s"] = "Cette animation n’a pas pu être lancée : %s",
+	["%s is off: switch it on to see it."] = "Pour voir l’animation « %s », activez cette option.",
 	["Personal Display: it is off or hidden, so there is nothing to play on."] = "Affichage personnel : il est désactivé ou masqué ; aucun effet ne peut être lancé dessus.",
 	["Personal Display: what this client hands over"] = "Affichage personnel : données fournies par ce client",
 	["Personal Display: the shield column"] = "Affichage personnel : colonne des boucliers",
