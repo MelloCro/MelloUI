@@ -17,6 +17,8 @@
 - Quest List and map: in a group, a party mark and a count after a quest's name show how many others have it, on the Quest List and the map's Quests tab. Its tooltip lists them in their class colours, with how far they are when they run Questie, and the quest's marks on the map and minimap list them too.
 - Edit Layout: hold Alt to put the dock out of the way and reach an element that lies under it. The dock says so when something does.
 - Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.
+- Buffs & Debuffs: a new Timer Position setting on the Your Buffs page puts the time left under your buff and debuff icons, above them or on them. The icons under your player frame keep it on the icon.
+- Buffs & Debuffs: the time on MelloUI's buff and debuff icons reads 45s, 60m or 2h in every language. In some languages it showed 60min.
 - Bags: a stack dropped on a + slot of the bag window now goes into a free slot, split or whole. Before, it went back where it was.
 - Group Frames: no longer asks for a /reload at every login and every reload on a slower computer.
 - Discard: items in the Reagent Bag count now. With Trade Goods Too on, the cheapest material there was passed over for a dearer one in your bags. The loot window's button still frees a slot in your bags only.

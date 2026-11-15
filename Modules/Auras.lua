@@ -108,6 +108,7 @@ local M = MelloUI:RegisterModule("Auras", {
 		nameplateSize = 20,
 		nameplateOnlyMine = true,   -- (2.1.19) the row is "your debuffs": the game's plate filter shows everyone's
 		textFont = "shared",
+		timePlace = "below",        -- (2.1.54) your rows' time: under the icon, above it or on it
 	},
 	options = {
 		{ type = "header", name = "Your Buffs" },
@@ -164,6 +165,13 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "Only the debuffs you put on enemies. Off: every debuff the game shows on their nameplates." },
 		{ type = "dropdown", key = "textFont", name = "Buff Numbers Font", values = MelloUI.FontFaces,
 		  desc = "The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font." },
+		-- (2.1.54; BaQstein, Discord 2026-11-15: "more settings for the buff and debuff timer. I would love to put them
+		-- above the icon") your rows' and your debuffs' block's time; the rows under the player frame keep theirs on the icon
+		{ type = "dropdown", key = "timePlace", name = "Timer Position", new = "2.1.54",
+		  values = { { value = "below", label = "Under The Icon" }, { value = "above", label = "Above The Icon" },
+			{ value = "middle", label = "On The Icon" } },
+		  search = "time timer duration left above below under",
+		  desc = "Where the time left stands on your buff and debuff icons." },
 	},
 })
 
@@ -217,12 +225,37 @@ local function SizeTexts(button, size)
 	if not t then
 		return
 	end
-	if t.below then
+	if t.outside then
 		Try(t.time.SetFont, t.time, NumberFace(), 11, "OUTLINE")
 	else
 		M.TimeFont(t.time, size)
 	end
 	Try(t.count.SetFont, t.count, NumberFace(), math.max(8, math.floor(size * 0.4 + 0.5)), "OUTLINE")
+end
+
+-- (2.1.54; BaQstein: "put them above the icon") an icon's time on its place: the rows whose time stands outside the
+-- icon (yours and your debuffs' block: `movable`) where Timer Position puts it -- under, above or on the icon -- the
+-- other rows' where they keep it (on the icon); outside the icon at the small fixed size, on it at the icon's (SizeTexts)
+local function LayTime(button)
+	local t = texts[button]
+	if not t then
+		return
+	end
+	local place = "middle"
+	if t.movable then
+		place = M.db and M.db.timePlace
+		place = (place == "above" or place == "middle") and place or "below"
+	end
+	local time = t.time
+	time:ClearAllPoints()
+	if place == "below" then
+		time:SetPoint("TOP", button, "BOTTOM", 0, -2)
+	elseif place == "above" then
+		time:SetPoint("BOTTOM", button, "TOP", 0, 2)
+	else
+		time:SetPoint("CENTER", button, "CENTER", 0, 0)
+	end
+	t.outside = place ~= "middle"
 end
 
 -- Aura Border (user, 2026-09-23: one border per kind for every window, UI
@@ -432,11 +465,6 @@ local function InitButton(button, o)
 	count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, -1)
 	Try(button.SetApplicationCount, button, count, {})
 	local time = layer:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-	if o.durationBelow then
-		time:SetPoint("TOP", button, "BOTTOM", 0, -2)
-	else
-		time:SetPoint("CENTER", button, "CENTER", 0, 0)
-	end
 	-- (0.20.1, the user: "the debuffs on the nameplates should not have "s" for seconds or minutes, just pure
 	-- seconds") the core's bare-seconds formatter where the row asks for it (the game's own "4s" / "2m" elsewhere)
 	-- (0.20.1, the user: "make it 59m on both" -- the target's rows and the rows on the player frame)
@@ -446,8 +474,10 @@ local function InitButton(button, o)
 	local colours = o.timeColours and Anim and Anim:TimeLeftColours() or nil
 	Try(button.SetDurationText, button, time, { textFormatter = fmt or nil, textColor = colours })
 	-- (gap: the room between two buttons of the row, the shade's reach kept in it)
-	texts[button] = { time = time, count = count, below = o.durationBelow, edge = edge, size = o.size, shade = o.shade,
+	-- (movable: its time outside the icon, where Timer Position puts it -- LayTime)
+	texts[button] = { time = time, count = count, movable = o.durationBelow, edge = edge, size = o.size, shade = o.shade,
 		gap = o.shade and math.min(o.spacing or 0, o.lineSpacing or o.spacing or 0) or nil, over = over }
+	LayTime(button)
 	SizeTexts(button, o.size)
 	ApplyAuraLook(button)
 	if o.dispel and button.AddDispelTypeTexture then
@@ -1783,6 +1813,13 @@ function M:OnSettingChanged(key, value, db)
 		end
 	elseif key == "textFont" then
 		for b, t in pairs(texts) do
+			SizeTexts(b, t.size)
+		end
+	elseif key == "timePlace" then
+		-- (2.1.54) every icon made so far: its time on its new place, at its size there (our own font strings: in a
+		-- fight too)
+		for b, t in pairs(texts) do
+			LayTime(b)
 			SizeTexts(b, t.size)
 		end
 	elseif key == "nameplateOnlyMine" then

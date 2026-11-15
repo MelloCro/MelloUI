@@ -863,6 +863,9 @@ function L.Define(R, Link)
 		{ "debuffGrow", "Grow" }, { "debuffNewRows", "New Rows" } }) do
 		R("Buffs", BUFFS, "Layout", "Auras." .. kn[1], { name = kn[2], when = OWN_APART, card = "Debuffs" })
 	end
+	-- (2.1.54; BaQstein: "put them above the icon") the time on your rows and your debuffs' block (under the player frame
+	-- the rows keep it on the icon)
+	R("Buffs", BUFFS, "Text", "Auras.timePlace", { when = OWN_APART })
 	R("UnitGroupFrames", "target:auras", "Behaviour", "Auras.targetOnlyMine", { when = OWN_TARGET })
 	R("UnitGroupFrames", "all", "Behaviour", "HealerFrames.debuffGlowShows")
 

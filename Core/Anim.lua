@@ -1728,7 +1728,8 @@ end
 --       one letter, one unit, seconds up to 90, minutes up to 90, then
 --       hours) with no space before the letter: "59m", "4s" (the user,
 --       2026-10-10: "make it 59m" on the target's and the player frame's
---       rows). Made once; nil where the client has none.
+--       rows); (2.1.54) its letters s, m, h, d in every language. Made once;
+--       nil where the client has none.
 -- One duration object a bar and one binding a font string, made on the
 -- first ask (weak keys); nothing is made per Timer.
 --------------------------------------------------------------------------------
@@ -1795,11 +1796,37 @@ do
 			pcall(fn, f, ...)
 		end
 	end
+	-- (2.1.54; BaQstein, Discord 2026-11-15: "change the timer from "60min" to "60m"") the units' letters our own, in
+	-- every language: the client's one-letter abbreviation is its language's (MINUTE_ONELETTER_ABBR: "min" in some), so
+	-- the compact time is a numeric rule formatter's -- seconds up to 90, minutes up to 90, hours up to 36, then days
+	-- (the steps the client's formatter took), each rounded up as its last unit was; the client's formatter only where
+	-- this client has no numeric one
+	local LETTERS = { { 0, 1, "%ds" }, { 1 + 1.5 * 60, 60, "%dm" }, { 1 + 1.5 * 3600, 3600, "%dh" },
+		{ 1 + 1.5 * 86400, 86400, "%dd" } }
+	local function Lettered(SU, E)
+		local up = type(E) == "table" and E.NumericRuleFormatRounding and E.NumericRuleFormatRounding.Up
+		if not (type(SU) == "table" and type(SU.CreateNumericRuleFormatter) == "function" and up ~= nil) then
+			return nil
+		end
+		local ok, f = pcall(SU.CreateNumericRuleFormatter)
+		if not (ok and f and f.AddBreakpoint) then
+			return nil
+		end
+		for _, rule in ipairs(LETTERS) do
+			local point = rule[2] == 1 and { threshold = rule[1], step = 1, rounding = up, format = rule[3] }
+				or { threshold = rule[1], rounding = up, format = rule[3],
+					components = { { div = rule[2], step = 1, rounding = up } } }
+			if not pcall(f.AddBreakpoint, f, point) then
+				return nil
+			end
+		end
+		return f
+	end
 	function Anim:CompactDuration()
 		if compact == nil then
-			compact = false
 			local SU, E, CU = rawget(_G, "C_StringUtil"), rawget(_G, "Enum"), rawget(_G, "C_CurveUtil")
-			local I = type(E) == "table" and E.SecondsFormatterInterval
+			compact = Lettered(SU, E) or false
+			local I = compact == false and type(E) == "table" and E.SecondsFormatterInterval
 			if type(SU) == "table" and type(SU.CreateSecondsFormatter) == "function" and type(I) == "table"
 				and E.SecondsFormatterAbbreviation then
 				local ok, f = pcall(SU.CreateSecondsFormatter)
