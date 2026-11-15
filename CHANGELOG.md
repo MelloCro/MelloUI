@@ -2,6 +2,8 @@
 
 ## 2.1.53
 
+- Offhand: Quest Moments now play in the middle of your main game screen. With Offhand's two screens they played in the gap between the screens.
+- Offhand: the Level Up card, the on-screen line, Combat Text, Gains, the reminders and the Personal Display now start on your main game screen too, until you give them a place of your own. Places you already set stay as they are.
 - Map: important NPC places now show on MelloUI's map and on the minimap, in MelloUI's own icons, with the addon HandyNotes: NPCs (Forever) installed: the auction house, the bank, riding trainers, mount sellers, trainers of your professions and your class, innkeepers and mailboxes. Only your side's and the neutral ones are shown. Point at one for its tooltip, click it for a waypoint.
 - Map layers: a new HandyNotes group with a switch for each kind of place. Repair, stable masters, vendors by what they sell, battlemasters, weapon masters, guild masters, transmogrifiers and spirit healers start off, so a city stays readable. Stable masters start on for a hunter.
 - Map: one addon draws a kind of place. With HandyNotes: NPCs (Forever), Questie's innkeepers and mailboxes and other addons' pins of the same kinds are not shown a second time on MelloUI's map.

@@ -530,9 +530,13 @@ end
 -- The moments (each a function of its time t, in seconds)
 --------------------------------------------------------------------------------
 
+-- where a moment plays: the middle of the GAME'S SCREEN, Q.LINE under its top -- MelloUI:PlayArea, the rule for
+-- everything placed by the screen's middle (2.1.53; the user, 2026-11-15: with Offhand's two screens the moments
+-- played between the screens, the UI's middle, as the World Marker once did); the UI whole without Offhand
 local function Middle()
-	local w, h = Num(UIParent:GetWidth()) or 1024, Num(UIParent:GetHeight()) or 768
-	return w / 2, h - Q.LINE
+	local l, b, w, h = MelloUI:PlayArea()
+	l, b, w, h = Num(l) or 0, Num(b) or 0, Num(w) or 1024, Num(h) or 768
+	return l + w / 2, b + h - Q.LINE
 end
 
 -- the count's roll: the old number up and out, the new one in from below

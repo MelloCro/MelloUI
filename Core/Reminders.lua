@@ -521,10 +521,10 @@ local function PlaceOf(side)
 	return SIDES[side] or "left"
 end
 
--- its own place's default: left of the screen's middle, a little below
+-- its own place's default: left of the screen's middle, a little below -- the game's screen's (2.1.53,
+-- MelloUI:PlayPoint's rule: Offhand's main screen, never the gap between two screens)
 local function Home(frame)
-	frame:ClearAllPoints()
-	frame:SetPoint("CENTER", UIParent, "CENTER", -300, -160)
+	MelloUI:PlayPoint(frame, "CENTER", "CENTER", -300, -160)
 end
 
 -- each more reminder rests beyond the button, the way out of it

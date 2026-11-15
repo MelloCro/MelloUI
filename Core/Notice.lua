@@ -176,10 +176,10 @@ local frame, text, font   -- made with the first notice (frame.shade: its band)
 -- bar: true while that line shows its loading bar)
 local state = { holds = 0, kind = "info", preview = false, entry = nil, wait = nil, bar = false }
 
--- where it stands with no place saved: top centre, under the Route arrow
+-- where it stands with no place saved: top centre, under the Route arrow -- of the game's screen (2.1.53, the rule
+-- of MelloUI:PlayPoint: Offhand's main screen, never the gap between two screens)
 local function Home(f)
-	f:ClearAllPoints()
-	f:SetPoint("TOP", UIParent, "TOP", 0, -180)
+	MelloUI:PlayPoint(f, "TOP", "TOP", 0, -180)
 end
 
 -- the saved place (kept on the screen), else the default; left alone while

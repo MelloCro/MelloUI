@@ -1597,6 +1597,42 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- The game's screen (2.1.53). THE RULE (the user, 2026-11-15, after the Quest
+-- Moments played between Offhand's two screens: "we have fixed that but we
+-- didnt make it a rule for future animations to follow the same rule"): every
+-- animation, and every place MelloUI picks by the screen's middle -- a moment,
+-- what centres on the character, an element's place before the player gave it
+-- one -- goes by the game's screen, never by the whole UI's middle. With
+-- Offhand the UI spans two screens and its middle is the gap between them.
+--   MelloUI:PlayArea() -> left, bottom, width, height (UIParent's units): for a
+--       place that is worked out (a moment's middle)
+--   MelloUI:PlayPoint(frame, point, rel, x, y): an anchor -- `point` of the
+--       frame on the game's screen's `rel` (default: point), x, y from it;
+--       the frame's other points cleared
+-- Core/Integrations.lua has what stands behind them (Offhand's main screen
+-- while it runs with its switch on); before it has loaded, and in a world
+-- without it, the game's screen is the UI whole. Tools/lint/check_panels.py's
+-- "screen-middle" fails on a new place taken from the UI's middle.
+--------------------------------------------------------------------------------
+
+function MelloUI:PlayArea()
+	local I = rawget(self, "Integrations")
+	if I and I.PlayArea then
+		return I.PlayArea()
+	end
+	return 0, 0, UIParent:GetWidth(), UIParent:GetHeight()
+end
+
+function MelloUI:PlayPoint(frame, point, rel, x, y)
+	local I = rawget(self, "Integrations")
+	if I and I.PlayPoint then
+		return I.PlayPoint(frame, point, rel, x, y)
+	end
+	frame:ClearAllPoints()
+	frame:SetPoint(point, UIParent, rel or point, x or 0, y or 0)
+end
+
+--------------------------------------------------------------------------------
 -- Window places: one store, one mover registry and one keep-on-screen for
 -- every element MelloUI moves (audit, 2026-09-24, rank 6: the whisper popups,
 -- the Route arrow, the Voice Over overlay and the copy window each dragged

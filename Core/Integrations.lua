@@ -297,10 +297,12 @@ I.LIST = {
 		return type(handler) == "table" and type(handler.GetNodes2) == "function"
 	  end } } },
 	-- (2.1.51; Shumi's report) Offhand keeps the game on one screen and panels on another: what centres on the character
-	-- centres on its main screen (I.PlayArea)
+	-- centres on its main screen (I.PlayArea); (2.1.53) THE RULE for every animation and every place by the screen's
+	-- middle (I.PlayPoint, below)
 	{ key = "Offhand", name = "Offhand", folders = { "Offhand" }, group = "frames",
 	  url = "https://offhand-wow.onrender.com/",   -- (its TOC's X-Website)
-	  does = { "The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens." },
+	  does = { "The World Marker's arrow round your character, its wisp and the Level Up card's wisp center on the main screen it keeps for the game, not between your screens.",
+		"Quest Moments play on that screen too, and the Level Up card, the on-screen line, Combat Text, Gains, the reminders and the Personal Display start there until you give them a place of your own." },
 	  short = "MelloUI's character-centered parts on its main screen",
 	  links = {},
 	  parts = { { "its main screen", function()
@@ -409,13 +411,30 @@ end
 -- height: Offhand's main screen (its OffhandMainhandFrame, Offhand.API.GetMainhandFrame) while Offhand runs with its
 -- switch on, else UIParent whole. What centres on the character reads it: the World Marker's ring and wisp
 -- (MelloUI_Route), the Level Up card's wisp (Core/LevelCard.lua)
-function I.PlayArea()
-	local W, H = UIParent:GetWidth(), UIParent:GetHeight()
+--
+-- THE RULE (2.1.53; the user, 2026-11-15, after the Quest Moments played between the screens: "we have fixed that
+-- but we didnt make it a rule for future animations to follow the same rule"): whatever MelloUI places by the
+-- screen's middle -- a moment's animation, what centres on the character, an element's place before the player gave
+-- it one -- goes by the GAME'S SCREEN, never by the whole UI's middle (with Offhand the UI spans two screens and its
+-- middle is the gap between them):
+--   I.PlayArea()                          the rect, for a place that is worked out (a moment's middle)
+--   I.PlayPoint(frame, point, rel, x, y)  an anchor: `point` of the frame on the game's screen's `rel`, x, y from it
+-- Tools/lint/check_panels.py's "screen-middle" counts the code that still goes by the whole UI's middle (windows,
+-- the HUD's bars); one more fails the check.
+local function OffhandAPI()
 	local O = Global("Offhand")
 	local api = O and rawget(O, "API")
-	local get = type(api) == "table" and api.GetMainhandFrame
-	if type(get) == "function" and I.Use("Offhand") then
-		local ok, f = pcall(get)
+	if type(api) == "table" and type(api.GetMainhandFrame) == "function" and I.Use("Offhand") then
+		return api
+	end
+	return nil
+end
+
+function I.PlayArea()
+	local W, H = UIParent:GetWidth(), UIParent:GetHeight()
+	local api = OffhandAPI()
+	if api then
+		local ok, f = pcall(api.GetMainhandFrame)
 		if ok and type(f) == "table" and f.GetRect then
 			local okR, l, b, w, h = pcall(f.GetRect, f)
 			local Finite = MelloUI.Safe.Finite
@@ -426,6 +445,70 @@ function I.PlayArea()
 		end
 	end
 	return 0, 0, W, H
+end
+
+-- a point's share of a rect's width and height, from its bottom left
+local SHARE_X = { LEFT = 0, TOPLEFT = 0, BOTTOMLEFT = 0, CENTER = 0.5, TOP = 0.5, BOTTOM = 0.5, RIGHT = 1, TOPRIGHT = 1,
+	BOTTOMRIGHT = 1 }
+local SHARE_Y = { BOTTOM = 0, BOTTOMLEFT = 0, BOTTOMRIGHT = 0, CENTER = 0.5, LEFT = 0.5, RIGHT = 0.5, TOP = 1, TOPLEFT = 1,
+	TOPRIGHT = 1 }
+-- [frame] = { point, rel, x, y; at = where it was put }: placed by I.PlayPoint while Offhand runs, for Offhand's
+-- next layout of its main screen (it lays it after the login, and again as its screens or the UI's scale change)
+local placed = setmetatable({}, { __mode = "k" })
+local listening = false
+
+-- on UIParent always: on its own point while the game's screen is the UI whole (as without Offhand: it follows the
+-- UI's size by itself), else by the screen's rect from the UI's bottom left -- never on Offhand's own frame, which a
+-- secure frame hung on it would tie down
+local function LayPoint(frame, p)
+	local l, b, w, h = I.PlayArea()
+	frame:ClearAllPoints()
+	local at = p.at
+	if l == 0 and b == 0 and w == UIParent:GetWidth() and h == UIParent:GetHeight() then
+		at[1], at[2], at[3] = p[2], p[3], p[4]
+	else
+		at[1], at[2], at[3] = "BOTTOMLEFT", l + w * SHARE_X[p[2]] + p[3], b + h * SHARE_Y[p[2]] + p[4]
+	end
+	frame:SetPoint(p[1], UIParent, at[1], at[2], at[3])
+end
+
+-- Offhand laid its main screen anew: each frame still standing where PlayPoint put it, put again; one that was
+-- moved since (the player's drag, a saved place) is let go
+local function LayAgain()
+	local Finite = MelloUI.Safe.Finite
+	for frame, p in pairs(placed) do
+		local ok, point, relTo, rel, x, y = pcall(frame.GetPoint, frame, 1)
+		x, y = ok and Finite(x), ok and Finite(y)
+		local at = p.at
+		if ok and frame:GetNumPoints() == 1 and point == p[1] and relTo == UIParent and rel == at[1] and x and y
+			and math.abs(x - at[2]) < 0.5 and math.abs(y - at[3]) < 0.5 then
+			LayPoint(frame, p)
+		else
+			placed[frame] = nil
+		end
+	end
+end
+
+local function OnGeometry()
+	-- (a secure frame is only placed out of a fight: Core/Schedule.lua's queue)
+	MelloUI.Schedule:WhenOutOfCombat(LayAgain, "Integrations.PlayPoint")
+end
+
+function I.PlayPoint(frame, point, rel, x, y)
+	rel, x, y = rel or point, x or 0, y or 0
+	local api = OffhandAPI()
+	if not api then
+		frame:ClearAllPoints()
+		frame:SetPoint(point, UIParent, rel, x, y)
+		return
+	end
+	local p = { point, rel, x, y, at = {} }
+	LayPoint(frame, p)
+	placed[frame] = p
+	if not listening and type(api.RegisterGeometryCallback) == "function" then
+		local ok, kept = pcall(api.RegisterGeometryCallback, "MelloUI", OnGeometry)
+		listening = ok and kept == true
+	end
 end
 
 function I.Use(key)
