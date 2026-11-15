@@ -621,6 +621,7 @@ Lang:Add("ruRU", {
 	["Grey Out Junk"] = "Затемнять хлам", -- draft
 	["Junk items show grey in your bags and bank."] = "Хлам в сумках и банке показывается серым.", -- draft
 	["Level Up"] = "Новый уровень", -- draft
+	["LEVEL UP"] = "НОВЫЙ УРОВЕНЬ", -- draft
 	["A level up fills the bar with light and announces your new level."] = "Новый уровень наполняет полосу светом и объявляет ваш уровень.", -- draft
 	["Level Up Card"] = "Карточка уровня", -- draft
 	["A level up shows a small window with the stats you gained and the spells now at your class trainer."] = "При получении уровня появляется небольшое окно с полученными характеристиками и заклинаниями, которые ждут вас у классового наставника.", -- draft
@@ -2949,6 +2950,7 @@ Lang:Add("ruRU", {
 	["Stats gained"] = "Полученные характеристики", -- draft
 	["New at your trainer"] = "Новое у наставника", -- draft
 	["Set a route ›"] = "Проложить маршрут ›", -- draft
+	["Set a route"] = "Проложить маршрут", -- draft
 	["+%d talent point to spend"] = "+%d очко таланта", -- draft
 	["+%d talent points to spend"] = "+%d очков таланта", -- draft
 	["Level %d -"] = "Уровень %d -", -- draft

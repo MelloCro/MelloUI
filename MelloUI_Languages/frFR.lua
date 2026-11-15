@@ -707,6 +707,7 @@ Lang:Add("frFR", {
 	["Grey Out Junk"] = "Griser la camelote",
 	["Junk items show grey in your bags and bank."] = "La camelote s'affiche en gris dans vos sacs et la banque.",
 	["Level Up"] = "Montée de niveau",
+	["LEVEL UP"] = "MONTÉE DE NIVEAU", -- draft
 	["A level up fills the bar with light and announces your new level."] = "À chaque gain de niveau, la barre se remplit de lumière et votre nouveau niveau est annoncé.",
 	["Level Up Card"] = "Carte de niveau",
 	["A level up shows a small window with the stats you gained and the spells now at your class trainer."] = "Au gain d’un niveau, une fenêtre récapitulative présente les caractéristiques gagnées et les sorts disponibles auprès de votre maître de classe.",
@@ -3181,6 +3182,7 @@ Lang:Add("frFR", {
 	["Stats gained"] = "Caractéristiques gagnées",
 	["New at your trainer"] = "Nouveau chez votre maître",
 	["Set a route ›"] = "Tracer un itinéraire ›",
+	["Set a route"] = "Tracer un itinéraire", -- draft
 	["+%d talent point to spend"] = "+%d point de talent à dépenser",
 	["+%d talent points to spend"] = "+%d points de talent à dépenser",
 	["Level %d -"] = "Niveau %d -",

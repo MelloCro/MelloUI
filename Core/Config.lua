@@ -188,8 +188,8 @@ local CHANGELOG = {
 		"Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.",
 		"German: the bag window, the map's quest log, the widgets, the reminders, the chat and Edit Layout are translated now.",
 		"French: the on-screen lines, the tutorial tips, the reminders, the map's layers, Services and Route's distances and times are translated now. Route's distances show in metres.",
-		"Dungeon maps: Santiago Reyes' maps of The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace, and his newest, sharper ones of the other four.",
-		"Dungeon Info: the five new dungeons have pages with their bosses. Clicking a dungeon's entrance on the map opens its page with its map, for these too.",
+		"Dungeon maps: Santiago Reyes' maps of five more dungeons and his sharper new ones of the other four. The new five have Dungeon Info pages, opened from their entrances on the map.",
+		"Level Up card: remade in the Quest Moments' look, your new level stamped on a gold seal. Quest Moments have a place and a Scale of their own in Edit Layout.",
 	} },
 	{ version = "2.1.53", lines = {
 		"Map: with the addon HandyNotes: NPCs (Forever), the auction house, bank, trainers, mount sellers, inns and mailboxes show on the map and minimap in MelloUI's icons.",

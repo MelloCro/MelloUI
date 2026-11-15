@@ -16,6 +16,8 @@
 - Dungeon maps: Santiago Reyes' maps of The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace, a map for each part of a dungeon (Blackmaw Hold has six). City of Dalaran, Ruins of Lordaeron, The Hall of Thanes and Excavation Site: Wetlands show his newest versions, all of them sharper than before.
 - Dungeon Info: The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace have pages of their own, with their bosses and level ranges. No drops are known for them yet.
 - Map: clicking a dungeon's entrance opens its page in Dungeon Info with its map, for the new dungeons too. An entrance you found by walking in now shows on MelloUI's map as well.
+- Level Up card: remade in the Quest Moments' look. A spark flies from your character and stamps your new level on a gold seal, the gold line draws out of it and opens into the card, the stats count up and the new spells land one by one.
+- Quest Moments: a place and a Scale of their own in Edit Layout. A moment grows from its middle and still flies to its quest in the Quest Tracker.
 
 ## 2.1.53
 

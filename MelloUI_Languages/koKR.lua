@@ -621,6 +621,7 @@ Lang:Add("koKR", {
 	["Grey Out Junk"] = "잡동사니 회색 처리", -- draft
 	["Junk items show grey in your bags and bank."] = "가방과 은행에서 잡동사니를 회색으로 표시합니다.", -- draft
 	["Level Up"] = "레벨 상승", -- draft
+	["LEVEL UP"] = "레벨 상승", -- draft
 	["A level up fills the bar with light and announces your new level."] = "레벨업 시 바가 빛으로 차오르고 새 레벨을 알립니다.", -- draft
 	["Level Up Card"] = "레벨 업 카드", -- draft
 	["A level up shows a small window with the stats you gained and the spells now at your class trainer."] = "레벨이 오르면 얻은 능력치와 직업 상급자에게서 지금 배울 수 있는 주문을 작은 창으로 보여 줍니다.", -- draft
@@ -2949,6 +2950,7 @@ Lang:Add("koKR", {
 	["Stats gained"] = "얻은 능력치", -- draft
 	["New at your trainer"] = "상급자에게서 새로 배울 것", -- draft
 	["Set a route ›"] = "경로 설정 ›", -- draft
+	["Set a route"] = "경로 설정", -- draft
 	["+%d talent point to spend"] = "특성 점수 +%d 사용 가능", -- draft
 	["+%d talent points to spend"] = "특성 점수 +%d 사용 가능", -- draft
 	["Level %d -"] = "레벨 %d -", -- draft

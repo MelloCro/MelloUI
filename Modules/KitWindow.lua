@@ -604,7 +604,9 @@ function Shell:BuildGame()
 	if not (type(Skin) == "table" and Skin.Window) then
 		return
 	end
-	local win = Skin.Window(self.frame)
+	-- (2.1.54) a window with no ring of its own (the Level Up Card: its seal in that corner) wears the game's window
+	-- without a portrait
+	local win = Skin.Window(self.frame, not self.ringAt and { portrait = false } or nil)
 	self.gameWin = win
 	local tex = win.portrait
 	if tex then
@@ -667,9 +669,13 @@ function Shell:Branded()
 end
 
 -- how far under the window's top the game's window frame's portrait reaches (with a little room): content of the
--- window's left that starts higher lies under it; 0 in the other looks
+-- window's left that starts higher lies under it; 0 in the other looks (a window with no ring: the title bar's foot)
 function Shell:PortraitFoot()
-	return self.game and MelloUI.Skin.WINDOW.clear or 0
+	if not self.game then
+		return 0
+	end
+	local T = MelloUI.Skin.WINDOW
+	return self.ringAt and T.clear or T.bar
 end
 
 -- MelloUI.Skin's follower (the own windows'): a Default / Modern switch while the window shows lays it again in the

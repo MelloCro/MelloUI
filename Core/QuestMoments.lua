@@ -100,6 +100,9 @@ local Q = {
 	patterns = {},              -- [the game's message name] = its format string as a pattern
 	unnamed = {},               -- [the game's message name] = a format with no name: its words before the count
 	why = {}, whyN = 0,         -- the last quest lines handed to the game: records in a ring, how many so far
+	-- (2.1.54) its own place and size in Edit Layout: its key in MelloUI's one position store, its plate (UI units:
+	-- the count's line and the quest's crest under it)
+	KEY = "questmoments", PLATE_W = 440, PLATE_H = 230,
 }
 MelloUI.QuestMoments = Q
 local B = {}                    -- the frames, made at the first moment
@@ -175,6 +178,18 @@ local function Words(parent, size, key)
 	return fs
 end
 
+-- (2.1.54) a moment at its place's scale k: the root scaled, every piece laid in the moment's own units (as at 100 %)
+-- and its offsets moved so it grows from its middle c -- on the screen c + (p - c) * k, given as p + c * (1 / k - 1)
+-- in the scaled pieces' units (B.ox, B.oy: 0 at 100 %); a point on the screen the moment must reach (the tracker's
+-- line) taken into the moment's units first (Start)
+local function SX(x)
+	return x + (B.ox or 0)
+end
+
+local function SY(y)
+	return y + (B.oy or 0)
+end
+
 -- a piece at a point in UIParent's units (the screen's bottom left), w x h, alpha a (hidden at 0)
 local function Put(r, x, y, w, h, a, rot)
 	if not a or a <= 0.003 or w <= 0.05 or h <= 0.05 then
@@ -182,7 +197,7 @@ local function Put(r, x, y, w, h, a, rot)
 		return
 	end
 	r:ClearAllPoints()
-	r:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+	r:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(x), SY(y))
 	r:SetSize(w, h)
 	r:SetAlpha(a > 1 and 1 or a)
 	if rot then
@@ -197,7 +212,7 @@ local function PutText(fs, point, x, y, a)
 		return
 	end
 	fs:ClearAllPoints()
-	fs:SetPoint(point, UIParent, "BOTTOMLEFT", x, y)
+	fs:SetPoint(point, UIParent, "BOTTOMLEFT", SX(x), SY(y))
 	fs:SetAlpha(a > 1 and 1 or a)
 	fs:Show()
 end
@@ -360,7 +375,7 @@ local function DrawRing(x, y, full, part, a, scale)
 		return nil
 	end
 	ring:ClearAllPoints()
-	ring:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+	ring:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(x) / scale, SY(y) / scale)
 	ring:SetScale(scale)
 	ring:SetAlpha(a > 1 and 1 or a)
 	ring:Show()
@@ -532,17 +547,75 @@ end
 -- where a moment plays: the middle of the GAME'S SCREEN, Q.LINE under its top -- MelloUI:PlayArea, the rule for
 -- everything placed by the screen's middle (2.1.53; the user, 2026-11-15: with Offhand's two screens the moments
 -- played between the screens, the UI's middle, as the World Marker once did); the UI whole without Offhand
-local function Middle()
+local function HomeMiddle()
 	local l, b, w, h = MelloUI:PlayArea()
 	l, b, w, h = Num(l) or 0, Num(b) or 0, Num(w) or 1024, Num(h) or 768
 	return l + w / 2, b + h - Q.LINE
+end
+
+-- (2.1.54; the user, 2026-11-15: "give the Quest Animations its own Scaling and move window inside of the Edit Layout")
+-- its own place on MelloUI's one mover: "Quest Moments" in Edit Layout (key Q.KEY), an empty frame for its plate,
+-- centred where the moments play; its wheel the moments' size (50 - 200 %). A place saved there: the moments play at
+-- its middle, at its scale; none: at their own place as before (HomeMiddle). Made with the first moment or at Edit
+-- Layout's open while Quest Moments is on, never at login
+local function Home(f)
+	local x, y = HomeMiddle()
+	f:ClearAllPoints()
+	f:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+	return true
+end
+
+local function MomentsOn()
+	return M.isEnabled == true
+end
+
+local function PlaceFrame()
+	local f = B.place
+	if f then
+		return f
+	end
+	f = CreateFrame("Frame", "MelloUIQuestMomentsPlace", UIParent)
+	f:SetSize(Q.PLATE_W, Q.PLATE_H)
+	f:EnableMouse(false)
+	Home(f)
+	B.place = f
+	B.entry = MelloUI:RegisterMover(f, f, { key = Q.KEY, anchor = "CENTER", default = Home, min = 0.5, max = 2,
+		base = 1, label = "Quest Moments", page = "Animations", category = "text", placeholder = true, when = MomentsOn })
+	return f
+end
+
+-- where a moment plays and its size: the place's middle and scale (a place saved, or its plate dragged now), else the
+-- moments' own middle at 100 % -> x, y (UIParent's units), scale
+local function Middle()
+	local f, entry = PlaceFrame(), B.entry
+	if (entry and entry.moving) or MelloUI:RestorePosition(Q.KEY, f) then
+		local x, y = f:GetCenter()
+		local k = Num(f:GetScale()) or 1
+		x, y = Num(x), Num(y)
+		if x and y and k > 0 then
+			return x * k, y * k, k
+		end
+	end
+	Home(f)
+	MelloUI.Kit:SetFrameScale(f, 1)
+	local x, y = HomeMiddle()
+	return x, y, 1
+end
+
+-- Edit Layout's plate: the place made when it opens, while Quest Moments is on
+if MelloUI.AddMoverSource then
+	MelloUI:AddMoverSource(function()
+		if MomentsOn() then
+			PlaceFrame()
+		end
+	end)
 end
 
 -- the count's roll: the old number up and out, the new one in from below
 local function Roll(p, x, y, oldS, newS)
 	local h = Q.COUNT * 1.1
 	B.clip:ClearAllPoints()
-	B.clip:SetPoint("LEFT", UIParent, "BOTTOMLEFT", x, y)
+	B.clip:SetPoint("LEFT", UIParent, "BOTTOMLEFT", SX(x), SY(y))
 	B.clip:SetSize(120, h * 1.3)
 	B.old:SetText(oldS)
 	B.new:SetText(newS)
@@ -606,7 +679,7 @@ local function StepMedal(t, done)
 	local m = B.medal
 	if medalA > 0.003 then
 		m:ClearAllPoints()
-		m:SetPoint("CENTER", UIParent, "BOTTOMLEFT", fx / sc, fy / sc)
+		m:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(fx) / sc, SY(fy) / sc)
 		m:SetScale(max(0.05, sc))
 		m:SetAlpha(medalA)
 		m:Show()
@@ -666,7 +739,7 @@ local function StepMedal(t, done)
 	if done then
 		local unf = OutCubic(Seg(t, 0.12, 0.48)) * (1 - InCubic(exit))
 		B.box:ClearAllPoints()
-		B.box:SetPoint("LEFT", UIParent, "BOTTOMLEFT", mx - Q.RING * 0.6, my)
+		B.box:SetPoint("LEFT", UIParent, "BOTTOMLEFT", SX(mx - Q.RING * 0.6), SY(my))
 		B.box:SetSize(max(1, (B.groupW - Q.RING * 0.4) * unf), 40)
 		if B.band then
 			B.band:SetStrength(0.8 * A0 * min(1, unf * 3))
@@ -681,7 +754,7 @@ local function StepMedal(t, done)
 		-- the chip under the medallion: the count rolling up, gone as it leaves for the tracker
 		local chipA = Seg(t, 0.3, 0.5) * (1 - Seg(t, 0.9, 1.1)) * A0
 		B.box:ClearAllPoints()
-		B.box:SetPoint("CENTER", UIParent, "BOTTOMLEFT", mx, my - 42)
+		B.box:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(mx), SY(my - 42))
 		B.box:SetSize(60, 18)
 		if B.band then
 			B.band:SetStrength(0.75 * chipA)
@@ -715,7 +788,7 @@ local function StepQuest(t)
 	local A0 = 1 - InCubic(exit)
 	-- the backing band under the words
 	B.box:ClearAllPoints()
-	B.box:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx, cy - 84)
+	B.box:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(cy - 84))
 	B.box:SetSize(max(240, B.titleW + 80), 78)
 	if B.band then
 		B.band:SetStrength(0.72 * Seg(t, 0.1, 0.5) * A0)
@@ -741,7 +814,7 @@ local function StepQuest(t)
 	local qs = 47 * OutBack(qp, 2.6)
 	if qp > 0 and qs > 1 then
 		B.mark:ClearAllPoints()
-		B.mark:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx, cy + 2)
+		B.mark:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(cy + 2))
 		B.mark:SetSize(qs, qs)
 		B.mark:SetAlpha(qp * A0)
 		B.mark:Show()
@@ -755,24 +828,24 @@ local function StepQuest(t)
 	-- the title opens from its middle, one sheen crossing its letters
 	local rv = OutCubic(Seg(t, 0.6, 1.05))
 	B.titleClip:ClearAllPoints()
-	B.titleClip:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx, cy - 87)
+	B.titleClip:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(cy - 87))
 	B.titleClip:SetSize(max(1, (B.titleW + 20) * rv), Q.TITLE * 1.6)
 	B.titleClip:SetAlpha(Seg(t, 0.6, 0.8) * A0)
 	B.titleClip:Show()
 	B.title:ClearAllPoints()
-	B.title:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx, cy - 87)
+	B.title:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(cy - 87))
 	B.title:SetAlpha(1)
 	B.title:Show()
 	local sp = Seg(t, 1.05, 1.65)
 	if sp > 0 and sp < 1 then
 		local sw = Q.TITLE * 1.4
 		B.sheenWin:ClearAllPoints()
-		B.sheenWin:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx - B.titleW / 2 - sw + (B.titleW + 2 * sw) * InOutCubic(sp), cy - 87)
+		B.sheenWin:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx - B.titleW / 2 - sw + (B.titleW + 2 * sw) * InOutCubic(sp)), SY(cy - 87))
 		B.sheenWin:SetSize(sw, Q.TITLE * 1.6)
 		B.sheenWin:SetAlpha(0.9 * Hump(sp))
 		B.sheenWin:Show()
 		B.sheen:ClearAllPoints()
-		B.sheen:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx, cy - 87)
+		B.sheen:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(cy - 87))
 		B.sheen:SetAlpha(1)
 		B.sheen:Show()
 	else
@@ -848,7 +921,12 @@ local function Start(rec)
 	Build()
 	HideAll()
 	B.data, B.kind = rec, rec.kind
-	B.mx, B.my = Middle()
+	-- (2.1.54) its place's middle and scale (Edit Layout): the root at that scale, the pieces' offsets grown from it
+	local k
+	B.mx, B.my, k = Middle()
+	B.k, B.cx0, B.cy0 = k, B.mx, B.my
+	B.ox, B.oy = B.mx * (1 / k - 1), B.my * (1 / k - 1)
+	B.root:SetScale(k)
 	B.rollAt, B.toX, B.toY, B.t = nil, nil, nil, 0
 	seed = (rec.questID or 7) * 31 + (rec.index or 1) * 7 + 1
 	if rec.kind == "quest" then
@@ -879,6 +957,11 @@ local function Start(rec)
 			SeedMotes(5, 15, 6, 20, 42, 0.5, 0.9, 6, 9, 0.15)
 			if not MelloUI.Anim.reduceMotion then
 				B.toX, B.toY = LineAt(rec.questID, rec.index)
+				-- (2.1.54) the tracker's line on the screen, in the moment's own units: at any scale it lands there
+				if B.toX and B.toY then
+					B.toX = B.cx0 + (B.toX - B.cx0) / B.k
+					B.toY = B.cy0 + (B.toY - B.cy0) / B.k
+				end
 			end
 		end
 	end

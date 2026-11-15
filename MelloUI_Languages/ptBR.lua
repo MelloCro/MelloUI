@@ -621,6 +621,7 @@ Lang:Add("ptBR", {
 	["Grey Out Junk"] = "Acinzentar sucata", -- draft
 	["Junk items show grey in your bags and bank."] = "O lixo aparece cinza nas suas bolsas e banco.", -- draft
 	["Level Up"] = "Subir de nível", -- draft
+	["LEVEL UP"] = "SUBIR DE NÍVEL", -- draft
 	["A level up fills the bar with light and announces your new level."] = "Subir de nível enche a barra de luz e anuncia seu novo nível.", -- draft
 	["Level Up Card"] = "Cartão de nível", -- draft
 	["A level up shows a small window with the stats you gained and the spells now at your class trainer."] = "Ao subir de nível aparece uma pequena janela com os atributos ganhos e os feitiços que esperam por você no seu instrutor de classe.", -- draft
@@ -2949,6 +2950,7 @@ Lang:Add("ptBR", {
 	["Stats gained"] = "Atributos ganhos", -- draft
 	["New at your trainer"] = "Novo no seu instrutor", -- draft
 	["Set a route ›"] = "Traçar uma rota ›", -- draft
+	["Set a route"] = "Traçar uma rota", -- draft
 	["+%d talent point to spend"] = "+%d ponto de talento para gastar", -- draft
 	["+%d talent points to spend"] = "+%d pontos de talento para gastar", -- draft
 	["Level %d -"] = "Nível %d -", -- draft

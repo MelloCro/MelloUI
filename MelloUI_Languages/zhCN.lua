@@ -621,6 +621,7 @@ Lang:Add("zhCN", {
 	["Grey Out Junk"] = "垃圾变灰", -- draft
 	["Junk items show grey in your bags and bank."] = "垃圾物品在背包和银行中显示为灰色。", -- draft
 	["Level Up"] = "升级", -- draft
+	["LEVEL UP"] = "升级", -- draft
 	["A level up fills the bar with light and announces your new level."] = "升级时经验条充满光芒并宣布你的新等级。", -- draft
 	["Level Up Card"] = "升级卡片", -- draft
 	["A level up shows a small window with the stats you gained and the spells now at your class trainer."] = "升级时显示一个小窗口，列出你获得的属性以及职业训练师处现在可学的法术。", -- draft
@@ -2949,6 +2950,7 @@ Lang:Add("zhCN", {
 	["Stats gained"] = "获得的属性", -- draft
 	["New at your trainer"] = "训练师处的新法术", -- draft
 	["Set a route ›"] = "设置路线 ›", -- draft
+	["Set a route"] = "设置路线", -- draft
 	["+%d talent point to spend"] = "+%d 个天赋点可分配", -- draft
 	["+%d talent points to spend"] = "+%d 个天赋点可分配", -- draft
 	["Level %d -"] = "等级 %d -", -- draft

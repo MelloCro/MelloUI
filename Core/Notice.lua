@@ -126,6 +126,9 @@ local function MomentSub(sub)
 	end
 	return type(sub) == "string" and Tr(sub) or nil
 end
+-- (2.1.54) the one reading of a moment's second line: the Level Up Card's quests line too (Tweaks' Level.Sub hands
+-- it a key and its numbers since the languages)
+MelloUI.MomentSub = MomentSub
 
 local function MomentText(source, args)
 	local translated = Tr(source)

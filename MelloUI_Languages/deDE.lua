@@ -707,6 +707,7 @@ Lang:Add("deDE", {
 	["Grey Out Junk"] = "Plunder ausgrauen", -- draft
 	["Junk items show grey in your bags and bank."] = "Plunder erscheint grau in Taschen und Bank.", -- draft
 	["Level Up"] = "Stufenaufstieg", -- draft
+	["LEVEL UP"] = "STUFENAUFSTIEG", -- draft
 	["A level up fills the bar with light and announces your new level."] = "Ein Stufenaufstieg füllt die Leiste mit Licht und verkündet deine neue Stufe.", -- draft
 	["Level Up Card"] = "Stufenaufstiegskarte", -- draft
 	["A level up shows a small window with the stats you gained and the spells now at your class trainer."] = "Ein Stufenaufstieg zeigt ein kleines Fenster mit den gewonnenen Werten und den Zaubern, die jetzt bei deinem Klassenlehrer warten.", -- draft
@@ -3421,6 +3422,7 @@ Lang:Add("deDE", {
 	["Stats gained"] = "Gewonnene Werte", -- draft
 	["New at your trainer"] = "Neu bei deinem Lehrer", -- draft
 	["Set a route ›"] = "Route setzen ›", -- draft
+	["Set a route"] = "Route setzen", -- draft
 	["+%d talent point to spend"] = "+%d Talentpunkt zu vergeben", -- draft
 	["+%d talent points to spend"] = "+%d Talentpunkte zu vergeben", -- draft
 	["Level %d -"] = "Stufe %d -", -- draft
