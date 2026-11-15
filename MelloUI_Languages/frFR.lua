@@ -1491,6 +1491,7 @@ Lang:Add("frFR", {
 	["Opens Edit Layout, with your buffs and debuffs shown so you can drag them where you want."] = "Ouvre Modifier la disposition et affiche vos améliorations et affaiblissements pour que vous puissiez les faire glisser à l'emplacement voulu.",
 	["drag your buffs and debuffs"] = "faire glisser vos améliorations et affaiblissements",
 	["Edit Layout"] = "Modifier la disposition",
+	["Something lies under this bar: hold Alt to see it and drag it."] = "Quelque chose se trouve sous cette barre : maintenez Alt pour le voir et le déplacer.", -- draft
 	["Direction"] = "Direction",
 	["Which way your icons run under the player frame."] = "Dans quelle direction vos icônes s'alignent sous le cadre du joueur.",
 	["Left To Right"] = "De gauche à droite",

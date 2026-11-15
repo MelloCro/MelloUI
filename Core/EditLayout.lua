@@ -117,6 +117,7 @@ local TEXT = {
 	detach = "Detach", detachTip = "It lets go of the other element and keeps its place on the screen. Saved with Save.",
 	sizeOff = "Its size is set on its page.",
 	sizeEditMode = "Its size is among its Edit Mode settings below.",
+	under = "Something lies under this bar: hold Alt to see it and drag it.",
 	paused = "Edit Layout is paused for combat. It comes back when the fight is over.",
 	queuedCombat = "Edit Layout opens when the fight is over.",
 	queuedEditMode = "Edit Layout opens when you close Edit Mode.",
@@ -604,10 +605,10 @@ local function GridSet(v)
 	end
 end
 local function GridText(v)
-	return string.format(DOCK.gridUnits, Num(v) or 0)
+	return string.format(W.Tr(DOCK.gridUnits), Num(v) or 0)
 end
 local function GapText(v)
-	return string.format(DOCK.gapUnits, Num(v) or 0)
+	return string.format(W.Tr(DOCK.gapUnits), Num(v) or 0)
 end
 
 local function CloseView()
@@ -956,7 +957,7 @@ local function MakeBar()
 	bar.resetAll = RoundButton(row, "reset", TEXT.resetAll, DOCK.resetTip, ResetAllClick)
 	bar.help = RoundButton(row, "question", DOCK.helpTitle, DOCK.helpTip, HelpClick)
 	bar.count = W.Text(row, "GameFontHighlight", nil, "text")
-	bar.count:SetText(string.format(TEXT.many, 99))
+	bar.count:SetText(string.format(W.Tr(TEXT.many), 99))
 	bar.countW = TextWidth(bar.count)
 	bar.exit = BarButton(row, DOCK.exit, DoneClick)
 	bar.saveExit = BarButton(row, DOCK.saveExit, SaveExitClick, true, true)
@@ -1004,12 +1005,12 @@ local function MakeBar()
 	notes.plate = W.RoundPlate(notes, { radius = 8, fill = "innerPanel", edge = "border", fillAlpha = 0.94 })
 	bar.notes = notes
 	bar.hints = {}
-	for i = 1, 3 do
+	for i = 1, 4 do
 		local hint = W.Text(notes, "GameFontHighlight", nil, "text")
 		hint:SetWordWrap(false)
 		bar.hints[i] = hint
 	end
-	bar.hints[1]:SetText(TEXT.hint)
+	bar.hints[1]:SetText(W.Tr(TEXT.hint))
 	BarDefault(bar)
 end
 
@@ -1021,15 +1022,15 @@ local function RefreshBar()
 	local n = E:Pending()
 	bar.count:SetShown(n > 0)
 	if n > 0 then
-		bar.count:SetText(n == 1 and TEXT.one or string.format(TEXT.many, n))
+		bar.count:SetText(n == 1 and W.Tr(TEXT.one) or string.format(W.Tr(TEXT.many), n))
 	end
-	bar.promptText:SetText(n == 1 and TEXT.askOne or string.format(TEXT.askMany, n))
+	bar.promptText:SetText(n == 1 and W.Tr(TEXT.askOne) or string.format(W.Tr(TEXT.askMany), n))
 	local K = E.Picker
 	if K then
 		local shown, total = K.Counts()
 		local b = bar.elements
 		b.count:SetText(tostring(shown))
-		b.total:SetText(string.format(DOCK.elementsOf, total))
+		b.total:SetText(string.format(W.Tr(DOCK.elementsOf), total))
 		b:SetWidth(math.ceil(10 + 15 + 6 + TextWidth(b.word) + 6 + TextWidth(b.count) + 4 + TextWidth(b.total) + 14))
 		W.FlatGold(b, K.IsOpen())
 		local open = K.IsOpen()
@@ -1052,7 +1053,7 @@ local function RefreshBar()
 		end
 	end
 	local v = bar.view
-	v.on:SetText(string.format(DOCK.viewOn, on))
+	v.on:SetText(string.format(W.Tr(DOCK.viewOn), on))
 	v:SetWidth(math.ceil(10 + 15 + 6 + TextWidth(v.word) + 6 + TextWidth(v.on) + 14))
 	RefreshView()
 	bar.help.melloOn = Toggle("help")
@@ -1071,7 +1072,7 @@ local function CoordsText()
 	if not (x and y and w and h) then
 		return nil
 	end
-	return string.format(DOCK.coordsLine, P.Label(entry), math.floor(x + 0.5), math.floor(y + 0.5),
+	return string.format(W.Tr(DOCK.coordsLine), P.Label(entry), math.floor(x + 0.5), math.floor(y + 0.5),
 		math.floor(w + 0.5), math.floor(h + 0.5))
 end
 
@@ -1107,16 +1108,19 @@ local function LayUnder(asking, confirm)
 	-- the lines: how it works (the help toggle); UI Modifications off (D6);
 	-- the bridge's hidden elements
 	local P = Movers()
-	bar.hints[2]:SetText(TEXT.moduleOff)
-	bar.hints[3]:SetText(TEXT.bridgeHidden)
+	bar.hints[2]:SetText(W.Tr(TEXT.moduleOff))
+	bar.hints[3]:SetText(W.Tr(TEXT.bridgeHidden))
 	local off = not MelloUI:IsModuleEnabled(UIMOD)
 	local bridged = P and P.BridgeCount and P.BridgeCount() > 0
 	bar.hints[1]:SetShown(Toggle("help") and not asking and not confirm)
 	bar.hints[2]:SetShown(off)
 	bar.hints[3]:SetShown(bridged and true or false)
+	-- (Alt held: the dock out of the way, E.Peek) a plate under the dock: the way to it
+	bar.hints[4]:SetText(W.Tr(TEXT.under))
+	bar.hints[4]:SetShown(not asking and not confirm and P and P.AnyUnder and P.AnyUnder(bar) or false)
 	local notes = bar.notes
 	local ny, nw = 8, 0
-	for i = 1, 3 do
+	for i = 1, 4 do
 		local fs = bar.hints[i]
 		if fs:IsShown() then
 			fs:ClearAllPoints()
@@ -1235,6 +1239,44 @@ local function HideBar(fade)
 		MelloUI.Anim:Stop(bar, "alpha")
 		bar:SetAlpha(1)
 		bar:Hide()
+	end
+end
+
+-- (a player's report, 2026-11-15: an XP bar moved to the screen's top lay under the dock, out of the mouse's reach)
+-- Alt held while the mode shows: the dock and what hangs under it out of sight and out of the mouse's way, so a plate
+-- under it shows and can be dragged (Alt also lets a drag go without snapping); back when Alt is let go, read again
+-- every PEEK_TICK s as well (a release while another window had the keyboard). Not while the bar asks something.
+local PEEK_TICK = 0.1
+local peek = { on = false }
+
+local function PeekTick()
+	if not peek.on then
+		return
+	end
+	if IsAltKeyDown() and E:IsShowing() then
+		C_Timer.After(PEEK_TICK, PeekTick)
+	else
+		E.Peek(false)
+	end
+end
+
+function E.Peek(on)
+	on = on and true or false
+	if not bar or on == peek.on then
+		return
+	end
+	if on and not (bar:IsShown() and E:IsShowing() and not S.asking and not S.confirm) then
+		return
+	end
+	peek.on = on
+	if on then
+		CloseView()
+		MelloUI.Anim:Stop(bar, "alpha")
+		bar:SetAlpha(1)
+		bar:Hide()
+		C_Timer.After(PEEK_TICK, PeekTick)
+	elseif E:IsShowing() then
+		ShowBar()
 	end
 end
 
@@ -1681,8 +1723,8 @@ local function OpenBoxFor(plate)
 	local attach = box.attach
 	attach:SetShown(onto ~= nil)
 	if onto then
-		attach.label:SetText(TEXT.attachedTo:format(onto))
-		attach.tipTitle = TEXT.attachedTo:format(onto)
+		attach.label:SetText(W.Tr(TEXT.attachedTo):format(onto))
+		attach.tipTitle = W.Tr(TEXT.attachedTo):format(onto)
 		attach.tipBody = (soon and TEXT.attachSoonTip or TEXT.attachTip):format(onto)
 		attach:EnableMouse(true)
 		attach.detach:SetEnabled(locked == nil)
@@ -1745,7 +1787,7 @@ function E:OpenBox(spec)
 	if type(link) == "table" and link.text then
 		box.link.text:SetText(link.text)
 	else
-		box.link.text:SetText(TEXT.options)
+		box.link.text:SetText(W.Tr(TEXT.options))
 	end
 	box.link:SetShown(box.link.page ~= nil)
 	ShowBox(spec.plate)
@@ -1764,7 +1806,7 @@ CloseBox = function()
 		box:Hide()   -- (a field's own OnHide puts its value back: a half-typed number is dropped)
 		box.entry, box.plate, box.spec = nil, nil, nil
 		if box.link then
-			box.link.text:SetText(TEXT.options)
+			box.link.text:SetText(W.Tr(TEXT.options))
 		end
 	end
 	if catcher then
@@ -2013,6 +2055,12 @@ local KeyDown = Shared("OnKeyDown on Edit Layout's keys", function(self, key)
 		Escape()
 		return
 	end
+	-- (Alt: the dock out of the way while it is held, E.Peek; the key still the game's)
+	if key == "LALT" or key == "RALT" then
+		E.Peek(true)
+		self:SetPropagateKeyboardInput(true)
+		return
+	end
 	local P = Movers()
 	if ARROWS[key] and P and P.CanNudge() then
 		self:SetPropagateKeyboardInput(false)
@@ -2026,6 +2074,9 @@ local KeyUp = Shared("OnKeyUp on Edit Layout's keys", function(self, key)
 	local P = Movers()
 	if P then
 		P.KeyUp(key)
+	end
+	if key == "LALT" or key == "RALT" then
+		E.Peek(false)
 	end
 	if InCombat() or not (lentTo or E:IsShowing()) then
 		return
@@ -2186,7 +2237,7 @@ function E:Suspend(reason)
 	if was then
 		Fire(false, "paused")
 		if reason == "combat" then
-			MelloUI:Announce(TEXT.paused, "info")
+			MelloUI:Announce(W.Tr(TEXT.paused), "info")
 		end
 	end
 end
@@ -2411,13 +2462,13 @@ local function OnEnd(reason, extra)
 	S.nReasons = 0
 	SessionEvents(false)
 	if reason == "saved" then
-		MelloUI:Print(n == 1 and TEXT.savedOne or string.format(TEXT.savedMany, n))
+		MelloUI:Print(n == 1 and W.Tr(TEXT.savedOne) or string.format(W.Tr(TEXT.savedMany), n))
 	elseif reason == "discarded" then
 		if not quiet then
-			MelloUI:Print(TEXT.discarded)
+			MelloUI:Print(W.Tr(TEXT.discarded))
 		end
 	elseif reason == "abandoned" then
-		MelloUI:Print(TEXT.abandoned)
+		MelloUI:Print(W.Tr(TEXT.abandoned))
 	end
 	MelloUI:PlayUISound("window_close")
 	Fire(false, "closed")

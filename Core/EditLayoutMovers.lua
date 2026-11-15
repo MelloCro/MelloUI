@@ -182,7 +182,7 @@ function P.Label(entry)
 		local ok, name = pcall(entry.frame.GetName, entry.frame)
 		label = ok and Safe.Text(name) or nil
 	end
-	return tostring(label or "?")
+	return W.Tr(tostring(label or "?"))   -- (its name in the language in use: "Action Bar 4", "Race Bar")
 end
 
 -- an owner's function of the entry, its text or nil
@@ -442,7 +442,7 @@ LayChip = function(plate)
 		local scale = FrameScale(plate.entry)
 		local percent = scale and floor(scale / Base(plate.entry) * 100 + 0.5)
 		if percent and percent ~= 100 then
-			second = string.format(TEXT.size, percent)
+			second = string.format(W.Tr(TEXT.size), percent)
 		end
 	end
 	chip.label:SetText(plate.label or "")
@@ -903,7 +903,7 @@ local function ReadoutShow(entry, l, b, w, h, pos, moving)
 	local changed = seen.percent ~= percent or seen.x ~= x or seen.y ~= y or seen.hint ~= hint
 	if changed then
 		seen.percent, seen.x, seen.y, seen.hint = percent, x, y, hint
-		readout.value:SetText(string.format(TEXT.size, percent))
+		readout.value:SetText(string.format(W.Tr(TEXT.size), percent))
 		readout.pos:SetShown(pos and true or false)
 		if pos then
 			readout.pos:SetText("X " .. Signed(x) .. "  Y " .. Signed(y))
@@ -1530,7 +1530,7 @@ local function TipFor(plate)
 	local scale = FrameScale(entry)
 	local line = nil
 	if scale then
-		line = string.format(TEXT.sizeTip, floor(scale / Base(entry) * 100 + 0.5),
+		line = string.format(W.Tr(TEXT.sizeTip), floor(scale / Base(entry) * 100 + 0.5),
 			floor(r.l + r.w / 2 - screenW / 2 + 0.5), floor(r.b + r.h / 2 - screenH / 2 + 0.5))
 	end
 	return plate.label, entry.resize == false and (TEXT.hintNoSize .. " " .. TEXT.sizeOff) or TEXT.hint, line
@@ -1876,7 +1876,7 @@ local function LayEntry(entry, made)
 	local ok, strata = pcall(entry.frame.GetFrameStrata, entry.frame)
 	plate.dialog = ok and not Secret(strata) and HIGH_STRATA[strata] or nil
 	local label = P.Label(entry)
-	plate.label = plate.hidden and string.format(TEXT.hidden, label) or label
+	plate.label = plate.hidden and string.format(W.Tr(TEXT.hidden), label) or label
 	plate.rect.w = -1   -- (its chip laid again)
 	plate:Lay(l, b, w, h)
 	Paint(plate)
@@ -2111,6 +2111,34 @@ function P.Peek(entry)
 		end
 	end
 	HaloRefresh()
+end
+
+-- (the dock's Alt line) whether a shown plate lies under `frame` (on the screen: each rect at its own scale)
+function P.AnyUnder(frame)
+	if not (frame and frame:IsShown()) then
+		return false
+	end
+	local fl, fb, fw, fh = frame:GetRect()
+	local fs = frame:GetEffectiveScale()
+	fl, fb, fw, fh = Num(fl), Num(fb), Num(fw), Num(fh)
+	if not (fl and fb and fw and fh) then
+		return false
+	end
+	fl, fb, fw, fh = fl * fs, fb * fs, fw * fs, fh * fs
+	for _, plate in pairs(plateOf) do
+		if plate:IsShown() then
+			local l, b, w, h = plate:GetRect()
+			local s = plate:GetEffectiveScale()
+			l, b, w, h = Num(l), Num(b), Num(w), Num(h)
+			if l and b and w and h then
+				l, b, w, h = l * s, b * s, w * s, h * s
+				if l < fl + fw and l + w > fl and b < fb + fh and b + h > fb then
+					return true
+				end
+			end
+		end
+	end
+	return false
 end
 
 -- an element's plate while it shows (nil: none)
