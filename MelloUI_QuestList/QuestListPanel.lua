@@ -54,7 +54,8 @@ local rowHeight = QI.RowHeight(12, 12)
 local FILTERS = {
 	{ key = "zone", label = "Current zone" }, { key = "continent", label = "Current continent" }, { key = "all", label = "All quests" },
 	{ key = "class", label = "Class quests" }, { key = "dungeons", label = "Dungeons" }, { key = "raids", label = "Raids" },
-	{ key = "attunements", label = "Attunements" }, { key = "events", label = "Events" },
+	-- (2.1.52, stage 2: Attunements went with MelloUI's own quest data -- QuestieDB has no such mark)
+	{ key = "events", label = "Events" },
 }
 
 local function HeaderClick(self)
@@ -875,6 +876,9 @@ function QL.Panel:Sync(off)
 	if not frame then
 		return
 	end
+	if frame.search and frame.search.Instructions then
+		frame.search.Instructions:SetText(MelloUI.Widgets.Tr("Search quests"))
+	end
 	if self.host then
 		-- (in MelloUI's map: shown with its tab; the game's list never faded)
 		frame:SetShown((not off and M.isEnabled and self.hostShown) and true or false)
@@ -893,7 +897,7 @@ function QL.Panel:Sync(off)
 	frame:SetShown(list)
 	local switch = frame.switch
 	switch:SetShown(column)
-	switch:SetText(list and "Quest Log" or "Quest List")
+	switch:SetText(MelloUI.Widgets.Tr(list and "Quest Log" or "Quest List"))
 	local _, sf = Column()
 	if sf and faded ~= list then
 		faded = list
@@ -1017,7 +1021,7 @@ function QL.Panel:Create(host)
 	local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
 	search:SetAutoFocus(false)
 	if search.Instructions then
-		search.Instructions:SetText("Search quests")
+		search.Instructions:SetText(MelloUI.Widgets.Tr("Search quests"))
 	end
 	Perf.HookScript(search, "OnTextChanged", function(_, userInput)
 		if userInput then
@@ -1036,7 +1040,7 @@ function QL.Panel:Create(host)
 		menu = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
 		menu:SetSize(94, 22)
 		if menu.SetDefaultText then
-			menu:SetDefaultText("Filter")
+			menu:SetDefaultText(MelloUI.Widgets.Tr("Filter"))
 		end
 	end
 	menu:SetupMenu(MenuSetup)
@@ -1045,7 +1049,7 @@ function QL.Panel:Create(host)
 	-- the switch on the count box: in the layer, not the page (it shows over
 	-- the log too), over the page's border
 	local switch = CreateFrame("Button", nil, layer, "UIPanelButtonTemplate")
-	switch:SetText("Quest List")
+	switch:SetText(MelloUI.Widgets.Tr("Quest List"))
 	Perf.SetScript(switch, "OnClick", SwitchClick)
 	Perf.HookScript(switch, "OnEnter", SwitchEnter)
 	Perf.HookScript(switch, "OnLeave", SwitchLeave)
@@ -1385,6 +1389,95 @@ end
 
 local inkLabels = nil   -- the page's own texts and their inks, listed once
 
+--------------------------------------------------------------------------------
+-- (2.1.52, stage 2; the user's pick A of the sketch, 2026-11-14: "A centred message") Without Questie the Quest List
+-- has no quests (Core/QuestSource.lua: MelloUI has no quest data of its own). Its search row, its filter and its list
+-- are not there then: the page says what it is for and what it needs -- the game's "!", a gold title, two lines and
+-- Get Questie (the Addons page, on Questie's card). Nothing in the chat, no pop-up. Questie is there or not for the
+-- whole session; the hint is made the first time the page shows without it.
+--------------------------------------------------------------------------------
+
+local HINT = {
+	TOP = 44,        -- the "!" from the list's top
+	ICON = 40,
+	GAP = 12,        -- under the "!", under the lines
+	LINE = 6,        -- between the title and the lines, and between the lines
+	PAD = 2,         -- the texts' room at each side (the first line fits MelloUI's map's column in one line)
+	BUTTON_H = 22,
+	title = "The Quest List needs Questie",
+	lines = { "It lists every quest of a zone from Questie's quest data.", "Get Questie, then type /reload." },
+}
+QL.HINT = HINT
+
+local HintClick = Perf.Shared("OnClick on the Quest List's Get Questie", function()
+	MelloUI:PlayUISound("click")
+	MelloUI.Integrations.Open("Questie")
+end, "script")
+
+-- true while the hint stands in the list's place (the page then lays no list)
+function QL.Panel:Hint()
+	local frame = self.frame
+	local QS = MelloUI.QuestSource
+	if not QS or QS.Questie() then
+		return false
+	end
+	local W = MelloUI.Widgets
+	local hint = frame.hint
+	if not hint then
+		hint = CreateFrame("Frame", nil, frame)
+		hint:SetAllPoints(frame.list)
+		hint:SetFrameLevel(frame:GetFrameLevel() + 3)
+		hint.icon = hint:CreateTexture(nil, "ARTWORK")
+		hint.icon:SetSize(HINT.ICON, HINT.ICON)
+		hint.icon:SetPoint("TOP", hint, "TOP", 0, -HINT.TOP)
+		MelloUI.Icons.Set(hint.icon, "quest_mark", HINT.ICON)
+		hint.title = W.Text(hint, "GameFontNormalLarge", HINT.title, "selectedTrim")
+		hint.title:SetJustifyH("CENTER")
+		hint.title:SetPoint("TOP", hint.icon, "BOTTOM", 0, -HINT.GAP)
+		hint.lines = {}
+		local above = hint.title
+		for i, text in ipairs(HINT.lines) do
+			local fs = W.Text(hint, "GameFontHighlight", text, "text")
+			fs:SetJustifyH("CENTER")
+			fs:SetWordWrap(true)
+			fs:SetPoint("TOP", above, "BOTTOM", 0, -HINT.LINE)
+			hint.lines[i], above = fs, fs
+		end
+		local b = W.Button(hint, MelloUI.Integrations.GetLabel("Questie"), 60, nil, { onClick = HintClick, height = HINT.BUTTON_H })
+		b:SetWidth(math.max(60, math.floor((b:GetFontString():GetStringWidth() or 40) + 0.5) + 26))
+		b:SetPoint("TOP", above, "BOTTOM", 0, -HINT.GAP)
+		hint.button = b
+		frame.hint = hint
+	end
+	-- the list's parts out of sight (the switch back to the game's log stays, in the game's column)
+	for _, part in ipairs({ frame.search, frame.menu, frame.group, frame.count, frame.divider, frame.scrollBox,
+		frame.scrollBar, frame.empty }) do
+		part:Hide()
+	end
+	-- the texts as wide as the page is now (the game's column and MelloUI's map are not one width)
+	local w = QL.Plain(frame.list:GetWidth())
+	w = math.max(160, (type(w) == "number" and w or 300) - 2 * HINT.PAD)
+	hint.title:SetWidth(w)
+	for _, fs in ipairs(hint.lines) do
+		fs:SetWidth(w)
+	end
+	-- in ink on the parchment, as the page's other texts
+	if QI.onParchment then
+		QI.Ink(hint.title, "title")
+	else
+		QI.Plain(hint.title, true)
+	end
+	for _, fs in ipairs(hint.lines) do
+		if QI.onParchment then
+			QI.Ink(fs, "text")
+		else
+			QI.Plain(fs, true)
+		end
+	end
+	hint:Show()
+	return true
+end
+
 -- `quiet` (a rebuild an event or a map change asked for): the list is laid
 -- out again only when what it would show differs from what it shows (every
 -- row's button set up anew and the kit's rows skinned again, for the same
@@ -1399,6 +1492,9 @@ function QL.Panel:Update(quiet)
 	-- page shows)
 	if not frame:IsShown() then
 		return
+	end
+	if self:Hint() then
+		return   -- (2.1.52: no Questie, no quests -- the hint in the list's place)
 	end
 	local db, data = M.db, QL.Data()
 	QL.SyncTracked()
@@ -1487,15 +1583,6 @@ function QL.Panel:Update(quiet)
 		end)
 		groupOf = function(row)
 			return "dungeon" .. row[QL.F_DUNGEON], DungeonName(row[QL.F_DUNGEON]), DungeonLevel(row[QL.F_DUNGEON])
-		end
-	elseif db.filter == "attunements" then
-		title, showZone = "Attunements", true
-		rows = AllRows(function(row) return row[QL.F_ATTUNE] == 1 end)
-		groupOf = function(row)
-			if row[QL.F_CHAIN] ~= 0 and data.chains[row[QL.F_CHAIN]] then
-				return "chain" .. row[QL.F_CHAIN], data.chains[row[QL.F_CHAIN]]
-			end
-			return "single", row[QL.F_TITLE]
 		end
 	elseif db.filter == "events" then
 		rows, title, showZone = QL.eventRows, "Holidays and world events", false
@@ -1603,3 +1690,8 @@ function QL.Panel:Reveal(key, filter)
 end
 
 MelloUI:Profile("QuestList", "panel rebuild", QL.Panel.Update)
+MelloUI:On("language", function()
+	if QL.Panel.frame then
+		QL.Panel:Sync()
+	end
+end, "QuestListPanel.Language")
