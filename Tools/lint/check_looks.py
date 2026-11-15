@@ -100,7 +100,8 @@ OWN = {
     "Notices and centre text": ["Core/Notice.lua", "Core/CentreText.lua"],
     "Threat": ["Core/Threat.lua"],
     "Services": ["Modules/Services.lua"],
-    "Route": ["MelloUI_Route/Route.lua", "MelloUI_Route/RouteRecorder.lua"],
+    # (2.1.54: Guides.lua, RestedXP's Active Targets in MelloUI's look while its guide is followed)
+    "Route": ["MelloUI_Route/Route.lua", "MelloUI_Route/RouteRecorder.lua", "MelloUI_Route/Guides.lua"],
     "Restock": ["Modules/Restock.lua"],
     "Swing Timers and the Swing Badge": ["Modules/SwingTimers.lua", "Core/SwingBadge.lua"],
     "Preview": ["Core/Preview.lua", "Core/ConfigPreview.lua"],

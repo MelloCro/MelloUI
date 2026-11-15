@@ -1461,6 +1461,9 @@ Lang:Add("frFR", {
 	["The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)."] = "L’XP accordée par chaque quête à votre niveau, affichée à côté de son nom (valeur fournie par le jeu ; aucune au niveau maximum).",
 	["Turn-in Line"] = "Ligne de remise de quête",
 	["A finished quest says who takes it and where."] = "Une quête terminée dit qui la reprend et où.",
+	["Guide: Next Steps"] = "Guide : étapes suivantes", -- draft
+	["How many of a leveling guide's next steps show under its current one, dimmed (RestedXP Guides). Off: only the current step."] = "Nombre d’étapes suivantes d’un guide de montée en niveau affichées sous l’étape actuelle, atténuées (RestedXP Guides). Désactivé : seulement l’étape actuelle.", -- draft
+	["Click: open the link to copy it"] = "Clic : ouvrir le lien pour le copier", -- draft
 	["Reset Position"] = "Position par défaut",
 	["Puts the tracker back in its starting place."] = "Remet le suivi à sa place de départ.",
 	["back under the minimap (or on the game's tracker's place)"] = "de retour sous la minicarte (ou à la place du suivi du jeu)",

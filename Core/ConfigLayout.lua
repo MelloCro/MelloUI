@@ -1360,6 +1360,7 @@ function L.Define(R, Link)
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showDistance", { when = OWN_LINES })
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showXP", { when = OWN_LINES })   -- (2.1.39: the user)
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.turnInLine", { when = OWN_LINES })
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.guideNext")   -- (the guide's steps: MelloUI's in both)
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.scrollStep", { when = OWN_LINES })
 	R("QuestTracker", "Objective Tracker", "Look", "UIModifications.TrackerPanel", { name = "Painted Skin", when = GAME_TRACKER })
 

@@ -82,6 +82,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		showDistance = true,
 		showXP = true,   -- (2.1.39: the user asked for it)
 		turnInLine = true,
+		guideNext = 0,   -- (Guide: Next Steps: off, as before)
 		progressMotion = true,
 	},
 	options = {
@@ -135,6 +136,10 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  end,
 		  set = function() end,
 		  desc = "Whether MelloUI's tracker lists the quests itself, not Questie's tracker in MelloUI's look." },
+		-- (a player's wish: with RestedXP's own window veiled only the current step showed)
+		{ type = "slider", key = "guideNext", name = "Guide: Next Steps", min = 0, max = 5, step = 1, new = "2.1.54",
+		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Off" or tostring(v) end,
+		  desc = "How many of a leveling guide's next steps show under its current one, dimmed (RestedXP Guides). Off: only the current step." },
 		{ type = "button", name = "Reset Position", text = "Reset",
 		  hint = "back under the minimap (or on the game's tracker's place)",
 		  desc = "Puts the tracker back in its starting place.",
@@ -2149,6 +2154,9 @@ function Act.MarkClick(block, button)
 end
 
 local function OnBlockClick(block, button)
+	if block.guideClick and block.overLink then
+		return   -- (a click on one of its links: the link's, GuideLinkClick)
+	end
 	if block.guideClick then
 		-- (the user, 2026-10-18: the World Marker missing, "click on that current step and re-check the pin";
 		-- "a way to remove the waypoint, by right clicking on the step")
@@ -2408,6 +2416,13 @@ local function ReleaseBlock(block)
 		b.line = nil
 	end
 	block.guideClick, block.guideRight = nil, nil
+	if block.linkLayer then
+		-- (a guide's link layer: mouse and links off, the block's own clicks its own again -- the next lines may be a
+		-- quest's; GuideLayer turns them on for a guide)
+		block.linkLayer:EnableMouse(false)
+		pcall(block.linkLayer.SetHyperlinksEnabled, block.linkLayer, false)
+		block.overLink = nil
+	end
 	if itemOverlay and itemOverlay.over == block.item then
 		DetachOverlay()
 	end
@@ -3905,7 +3920,117 @@ local function HideBoxes(block, from)
 	end
 end
 
+-- (the user, 2026-11-15: on a guide step's items "the game's tooltip, as everywhere", and its links clickable) a guide
+-- line's links: an item (the reader's |Hitem:id|h[Name]|h) shows the game's tooltip, a click the game's item card, a
+-- modified click what the game does with it (a shift-click links it in the chat); a guide's own link (mellouiguide:n,
+-- the line's Open: RestedXP's copy box for a video or a page) says so and opens it. The block's own click (the step
+-- marked again) waits while the pointer is on a link.
+local GUIDE_LINK = "mellouiguide"
+local GUIDE_LINK_TIP = "Click: open the link to copy it"
+
+
+-- (a Frame of the block's own over it, its lines' owner while it is a guide's: the block is a Button, and a Button's
+-- lines answer no hyperlink -- the game hands a FontString's links only to a plain Frame that owns it, as the chat's
+-- own frames are). It forwards the block's own click, hover and wheel; a quest's block has it mouse-off, links off.
+local GuideLinkEnter = Perf.Shared("OnHyperlinkEnter on a guide step's link", function(layer, link)
+	local block = layer.block or layer
+	block.overLink = true
+	if type(link) ~= "string" then
+		return
+	end
+	GameTooltip:SetOwner(layer, "ANCHOR_CURSOR")
+	if link:match("^" .. GUIDE_LINK .. ":%d+$") then
+		GameTooltip:SetText(MelloUI.Widgets.Tr(GUIDE_LINK_TIP), 1, 1, 1)
+	elseif not pcall(GameTooltip.SetHyperlink, GameTooltip, link) then
+		GameTooltip:Hide()
+		return
+	end
+	GameTooltip:Show()
+end, "script")
+
+local GuideLinkLeave = Perf.Shared("OnHyperlinkLeave on a guide step's link", function(layer)
+	local block = layer.block or layer
+	block.overLink = nil
+	if GameTooltip:IsOwned(layer) then
+		GameTooltip:Hide()
+	end
+end, "script")
+
+local GuideLinkClick = Perf.Shared("OnHyperlinkClick on a guide step's link", function(layer, link, text, button)
+	local block = layer.block or layer
+	if type(link) ~= "string" then
+		return
+	end
+	local n = tonumber(link:match("^" .. GUIDE_LINK .. ":(%d+)$"))
+	if n then
+		local open = block.guideLinks and block.guideLinks[n]
+		if open then
+			pcall(open)
+		end
+	elseif IsModifiedClick() and rawget(_G, "HandleModifiedItemClick") then
+		pcall(rawget(_G, "HandleModifiedItemClick"), text)
+	elseif rawget(_G, "SetItemRef") then
+		pcall(rawget(_G, "SetItemRef"), link, text, button, layer)
+	end
+end, "script")
+
+-- the layer's own mouse handed on to its block (a click off the links: the step marked again; the hover's tooltip)
+local GuideLayerUp = Perf.Shared("OnMouseUp on a guide step's link layer", function(layer, button)
+	if layer:IsMouseOver() and not (layer.block and layer.block.overLink) then
+		OnBlockClick(layer.block, button)
+	end
+end, "script")
+local GuideLayerEnter = Perf.Shared("OnEnter on a guide step's link layer", function(layer)
+	OnBlockEnter(layer.block)
+end, "script")
+local GuideLayerLeave = Perf.Shared("OnLeave on a guide step's link layer", function(layer)
+	OnBlockLeave(layer.block)
+end, "script")
+local GuideLayerWheel = Perf.Shared("OnMouseWheel on a guide step's link layer", function(_, delta)
+	Scroll(delta)
+end, "script")
+
+-- the block's link layer, made at its first guide step, mouse and links on
+local function GuideLayer(block)
+	local l = block.linkLayer
+	if not l then
+		l = CreateFrame("Frame", nil, block)
+		l:SetAllPoints(block)
+		l.block = block
+		l:EnableMouseWheel(true)
+		Perf.SetScript(l, "OnHyperlinkEnter", GuideLinkEnter)
+		Perf.SetScript(l, "OnHyperlinkLeave", GuideLinkLeave)
+		Perf.SetScript(l, "OnHyperlinkClick", GuideLinkClick)
+		Perf.SetScript(l, "OnMouseUp", GuideLayerUp)
+		Perf.SetScript(l, "OnEnter", GuideLayerEnter)
+		Perf.SetScript(l, "OnLeave", GuideLayerLeave)
+		Perf.SetScript(l, "OnMouseWheel", GuideLayerWheel)
+		block.linkLayer = l
+	end
+	l:SetFrameLevel(block:GetFrameLevel() + 1)
+	l:EnableMouse(true)
+	pcall(l.SetHyperlinksEnabled, l, true)
+	l:Show()
+	return l
+end
+
+-- a guide line as the tracker shows it: its linked text (the reader's), a guide's own link wrapped round it
+local function GuideText(block, line)
+	local text = line.shown or line.text or ""
+	if type(line.Open) == "function" then
+		local links = block.guideLinks
+		links[#links + 1] = line.Open
+		text = "|H" .. GUIDE_LINK .. ":" .. #links .. "|h" .. text .. "|h"
+	end
+	return text
+end
+
 local function FillGuideBlock(block, data, width)
+	-- (its links: the link layer, GuideLayer, above)
+	local layer = GuideLayer(block)
+	block.guideLinks = block.guideLinks or {}
+	wipe(block.guideLinks)
+	block.overLink = nil
 	block.questID, block.recipeID, block.recraft = nil, nil, nil
 	block.item.itemLink = nil
 	block.item:Hide()
@@ -3944,7 +4069,7 @@ local function FillGuideBlock(block, data, width)
 		n = n + 1
 		local shade = line.done and 0.55 or 0.95
 		local top = y
-		y = PutLine(block, n, line.text or "", y, width, false, shade, shade, shade, true)
+		y = PutLine(block, n, GuideText(block, line), y, width, false, shade, shade, shade, true)
 		if line.box then
 			boxes = boxes + 1
 			local b = GuideBox(block, boxes)
@@ -3952,7 +4077,31 @@ local function FillGuideBlock(block, data, width)
 			b.tick:SetShown(line.done and true or false)
 			b:ClearAllPoints()
 			b:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + COLUMNS.bullet, -top - 1)
+			b:SetFrameLevel(layer:GetFrameLevel() + 1)   -- (over the link layer: its tick its own)
 			b:Show()
+		end
+	end
+	-- (Guide: Next Steps) the guide's next steps under the current one, dimmed, each led by its number; no box: they
+	-- are not the step yet
+	local want = math.floor(tonumber(M.db and M.db.guideNext) or 0)
+	for s, step in ipairs(want > 0 and data.upcoming or {}) do
+		if s > want then
+			break
+		end
+		y = y + (s == 1 and TITLE_GAP or 0)
+		for j, line in ipairs(step.lines or {}) do
+			n = n + 1
+			local text = type(line) == "table" and GuideText(block, line) or tostring(line)
+			local shown = j == 1 and (tostring(step.n) .. "  " .. text) or text
+			y = PutLine(block, n, shown, y, width, false, 0.55, 0.55, 0.55, true)
+		end
+	end
+	-- (its lines the layer's, so their links answer; a quest's block later keeps them there, the layer mouse-off)
+	for i = 1, n do
+		local fs = block.lines[i]
+		if fs and fs:GetParent() ~= layer then
+			fs:SetParent(layer)
+			fs.dash:SetParent(layer)
 		end
 	end
 	HideBoxes(block, boxes + 1)
