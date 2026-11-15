@@ -30,6 +30,9 @@
 --       there, aggro once it is on them
 --   Threat.IsTank()    the group's tank: the TANK role, else a tanking form
 --                      (Defensive Stance, Bear or Dire Bear Form)
+--   Threat.Role()      "TANK" (Threat.IsTank), "HEALER" (the HEALER role)
+--                      or "DAMAGER" (2.1.53: the nameplates' Threat
+--                      Colours By Role)
 --   Threat.Grouped()   in a party or a raid (solo, threat says nothing new)
 --   Threat.Colour(state) -> r, g, b   gold (the palette's selectedTrim)
 --                      while safe; the fixed meaning colours threatClose
@@ -126,6 +129,13 @@ function Threat.IsTank()
 	end
 	local form = Num(Ask(_G.GetShapeshiftFormID))
 	return form ~= nil and TANK_FORMS[form] == true
+end
+
+function Threat.Role()
+	if Threat.IsTank() then
+		return "TANK"
+	end
+	return Ask(_G.UnitGroupRolesAssigned, "player") == "HEALER" and "HEALER" or "DAMAGER"
 end
 
 function Threat.Grouped()

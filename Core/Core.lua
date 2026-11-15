@@ -342,6 +342,9 @@ MelloUI.Meaning = {
 	-- pulling, and the mob on you -- a loose mob for a tank)
 	threatClose = { 0.878, 0.541, 0.118, hex = "E08A1E" },   -- #E08A1E, amber (meaning colour)
 	threatAggro = { 0.816, 0.188, 0.118, hex = "D0301E" },   -- #D0301E, red (meaning colour)
+	-- (2.1.53, the nameplates' Threat Colours By Role, Modules/Nameplates.lua M.THREAT_TINT: a mob that is safe -- a
+	-- tank's held, anyone else's nowhere near them)
+	threatSafe = Hex("#4CB848"),   -- green (meaning colour)
 	-- (0.16.0, the user's pick C of bag_family_sketch: a special bag's slots
 	-- wear their bag type's colour on the rim) [bag family bit] = colour;
 	-- MelloUI_Oldschool/Modules/BackpackPanel.lua reads it

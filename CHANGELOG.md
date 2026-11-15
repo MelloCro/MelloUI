@@ -15,6 +15,9 @@
 - Questie's tracker: it now follows the Quest Tracker page's settings: Width or Match The Minimap's Width, Height, Text Size, Header Text Size, Nearest Quest First and Reset Position. Dragging its corner sets Width and Height. Questie's own sizes come back when MelloUI's look or Quest Tracker is switched off, and the settings Questie's tracker has nothing for are greyed out while it lists your quests.
 - Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own in the Quest Tracker's place until Questie's tracker shows again.
 - Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP, with Zygor's own window and arrow tucked away. Until now this only worked after typing /route zygor on. Its switch is on the Addons page, where Show its own arrow too keeps Zygor's arrow beside MelloUI's World Marker, and with more than one guide on, the question at login lists Zygor too.
+- Nameplates: the cast bar in a fight now stands where the Nameplate Designer's preview shows it. With Own Plate Size on, or the cast bar moved on the preview, it lay behind the health bar. While you have not changed it, the preview now shows the game's own cast bar layout.
+- Nameplates: the Cast bar has a tab of its own on the Nameplates page, with a new Height slider for the preview and every enemy plate alike. Game's keeps the height the game gives it.
+- Nameplates: a new Threat Colours By Role switch on the Health bar tab colours an enemy's health bar in group fights by its threat on you. Tanks see the mobs they hold, are losing and have lost; healers and damage dealers see the mobs close to turning on them and the ones that have.
 
 ## 2.1.52
 
