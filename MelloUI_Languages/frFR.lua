@@ -3810,6 +3810,13 @@ Lang:Add("frFR", {
 	["/services  |  /services repair | mailbox | innkeeper | flight | auction | bank | class trainer | profession trainer | barber | transmog"] = "/services | /services repair | mailbox | innkeeper | flight | auction | bank | class trainer | profession trainer | barber | transmog",
 	["Quest Moments: the game's info lines %s"] = "Instants de quête : les lignes d’information du jeu %s",
 	["Quest Moments: every quest line since the login played as a moment"] = "Instants de quête : toutes les lignes de quête depuis la connexion ont été jouées comme des instants",
+	["Quest Moments"] = "Instants de quête",
+	["Every blossom counts, and you see it count."] = "Chaque étape compte, et vous la voyez progresser.",
+	["The game's yellow quest lines in the middle of the screen become moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest."] = "Les lignes de quête jaunes du jeu, au centre de l’écran, deviennent des instants : un objet récupéré rejoint sa ligne dans le suivi des quêtes, un objectif terminé clôt son anneau et une quête achevée reçoit un blason doré.",
+	["Objective Done"] = "Objectif terminé",
+	["An objective finished: its ring closes with a flare of light, sparks and a tick, and the count turns into Complete."] = "Quand un objectif est terminé, son anneau se ferme dans un éclat de lumière, avec des étincelles et une coche ; le compteur affiche alors « Terminé ».",
+	["Quest Done"] = "Quête terminée",
+	["A quest ready to turn in: a gilded crest lands with the hand-in mark, and the quest's title opens under Quest Complete."] = "Quand une quête est prête à être rendue, un blason doré apparaît avec l’icône de remise et son titre s’affiche sous « Quête terminée »."
 	["come to Quest Moments"] = "sont prises en charge par Instants de quête",
 	["are NOT taken: the game's frame still has them"] = "ne sont PAS prises en charge : le cadre du jeu les affiche toujours",
 	["on"] = "activé",
