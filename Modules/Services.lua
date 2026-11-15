@@ -143,7 +143,22 @@ local function Data()
 	return MelloUI_QuestListData
 end
 
+-- (2.1.54) a distance as Route writes it (metres in French and German, its own rounding); Route off, the same here
 local function Yards(d)
+	local R = MelloUI.Route
+	local text = R and type(R.YardsText) == "function" and R:YardsText(d) or nil
+	if text then
+		return text
+	end
+	local lang = Language()
+	if lang == "frFR" or lang == "deDE" then
+		local metres = math.floor(d * 0.9144 + 0.5)
+		if metres >= 1000 then
+			local tenths = math.floor(metres / 100 + 0.5)
+			return F("%d,%d km", math.floor(tenths / 10), tenths % 10)
+		end
+		return F("%d yd", metres)
+	end
 	if d >= 1000 then
 		return F("%.1f km", d / 1000)
 	end
