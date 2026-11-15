@@ -3642,7 +3642,6 @@ Lang:Add("frFR", {
 	["Every plate shown again."] = "Tous les cadres sont de nouveau affichés.",
 	["Every plate hidden: pick the ones you want."] = "Tous les cadres sont masqués : choisissez ceux que vous voulez afficher.",
 	["The plates of everything the game shows now; the hidden ones' plates away."] = "Cadres des éléments actuellement affichés par le jeu ; les éléments masqués n’ont pas de cadre.",
-	["Drag to move · Wheel to resize · Right-click for options · Ctrl+right-click resets · Shift keeps a straight line · Arrow keys nudge the one you clicked"] = "Glisser pour déplacer · Molette pour redimensionner · Clic droit pour les options · Ctrl-clic droit pour réinitialiser · Maj pour garder l’alignement · Flèches pour déplacer l’élément sélectionné",
 	["UI Modifications is off: the game's windows keep the game's places, and the minimap, chat and trackers move in Edit Mode."] = "Les réglages de l’interface sont désactivés : les fenêtres du jeu gardent leur emplacement et la minicarte, la discussion et les suivis se déplacent en mode Édition.",
 	["Hidden elements (party frames and others) show in Edit Mode."] = "Les éléments masqués, comme les cadres de groupe, apparaissent en mode Édition.",
 	["Reset all"] = "Tout réinitialiser",
