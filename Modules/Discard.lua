@@ -78,7 +78,7 @@ local M = MelloUI:RegisterModule("Discard", {
 		  desc = "Food, drink, potions and other consumables can be thrown away too, the cheapest first. Never what your Restock list keeps (of its drink, food or ammo the best you carry) or what you keep with a right-click on the Discard button." },
 		-- (2.1.51; Nixxen: "trade goods, where you can end up with some random items from a chest that is not worth
 		-- much, and you will not use. Some light leather, ruined leather scraps, boar meat")
-		{ type = "toggle", key = "tradeGoods", name = "Trade Goods Too", new = "2.1.51",
+		{ type = "toggle", key = "tradeGoods", name = "Trade Goods Too",
 		  desc = "Cheap crafting materials and other trade goods, such as light leather or boar meat, can be thrown away too, the cheapest first. Never what your Restock list keeps or what you keep with a right-click on the Discard button." },
 		{ type = "toggle", key = "lootButton", name = "Discard Button On Loot",
 		  desc = "The same button on the loot window. It only throws something away for loot worth more." },
@@ -550,7 +550,7 @@ local function Tip(self)
 		local g = rawget(_G, "GREEN_FONT_COLOR")
 		local gr, gg, gb = g and g.r or 0, g and g.g or 1, g and g.b or 0
 		GameTooltip:AddLine(Tr(selling and "Left-click: sell it" or "Left-click: throw it away"), gr, gg, gb)
-		GameTooltip:AddLine("Right-click: always keep " .. NameOf(c), gr, gg, gb)
+		GameTooltip:AddLine(Tr("Right-click: always keep %s"):format(NameOf(c)), gr, gg, gb)
 	end
 	if credit then
 		GameTooltip:AddLine(Credit(credit.itemID), tr, tg, tb)
