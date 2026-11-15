@@ -1346,6 +1346,7 @@ Lang:Add("deDE", {
 	["Turn-in Line"] = "Abgabezeile", -- draft
 	["A finished quest says who takes it and where."] = "Eine fertige Quest sagt, wer sie annimmt und wo.", -- draft
 	["Guide: Next Steps"] = "Guide: Nächste Schritte", -- draft
+	["Click: open the link to copy it"] = "Klick: Link öffnen, um ihn zu kopieren", -- draft
 	["How many of a leveling guide's next steps show under its current one, dimmed (RestedXP Guides). Off: only the current step."] = "Wie viele der nächsten Schritte eines Leveling-Guides unter dem aktuellen erscheinen, gedimmt (RestedXP Guides). Aus: nur der aktuelle Schritt.", -- draft
 	["Reset Position"] = "Position zurücksetzen", -- draft
 	["Puts the tracker back in its starting place."] = "Setzt die Verfolgung an ihren Startplatz zurück.", -- draft

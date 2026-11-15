@@ -292,7 +292,7 @@ local function Read(reader)
 	end
 	local parts = { m and string.format("%d:%.4f:%.4f", m, x, y) or "-" }
 	for _, line in ipairs(steps and steps.lines or {}) do
-		parts[#parts + 1] = tostring(line.text) .. (line.done and "+" or "-")
+		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-")
 	end
 	reader.mapID, reader.x, reader.y, reader.steps = m, x, y, steps
 	reader.runs = (m or steps) and true or false
@@ -561,10 +561,13 @@ function Guide.Publish()
 	local steps = reader and reader.steps
 	local parts = { (reader and reader.key or "") .. "|" .. tostring(steps and steps.title) }
 	for _, line in ipairs(steps and steps.lines or {}) do
-		parts[#parts + 1] = tostring(line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "")
+		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "")
 	end
 	for _, s in ipairs(steps and steps.upcoming or {}) do
-		parts[#parts + 1] = "#" .. tostring(s.n) .. ":" .. table.concat(s.lines, "|")
+		parts[#parts + 1] = "#" .. tostring(s.n)
+		for _, l in ipairs(s.lines) do
+			parts[#parts + 1] = tostring(l.shown or l.text)
+		end
 	end
 	local sig = steps and table.concat(parts, "\n") or ""
 	if sig == Guide.sig then
@@ -862,6 +865,244 @@ do
 		return text
 	end
 
+	-- (a quest objective's line -- RestedXP's .complete: its quest and objective, no item id) the items its quest asks
+	-- for, from Questie's database when it is there (MelloUI.QuestSource.Lib: a quest's objectives[3], { { item id,
+	-- text }, ... }); none without it
+	local function QuestItems(questID, add)
+		local QSrc = rawget(MelloUI, "QuestSource")
+		local L = QSrc and type(QSrc.Lib) == "function" and QSrc.Lib() or nil
+		local Q = type(L) == "table" and L.Quest
+		if not (questID and type(Q) == "table" and type(Q.Get) == "function") then
+			return
+		end
+		local ok, objectives = pcall(Q.Get, questID, "objectives")
+		local items = ok and type(objectives) == "table" and objectives[3]
+		for _, o in ipairs(type(items) == "table" and items or {}) do
+			if type(o) == "table" then
+				add(o[1])
+			end
+		end
+	end
+
+	-- the items an element names: its id (collect, buy, destroy), its list (a bank's: items), the items it uses
+	-- (activeItems), and its quest's items (QuestItems: a quest's objective or the quest itself)
+	local function ItemIDs(el)
+		local ids, seen = {}, {}
+		local function Add(id)
+			id = tonumber(id)
+			if id and not seen[id] then
+				seen[id] = true
+				ids[#ids + 1] = id
+			end
+		end
+		Add(el.id ~= nil and (el.tag == "collect" or el.tag == "buy" or el.tag == "destroy") and el.id or nil)
+		for _, id in ipairs(type(el.items) == "table" and el.items or {}) do
+			Add(id)
+		end
+		for id in pairs(type(el.activeItems) == "table" and el.activeItems or {}) do
+			Add(id)
+		end
+		QuestItems(tonumber(el.questId), Add)
+		return ids
+	end
+
+	-- the items asked for whose names the game was still loading: when one comes (GET_ITEM_INFO_RECEIVED), the step is
+	-- read again, so its lines link it (a frame of its own, listening only while one is awaited)
+	local waiting = { ids = {}, n = 0, frame = nil }
+	local function Await(id)
+		if waiting.ids[id] then
+			return
+		end
+		waiting.ids[id], waiting.n = true, waiting.n + 1
+		if not waiting.frame then
+			waiting.frame = CreateFrame("Frame")
+			Perf.SetScript(waiting.frame, "OnEvent", function(self, _, got)
+				got = tonumber(got)
+				if not (got and waiting.ids[got]) then
+					return
+				end
+				waiting.ids[got], waiting.n = nil, waiting.n - 1
+				if waiting.n <= 0 then
+					waiting.n = 0
+					self:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
+				end
+				rxp.quick = nil   -- (its lines built again at the next read)
+				Guide.Changed(rxp)
+			end)
+		end
+		waiting.frame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+	end
+
+	-- an item's name as the game knows it now (nil: not loaded yet; asked for, the step is read again when it comes)
+	local function ItemName(id)
+		local CI = rawget(_G, "C_Item")
+		local name = CI and CI.GetItemNameByID and Pcall(CI.GetItemNameByID, id)
+		if type(name) ~= "string" or name == "" then
+			name = Pcall(rawget(_G, "GetItemInfo"), id)
+		end
+		if (type(name) ~= "string" or name == "") and CI and CI.RequestLoadItemDataByID then
+			pcall(CI.RequestLoadItemDataByID, id)
+			Await(id)
+			return nil
+		end
+		return type(name) == "string" and name ~= "" and name or nil
+	end
+
+	-- an item's link as the game makes it (its name in the client's language, its quality's colour), else a plain one
+	-- round the guide's own bracket
+	local function ItemLink(id, bracket)
+		local get, ok, full = rawget(_G, "GetItemInfo"), false, nil
+		if type(get) == "function" then
+			local _
+			ok, _, full = pcall(get, id)
+		end
+		full = ok and Plain(full) or nil
+		if type(full) == "string" and full:find("|Hitem:", 1, true) then
+			return full
+		end
+		return "|cffffffff|Hitem:" .. id .. "|h" .. bracket .. "|h|r"
+	end
+
+	-- the items a step names, each { name, id }, longest name first: every element's items (ItemIDs) by the name the
+	-- game gives them now and by RestedXP's own (itemName). A step's text names its items in any of its lines -- "Loot
+	-- it for <the page>" beside the line that counts the page -- so a line is linked by its whole step's items
+	local function StepItems(step)
+		local list, seen = {}, {}
+		for _, el in ipairs(type(step) == "table" and type(step.elements) == "table" and step.elements or {}) do
+			if type(el) == "table" then
+				for _, id in ipairs(ItemIDs(el)) do
+					local a, b = ItemName(id), type(el.itemName) == "string" and Plain(el.itemName) or nil
+					for _, name in ipairs({ a or b or "", b or "" }) do
+						if name ~= "" and not seen[name] then
+							seen[name] = true
+							list[#list + 1] = { name = name, id = id }
+						end
+					end
+				end
+			end
+		end
+		table.sort(list, function(x, y)
+			return #x.name > #y.name
+		end)
+		return list
+	end
+
+	-- the text with the items it names as the game's item links (the tracker shows the game's tooltip on them):
+	--   * a bracket of its element's own items ("[Flasche of Zombiesaft]": a guide's text, often in English or half
+	--     translated) as the game's whole link (its name in the client's language, its quality's colour): by name,
+	--     the rest in their list's order, a lone one with a lone bracket
+	--   * then each item of its step (StepItems) named in it, bracket or not, the name wrapped as a link in the
+	--     guide's own colour (|Hitem:id|h<name>|h)
+	-- The text as it was when it names none
+	local function Linked(el, text, items)
+		local ids = ItemIDs(el)
+		if #ids > 0 and text:find("[", 1, true) then
+			local spans, pos = {}, 1
+			while true do
+				local s, e = text:find("%[[^%]|]+%]", pos)
+				if not s then
+					break
+				end
+				spans[#spans + 1] = { s = s, e = e }
+				pos = e + 1
+			end
+			local used = {}
+			for _, id in ipairs(ids) do
+				local name = ItemName(id)
+				for _, sp in ipairs(name and spans or {}) do
+					if not sp.id and text:sub(sp.s, sp.e):find(name, 1, true) then
+						sp.id, used[id] = id, true
+						break
+					end
+				end
+			end
+			if #spans == #ids or (#ids == 1 and #spans == 1) then
+				local i = 1
+				for _, sp in ipairs(spans) do
+					if not sp.id then
+						while ids[i] and used[ids[i]] do
+							i = i + 1
+						end
+						if ids[i] then
+							sp.id, used[ids[i]] = ids[i], true
+						end
+					end
+				end
+			end
+			for k = #spans, 1, -1 do   -- (from the end: the earlier places stay right)
+				local sp = spans[k]
+				if sp.id then
+					text = text:sub(1, sp.s - 1) .. ItemLink(sp.id, text:sub(sp.s, sp.e)) .. text:sub(sp.e + 1)
+				end
+			end
+		end
+		for _, it in ipairs(items or {}) do
+			if not text:find("|Hitem:" .. it.id .. "[|:]") then
+				local s, e = text:find(it.name, 1, true)
+				if s then
+					text = text:sub(1, s - 1) .. "|Hitem:" .. it.id .. "|h" .. it.name .. "|h" .. text:sub(e + 1)
+				end
+			end
+		end
+		-- (the user, 2026-11-15: "[Spinnengift-Fläschchen]" stayed plain -- the guide's own word for what the game
+		-- calls "Phiole mit Spinnengift") a bracket still plain: the step's item sharing the most of its words (five
+		-- letters or more) with it, when one does, as the game's whole link
+		if items and #items > 0 and text:find("[", 1, true) then
+			local function Words(s)
+				local w = {}
+				for word in s:lower():gmatch("[^%s%p%d]+") do
+					if #word >= 5 then
+						w[word] = true
+					end
+				end
+				return w
+			end
+			local spans, pos = {}, 1
+			while true do
+				local s, e = text:find("%[[^%]|]+%]", pos)
+				if not s then
+					break
+				end
+				if text:sub(s - 2, s - 1) ~= "|h" then   -- (not one already linked)
+					spans[#spans + 1] = { s = s, e = e }
+				end
+				pos = e + 1
+			end
+			for k = #spans, 1, -1 do
+				local sp = spans[k]
+				local mine = Words(text:sub(sp.s + 1, sp.e - 1))
+				local best, most = nil, 0
+				for _, it in ipairs(items) do
+					local n = 0
+					for word in pairs(Words(it.name)) do
+						if mine[word] then
+							n = n + 1
+						end
+					end
+					if n > most then
+						best, most = it, n
+					end
+				end
+				if best then
+					text = text:sub(1, sp.s - 1) .. ItemLink(best.id, text:sub(sp.s, sp.e)) .. text:sub(sp.e + 1)
+				end
+			end
+		end
+		return text
+	end
+
+	-- a link element's way to its address (RestedXP's own: its copy box, RXP_Link, reads RXP.url)
+	local function Opener(R, el)
+		if type(el.url) ~= "string" or el.url == "" or not rawget(_G, "StaticPopup_Show") then
+			return nil
+		end
+		return function()
+			R.url = el.url
+			pcall(_G.StaticPopup_Show, "RXP_Link")
+			R.url = nil
+		end
+	end
+
 	-- the guide's next steps after its active ones, as its own window lists them (the Quest Tracker's Guide: Next
 	-- Steps; a player's wish: with RestedXP's window veiled only the current step showed): at most Guide.NEXT_MAX,
 	-- each { n = its number, lines = its elements' texts }; a step the player skipped or that is done passed by, and
@@ -891,9 +1132,11 @@ do
 			end
 			if type(step) == "table" and not skip[i] and not step.completed then
 				local lines = {}
+				local items = StepItems(step)
 				for _, el in ipairs(type(step.elements) == "table" and step.elements or {}) do
 					if Usable(el) then
-						lines[#lines + 1] = Shown(R, el.text)
+						local text = Shown(R, el.text)
+						lines[#lines + 1] = { text = text, shown = Linked(el, text, items), Open = Opener(R, el) }
 					end
 				end
 				if #lines > 0 then
@@ -915,11 +1158,13 @@ do
 		end
 		local lines = {}
 		for _, step in ipairs(steps) do
+			local items = StepItems(step)
 			for _, el in ipairs(type(step) == "table" and type(step.elements) == "table" and step.elements or {}) do
 				if Usable(el) then
 					local text = Shown(R, el.text)
 					local line = { text = text, done = (el.completed or el.skip) and true or false,
-						box = not (el.textOnly or el.optional) }
+						box = not (el.textOnly or el.optional),
+						shown = Linked(el, text, items), Open = Opener(R, el) }
 					line.Toggle = function(skip)
 						-- (RestedXP's checkbox, as its own guide window clicks it)
 						local button = { GetChecked = function() return skip end, GetParent = function() return { element = el } end }
@@ -984,6 +1229,48 @@ do
 			tostring(profile.disableArrow), tostring(type(R) == "table" and rawget(R, "hideArrow")),
 			tostring(profile.showEnabled), tostring(type(af) == "table" and rawget(af, "wrongContinent")),
 			type(el) == "table" and string.format("%s %s, %s", tostring(el.zone), tostring(el.x), tostring(el.y)) or "none")
+		-- (its step's lines as the tracker gets them, their codes shown: an item's link, a link's Open)
+		for _, line in ipairs(type(rxp.steps) == "table" and type(rxp.steps.lines) == "table" and rxp.steps.lines or {}) do
+			local shown = tostring(line.shown or line.text):gsub("|", "||")
+			say("   line: %s%s", shown, line.Open and "  [link]" or "")
+		end
+		-- (the items each active and next step names, as StepItems finds them, and Questie's database there or not)
+		local QSrc = rawget(MelloUI, "QuestSource")
+		say("   Questie's database: %s", tostring(QSrc and type(QSrc.Lib) == "function" and QSrc.Lib() ~= nil))
+		local rframe = rawget(_G, "RXPFrame")
+		local active = type(rframe) == "table" and rawget(rframe, "activeSteps") or {}
+		local cdata = rawget(_G, "RXPCData")
+		local all = type(guide) == "table" and type(guide.steps) == "table" and guide.steps or {}
+		local n = type(cdata) == "table" and tonumber(cdata.currentStep) or 0
+		local list = {}
+		for _, step in ipairs(type(active) == "table" and active or {}) do
+			list[#list + 1] = step
+		end
+		for i = n + 1, n + 3 do
+			list[#list + 1] = all[i]
+		end
+		for _, step in ipairs(list) do
+			local parts = {}
+			for _, it in ipairs(StepItems(step)) do
+				parts[#parts + 1] = string.format("%d %s", it.id, it.name)
+			end
+			local quests = {}
+			for _, el in ipairs(type(step) == "table" and type(step.elements) == "table" and step.elements or {}) do
+				if type(el) == "table" and (el.questId or el.id or el.items) then
+					quests[#quests + 1] = string.format("%s q%s id%s", tostring(el.tag), tostring(el.questId),
+						tostring(el.id))
+				end
+			end
+			say("   step %s items: %s  (elements: %s)", tostring(type(step) == "table" and step.index),
+				#parts > 0 and table.concat(parts, ", ") or "none", #quests > 0 and table.concat(quests, "; ") or "none")
+		end
+		for _, s in ipairs(type(rxp.steps) == "table" and rxp.steps.upcoming or {}) do
+			for _, l in ipairs(s.lines or {}) do
+				if type(l) == "table" and l.shown ~= l.text then
+					say("   next %s: %s", tostring(s.n), (tostring(l.shown):gsub("|", "||")))
+				end
+			end
+		end
 	end
 
 	Guide.readers[#Guide.readers + 1] = rxp
