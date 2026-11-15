@@ -2047,15 +2047,23 @@ do
 				hint = W.Tr("Click: its guides  -  Right-click: its settings") } or nil }
 	end
 
-	-- only while its lines read (zygor.steps: Read's): no step in the tracker, its own window stays
+	-- only while its lines read (zygor.steps: Read's): no step in the tracker, its own window stays. (2.1.54; Sikotic: "after
+	-- intregation Zygor stop auto update steps. i need to force "skip step" evertime to continue") its window is veiled
+	-- through its master frame, never itself: Zygor checks a step only while its window frame shows at an alpha of its
+	-- own of 0.1 or more (ZygorGuidesViewer.lua's TryToCompleteStep: "frame hidden? bail."), so the veiled ZGV.Frame --
+	-- alpha 0 -- never completed a step. Its skin makes it inside the master frame (Skins/Default/Skin.lua), where it
+	-- vanishes with it, its own alpha untouched; a window of another shape, not inside it, keeps showing (its steps go on)
 	function zygor.Frames()
 		if not zygor.steps then
 			return {}
 		end
 		local z = Z()
 		local pointer = z and z.Pointer
-		return List(z and z.Frame, z and z.MasterFrame, rawget(_G, "ZygorGuidesViewerFrame"),
-			type(pointer) == "table" and pointer.ArrowFrame or nil, type(pointer) == "table" and pointer.arrow or nil)
+		local master = z and z.MasterFrame or rawget(_G, "ZygorGuidesViewerFrameMaster")
+		local frame = z and z.Frame
+		local inside = type(frame) == "table" and frame.GetParent and frame:GetParent() == master
+		return List(inside and master or nil, type(pointer) == "table" and pointer.ArrowFrame or nil,
+			type(pointer) == "table" and pointer.arrow or nil)
 	end
 
 	function zygor.Arrows()   -- (2.1.51: Guide.ArrowShown)

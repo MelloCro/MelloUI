@@ -8,6 +8,7 @@
 - Quest Tracker: a new Guide: Next Steps slider shows up to five of a leveling guide's next steps under its current one, dimmed, with RestedXP Guides. It starts off.
 - Quest Tracker: the items a RestedXP step names are now the game's item links. Point at one for its tooltip, click it for its card, shift-click to link it in the chat. A step's own link opens a window to copy its address.
 - RestedXP Guides: its Active Targets wears MelloUI's look while its guide is followed.
+- Zygor Guides: its steps move on by themselves again when they are done. With its window tucked away beside the Quest Tracker, every step needed Skip Step.
 - Edit Layout: hold Alt to put the dock out of the way and reach an element that lies under it. The dock says so when something does.
 - Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.
 - Bags: a split stack dropped on a + slot of the bag window now goes into a free slot. Before, it went back onto its stack.
