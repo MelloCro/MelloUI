@@ -111,7 +111,7 @@ OWN = {
                     "Core/EditLayoutSnap.lua"],
     "Quest List": ["MelloUI_QuestList/QuestList.lua", "MelloUI_QuestList/QuestListMap.lua",
                    "MelloUI_QuestList/QuestListTips.lua", "MelloUI_QuestList/QuestListObjectives.lua",
-                   "MelloUI_QuestList/QuestListPanel.lua"],
+                   "MelloUI_QuestList/QuestListPanel.lua", "MelloUI_QuestList/QuestListParty.lua"],
     # (2.1.39: Core/QuestieLook.lua, Questie's tracker, map icons and tooltip in MelloUI's look, MelloUI's tracker aside)
     "Quest Tracker": ["Modules/QuestTracker.lua", "Core/QuestieLook.lua"],
     "Party Markers": ["Modules/PartyMarkers.lua"],

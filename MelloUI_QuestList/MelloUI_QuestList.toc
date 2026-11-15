@@ -9,6 +9,7 @@
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 
 QuestList.lua
+QuestListParty.lua
 QuestListPanel.lua
 QuestListMap.lua
 QuestListObjectives.lua
