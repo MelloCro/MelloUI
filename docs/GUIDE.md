@@ -960,10 +960,14 @@ client restart.
 
 **Your Sounds** (2.1.45): a tab listing every sound of the library under a plain name (Light Click, Item Picked Up,
 Whisper, Level Up ...), MelloUI's own (its checkbox, tab and page clicks, the on-screen notice's four chimes) and
-MelloUI's alerts (Rare Alert, Route Arrival, Waypoint Set and Cleared), in six groups, each with a list and a Play
+MelloUI's alerts (Rare Alert, Route Arrival, Waypoint Set and Cleared), in seven groups, each with a list and a Play
 button. A list offers MelloUI's sound (the skin's set, as before), the game's own (where the game has one), None, any
 of MelloUI's sounds, and every sound a SharedMedia pack registers (Core/SharedMedia.lua's "sound" kind). A pick plays
 in every skin, the Default skin's too; a family's switch on the Sounds tab still gives its sounds back to the game,
+(2.1.54) The Windows and bags group holds what a window and the bags do, apart from the sound they start on: Window
+Opened, Window Closed, Window Tab, Bags Opened and Bags Closed. Each plays its sound's row (Page Turn, Cancel and
+Close, Light Click, Item Picked Up, Item Put Down) until it is given a pick of its own. Among the clicks and the
+windows one sound plays a moment: an opening before a closing before a click.
 and a pick whose pack was taken out plays MelloUI's sound. Players' own files: the `MelloUI_MySounds` folder
 (`Tools/mysounds/MelloUI_MySounds`: LibStub, CallbackHandler and LibSharedMedia-3.0, and `MySounds.lua`'s
 `Sound(name, file)` lines), zipped and attached to every GitHub release by the Release workflow, never on

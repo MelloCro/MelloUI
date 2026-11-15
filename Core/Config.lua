@@ -178,6 +178,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.54", lines = {
+		"Custom Sounds: the Spellbook and Talents window, the profession windows and other newer windows play MelloUI's sounds now. With Custom Sounds on they were silent.",
+		"Custom Sounds: Your Sounds has five new rows: Window Opened, Window Closed, Window Tab, Bags Opened and Bags Closed. Each starts on the sound it had.",
+		"Custom Sounds: the character sheet no longer opens with a click on top of its own sound, and one window taking another's place plays only the opening.",
 		"Quest Tracker: a new Guide: Next Steps slider shows up to five of a leveling guide's next steps under its current one, dimmed, with RestedXP Guides. It starts off.",
 		"Quest Tracker: the items a RestedXP step names are now the game's item links, with the game's tooltip. A step's own link opens a window to copy its address.",
 		"RestedXP Guides: its Active Targets wears MelloUI's look while its guide is followed.",

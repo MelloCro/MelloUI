@@ -1483,7 +1483,8 @@ end
 --                       "menu_open", "menu_close", "menu_button" (the game
 --                       menu's), "window_open", "window_close", "tick" (the
 --                       chat's scroll button), "waypoint_set", "waypoint_clear",
---                       "bags_open", "bags_close" (the bag window by kind)
+--                       "bags_open", "bags_close" (the bag window by kind),
+--                       "window_tab" (a game window's tab: Custom Sounds' row)
 --                       "ready_check" (the Ready Check widget's alert)
 --     the notice's:    "notice_track", "notice_arrive", "notice_learn",
 --                       "notice_fail" (MelloUI:Announce, on the Master channel)
@@ -1514,6 +1515,7 @@ do
 		menu_button    = { kit = "IG_MAINMENU_OPTION" },
 		window_open    = { kit = "IG_CHARACTER_INFO_OPEN" },
 		window_close   = { kit = "IG_CHARACTER_INFO_CLOSE" },
+		window_tab     = { kit = "IG_CHARACTER_INFO_TAB" },   -- (2.1.54: Custom Sounds' Window Tab row's Play)
 		tick           = { kit = "U_CHAT_SCROLL_BUTTON" },
 		waypoint_set   = { kit = "UI_MAP_WAYPOINT_CLICK_TO_PLACE", alt = "IG_MAINMENU_OPTION_CHECKBOX_ON" },
 		waypoint_clear = { kit = "UI_MAP_WAYPOINT_REMOVE", alt = "IG_MAINMENU_OPTION_CHECKBOX_OFF" },

@@ -359,7 +359,7 @@ L.pages = {
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
 	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", set = "page_sounds", module = "CustomSounds",
 		tabs = { "Sounds", "Your Sounds", "Preview" },
-		cards = { ["Your Sounds"] = { "Your Sounds", "Clicks and windows", "Items", "Groups and quests",
+		cards = { ["Your Sounds"] = { "Your Sounds", "Clicks and windows", "Windows and bags", "Items", "Groups and quests",
 			"Character and world", "MelloUI's own", "MelloUI's alerts" } } },
 	Profiles = { title = "Profiles", own = true },
 }
@@ -1602,6 +1602,12 @@ function L.Define(R, Link)
 	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Page_Turn", { card = "Clicks and windows" })
 	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_UI_Hover", { card = "Clicks and windows" })
 	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Scroll_Wheel", { card = "Clicks and windows" })
+	-- (2.1.54: what a window and the bags do, each a row of its own -- Yours.ACTIONS)
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_window_open", { card = "Windows and bags" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_window_close", { card = "Windows and bags" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_window_tab", { card = "Windows and bags" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_bags_open", { card = "Windows and bags" })
+	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_bags_close", { card = "Windows and bags" })
 	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Inventory_Pickup", { card = "Items" })
 	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Inventory_Move", { card = "Items" })
 	R("CustomSounds", "Your Sounds", "Sound", "CustomSounds.pick_Inventory_Drop", { card = "Items" })

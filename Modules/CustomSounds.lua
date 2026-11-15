@@ -20,9 +20,13 @@
 --     (CURSOR_CHANGED, CHAT_MSG_LOOT, PLAYER_EQUIPMENT_CHANGED, QUEST_TURNED_IN,
 --     the merchant functions).
 -- A muted file with no replacement would be a hole, so every file muted
--- here has a FILES default. The file ids and the kit -> file table come from
--- the client's SoundKitEntry (wago.tools, classic era 1.15.9; the vanilla
--- kits 80..1279 have carried the same files since 2004).
+-- here has a FILES default, and FILES lists EVERY kit of this client that
+-- plays the file (2.1.54, Zanark's report: the lists came from classic era
+-- 1.15.9, and this client has 161 more kits on those files -- the Spellbook
+-- and Talents window, the profession windows, the toy box's tabs: each
+-- played nothing at all, its file muted and its kit unknown). The lists are
+-- written from the client's own SoundKitEntry by Tools/sfx_kits.py, which
+-- also checks them (the suite: f124/yoursounds Y11).
 --
 -- Hover ticks and the scroll wheel are ADDITIONS (the game has neither);
 -- the library's scroll loop is unused. Sounds the library has no
@@ -176,6 +180,8 @@ local Yours = {
 	GROUPS = {
 		{ "Clicks and windows", { "UI_Click_Light", "UI_Click_Heavy", "UI_Cancel", "Scroll_Parchment", "Page_Turn",
 			"UI_Hover", "Scroll_Wheel" } },
+		-- (2.1.54, the actions: what a window or the bags do, apart from the sound they start on -- ACTIONS below)
+		{ "Windows and bags", { "window_open", "window_close", "window_tab", "bags_open", "bags_close" } },
 		{ "Items", { "Inventory_Pickup", "Inventory_Move", "Inventory_Drop", "Rare_Item_Interaction", "Equip_Armor",
 			"Unequip_Armor", "Equip_Weapon", "Equip_Accessory", "Craft_Item", "Vendor_Buy", "Vendor_Sell", "Loot_Coins" } },
 		{ "Groups and quests", { "Social_GroupInvite", "Social_Whisper", "DungeonFinder_Queue",
@@ -205,6 +211,8 @@ local Yours = {
 		notice_track = "Notice: Tracked", notice_arrive = "Notice: Arrived", notice_learn = "Notice: Learned",
 		notice_fail = "Notice: Failed", rare = "Rare Alert", marker = "Route Arrival", waypoint_set = "Waypoint Set",
 		waypoint_clear = "Waypoint Cleared",
+		window_open = "Window Opened", window_close = "Window Closed", window_tab = "Window Tab",
+		bags_open = "Bags Opened", bags_close = "Bags Closed",
 	},
 	-- MelloUI's own kinds: where each plays (a library sound's row: the Preview tab's line)
 	HINT = {
@@ -214,11 +222,24 @@ local Yours = {
 		notice_learn = "The on-screen notice: something learned", notice_fail = "The on-screen notice: something failed",
 		rare = "Rare Alert: a rare spotted", marker = "Route's World Marker: a new destination, or arriving at one",
 		waypoint_set = "A waypoint placed", waypoint_clear = "A waypoint cleared",
+		window_open = "A window opening: the character sheet, the spellbook, the quest log, a profession. MelloUI's sound: Page Turn's",
+		window_close = "A window closing. MelloUI's sound: Cancel and Close's",
+		window_tab = "A tab of one of the game's windows. MelloUI's sound: Light Click's",
+		bags_open = "The bags opening. MelloUI's sound: Item Picked Up's",
+		bags_close = "The bags closing. MelloUI's sound: Item Put Down's",
 	},
 	-- the kinds heard on the Master channel, as MelloUI plays them (the notice's chimes, the Rare Alert)
 	MASTER = { notice_track = true, notice_arrive = true, notice_learn = true, notice_fail = true, rare = true },
 	-- MelloUI's clicks: Clicks' switch gives them back too
 	CLICK = { check_on = true, check_off = true, tab = true, page = true },
+	-- (2.1.54; Zanark's report -- a window's opening and the spellbook's pages were one sound, the bags and an item
+	-- picked up another -- the user: "Own rows") the actions with a row of their own: each names the sound whose row it
+	-- follows while its own pick is MelloUI's sound (as before: nothing changes until it is picked) and takes a pick
+	-- apart from it. Which kits are which action: the file they play (FILES' fourth field), a kit of KITS with a
+	-- third field false aside. RANK: one sound a moment (Yours.Yield)
+	ACTIONS = { window_open = "Page_Turn", window_close = "UI_Cancel", window_tab = "UI_Click_Light",
+		bags_open = "Inventory_Pickup", bags_close = "Inventory_Drop" },
+	RANK = { window_open = 3, bags_open = 3, window_close = 2, bags_close = 2, window_tab = 1 },
 	-- the files MelloUI's alerts play beside the library's, in the lists after it
 	EXTRA = { "Check_On", "Check_Off", "Tab", "Page", "Notice_Track", "Notice_Arrive", "Notice_Learn", "Notice_Fail",
 		"RareMob_Ward", "Quest_TrackChange" },
@@ -255,6 +276,11 @@ for _, entry in ipairs(PREVIEW) do
 		Yours.OPT[entry[1]].desc = entry[3]
 	end
 end
+Yours.OPT.window_open.new = "2.1.54"
+Yours.OPT.window_close.new = "2.1.54"
+Yours.OPT.window_tab.new = "2.1.54"
+Yours.OPT.bags_open.new = "2.1.54"
+Yours.OPT.bags_close.new = "2.1.54"
 
 local M = MelloUI:RegisterModule("CustomSounds", {
 	title = "Custom Sounds",
@@ -289,7 +315,8 @@ local MODERN_ONLY = { Check_On = true, Check_Off = true, Tab = true, Page = true
 	Notice_Track = true, Notice_Arrive = true, Notice_Learn = true, Notice_Fail = true }
 
 --------------------------------------------------------------------------------
--- The game's sound kits: kit -> { replacement, group }. The file each kit
+-- The game's sound kits: kit -> { replacement, group } (a third field false:
+-- no action of its file's, Yours.ACTIONS -- a click). The file each kit
 -- plays is listed under FILES, with the default for the kits that are not
 -- named here but play that file (the kit ids on each line).
 --------------------------------------------------------------------------------
@@ -307,9 +334,13 @@ local KITS = {
 	[824] = { "UI_Click_Light", "clicks" },   -- IG_MINIMAP_ZOOM_OUT
 	-- (a kit takes its file's group, whose switch mutes that file: the quest
 	-- giver's list row and Decline play the quest log's close, Windows')
-	[877] = { "UI_Click_Light", "windows" },   -- IG_QUEST_LIST_SELECT
+	[877] = { "UI_Click_Light", "windows", false },   -- IG_QUEST_LIST_SELECT
 	[864] = { "UI_Click_Light", "clicks" },   -- IG_BACKPACK_COIN_SELECT
 	[891] = { "UI_Click_Light", "clicks" },   -- MONEY_FRAME_OPEN
+	-- (2.1.54: a kit that plays files of two different sounds or groups is named here, or it would be placed by
+	-- whichever of its files the walk of FILES reaches last -- these two play a coin file beside the money dialog's)
+	[247487] = { "UI_Click_Light", "clicks" },
+	[249509] = { "UI_Click_Light", "clicks" },
 	[821] = { "UI_Click_Light", "clicks" },   -- IG_MINIMAP_OPEN
 	[822] = { "UI_Click_Light", "clicks" },   -- IG_MINIMAP_CLOSE
 	-- scroll arrows
@@ -330,7 +361,7 @@ local KITS = {
 	[807] = { "UI_Cancel", "clicks" },   -- GS_LOGIN_CHANGE_REALM_CANCEL
 	[39514] = { "UI_Cancel", "clicks" }, -- UI_IG_STORE_CANCEL_BUTTON
 	[866] = { "UI_Cancel", "clicks" },   -- IG_BACKPACK_COIN_CANCEL
-	[879] = { "UI_Cancel", "windows" },  -- IG_QUEST_CANCEL (its file's group, as 877)
+	[879] = { "UI_Cancel", "windows", false },  -- IG_QUEST_CANCEL (its file's group, as 877)
 	[846] = { "UI_Cancel", "clicks" },   -- IG_QUEST_LOG_ABANDON_QUEST
 	[847] = { "UI_Cancel", "clicks" },
 	[892] = { "UI_Cancel", "clicks" },   -- MONEY_FRAME_CLOSE
@@ -392,98 +423,102 @@ local KITS = {
 	[838] = { "SpellIcon_Place", "spells" },    -- IG_ABILITY_ICON_DROP
 	[689] = { "SpellIcon_Place", "spells" },    -- UI_CURSOR_DROP_OBJECT
 	[688] = { "SpellIcon_Drag", "spells" },     -- UI_CURSOR_PICKUP_OBJECT
+	[287934] = { "Inventory_Drop", "inventory" },   -- (a put-down kit with a pick-up file among its two: named, as 247487)
 }
 
--- file id -> { default replacement, group, the kits playing it }
+-- file id -> { default replacement, group, the kits playing it (every one of this client's: Tools/sfx_kits.py),
+-- its action (Yours.ACTIONS: a window opening or closing, its tab, the bags) }
 local FILES = {
-	[567407] = { "UI_Click_Light", "clicks", { 80, 83, 111, 687, 792, 793, 794, 795, 796, 797, 798, 799, 805, 806, 807, 808, 811, 814, 815, 816, 817, 826, 827, 828, 842, 843, 856, 857, 858, 861, 905, 906, 1115, 39511, 303824, 306217 } },   -- uchatscrollbutton
-	[567481] = { "UI_Click_Heavy", "clicks", { 624, 825, 852, 853, 854, 855, 39514 } },   -- iuiinterfacebuttona
-	[567422] = { "UI_Click_Light", "clicks", { 681, 841 } },   -- ucharactersheettab
+	[567407] = { "UI_Click_Light", "clicks", { 80, 83, 111, 687, 792, 793, 794, 795, 796, 797, 798, 799, 805, 806, 807, 808, 811, 814, 815, 816, 817, 826, 827, 828, 842, 843, 856, 857, 858, 861, 905, 906, 1115, 39511, 44306, 44307, 44314, 44315, 44316, 44317, 44318, 44324, 62538, 76995, 118613, 168457, 170554, 170565, 170566, 170577, 173751, 173752, 206496, 206497, 206499, 206500, 206501, 206502, 206503, 206504, 206510, 206518, 207761, 229883, 258819, 272319, 301850, 301853, 303824, 305119, 305121, 305167, 306217, 310332, 310335, 310336, 310362, 314198, 314199, 314200, 315291, 315301, 315325, 315357, 315362, 315369, 315453, 315454, 315694, 320110, 320111, 329328, 333528, 333638, 366431, 370996, 370999, 371000, 371001, 371210 } },   -- uchatscrollbutton
+	[567481] = { "UI_Click_Heavy", "clicks", { 624, 825, 852, 853, 854, 855, 39514, 84240, 170827, 305149, 370991 } },   -- iuiinterfacebuttona
+	[567422] = { "UI_Click_Light", "clicks", { 681, 841, 43938, 44297, 207760, 216027, 301864, 305112, 305159, 325714, 325721, 354509 }, "window_tab" },   -- ucharactersheettab
 	[567467] = { "UI_Click_Light", "clicks", { 113, 114, 823, 824 } },   -- uminimapzoom
 	[567529] = { "UI_Click_Light", "clicks", { 115, 821 } },   -- uminimapopen
 	[567515] = { "UI_Click_Light", "clicks", { 116, 822 } },   -- uminimapclose
 	[567459] = { "UI_Cancel", "clicks", { 846, 847 } },   -- igquestfailed
 	[567483] = { "UI_Click_Light", "clicks", { 677, 864, 891, 247487, 249509 } },   -- imoneydialogopen
 	[567501] = { "UI_Cancel", "clicks", { 678, 865, 866, 892, 249512 } },   -- imoneydialogclose
-	[567507] = { "Page_Turn", "windows", { 679, 839 } },   -- ucharactersheetopen
-	[567433] = { "UI_Cancel", "windows", { 680, 840 } },   -- ucharactersheetclose
+	[567507] = { "Page_Turn", "windows", { 679, 839, 44298, 44300, 44311, 44344, 48191, 73914, 73917, 74421, 170564, 170570, 175320, 207757, 216035, 301856, 305155, 305157, 310330, 310348, 315313, 315324, 315355, 315374, 315443, 320137, 334503, 354505 }, "window_open" },   -- ucharactersheetopen
+	[567433] = { "UI_Cancel", "windows", { 680, 840, 44299, 44301, 44312, 44313, 47373, 48192, 73915, 73918, 74423, 77002, 170559, 170887, 172434, 175321, 207758, 216034, 301857, 305156, 305165, 310331, 310349, 314197, 315316, 315376, 315382, 315384, 315444, 320138, 341958 }, "window_close" },   -- ucharactersheetclose
 	[567490] = { "UI_Click_Heavy", "windows", { 88, 682, 850, 882, 180332 } },   -- uescapescreenopen
 	[567464] = { "UI_Cancel", "windows", { 89, 683, 851 } },   -- uescapescreenclose
-	[567504] = { "Page_Turn", "windows", { 620, 844, 875 } },   -- iquestlogopena
-	[567508] = { "UI_Cancel", "windows", { 621, 845, 876, 877, 879 } },   -- iquestlogclosea
-	[567440] = { "Page_Turn", "windows", { 603, 754, 829, 834, 3190, 3371, 4734 } },   -- iabilitiesopena
-	[567496] = { "UI_Cancel", "windows", { 604, 830, 835, 3191, 3372, 4735 } },   -- iabilitiesclosea
-	[567472] = { "Page_Turn", "windows", { 605, 831, 836 } },   -- iabilitiesturnpagea
-	[567502] = { "Page_Turn", "windows", { 836 } },   -- iabilitiesturnpageb
-	[567457] = { "Page_Turn", "windows", { 836 } },   -- iabilitiesturnpagec
-	[567461] = { "Inventory_Pickup", "windows", { 117, 616, 685, 859, 862 } },   -- iequipmentcontaineropena
-	[567512] = { "Inventory_Drop", "windows", { 617, 686, 860, 863 } },   -- iequipmentcontainerclosea
-	[567462] = { "Inventory_Pickup", "windows", { 8938, 281045 } },   -- keyringopen
-	[567523] = { "Inventory_Drop", "windows", { 8939 } },   -- keyringclose
+	[567504] = { "Page_Turn", "windows", { 620, 844, 875, 84368, 170567, 170871, 338530 }, "window_open" },   -- iquestlogopena
+	[567508] = { "UI_Cancel", "windows", { 621, 845, 876, 877, 879, 84369, 170568, 170872, 338531 }, "window_close" },   -- iquestlogclosea
+	[567440] = { "Page_Turn", "windows", { 603, 754, 829, 834, 3190, 3371, 4734 }, "window_open" },   -- iabilitiesopena
+	[567496] = { "UI_Cancel", "windows", { 604, 830, 835, 3191, 3372, 4735 }, "window_close" },   -- iabilitiesclosea
+	[567472] = { "Page_Turn", "windows", { 605, 831, 836, 62539 } },   -- iabilitiesturnpagea
+	[567502] = { "Page_Turn", "windows", { 836, 62539 } },   -- iabilitiesturnpageb
+	[567457] = { "Page_Turn", "windows", { 836, 62539 } },   -- iabilitiesturnpagec
+	[567461] = { "Inventory_Pickup", "windows", { 117, 616, 685, 859, 862, 143054 }, "bags_open" },   -- iequipmentcontaineropena
+	[567512] = { "Inventory_Drop", "windows", { 617, 686, 860, 863 }, "bags_close" },   -- iequipmentcontainerclosea
+	[567462] = { "Inventory_Pickup", "windows", { 8938, 281045 }, "bags_open" },   -- keyringopen
+	[567523] = { "Inventory_Drop", "windows", { 8939 }, "bags_close" },   -- keyringclose
 	[567451] = { "Social_GroupInvite", "social", { 880, 881 } },   -- iplayerinvitea
 	[567421] = { "Social_Whisper", "social", { 3081 } },   -- itellmessage
 	[567409] = { "DungeonFinder_Ready", "groupFinder", { 8960 } },   -- readycheck (the classic kit)
-	[567478] = { "DungeonFinder_Ready", "groupFinder", { 8960, 139828 } },   -- levelup2: READY_CHECK's file on the modern data (level up itself is levelup.ogg, kit 1440)
+	[567478] = { "DungeonFinder_Ready", "groupFinder", { 139828 } },   -- levelup2: READY_CHECK's file on the modern data (level up itself is levelup.ogg, kit 1440)
 	[567465] = { "DungeonFinder_Ready", "groupFinder", { 17318, 293714 } },   -- lfg_dungeonready (engine, on the proposal)
 	[567513] = { "DungeonFinder_Queue", "groupFinder", { 17317 } },   -- lfg_rolecheck
-	[567420] = { "DungeonFinder_QueueDropped", "groupFinder", { 17341, 137909 } },   -- lfg_denied
+	[567420] = { "DungeonFinder_QueueDropped", "groupFinder", { 17341 } },   -- lfg_denied
 	[567514] = { "UI_Success", "groupFinder", { 17316 } },   -- lfg_rewards
 	[568587] = { "DungeonFinder_Queue", "groupFinder", { 8458, 8462 } },   -- pvp enter queue
 	[568011] = { "DungeonFinder_Ready", "groupFinder", { 8459, 8463, 36609 } },   -- pvp through queue
 	[1067667] = { "DungeonFinder_Queue", "groupFinder", { 47615 } },   -- ui_groupfinderreceiveapplication_01
-	[567439] = { "UI_Success", "quests", { 619, 878 } },   -- iquestcomplete
-	[567415] = { "UI_Error", "errors", {} },   -- error (engine)
+	[567439] = { "UI_Success", "quests", { 878 } },   -- iquestcomplete
+	[6697797] = { "UI_Success", "quests", { 619 } },   -- (2.1.54: this client's file for kit 619, named in KITS)
+	[567415] = { "UI_Error", "errors", { 47355 } },   -- error (engine)
 	[567453] = { "UI_TargetSelect", "targets", { 101, 867, 869, 871, 873, 206593 } },   -- iselecttarget
-	[567520] = { "UI_Cancel", "targets", { 684, 868, 870, 872, 874, 900, 206823 } },   -- ideselecttarget
+	[567520] = { "UI_Cancel", "targets", { 684, 868, 870, 872, 874, 900, 206823, 233220, 350186 } },   -- ideselecttarget
 	[567416] = { "Map_Ping", "map", { 3175 } },   -- mapping
 	-- (kits 247487 and 249509 play this file too, or the money dialog's,
-	-- 567483: listed there only, so one group owns each kit)
+	-- 567483: listed there only, so one group owns each kit -- KITS names them,
+	-- and Tools/sfx_kits.py lists a named kit only under its own group's files)
 	[567428] = { "Loot_Coins", "loot", { 120, 895 } },   -- lootcoinsmall
 	[567413] = { "Loot_Coins", "loot", { 287276 } },   -- lootcoinlarge
-	[567489] = { "SpellIcon_Drag", "spells", { 688, 832, 837, 902 } },   -- uspelliconpickup (engine, on the drag)
+	[567489] = { "SpellIcon_Drag", "spells", { 688, 832, 837, 902, 62540 } },   -- uspelliconpickup (engine, on the drag)
 	[567524] = { "SpellIcon_Place", "spells", { 689, 833, 838, 903 } },   -- uspellicondrop
-	[569593] = { "Character_LevelUp", "levelUp", { 888, 1440 } },   -- sound/spells/levelup (engine, on the level)
+	[569593] = { "Character_LevelUp", "levelUp", { 124, 1440 } },   -- sound/spells/levelup (engine, on the level)
 	[567431] = { "Character_LevelUp", "levelUp", {} },   -- interface levelup
 	-- the engine's item pick-up and put-down sounds (sound/interface/pickup/*),
 	-- one file per material, and the loot pick-up; replaced on the cursor,
 	-- loot, equipment and merchant events, never seen by PlaySound
 	[567517] = { "Inventory_Drop", "inventory", { 1279 } },   -- uilootpickupitem
-	[567542] = { "Inventory_Pickup", "inventory", { 1193 } },
+	[567542] = { "Inventory_Pickup", "inventory", { 1193, 74525 } },
 	[567543] = { "Inventory_Pickup", "inventory", { 1183 } },
 	[567544] = { "Inventory_Pickup", "inventory", { 1196 } },
 	[567545] = { "Inventory_Pickup", "inventory", { 1184 } },
 	[567546] = { "Inventory_Pickup", "inventory", { 1186 } },
 	[567547] = { "Inventory_Drop", "inventory", { 1208, 2984 } },
-	[567548] = { "Inventory_Drop", "inventory", { 1201, 281250 } },
+	[567548] = { "Inventory_Drop", "inventory", { 1201, 84626, 281250 } },
 	[567549] = { "Inventory_Drop", "inventory", { 1214 } },
 	[567550] = { "Inventory_Pickup", "inventory", { 1188 } },
 	[567551] = { "Inventory_Drop", "inventory", { 1210 } },
 	[567552] = { "Inventory_Pickup", "inventory", { 1187 } },
 	[567553] = { "Inventory_Drop", "inventory", { 1205 } },
 	[567554] = { "Inventory_Pickup", "inventory", { 1190 } },
-	[567555] = { "Inventory_Pickup", "inventory", { 1197, 281465 } },
+	[567555] = { "Inventory_Pickup", "inventory", { 1197, 265957, 281465 } },
 	[567556] = { "Inventory_Drop", "inventory", { 1209, 281258, 287934 } },
-	[567557] = { "Inventory_Drop", "inventory", { 1215, 3083 } },
+	[567557] = { "Inventory_Drop", "inventory", { 1215, 355603 } },
 	[567558] = { "Inventory_Pickup", "inventory", { 1199 } },
 	[567559] = { "Inventory_Drop", "inventory", { 1200 } },
 	[567560] = { "Inventory_Pickup", "inventory", { 1191 } },
 	[567561] = { "Inventory_Pickup", "inventory", { 1195 } },
-	[567562] = { "Inventory_Pickup", "inventory", { 1192 } },
+	[567562] = { "Inventory_Pickup", "inventory", { 1192, 287934 } },
 	[567563] = { "Inventory_Drop", "inventory", { 1213 } },
 	[567564] = { "Inventory_Pickup", "inventory", { 1194 } },
 	[567565] = { "Inventory_Pickup", "inventory", { 1185, 5437 } },
-	[567566] = { "Inventory_Drop", "inventory", { 1217 } },
+	[567566] = { "Inventory_Drop", "inventory", { 1217, 247356 } },
 	[567567] = { "Inventory_Drop", "inventory", { 1216 } },
 	[567568] = { "Inventory_Pickup", "inventory", { 1221, 287859, 287860, 287861, 287863, 287864, 287866 } },
 	[567569] = { "Inventory_Drop", "inventory", { 1207 } },
 	[567570] = { "Inventory_Drop", "inventory", { 1203 } },
 	[567571] = { "Inventory_Drop", "inventory", { 1202, 5438 } },
 	[567572] = { "Inventory_Drop", "inventory", { 1206 } },
-	[567573] = { "Inventory_Pickup", "inventory", { 1189 } },
-	[567574] = { "Inventory_Drop", "inventory", { 1204, 3084, 287250 } },
+	[567573] = { "Inventory_Pickup", "inventory", { 1189, 352060 } },
+	[567574] = { "Inventory_Drop", "inventory", { 1204, 3084, 287250, 367733 } },
 	[567575] = { "Inventory_Drop", "inventory", { 1211 } },
 	[567576] = { "Inventory_Pickup", "inventory", { 1198 } },
-	[567577] = { "Inventory_Drop", "inventory", { 1212 } },
+	[567577] = { "Inventory_Drop", "inventory", { 1212, 247355 } },
 }
 
 -- kit -> file, from FILES
@@ -537,6 +572,10 @@ do
 		local name = entry[1]
 		if not Yours.GAME[name] or file < Yours.GAME[name] then
 			Yours.GAME[name] = file
+		end
+		local action = entry[4]   -- (2.1.54: an action's row has the game's own too, its files')
+		if action and (not Yours.GAME[action] or file < Yours.GAME[action]) then
+			Yours.GAME[action] = file
 		end
 	end
 	local game, plain = Yours.LIST.game, Yours.LIST.plain
@@ -727,6 +766,17 @@ local function Takes(id)
 	return r ~= "game"
 end
 
+-- (2.1.54) whether a file is MelloUI's to play, its own muted: its sound taken from the game (Takes), unless its
+-- action (Yours.ACTIONS) has a pick of its own -- the game's own gives the file back whatever its sound's pick is,
+-- any other pick takes it
+function Yours.Muted(entry)
+	local pick = entry[4] and Resolve(entry[4])
+	if pick == nil then
+		return Takes(entry[1])
+	end
+	return pick ~= "game"
+end
+
 -- (the Default skin) a group's switch lets its sounds play while any library sound is picked (Yours.any, counted
 -- again as a setting, the skin or SharedMedia's list changes); Hover Ticks and Scroll Wheel, which run looks of their
 -- own while on, only while their own sound is
@@ -737,7 +787,7 @@ function Yours.Count()
 		return
 	end
 	for id in pairs(Yours.KEY) do
-		if SOUNDS[id] and Takes(id) then
+		if (SOUNDS[id] or Yours.ACTIONS[id]) and Takes(id) then
 			Yours.any = true
 			return
 		end
@@ -782,7 +832,7 @@ local function PlayFile(name, channel)
 		return false, "not in this set"
 	end
 	local t0 = debugprofilestop()
-	local ok, willPlay = pcall(PlaySoundFile, path, channel)
+	local ok, willPlay, handle = pcall(PlaySoundFile, path, channel)
 	local ms = debugprofilestop() - t0
 	local n = calls[name]
 	if n then
@@ -794,7 +844,7 @@ local function PlayFile(name, channel)
 			slowestMs[name] = ms
 		end
 	end
-	return ok, willPlay
+	return ok, willPlay, handle
 end
 
 local PLAYED, SKIPPED, FAILED = "%s played ", "%s skipped (%.2fs after the last) ", "%s FAILED to play (%s) "
@@ -806,6 +856,7 @@ local GIVEN, SILENT = "%s left to the game (its pick) ", "%s silent (None picked
 -- (2.1.45) `id`: the pick it plays (Your Sounds), the name's own unless given
 -- (MelloUI's own kinds play a library file under their own pick)
 local function Play(name, why, a, b, channel, id)
+	Yours.handle = nil   -- (the sound it starts, for Yours.Took)
 	local gap = SOUNDS[name]
 	if not gap then
 		return false
@@ -828,14 +879,15 @@ local function Play(name, why, a, b, channel, id)
 		return true
 	end
 	channel = channel or (M.db and M.db.channel) or "SFX"
-	local ok, willPlay
+	local ok, willPlay, handle
 	if pick then
-		ok, willPlay = pcall(PlaySoundFile, pick, channel)
+		ok, willPlay, handle = pcall(PlaySoundFile, pick, channel)
 	else
-		ok, willPlay = PlayFile(name, channel)
+		ok, willPlay, handle = PlayFile(name, channel)
 	end
 	if ok and willPlay then
 		lastPlayed[name] = now
+		Yours.handle = handle
 		Note(Joined(PLAYED, why), name, a, b)
 		return true
 	end
@@ -849,6 +901,40 @@ function M:Preview(name)
 	local ok, willPlay = PlayFile(name, (self.db and self.db.channel) or "SFX")
 	if not (ok and willPlay) then
 		MelloUI:Print("%s did not play (a new sound file needs a full client restart).", name)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- One sound a moment (2.1.54; Zanark's report: "Page turn ... collapsing with light click"). The game sets a
+-- window's side page or tab as it shows the window, and hides one window as it shows another, each with a kit of
+-- its own in the same frame: two sounds on each other. Among the clicks and the windows only the foremost of a
+-- frame is heard -- an opening (3) before a closing (2) before a click or a tab (1, Yours.RANK): a lesser one is
+-- not played, or stopped by its handle if it already was. Equal ones both play, as before. Yield: whether a sound of
+-- this rank plays now; Took: said after it started (or was silent by its pick: None is its sound)
+--------------------------------------------------------------------------------
+
+Yours.moment = { at = -1, rank = 0, handle = nil }
+
+function Yours.Yield(rank)
+	local m = Yours.moment
+	if m.at ~= GetTime() then
+		return true
+	end
+	if rank < m.rank then
+		return false
+	end
+	if rank > m.rank and m.handle then
+		pcall(StopSound, m.handle)
+		m.handle = nil
+	end
+	return true
+end
+
+function Yours.Took(rank)
+	local m = Yours.moment
+	local now = GetTime()
+	if m.at ~= now or rank >= m.rank then
+		m.at, m.rank, m.handle = now, rank, Yours.handle
 	end
 end
 
@@ -867,7 +953,7 @@ local function ApplyMutes()
 		return
 	end
 	for file, entry in pairs(FILES) do
-		local want = GroupOn(entry[2]) and Takes(entry[1])
+		local want = GroupOn(entry[2]) and Yours.Muted(entry)
 		if want and not muted[file] then
 			if pcall(MuteSoundFile, file) then
 				muted[file] = true
@@ -889,11 +975,9 @@ local function OnPlaySound(kit)
 	if type(kit) ~= "number" then
 		return
 	end
-	local entry = KITS[kit]
+	local named = KITS[kit]
 	local file = KIT_FILE[kit]
-	if not entry and file then
-		entry = FILES[file]
-	end
+	local entry = named or (file and FILES[file])
 	if not entry then
 		if live then
 			Note("kit %d %s: not ours, the game's sound", kit, KIT_NAME)
@@ -908,7 +992,26 @@ local function OnPlaySound(kit)
 		Note("kit %d %s: file %d not muted (MuteSoundFile missing?), the game's sound", kit, KIT_NAME, file)
 		return
 	end
-	Play(entry[1], "for kit %d %s", kit, KIT_NAME)
+	-- (2.1.54) its action -- a window opening or closing, its tab, the bags: its file's, unless the kit says no -- and
+	-- the action's own pick (none: its sound's row, as before); one sound a moment among the clicks and the windows
+	local action = file and FILES[file][4] or nil
+	local picked = action and Resolve(action) ~= nil
+	if named and named[3] == false then
+		-- (a click that plays a window's file: its own sound's row. Left to the game while the file is muted for the
+		-- window's pick, it would be silent: the window's pick then)
+		if not Play(entry[1], "for kit %d %s", kit, KIT_NAME) and picked then
+			Play(entry[1], "for kit %d %s", kit, KIT_NAME, nil, action)
+		end
+		return
+	end
+	local rank = action and Yours.RANK[action] or (entry[2] == "clicks" and 1) or nil
+	if rank and not Yours.Yield(rank) then
+		Note("kit %d %s: not played, a window's sound this moment", kit, KIT_NAME)
+		return
+	end
+	if Play(entry[1], "for kit %d %s", kit, KIT_NAME, nil, picked and action or nil) and rank then
+		Yours.Took(rank)
+	end
 end
 
 local function HookPlaySound()
@@ -1717,11 +1820,21 @@ function MelloUI:PlayCustomUISound(kind)
 	if not M.isEnabled then
 		return false
 	end
+	-- (2.1.54) a window's and the bags' kinds are actions: their kit goes its way, to the PlaySound hook, where the
+	-- action's pick plays
+	if Yours.ACTIONS[kind] then
+		return false
+	end
 	local own = OWN_SOUNDS[CurrentSet()]
 	local name = own and own[kind]
 	local pick = Yours.KEY[kind] and Resolve(kind)
 	if pick == "game" then
 		return "game"
+	end
+	-- (2.1.54, one sound a moment) MelloUI's click after a window's sound of this frame: not played
+	local click = Yours.CLICK[kind] and M.db and M.db.clicks
+	if click and not Yours.Yield(1) then
+		return true
 	end
 	-- (answered true however it went: a play inside its sound's gap, or a pick's file the game would not play, is no
 	-- cue for MelloUI's own file -- None stays silent)
@@ -1730,7 +1843,11 @@ function MelloUI:PlayCustomUISound(kind)
 		if name then
 			Play(name, "%s picked", kind, nil, channel, kind)
 		elseif pick then
-			pcall(PlaySoundFile, pick, channel or (M.db and M.db.channel) or "SFX")
+			local _, _, handle = pcall(PlaySoundFile, pick, channel or (M.db and M.db.channel) or "SFX")
+			Yours.handle = handle
+		end
+		if click then
+			Yours.Took(1)
 		end
 		return true
 	end
@@ -1740,7 +1857,11 @@ function MelloUI:PlayCustomUISound(kind)
 	if NOTICE[kind] then
 		return Play(name, "notice %s", kind, nil, "Master", kind)
 	end
-	return GroupOn("clicks") and Play(name, "configurator %s", kind, nil, nil, kind) or false
+	if GroupOn("clicks") and Play(name, "configurator %s", kind, nil, nil, kind) then
+		Yours.Took(1)
+		return true
+	end
+	return false
 end
 
 -- (2.1.45) a Your Sounds row's Play: its pick as it plays now, whichever group is on (the row sleeps while the module
@@ -1749,7 +1870,8 @@ function Yours.Play(id)
 	local channel = Yours.MASTER[id] and "Master" or (M.db and M.db.channel) or "SFX"
 	local pick = Resolve(id)
 	if not SOUNDS[id] and (pick == nil or pick == "game") then
-		lastPlayed[(OWN_SOUNDS[CurrentSet()] or OWN_SOUNDS.modern)[id] or id] = false
+		-- (an action's row: its kit, by its kind of Core's PlayUISound -- what the hook plays for it now)
+		lastPlayed[Yours.ACTIONS[id] or (OWN_SOUNDS[CurrentSet()] or OWN_SOUNDS.modern)[id] or id] = false
 		MelloUI:PlayUISound(id)
 		return true
 	end
