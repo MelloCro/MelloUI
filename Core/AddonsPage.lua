@@ -321,7 +321,7 @@ local function Card(parent, e, width, skin, ctx)
 		sw.melloTipTitle, sw.melloTipBody = Tr(TEXT.arrow), Tr(TEXT.arrowTip)
 		Perf.HookScript(sw, "OnEnter", ArrowTipEnter)
 		Perf.HookScript(sw, "OnLeave", W.TipLeave)
-		W.NewTag(sw:GetParent(), label, "2.1.51")   -- (the New tag after its label, while 2.1.51 is new)
+		W.NewTag(sw:GetParent(), label)   -- (the New tag after its label, while 2.1.51 is new)
 		card.arrowSwitch = sw
 		Rule(body, by + T.ROW_H - 2)
 		by = by + T.ROW_H
