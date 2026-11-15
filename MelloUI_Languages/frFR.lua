@@ -1437,7 +1437,7 @@ Lang:Add("frFR", {
 	["Name"] = "Nom",
 	["Newest First"] = "Plus récents d'abord",
 	["Item Level"] = "Niveau d'objet",
-	["Loot Flight"] = "Vol du butin",
+	["Loot Flight"] = "Déplacement du butin",
 	["Looted items fly into your bag window; the rarer the item, the bigger the effect."] = "Les objets ramassés rejoignent votre fenêtre de sacs en volant ; plus l’objet est rare, plus l’effet est marqué.",
 	["Items Glide"] = "Déplacement fluide des objets",
 	["Items glide to their new slots instead of jumping."] = "Les objets rejoignent leurs nouveaux emplacements en glissant, sans saut brusque.",
