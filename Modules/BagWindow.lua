@@ -1501,36 +1501,31 @@ local function PlusLook(b, lit)
 	end
 end
 
--- A split stack dropped on a + slot: the game's split (its stack split frame, or the pad's: C_Container.SplitContainerItem)
--- puts part of a stack on the cursor, and ClearCursor only joins that part to its stack again -- dropped on a + slot it
--- went nowhere (the + slot's place was kept, the stack stayed whole). The split item is noted here (M.Split.id, from
--- the split until the cursor is empty again; a watch on CURSOR_CHANGED only while one is noted), and the + slot puts
--- it into the first free slot of its view instead (a normal bag's before a bag type's; no free slot: back on its stack).
+-- An item from the bags dropped on a + slot goes into a free slot of its view. Held from the bags, the item still
+-- stands locked in its own slot; ClearCursor only put it back there, and a split stack's part then joined its stack
+-- again -- dropped on a + slot it went nowhere (the + slot's place was kept, the stack stayed whole). A free slot
+-- takes it whole or split alike: the window lays the bags by kind, not by slot, so a whole stack moving loses nothing.
+-- One held from elsewhere (worn gear, the bank in the bags' window) goes back as before (ClearCursor). (2.1.54:
+-- without the post-hook on C_Container.SplitContainerItem #23 had -- no hook on the game's bag calls.)
 -- (On M, not in new file locals: the file's main chunk is close to Lua's 200 locals.)
-M.Split = { id = nil, watch = nil }
+M.Plus = {}
 
-M.Split.Watch = Shared("OnEvent of the bag window's split watch", function()
-	if not CursorItem() then
-		M.Split.id = nil
-		M.Split.watch:UnregisterEvent("CURSOR_CHANGED")
-	end
-end, "event")
-
-M.Split.Hook = Shared("the bag window's note of a split stack", function(bag, slot)
-	local ok, id = pcall(C_Container.GetContainerItemID, bag, slot)
-	local split = M.Split
-	split.id = ok and Num(id) or nil
-	if split.id then
-		if not split.watch then
-			split.watch = CreateFrame("Frame")
-			Perf.SetScript(split.watch, "OnEvent", split.Watch)
+-- the item held (`id`) came from a slot of the view `view`: one of its slots holds it, locked while it is held
+function M.Plus.FromView(view, id)
+	local C = C_Container
+	for _, bag in ipairs(view and view.containers() or {}) do
+		for slot = 1, Num(C.GetContainerNumSlots(bag)) or 0 do
+			local info = C.GetContainerItemInfo(bag, slot)
+			if info and info.isLocked == true and Num(info.itemID) == id then
+				return true
+			end
 		end
-		split.watch:RegisterEvent("CURSOR_CHANGED")
 	end
-end, "hook")
+	return false
+end
 
--- the split part held put into the first free slot of the view `view`'s containers; false: none free
-function M.Split.Put(view)
+-- the item held put into the first free slot of the view `view`'s containers; false: none free
+function M.Plus.Put(view)
 	local C = C_Container
 	local fb, fs
 	for _, bag in ipairs(view and view.containers() or {}) do
@@ -1564,8 +1559,8 @@ local PlusDrop = Shared("OnReceiveDrag / OnClick on a bag window + slot", functi
 		placed[k] = v
 	end
 	placed[id] = (kind ~= NaturalKind(id)) and kind or nil
-	-- (a split part: into a free slot, not back on its stack -- M.Split)
-	if not (M.Split.id == id and M.Split.Put(self.view)) then
+	-- (from the bags: into a free slot, not back where it stood -- M.Plus)
+	if not (M.Plus.FromView(self.view, id) and M.Plus.Put(self.view)) then
 		ClearCursor()
 	end
 	MelloUI:PlayUISound("check_on")
@@ -1602,7 +1597,7 @@ local function LayPlus(i, key, x, y)
 		S.pluses[i] = b
 	end
 	b.placeKind = key
-	b.view = S   -- (the view it is laid in: the bags' or the bank's -- M.Split.Put)
+	b.view = S   -- (the view it is laid in: the bags' or the bank's -- M.Plus)
 	b:SetSize(G.SLOT, G.SLOT)
 	b.markSize = math.floor(G.SLOT * 0.55 + 0.5)
 	b.mark:SetSize(b.markSize, b.markSize)
@@ -2147,10 +2142,6 @@ local function Hook()
 		hooksecurefunc("ToggleBag", Shared("the bag window's step with the game's ToggleBag", function(id)
 			Sync(id == G.REAGENT and "flip" or nil)
 		end, "hook"))
-	end
-	-- a split stack noted for the + slots (M.Split)
-	if type(C_Container) == "table" and type(C_Container.SplitContainerItem) == "function" then
-		hooksecurefunc(C_Container, "SplitContainerItem", M.Split.Hook)
 	end
 end
 
