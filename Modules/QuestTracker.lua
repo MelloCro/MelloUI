@@ -55,7 +55,8 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 	-- where the layout fit hung the game's tracker (Unplaced, below): this
 	-- machine's fact, never in a profile, never set by a setup
 	-- (2.1.39) questieInstancesOpen: Questie's Minimize In Instances switched off once (Core/QuestieLook.lua)
-	keep = { "fitAnchor", "fitAnchorWas", "questieInstancesOpen" },
+	-- (2.1.53) questieOwn: Questie's own sizes, text and sort while the Quest Tracker's are written into them
+	keep = { "fitAnchor", "fitAnchorWas", "questieInstancesOpen", "questieOwn" },
 	defaults = {
 		-- the user's settings, 2026-09-23 ("Height 500 by default, width 300,
 		-- scale 100%, font size 13 and scroll step 25"); 0 in Height / Width
@@ -123,6 +124,17 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)." },
 		{ type = "toggle", key = "turnInLine", name = "Turn-in Line",
 		  desc = "A finished quest says who takes it and where." },
+		-- (2.1.53; the user, 2026-11-15: "the Questie Custom Quest Tracker does not Respond to Any setting in the Quest
+		-- Tracker category") the rows Questie's tracker has nothing for ask it (Core/ConfigLayout.lua's `when`): this
+		-- tracker lists the quests -- false while Questie's does in MelloUI's look (Core/QuestieLook.lua: the others are
+		-- written into Questie's). Read only, never a row of its own (L.unplaced), never saved
+		{ type = "toggle", key = "ownLines", name = "MelloUI Lists The Quests", new = "2.1.53",
+		  get = function()
+			local QK = rawget(MelloUI, "QuestieLook")
+			return not (type(QK) == "table" and type(QK.InUse) == "function" and QK.InUse())
+		  end,
+		  set = function() end,
+		  desc = "Whether MelloUI's tracker lists the quests itself, not Questie's tracker in MelloUI's look." },
 		{ type = "button", name = "Reset Position", text = "Reset",
 		  hint = "back under the minimap (or on the game's tracker's place)",
 		  desc = "Puts the tracker back in its starting place.",
@@ -266,7 +278,10 @@ end
 -- tracker lists them alone, docked on Questie's tracker as one panel --
 -- its title row out, Questie's width and scale, under it, growing down (on top where the screen ends), moved and
 -- hidden with it (Core/QuestieLook.lua tells when it moves or changes). Dock.base: Questie's tracker while docked; Dock.width: its
--- width, this tracker's own then (Dock.Lay, after LayFrame)
+-- width, this tracker's own then (Dock.Lay, after LayFrame). (2.1.53; the user, 2026-11-15: "there is no active quest
+-- currently, the Leveling Addon Guide Tracker also Disappears") Questie's hidden because it has nothing to list
+-- (QuestieLook.Empty): they stand on their own, title row and all, in this tracker's own place, docked again as
+-- Questie's shows
 local Dock = { base = nil, width = nil, GAP = 0, open = nil }   -- (open: Questie's width while it was last unfolded)
 
 -- Questie's tracker folded to its heading (its header's click; its own option in a dungeon): read, never written
@@ -4079,8 +4094,11 @@ local function Rebuild()
 	if type(QK) == "table" and type(QK.TracksRecipes) == "function" and QK.TracksRecipes() then
 		recipes = {}   -- (Questie 12.6 on lists them itself, in MelloUI's look: never twice)
 	end
-	local base = aside and (GUIDE.data or #recipes > 0) and rawget(_G, "Questie_BaseFrame") or nil
+	local docks = aside and (GUIDE.data or #recipes > 0) and true or false
+	local base = docks and rawget(_G, "Questie_BaseFrame") or nil
 	base = base and base:IsShown() and base or nil
+	-- (2.1.53) Questie's out of sight with nothing to list: the docked ones on their own (Dock)
+	local alone = docks and not base and type(QK) == "table" and type(QK.Empty) == "function" and QK.Empty() or false
 	if base ~= Dock.base then
 		Dock.base = base
 		header:SetShown(not base)
@@ -4213,8 +4231,8 @@ local function Rebuild()
 	-- nothing watched: nothing shown, as the game's tracker; in Edit Mode the
 	-- game's own is out to be moved, and this one waits; (2.1.39; the user, 2026-11-10: "Questie Function but our
 	-- Look ... if questie has a quest tracker, i want its functions and layout, but our Look and feel") while Questie's
-	-- own tracker is on, only docked (above)
-	frame:SetShown(entries > 0 and not inEditMode and (not aside or base ~= nil))
+	-- own tracker is on, only docked (above), or (2.1.53) on its own while Questie's has nothing to list
+	frame:SetShown(entries > 0 and not inEditMode and (not aside or base ~= nil or alone))
 	Motion.ListDone(questsOpen, entries > 0)   -- (1.2.0: after the show: the first list shown makes it ready)
 	-- the view stays where it was (clamped to the new length), or at the
 	-- end when it was there

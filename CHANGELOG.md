@@ -8,6 +8,8 @@
 - Widgets: hovering a loot roll now lists who has rolled on it so far, under the item's tooltip: each player in their class colour with Need, Greed or Pass, and who is still deciding.
 - Party and raid frames: the indicators a frame starts with no longer lie on its name, its health text or its raid mark. On raid frames your heals over time stand bottom right above the bars, shields on the right edge, other players' defensives beside the raid mark and the boss debuff on the left edge. On party frames with portraits they stand in two short rows beside the frame, past the Damage Meter's values where those show. Indicators you placed yourself stay where you put them.
 - Party and raid frames: a new indicator's time left and stack count no longer lie on each other. Both are smaller, and the count hangs on the icon's corner. Indicators you already have keep their own sizes.
+- Questie's tracker: it now follows the Quest Tracker page's settings: Width or Match The Minimap's Width, Height, Text Size, Header Text Size, Nearest Quest First and Reset Position. Dragging its corner sets Width and Height. Questie's own sizes come back when MelloUI's look or Quest Tracker is switched off, and the settings Questie's tracker has nothing for are greyed out while it lists your quests.
+- Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own in the Quest Tracker's place until Questie's tracker shows again.
 
 ## 2.1.52
 

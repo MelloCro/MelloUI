@@ -105,7 +105,9 @@ I.LIST = {
 	  does = {
 		"Its quest data feeds MelloUI's Quest List, map marks and Route.",
 		"Its icons and its tracker wear MelloUI's look.",
-		"Leveling guide steps dock under its tracker.",
+		-- (2.1.53; the user: "Yes, write them") Core/QuestieLook.lua's Apply / Give
+		"Its tracker follows the Quest Tracker page's width, height, text sizes, Nearest Quest First and Reset Position; its own come back with the look off.",
+		"Leveling guide steps dock under its tracker, and stand on their own while it has no quest.",
 	  },
 	  short = "Its quest data for MelloUI's quests; its icons and its tracker in MelloUI's look",
 	  links = { { "Quest List > Map", id = "QuestList.mapPins" }, { "Quest Tracker", id = "QuestTracker.showXP" },

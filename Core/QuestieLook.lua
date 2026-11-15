@@ -18,7 +18,7 @@
 --     the game's quest mark (as its icons on MelloUI's map), its quest items on the tracker's tray (W.TrayBox), its
 --     quests' focus buttons (Questie 12.6) MelloUI's tracker's own quest marks (the !, the ?, Route's flag)
 --   * a leveling guide's steps stay MelloUI's tracker's, docked on top of Questie's (Modules/QuestTracker.lua's Dock;
---     told here when Questie's shows, hides or changes size)
+--     told here when Questie's shows, hides or changes size), on their own while Questie's has nothing to list (Empty)
 -- Its quest icons never take the place of MelloUI's (the user, 2026-11-10: "didnt i say that we provide the look? this
 -- way we have lost our own function which i like very much"): where MelloUI draws a kind itself -- the minimap's
 -- objective marks, the game's map's givers and objective marks (Drawn) -- Questie's of that kind are out of sight, its
@@ -26,8 +26,11 @@
 -- on the game's map while MelloUI's map is off) wear MelloUI's pictures (QL.ICONS): the quest givers' marks, the icon
 -- set's objectives -- put on Questie's own picture when Questie sets it (a hook on its icons' UpdateTexture), so its
 -- fading, sizes, glow, clicks and tooltips stay Questie's; all given back when Questie lets the icon go (its Unload).
--- Never a setting of Questie's written; a hook on its tracker's Update (that never yields: never its Initialize, nor
--- its line pool's, which do -- the no-hooks-on-coroutine-addons rule). Questie's own look back whenever MelloUI's
+-- The Quest Tracker's settings on it (2.1.53, the user's word): its width (or the minimap's), height, text sizes, sort
+-- and place written into Questie's own while the look is on, its own given back after (Apply, Give). No other setting
+-- of Questie's written but two once (KeepOpenInDungeons; the nameplates'); a hook on its tracker's Update (that never
+-- yields: never its Initialize, nor its line pool's, which do -- the no-hooks-on-coroutine-addons rule). Questie's own
+-- look back whenever MelloUI's
 -- Quest Tracker is switched off or Questie's tracker is. Made at its first dressing, never at login.
 --   MelloUI.QuestieLook.Dress()   lay it again (after Questie's Update, a palette, a setting)
 --------------------------------------------------------------------------------
@@ -100,6 +103,7 @@ local function On()
 	return (Used() and m and m.isEnabled and type(OV) == "table" and type(OV.By) == "function"
 		and OV.By("questTracker") == "Questie") and true or false
 end
+QL.InUse = On   -- (2.1.53: the Quest Tracker's rows Questie's tracker has nothing for sleep by it: ownLines)
 
 --------------------------------------------------------------------------------
 -- Faces
@@ -294,10 +298,17 @@ end
 -- lays it at its start)
 QL.COLUMN_GAP = 8   -- (MelloUI's own tracker's: Modules/QuestTracker.lua's COLUMN_GAP)
 
-local function Unplaced()
+-- Questie's profile (its settings; nil before it made them)
+local function Profile()
 	local Q = rawget(_G, "Questie")
-	local profile = type(Q) == "table" and type(Q.db) == "table" and Q.db.profile
-	return type(profile) == "table" and profile.TrackerLocation == nil
+	local qdb = type(Q) == "table" and rawget(Q, "db")
+	local profile = type(qdb) == "table" and qdb.profile
+	return type(profile) == "table" and profile or nil
+end
+
+local function Unplaced()
+	local profile = Profile()
+	return profile ~= nil and profile.TrackerLocation == nil
 end
 
 local function Unfollow(base)
@@ -360,6 +371,172 @@ local function Opacity(panel)
 	if el and el.SetAlpha then
 		el:SetAlpha(o)
 	end
+end
+
+-- (2.1.53; the user, 2026-11-15: "the Questie Custom Quest Tracker does not Respond to Any setting in the Quest Tracker
+-- category in the Configurator", asked whether MelloUI may write them into Questie's own: "Yes, write them") Questie
+-- lays its tracker from its own profile only, so while it wears MelloUI's look the Quest Tracker's settings are
+-- written there, each only where it differs, and Questie's Update asked for once to lay them:
+--   Width, or Match The Minimap's Width -> TrackerWidth (the minimap column's width on the screen, in Questie's units)
+--   Height -> TrackerHeight
+--   Text Size -> its quests' and zones' text, one size smaller its objectives' (as MelloUI's tracker draws them)
+--   Header Text Size -> its title's
+--   Nearest Quest First -> its sort By Proximity (off: its own sort, By Zone where its own was a nearness)
+--   Reset Position -> its place forgotten (TrackerLocation): back under the minimap column (HangUnder)
+-- Questie's own values kept the first time one is written (the Quest Tracker's keep, questieOwn: never in a profile,
+-- a reload in between keeps them) and given back as the look goes off (Give). A size dragged on Questie's own corner
+-- (Questie writes TrackerWidth / TrackerHeight as it sizes) comes back as MelloUI's Width (Match The Minimap's Width
+-- off) and Height; Questie's own text and sort options are MelloUI's while the look is on. The settings Questie's
+-- tracker has nothing for sleep in the Configurator (ownLines, Modules/QuestTracker.lua). (After nameplateEnabled and
+-- minimizeTrackerInInstances, the third of Questie's settings MelloUI writes at the user's word; these while the look is
+-- on only)
+QL.SET_KEYS = { "TrackerWidth", "TrackerHeight", "trackerFontSizeQuest", "trackerFontSizeZone",
+	"trackerFontSizeObjective", "trackerFontSizeHeader", "trackerSortObjectives" }
+QL.SET_BY = { width = true, matchMinimap = true, maxHeight = true, textSize = true, headerSize = true, nearestFirst = true }
+QL.SORT_NEAR = "byProximity"
+QL.SORT_OWN = "byZone"   -- (Questie's default sort)
+S.want, S.wrote = {}, {}   -- [Questie's key] = MelloUI's value; the value it had after the last write (or look)
+
+local function Round(v)
+	return math.floor(v + 0.5)
+end
+
+-- the minimap column's width in Questie's units, while the tracker matches it (nil: Width's own)
+local function ColumnWidth(base, db)
+	if db.matchMinimap == false then
+		return nil
+	end
+	local mp = MelloUI:GetModule("MinimapPanel")
+	if not (mp and mp.isEnabled and type(mp.ColumnWidth) == "function") then
+		return nil
+	end
+	local ok, _, line = pcall(mp.ColumnWidth, mp)
+	line = ok and Number(line) or nil
+	local scale = Number(base:GetEffectiveScale())
+	if not (line and line > 0 and scale and scale > 0) then
+		return nil
+	end
+	return Round(line / scale)
+end
+
+-- Questie dragging its tracker's corner (its own sizer: it writes the size itself meanwhile)
+local function Sizing()
+	local TB = Questie("TrackerBaseFrame")
+	return TB ~= nil and rawget(TB, "isSizing") == true
+end
+
+-- what MelloUI's settings make of Questie's (S.want)
+local function Wants(base, profile, db)
+	local want = S.want
+	local text = Round(tonumber(db.textSize) or 13)
+	want.TrackerWidth = ColumnWidth(base, db) or math.max(0, Round(tonumber(db.width) or 0))
+	want.TrackerHeight = math.max(0, Round(tonumber(db.maxHeight) or 0))
+	want.trackerFontSizeQuest = text
+	want.trackerFontSizeZone = text
+	want.trackerFontSizeObjective = math.max(6, text - 1)
+	want.trackerFontSizeHeader = Round(tonumber(db.headerSize) or 16)
+	if db.nearestFirst ~= false then
+		want.trackerSortObjectives = QL.SORT_NEAR
+	else
+		local own = type(db.questieOwn) == "table" and db.questieOwn.trackerSortObjectives
+		local was = type(own) == "string" and own or profile.trackerSortObjectives
+		want.trackerSortObjectives = (type(was) == "string" and not was:find("^byProximity")) and was or QL.SORT_OWN
+	end
+end
+
+-- a size dragged on Questie's corner since the last write: MelloUI's Width / Height. A 0 is Questie's reset (its
+-- Reset Tracker, a right-click on its corner: QuestieTracker:ResetLocation), never a size: MelloUI's written again
+local function TakeBack(profile, db)
+	local w, h = Number(profile.TrackerWidth), Number(profile.TrackerHeight)
+	local ww, wh = S.wrote.TrackerWidth, S.wrote.TrackerHeight
+	local newW = w and ww and w >= 1 and math.abs(w - ww) >= 1 and Round(w) or nil
+	local newH = h and wh and h >= 1 and math.abs(h - wh) >= 1 and Round(h) or nil
+	if not (newW or newH) then
+		return
+	end
+	S.taking = true
+	if newW then
+		db.width, db.matchMinimap = newW, false
+		MelloUI:NotifySettingChanged("QuestTracker", "width", newW)
+		MelloUI:NotifySettingChanged("QuestTracker", "matchMinimap", false)
+	end
+	if newH then
+		db.maxHeight = newH
+		MelloUI:NotifySettingChanged("QuestTracker", "maxHeight", newH)
+	end
+	S.taking = false
+end
+
+-- MelloUI's settings into Questie's profile -> true when one was written (Questie's Update then lays it)
+local function Apply(base)
+	local profile, m = Profile(), Tracker()
+	local db = m and m.db
+	if not (profile and type(db) == "table") or Sizing() then
+		return false
+	end
+	TakeBack(profile, db)
+	Wants(base, profile, db)
+	local changed = false
+	for i = 1, #QL.SET_KEYS do
+		local k = QL.SET_KEYS[i]
+		local v = S.want[k]
+		if v ~= nil and profile[k] ~= v then
+			if type(db.questieOwn) ~= "table" then
+				db.questieOwn = {}
+			end
+			if db.questieOwn[k] == nil then
+				db.questieOwn[k] = profile[k]
+			end
+			profile[k] = v
+			changed = true
+		end
+		S.wrote[k] = profile[k]
+	end
+	return changed
+end
+
+-- Questie's own values back (the look gone off)
+local function Give()
+	local profile, m = Profile(), Tracker()
+	local db = m and m.db
+	local own = type(db) == "table" and db.questieOwn
+	if type(own) == "table" then
+		if profile then
+			for k, v in pairs(own) do
+				profile[k] = v
+			end
+		end
+		db.questieOwn = nil
+	end
+	for k in pairs(S.wrote) do
+		S.wrote[k] = nil
+	end
+end
+
+-- a setting changed (or the minimap column's width): written, and laid by Questie's Update at once
+local function Settle()
+	local base = rawget(_G, "Questie_BaseFrame")
+	if not (S.on and base) or S.taking or InCombatLockdown() then
+		return
+	end
+	if Apply(base) then
+		local QT = Questie("QuestieTracker")
+		if QT and type(QT.Update) == "function" then
+			pcall(QT.Update, QT)
+		end
+	end
+end
+
+-- Reset Position: Questie's place forgotten, its tracker back under the minimap column (or on its own default place
+-- without MelloUI's minimap: Unfollow)
+local function Reset()
+	local base, profile = rawget(_G, "Questie_BaseFrame"), Profile()
+	if not (S.on and base and profile) or InCombatLockdown() then
+		return
+	end
+	profile.TrackerLocation = nil
+	S.followed = true
+	QL.Dress()
 end
 
 -- a + or - of the Configurator's over a button of Questie's (its picture out of sight), or beside a zone's name
@@ -965,6 +1142,7 @@ function QL.Dress()
 			S.on = false
 			Undress()
 			Unfollow(base)   -- (2.1.52: its own default place again)
+			Give()   -- (2.1.53: its own sizes, text and sort again)
 			Inked()
 			-- (its own fonts back: Questie sets them at its next Update)
 			local QT = Questie("QuestieTracker")
@@ -987,6 +1165,10 @@ function QL.Dress()
 	HangUnder(base)   -- (2.1.52: under MelloUI's minimap column where nobody placed it; then its rim, at that place)
 	Seat(base, panel)
 	Opacity(panel)
+	-- (2.1.53) the Quest Tracker's sizes, text and sort written into Questie's: laid by its next Update (S.redo)
+	if Apply(base) then
+		S.redo = true
+	end
 	DressHeader(base, panel)
 	Lines(DressLine)
 	for i = 1, 25 do
@@ -1615,6 +1797,25 @@ function QL.TracksRecipes()
 	return ok and yes == true
 end
 
+-- (2.1.53; the user, 2026-11-15: "when users use them, and there is no active quest currently, the Leveling Addon
+-- Guide Tracker also Disappears") Questie's tracker out of sight because it has nothing to list -- its own rule: no
+-- quest tracked and its Always Show Tracker off (TrackerUtils.HasQuest) -- not folded away by it in a fight or in a
+-- dungeon with quests in it. Then the steps docked on it (Modules/QuestTracker.lua's Dock) stand on their own, in
+-- MelloUI's tracker's own place, until Questie's shows again. Read, never written
+function QL.Empty()
+	local base = rawget(_G, "Questie_BaseFrame")
+	if base and base:IsShown() then
+		return false
+	end
+	local TU = Questie("TrackerUtils")
+	local has = TU and rawget(TU, "HasQuest")
+	if type(has) ~= "function" then
+		return false
+	end
+	local ok, any = pcall(has)
+	return ok and not any
+end
+
 local function OursOpen()
 	return MapOurs() and not MelloUI.Safe.GamepadUI()
 end
@@ -1811,6 +2012,8 @@ Perf.SetScript(login, "OnEvent", function(self)
 	MelloUI:On("column", function()
 		if S.on and S.followed then
 			QL.Dress()
+		elseif S.on then
+			Settle()   -- (2.1.53: placed by the player, still as wide as the minimap where it matches it)
 		end
 	end, QL)
 	-- (its quest lines' marks: the followed quest changed -- the game's event MelloUI's own tracker lays its marks by)
@@ -1829,9 +2032,16 @@ Perf.SetScript(login, "OnEvent", function(self)
 			Again()
 		end
 	end, QL)
-	MelloUI:On("setting", function(name, key)
-		if name == "QuestTracker" and key == "opacity" and S.panel then
+	MelloUI:On("setting", function(name, key, value)
+		if name ~= "QuestTracker" then
+			return
+		end
+		if key == "opacity" and S.panel then
 			Opacity(S.panel)
+		elseif QL.SET_BY[key] then
+			Settle()   -- (2.1.53: written into Questie's)
+		elseif key == "pos" and value == nil then
+			Reset()   -- (2.1.53: Reset Position)
 		end
 	end, QL)
 end)

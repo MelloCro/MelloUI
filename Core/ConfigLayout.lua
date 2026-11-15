@@ -1337,13 +1337,19 @@ function L.Define(R, Link)
 		line = "Only while the tracker does not match the minimap (Match Minimap or MelloUI's minimap off)" } })
 	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.maxHeight")
 	R("QuestTracker", "Quest Tracker", "Layout", "QuestTracker.#Reset Position")
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.itemButtons")
+	-- (2.1.53; the user, 2026-11-15: "the Questie Custom Quest Tracker does not Respond to Any setting in the Quest
+	-- Tracker category") while Questie's tracker lists the quests in MelloUI's look, the rows above, the text sizes and
+	-- Nearest Quest First are written into Questie's (Core/QuestieLook.lua); the ones its tracker has nothing for sleep
+	local OWN_LINES = { key = "QuestTracker.ownLines", value = true,
+		line = "Only while MelloUI's tracker lists the quests (Questie's tracker has none of it)" }
+	L.unplaced["QuestTracker.ownLines"] = "asked by the Quest Tracker rows' `when` only: no setting to offer"
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.itemButtons", { when = OWN_LINES })
 	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.nearestFirst")
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.nearestTurnIn")   -- (2.1.50, Tereith's request)
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showDistance")
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showXP")   -- (2.1.39: the user)
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.turnInLine")
-	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.scrollStep")
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.nearestTurnIn", { when = OWN_LINES })   -- (2.1.50, Tereith's request)
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showDistance", { when = OWN_LINES })
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.showXP", { when = OWN_LINES })   -- (2.1.39: the user)
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.turnInLine", { when = OWN_LINES })
+	R("QuestTracker", "Quest Tracker", "Behaviour", "QuestTracker.scrollStep", { when = OWN_LINES })
 	R("QuestTracker", "Objective Tracker", "Look", "UIModifications.TrackerPanel", { name = "Painted Skin", when = GAME_TRACKER })
 
 	-- Quest List (header: its module's switch)
@@ -1495,7 +1501,7 @@ function L.Define(R, Link)
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.itemsGlide", { free = true, card = "Bag Window" })
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.moneyRoll", { free = true, card = "Bag Window" })
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.fullWarning", { free = true, card = "Bag Window" })
-	R("Animations", "Bars & Windows", "Look", "QuestTracker.progressMotion", { card = "Quest Tracker" })
+	R("Animations", "Bars & Windows", "Look", "QuestTracker.progressMotion", { card = "Quest Tracker", when = OWN_LINES })
 	-- (2.1.52, the user's picks "C, A, A" to the Quest Moments sketch: the game's yellow quest lines played as moments)
 	R("Animations", "Bars & Windows", "Look", "QuestMoments.!enabled", { name = "Quest Moments", card = "Quest Moments" })
 	R("Animations", "Bars & Windows", "Look", "QuestMoments.progress", { card = "Quest Moments" })
