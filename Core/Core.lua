@@ -4422,6 +4422,8 @@ end
 --   Colours.PowerPicked(token) -> r, g, b  only a player's pick: the game's power art carries its own colour, so a pick
 --                                          swaps it for the game's colourable fill
 --   Colours.Reaction(reaction) -> r, g, b  UnitReaction's 1-8
+--   Colours.Dispel(type) -> r, g, b        (2.1.54) an aura type's: "Magic", "Curse", "Disease", "Poison", "Bleed",
+--                                          "None" (no type) -- the type borders' tint (Modules/Auras.lua)
 --   Colours.Game(value) -> r, g, b         a row's default, the game's colour by name: "class:MAGE", "power:MANA",
 --                                          "reaction:4" (W.ColourValue reads them; nil for any other value)
 --   the bus's "colours"                    the frame after a pick moved (a drag on the wheel moves it many times), or the
@@ -4451,6 +4453,13 @@ do
 		{ key = 5, label = "Friendly" },
 	}
 	local REACTION_OF = { 2, 2, 3, 4, 5, 5, 5, 5 }
+	-- (2.1.54; the user, 2026-11-15: "colour the Borders depending on the Debuff / Buff Type", the pick "D, colour
+	-- wheels") the aura types the game colours (DEBUFF_TYPE_<TYPE>_COLOR; "None": a debuff with no type)
+	local DISPELS = {
+		{ key = "Magic", label = "Magic" }, { key = "Curse", label = "Curse" }, { key = "Disease", label = "Disease" },
+		{ key = "Poison", label = "Poison" }, { key = "Bleed", label = "Bleed" }, { key = "None", label = "Untyped" },
+	}
+	Colours.DISPELS = DISPELS
 
 	local M   -- (the module, below; a world without the registry has no picks)
 
@@ -4589,6 +4598,29 @@ do
 		return RGBOf(Entry("FACTION_BAR_COLORS", reaction))
 	end
 
+	-- the game's colour of an aura type (its global ColorMixin; a client with only DebuffTypeColor: that table's)
+	local function GameDispel(name)
+		if type(name) ~= "string" then
+			return nil
+		end
+		local r, g, b = RGBOf(rawget(_G, "DEBUFF_TYPE_" .. name:upper() .. "_COLOR"))
+		if r then
+			return r, g, b
+		end
+		return RGBOf(Entry("DebuffTypeColor", name == "None" and "none" or name))
+	end
+
+	function Colours.Dispel(name)
+		if Secret(name) or type(name) ~= "string" then
+			return nil
+		end
+		local r, g, b = Picked("dispel" .. name)
+		if r then
+			return r, g, b
+		end
+		return GameDispel(name)
+	end
+
 	function Colours.Game(value)
 		if type(value) ~= "string" then
 			return nil
@@ -4600,6 +4632,8 @@ do
 			return RGBOf(Entry("PowerBarColor", name))
 		elseif kind == "reaction" then
 			return RGBOf(Entry("FACTION_BAR_COLORS", tonumber(name)))
+		elseif kind == "dispel" then
+			return GameDispel(name)
 		end
 		return nil
 	end
@@ -4611,10 +4645,12 @@ do
 		local POWER_DESC = "This power's colour on MelloUI's player, target and focus frames, party and raid frames and the "
 			.. "Personal Display."
 		local REACTION_DESC = "An NPC's health bar in this standing, with Health Bar Colour on Class (players) / reaction (NPCs)."
+		local DISPEL_DESC = "The border of buffs and debuffs of this type on MelloUI's icons: yours, your target's and enemy "
+			.. "nameplates', where their type borders are on."
 		local defaults, options = {}, {}
-		local function Row(key, name, default, desc)
+		local function Row(key, name, default, desc, new)
 			defaults[key] = default
-			options[#options + 1] = { type = "colour", key = key, name = name, desc = desc, free = true }
+			options[#options + 1] = { type = "colour", key = key, name = name, desc = desc, free = true, new = new }
 		end
 		local names = rawget(_G, "LOCALIZED_CLASS_NAMES_MALE")
 		for _, c in ipairs(CLASSES) do
@@ -4628,6 +4664,9 @@ do
 		for _, s in ipairs(REACTIONS) do
 			local game = rawget(_G, "FACTION_STANDING_LABEL" .. s.key)
 			Row("reaction" .. s.key, type(game) == "string" and game or s.label, "reaction:" .. s.key, REACTION_DESC)
+		end
+		for _, d in ipairs(DISPELS) do
+			Row("dispel" .. d.key, d.label, "dispel:" .. d.key, DISPEL_DESC, "2.1.54")
 		end
 		M = MelloUI:RegisterModule("Colours", {
 			title = "Colours",

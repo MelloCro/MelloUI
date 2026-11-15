@@ -185,7 +185,7 @@ local CHANGELOG = {
 		"Quest List and map: in a group, a mark after a quest shows how many others have it, and its tooltip lists them and how far they are.",
 		"Bags: a stack dropped on a + slot now goes into a free slot, split or whole, and Discard counts the Reagent Bag's items too.",
 		"Edit Layout: hold Alt to reach an element under the dock. Cooldown numbers no longer keep an old time when a running cooldown changes.",
-		"Buffs & Debuffs: a new Timer Position puts the time above, under or on your icons, and it reads 60m, not 60min, in every language.",
+		"Buffs & Debuffs: Timer Position puts the time above, under or on the icons, 60m in every language; type borders switch per place, with colour wheels.",
 		"German: the bag window, the map's quest log, the widgets, the reminders, the chat, Edit Layout and Route are translated now. Distances show in metres.",
 		"French: the on-screen lines, the tutorial tips, the reminders, the map's layers, Services and Route's distances and times are translated now. Route's distances show in metres.",
 		"Dungeon maps: Santiago Reyes' maps of five more dungeons and his sharper new ones of the other four. The new five have Dungeon Info pages, opened from their entrances on the map.",

@@ -109,6 +109,11 @@ local M = MelloUI:RegisterModule("Auras", {
 		nameplateOnlyMine = true,   -- (2.1.19) the row is "your debuffs": the game's plate filter shows everyone's
 		textFont = "shared",
 		timePlace = "below",        -- (2.1.54) your rows' time: under the icon, above it or on it
+		plateTimePlace = "middle",  -- (2.1.54) the nameplates' debuffs' time: on the icon, as before, or above or under it
+		-- (2.1.54) the type borders (DISPEL): your rows' and the target's debuffs as before, the rest until picked
+		dispelPlayer = true, untypedPlayer = false, buffTypePlayer = false,
+		dispelTarget = true, untypedTarget = false, buffTypeTarget = false, stealableTarget = false,
+		dispelPlates = false, untypedPlates = false,
 	},
 	options = {
 		{ type = "header", name = "Your Buffs" },
@@ -147,6 +152,16 @@ local M = MelloUI:RegisterModule("Auras", {
 		{ type = "dropdown", key = "debuffNewRows", name = "Debuff New Rows",
 		  values = { { value = "down", label = "Down" }, { value = "up", label = "Up" } },
 		  desc = "Which way new rows of debuffs go." },
+		-- (2.1.54; the user, 2026-11-15: "colour the Borders depending on the Debuff / Buff Type") DISPEL's settings
+		{ type = "toggle", key = "dispelPlayer", name = "Debuff Type Borders", new = "2.1.54",
+		  search = "dispel magic curse poison disease bleed colour color border type",
+		  desc = "A border in your debuffs' type colour: Magic blue, Curse purple, Disease orange, Poison green, Bleed red." },
+		{ type = "toggle", key = "untypedPlayer", parent = "dispelPlayer", name = "Untyped Debuffs Too", new = "2.1.54",
+		  desc = "A border on your debuffs that have no type too, such as physical ones." },
+		-- (2.1.54; the user, 2026-11-16, of their own buffs with Anchor: Free: "the free anchor buffs are not affected")
+		{ type = "toggle", key = "buffTypePlayer", name = "Buff Type Borders", new = "2.1.54",
+		  search = "dispel magic colour color border type buff",
+		  desc = "A border in your buffs' type colour too, such as blue for Magic ones." },
 		{ type = "header", name = "Target" },
 		{ type = "toggle", key = "target", name = "Target Frame",
 		  desc = "Your target's debuffs and buffs under the target frame, in MelloUI's look." },
@@ -154,6 +169,16 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "The size of your target's buff and debuff icons." },
 		{ type = "toggle", key = "targetOnlyMine", parent = "target", name = "Only My Debuffs",
 		  desc = "Only the debuffs you put on your target." },
+		{ type = "toggle", key = "dispelTarget", parent = "target", name = "Debuff Type Borders", new = "2.1.54",
+		  search = "dispel magic curse poison disease bleed colour color border type",
+		  desc = "A border in your target's debuffs' type colour: Magic blue, Curse purple, Disease orange, Poison green, Bleed red." },
+		{ type = "toggle", key = "untypedTarget", parent = "dispelTarget", name = "Untyped Debuffs Too", new = "2.1.54",
+		  desc = "A border on your target's debuffs that have no type too, such as physical ones." },
+		{ type = "toggle", key = "buffTypeTarget", parent = "target", name = "Buff Type Borders", new = "2.1.54",
+		  search = "dispel purge steal spellsteal magic colour color border type",
+		  desc = "A border in your target's buffs' type colour, so you see the Magic buffs you can purge or steal." },
+		{ type = "toggle", key = "stealableTarget", parent = "buffTypeTarget", name = "Only Stealable", new = "2.1.54",
+		  desc = "Only the buffs a mage can steal get their border." },
 		{ type = "header", name = "Nameplates" },
 		{ type = "toggle", key = "nameplates", name = "Enemy Nameplates",
 		  desc = "Your debuffs on enemy nameplates, in MelloUI's look." },
@@ -163,6 +188,17 @@ local M = MelloUI:RegisterModule("Auras", {
 		-- your own debuffs on the nameplates")
 		{ type = "toggle", key = "nameplateOnlyMine", parent = "nameplates", name = "Only My Debuffs",
 		  desc = "Only the debuffs you put on enemies. Off: every debuff the game shows on their nameplates." },
+		-- (2.1.54; the user, 2026-11-15: "i also want the same option for the Nameplates") their own Timer Position
+		{ type = "dropdown", key = "plateTimePlace", parent = "nameplates", name = "Timer Position", new = "2.1.54",
+		  values = { { value = "middle", label = "On The Icon" }, { value = "above", label = "Above The Icon" },
+			{ value = "below", label = "Under The Icon" } },
+		  search = "time timer duration left above below under",
+		  desc = "Where the time left stands on the debuff icons on enemy nameplates." },
+		{ type = "toggle", key = "dispelPlates", parent = "nameplates", name = "Debuff Type Borders", new = "2.1.54",
+		  search = "dispel magic curse poison disease bleed colour color border type",
+		  desc = "A border in the debuffs' type colour on enemy nameplates: Magic blue, Curse purple, Disease orange, Poison green, Bleed red." },
+		{ type = "toggle", key = "untypedPlates", parent = "dispelPlates", name = "Untyped Debuffs Too", new = "2.1.54",
+		  desc = "A border on the nameplates' debuffs that have no type too, such as physical ones." },
 		{ type = "dropdown", key = "textFont", name = "Buff Numbers Font", values = MelloUI.FontFaces,
 		  desc = "The font of timers and stacks on MelloUI's buffs and debuffs. Shared: the numbers font." },
 		-- (2.1.54; BaQstein, Discord 2026-11-15: "more settings for the buff and debuff timer. I would love to put them
@@ -233,18 +269,23 @@ local function SizeTexts(button, size)
 	Try(t.count.SetFont, t.count, NumberFace(), math.max(8, math.floor(size * 0.4 + 0.5)), "OUTLINE")
 end
 
--- (2.1.54; BaQstein: "put them above the icon") an icon's time on its place: the rows whose time stands outside the
--- icon (yours and your debuffs' block: `movable`) where Timer Position puts it -- under, above or on the icon -- the
--- other rows' where they keep it (on the icon); outside the icon at the small fixed size, on it at the icon's (SizeTexts)
+-- (2.1.54; BaQstein: "put them above the icon") an icon's time on its place: a row with a Timer Position of its own
+-- (`timeKey`: yours and your debuffs' block "timePlace", the nameplates' "plateTimePlace" -- the user: "i also want the
+-- same option for the Nameplates") where its setting puts it -- under, above or on the icon, the setting's default
+-- while it holds none -- the other rows' where they keep it (on the icon); outside the icon at the small fixed size, on
+-- it at the icon's (SizeTexts)
+local TIME_DEFAULT = { timePlace = "below", plateTimePlace = "middle" }
 local function LayTime(button)
 	local t = texts[button]
 	if not t then
 		return
 	end
 	local place = "middle"
-	if t.movable then
-		place = M.db and M.db.timePlace
-		place = (place == "above" or place == "middle") and place or "below"
+	if t.timeKey then
+		place = M.db and M.db[t.timeKey]
+		if place ~= "below" and place ~= "above" and place ~= "middle" then
+			place = TIME_DEFAULT[t.timeKey] or "below"
+		end
 	end
 	local time = t.time
 	time:ClearAllPoints()
@@ -257,6 +298,116 @@ local function LayTime(button)
 	end
 	t.outside = place ~= "middle"
 end
+
+-- (2.1.54; the user, 2026-11-15: "colour the Borders depending on the Debuff / Buff Type") the type borders' settings by
+-- place: your rows (and the player frame's, your debuffs' block), the target's, the nameplates'. Debuff Type Borders
+-- (Magic blue, Curse purple, Disease orange, Poison green, Bleed red: the game's own borders), Untyped Debuffs Too (the
+-- game's border for a debuff with no type), Buff Type Borders (the target's buffs by their type, Only Stealable: those a
+-- mage can steal). Off on the nameplates and for buffs and untyped debuffs until picked: nothing changes by itself
+local DISPEL = {
+	player = { debuffs = "dispelPlayer", untyped = "untypedPlayer", buffs = "buffTypePlayer" },
+	target = { debuffs = "dispelTarget", untyped = "untypedTarget", buffs = "buffTypeTarget", stealable = "stealableTarget" },
+	plates = { debuffs = "dispelPlates", untyped = "untypedPlates" },
+}
+
+-- (the user's pick "D, colour wheels" of BuildData/output/aura_border_sketch) the border: the game's white debuff outline
+-- (classic's buff frame's, its rounded square), kept as it is by the engine (PreserveAsset) and tinted by the type's
+-- colour on Look > Colours (MelloUI.Colours.Dispel: a pick, else the game's), set out from the icon by a margin its size
+local TINT = "Interface\\Buttons\\UI-Debuff-Overlays"
+local TINT_COORDS = { 0.296875, 0.5703125, 0, 0.515625 }
+
+-- the type colours as the engine takes them (customDispelColorMap), made again only when a colour changed
+local dispelColours
+local function DispelColours()
+	if dispelColours then
+		return dispelColours
+	end
+	local Colours, map = MelloUI.Colours, {}
+	for _, d in ipairs(Colours and Colours.DISPELS or {}) do
+		local r, g, b = Colours.Dispel(d.key)
+		if r and CreateColor then
+			map[d.key] = CreateColor(r, g, b, 1)
+		end
+	end
+	dispelColours = map
+	return map
+end
+
+-- the engine's options for a border of `kind`'s debuffs (helpful false) or buffs (true), as the settings are now
+local function DispelOptions(kind, helpful)
+	local db = M.db or MelloUI:GetModuleDB("Auras") or {}
+	local keys = DISPEL[kind] or DISPEL.player
+	local style = Enum and Enum.CustomAuraButtonDispelTypeTextureStyle
+	local o = { style = style and style.PreserveAsset, showWhenHarmful = false, showWhenHelpful = false,
+		showWithoutDispelType = false, customDispelColorMap = DispelColours() }
+	if helpful then
+		o.showWhenHelpful = keys.buffs ~= nil and db[keys.buffs] == true
+		local filter = Enum and Enum.CustomAuraButtonDispelTypeStealableFilter
+		if o.showWhenHelpful and keys.stealable and db[keys.stealable] == true and filter then
+			o.stealableFilter = filter.Stealable
+		end
+	else
+		o.showWhenHarmful = db[keys.debuffs] == true
+		o.showWithoutDispelType = o.showWhenHarmful and keys.untyped ~= nil and db[keys.untyped] == true
+	end
+	return o
+end
+
+-- a button's type borders where its frame is: over the Aura Border's rim or border style it wears (the frame taking the
+-- type's colour, never a second frame round it -- the user, 2026-11-16, of the outline round a rim: "doesent look
+-- right"), else round its icon's plain black edge (set out by about a tenth of its size, 2 at the least: the sketch's)
+local function LayBorders(button)
+	local t = texts[button]
+	local d = t and t.dispel
+	if not d then
+		return
+	end
+	local at = t.frameAt
+	local pad = math.max(2, math.floor((t.size or 30) * 0.09 + 0.5))
+	for _, tex in ipairs({ d.harm, d.help }) do
+		tex:ClearAllPoints()
+		if at then
+			tex:SetAllPoints(at)
+		else
+			tex:SetPoint("TOPLEFT", button, "TOPLEFT", -pad, pad)
+			tex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", pad, -pad)
+		end
+	end
+end
+
+-- a button's type borders on the settings now: each border handed to the button again with its new options (out of
+-- combat: the rows are protected)
+local function LayDispel(button)
+	local t = texts[button]
+	local d = t and t.dispel
+	if not d then
+		return
+	end
+	for _, part in ipairs({ { d.harm, false }, { d.help, true } }) do
+		Try(button.RemoveDispelTypeTexture, button, part[1])
+		Try(button.AddDispelTypeTexture, button, part[1], DispelOptions(d.kind, part[2]))
+	end
+end
+
+-- (OnSettingChanged: a key of DISPEL's)
+local DISPEL_KEY = {}
+for _, keys in pairs(DISPEL) do
+	for _, k in pairs(keys) do
+		DISPEL_KEY[k] = true
+	end
+end
+
+local DispelSettingChanged = Perf.Shared("Buffs & Debuffs: the type borders' settings", function()
+	for b in pairs(texts) do
+		LayDispel(b)
+	end
+end, "callback")
+
+-- a type colour picked on Look > Colours (the bus's "colours"): the colours made again, every border handed them
+local DispelColoursChanged = Perf.Shared("Buffs & Debuffs: the type colours", function()
+	dispelColours = nil
+	MelloUI.Kit:WhenOutOfCombat(DispelSettingChanged, "Auras: type borders")
+end, "callback")
 
 -- Aura Border (user, 2026-09-23: one border per kind for every window, UI
 -- Modifications' Aura Border): the plain black edge the buttons had, or a
@@ -381,6 +532,7 @@ local function ApplyAuraLook(button)
 		t.libAt:SetPoint("CENTER", button, "CENTER")
 		t.libAt:SetSize(t.size - 4 + 2 * x, t.size - 4 + 2 * y)
 		t.lib:SetShown(true)
+		t.frameAt = t.libAt   -- (2.1.54: the type borders lie over it -- LayBorders)
 		ShadeButton(button, t)
 		return
 	end
@@ -392,6 +544,7 @@ local function ApplyAuraLook(button)
 			t.rim:Hide()
 		end
 		t.edge:Show()
+		t.frameAt = nil
 		ShadeButton(button, t)
 		return
 	end
@@ -418,6 +571,7 @@ local function ApplyAuraLook(button)
 	t.rim:SetSize(side, side)
 	t.rim:Show()
 	t.edge:Hide()
+	t.frameAt = t.rim   -- (2.1.54: the type borders lie over it -- LayBorders)
 	-- (the rim drawn at its own size: its shadow at that scale)
 	ShadeButton(button, t, side, p)
 end
@@ -426,7 +580,7 @@ end
 -- icon, else in its middle), rawSeconds (the time as the bare number of
 -- seconds: MelloUI.Anim:RawSeconds), compactTime (the time with no space
 -- before its letter, "59m": MelloUI.Anim:CompactDuration), timeColours (2.1.19: the numbers coloured by the time
--- left, MelloUI.Anim:TimeLeftColours), dispel (a dispel-coloured border on debuffs),
+-- left, MelloUI.Anim:TimeLeftColours), dispel (the type borders' place, "player", "target" or "plates": DISPEL),
 -- cancel (right-click cancels), tooltip (anchor), shade (the UI shade:
 -- ShadeButton)
 local function InitButton(button, o)
@@ -474,22 +628,26 @@ local function InitButton(button, o)
 	local colours = o.timeColours and Anim and Anim:TimeLeftColours() or nil
 	Try(button.SetDurationText, button, time, { textFormatter = fmt or nil, textColor = colours })
 	-- (gap: the room between two buttons of the row, the shade's reach kept in it)
-	-- (movable: its time outside the icon, where Timer Position puts it -- LayTime)
-	texts[button] = { time = time, count = count, movable = o.durationBelow, edge = edge, size = o.size, shade = o.shade,
+	-- (timeKey: the Timer Position it follows -- LayTime; a row whose time stood under its icons follows Your Buffs')
+	texts[button] = { time = time, count = count, timeKey = o.timeKey or (o.durationBelow and "timePlace" or nil), edge = edge, size = o.size, shade = o.shade,
 		gap = o.shade and math.min(o.spacing or 0, o.lineSpacing or o.spacing or 0) or nil, over = over }
 	LayTime(button)
 	SizeTexts(button, o.size)
 	ApplyAuraLook(button)
 	if o.dispel and button.AddDispelTypeTexture then
-		local border = over:CreateTexture(nil, "OVERLAY", nil, 5)   -- above an Aura Border rim
-		border:SetPoint("TOPLEFT", -1, 1)
-		border:SetPoint("BOTTOMRIGHT", 1, -1)
-		local style = Enum and Enum.CustomAuraButtonDispelTypeTextureStyle
-		Try(button.AddDispelTypeTexture, button, border, {
-			style = style and style.Border,
-			showWhenHarmful = true,
-			showWhenHelpful = false,
-		})
+		-- (2.1.54) two type borders, both the game's, coloured by the engine (the aura's type can read secret): one for
+		-- debuffs, one for buffs -- an aura is one or the other, so one shows at most -- each on its place's settings
+		local function Border()
+			local border = over:CreateTexture(nil, "OVERLAY", nil, 5)   -- above an Aura Border rim
+			border:SetTexture(TINT)
+			border:SetTexCoord(TINT_COORDS[1], TINT_COORDS[2], TINT_COORDS[3], TINT_COORDS[4])
+			return border
+		end
+		local d = { kind = o.dispel, harm = Border(), help = Border() }
+		texts[button].dispel = d
+		LayBorders(button)
+		Try(button.AddDispelTypeTexture, button, d.harm, DispelOptions(d.kind, false))
+		Try(button.AddDispelTypeTexture, button, d.help, DispelOptions(d.kind, true))
 	end
 	if o.cancel then
 		Try(button.SetCancelAuraButtons, button, "RightButtonUp")
@@ -504,6 +662,7 @@ if MelloUI.Kit and MelloUI.Kit.OnBorderChanged then
 	MelloUI.Kit:OnBorderChanged("aura", function()
 		for button in pairs(texts) do
 			ApplyAuraLook(button)
+			LayBorders(button)   -- (2.1.54: the type borders over the frame the new look wears)
 		end
 	end)
 end
@@ -561,6 +720,7 @@ local function Resize(c, size, line)
 				if texts[b] then
 					texts[b].size = size
 					ApplyAuraLook(b)   -- the rim round the new size
+					LayBorders(b)      -- (2.1.54) the type borders' margin for it
 				end
 			end
 		end
@@ -929,7 +1089,7 @@ function Apart.Set(want)
 		local corner, gx, gy = Apart.FlowOf()
 		local spacing = M.db.debuffSpacing or 6
 		local ok, c = pcall(NewContainer, UIParent, "player", { { key = "debuffs", filter = "HARMFUL", max = 16 } },
-			{ size = M.db.debuffSize or 30, durationBelow = true, compactTime = true, dispel = true, cancel = true,
+			{ size = M.db.debuffSize or 30, durationBelow = true, compactTime = true, dispel = "player", cancel = true,
 				tooltip = "ANCHOR_BOTTOMLEFT", anchor = corner, gx = gx, gy = gy, line = Apart.Line(),
 				spacing = spacing, lineSpacing = spacing + 10, shade = true })
 		if not ok then
@@ -1022,7 +1182,7 @@ local function SetFrameRows(on)
 		local ok, c = pcall(NewContainer, PlayerFrame, "player", {
 			{ key = "debuffs", filter = "HARMFUL", max = 16 },
 			{ key = "buffs", filter = "HELPFUL", max = 40 },
-		}, { size = M.db.playerFrameSize or 22, swipe = true, compactTime = true, dispel = true, cancel = true,
+		}, { size = M.db.playerFrameSize or 22, swipe = true, compactTime = true, dispel = "player", cancel = true,
 			tooltip = "ANCHOR_BOTTOMRIGHT",
 			anchor = M.db.playerFrameGrow == "left" and "TOPRIGHT" or "TOPLEFT", gx = M.db.playerFrameGrow == "left" and -1 or 1,
 			gy = -1, line = 170, spacing = 3, shade = true })
@@ -1462,7 +1622,7 @@ local function SetPlayer(on)
 		local ok, c = pcall(NewContainer, UIParent, "player", {
 			{ key = "buffs", filter = "HELPFUL", max = 40 },
 			{ key = "debuffs", filter = "HARMFUL", max = 16 },
-		}, { size = M.db.playerSize, durationBelow = true, compactTime = true, dispel = true, cancel = true,
+		}, { size = M.db.playerSize, durationBelow = true, compactTime = true, dispel = "player", cancel = true,
 			tooltip = "ANCHOR_BOTTOMLEFT",
 			anchor = (FlowOf(nil)), gx = select(2, FlowOf(nil)), gy = select(3, FlowOf(nil)), line = PlayerLine(),
 			spacing = M.db.playerSpacing or 6, lineSpacing = (M.db.playerSpacing or 6) + 10, shade = true })
@@ -1510,7 +1670,7 @@ local function SetTarget(on)
 		local ok, c = pcall(NewContainer, TargetFrame, "target", {
 			{ key = "debuffs", filter = TargetFilter(), max = 16 },
 			{ key = "buffs", filter = "HELPFUL", max = 16 },
-		}, { size = M.db.targetSize, swipe = true, compactTime = true, dispel = true, tooltip = "ANCHOR_BOTTOMRIGHT",
+		}, { size = M.db.targetSize, swipe = true, compactTime = true, dispel = "target", tooltip = "ANCHOR_BOTTOMRIGHT",
 			anchor = "TOPLEFT", gx = 1, gy = -1, line = 170, spacing = 3, shade = true })
 		if not ok then
 			MelloUI:Notice("Buffs & Debuffs: the target rows could not be made (%s).", tostring(c))
@@ -1583,7 +1743,7 @@ local function FillPlate(uf, unit)
 			{ key = "debuffs", filter = PlateFilter(auras), max = 8 },
 		-- (2.1.19; the user, 2026-11-08: "should have its "Clock Icon" timer removed, and the Duration Numbers should
 		-- be colored depending on the duration left") no sweep, the numbers by the time left
-		}, { size = M.db.nameplateSize, swipe = false, rawSeconds = true, timeColours = true, dispel = false, tooltip = "ANCHOR_TOP",
+		}, { size = M.db.nameplateSize, swipe = false, rawSeconds = true, timeColours = true, dispel = "plates", timeKey = "plateTimePlace", tooltip = "ANCHOR_TOP",
 			anchor = "BOTTOMLEFT", gx = 1, gy = 1, line = 150, spacing = 2 })
 		if not ok then
 			return   -- the game's row stays
@@ -1710,6 +1870,7 @@ local function WatchEditMode()
 		end
 	end, M)
 	MelloUI:On("column", FollowColumn, M)
+	MelloUI:On("colours", DispelColoursChanged, M)   -- (2.1.54: the type borders' tint, Look > Colours)
 	MelloUI:On("module", function(name)
 		if name == "MinimapPanel" then
 			FollowColumn()
@@ -1815,7 +1976,10 @@ function M:OnSettingChanged(key, value, db)
 		for b, t in pairs(texts) do
 			SizeTexts(b, t.size)
 		end
-	elseif key == "timePlace" then
+	elseif DISPEL_KEY[key] then
+		-- (2.1.54) every icon made so far: its type borders on the settings now (the rows are protected: out of combat)
+		MelloUI.Kit:WhenOutOfCombat(DispelSettingChanged, "Auras: type borders")
+	elseif key == "timePlace" or key == "plateTimePlace" then
 		-- (2.1.54) every icon made so far: its time on its new place, at its size there (our own font strings: in a
 		-- fight too)
 		for b, t in pairs(texts) do

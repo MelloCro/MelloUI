@@ -656,6 +656,10 @@ function L.Define(R, Link)
 		R("Look", "Colours", "Look", "Colours.reaction" .. reaction, { card = "NPC Colours",
 			when = { key = "BarTextures.healthColor", value = "reaction", line = "Only with Class / reaction" } })
 	end
+	-- (2.1.54; the user's pick "D, colour wheels": the type borders' tint, Modules/Auras.lua)
+	for _, kind in ipairs({ "Magic", "Curse", "Disease", "Poison", "Bleed", "None" }) do
+		R("Look", "Colours", "Look", "Colours.dispel" .. kind, { card = "Debuff Type Colours" })
+	end
 	R("Oldschool", "Parchment", "Look", "UIModifications.parchmentStyle")   -- (0.20.3: the look of every sheet and page)
 	R("Oldschool", "Parchment", "Look", "UIModifications.parchment_tracker", { when = GAME_TRACKER })
 	-- (the Quest Tracker's paper and the chat's: their rows on their own pages since the one look, links here -- the
@@ -866,6 +870,14 @@ function L.Define(R, Link)
 	-- (2.1.54; BaQstein: "put them above the icon") the time on your rows and your debuffs' block (under the player frame
 	-- the rows keep it on the icon)
 	R("Buffs", BUFFS, "Text", "Auras.timePlace", { when = OWN_APART })
+	-- (2.1.54; the user: "colour the Borders depending on the Debuff / Buff Type") the type borders, on each page whose
+	-- icons they colour
+	R("Buffs", BUFFS, "Look", "Auras.dispelPlayer", { when = OWN_PLAYER })
+	R("Buffs", BUFFS, "Look", "Auras.untypedPlayer", { when = OWN_PLAYER })
+	R("Buffs", BUFFS, "Look", "Auras.buffTypePlayer", { when = OWN_PLAYER })
+	for _, key in ipairs({ "dispelTarget", "untypedTarget", "buffTypeTarget", "stealableTarget" }) do
+		R("UnitGroupFrames", "target:auras", "Look", "Auras." .. key, { when = OWN_TARGET })
+	end
 	R("UnitGroupFrames", "target:auras", "Behaviour", "Auras.targetOnlyMine", { when = OWN_TARGET })
 	R("UnitGroupFrames", "all", "Behaviour", "HealerFrames.debuffGlowShows")
 
@@ -910,6 +922,12 @@ function L.Define(R, Link)
 		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
 	R("Nameplates", "enemies:debuffs", "Behaviour", "Auras.nameplateOnlyMine",   -- (2.1.19: the user)
 		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
+	R("Nameplates", "enemies:debuffs", "Text", "Auras.plateTimePlace",   -- (2.1.54: the user, "the same option")
+		{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
+	for _, key in ipairs({ "dispelPlates", "untypedPlates" }) do   -- (2.1.54: the type borders)
+		R("Nameplates", "enemies:debuffs", "Look", "Auras." .. key,
+			{ when = { key = "Auras.nameplates", value = true, line = "Only with Your Debuffs on" } })
+	end
 	R("Nameplates", "enemies:swing", "Layout", "Nameplates.swingSize")   -- (2.1.19: the user, 50 - 200 %)
 	R("Nameplates", "enemies:cast", "Layout", "Nameplates.castHeight", { name = "Height" })   -- (2.1.53: the user)
 	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates", { gate = NP_AREA })   -- (the Bars audit: Cooldown Timers' switch here)
