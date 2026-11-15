@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.53", lines = {
+		"Party and raid frames: the starting indicators no longer lie on the name, the health text or the raid mark. On party frames with portraits they stand beside the frame.",
+		"Party and raid frames: a new indicator's time left and stack count no longer lie on each other. Both are smaller, and the count hangs on the icon's corner.",
+	} },
 	{ version = "2.1.52", lines = {
 		"Quest Moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest. Switches on the Animations page.",
 		"Quests: MelloUI's quests now come from Questie: the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI ships no quest data of its own any more.",
@@ -227,9 +231,6 @@ local CHANGELOG = {
 		"Bags: with Baganator, Bagnon, ArkInventory or BetterBags installed, MelloUI's bag window steps aside, so B opens one bag window. The Addons page lists them, each with its switch.",
 		"Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again.",
 		"Minimap: quest objectives look the same as on MelloUI's map, with the glowing quest areas, the same icons and a dot for each spot, and they show right after you log in.",
-	} },
-	{ version = "2.1.48", lines = {
-		"Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.",
 	} },
 }
 local LINKS = {

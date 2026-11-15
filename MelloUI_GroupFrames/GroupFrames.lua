@@ -132,7 +132,11 @@ end
 RD.POINTS = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
 
 -- the sizes a part may take (an icon, a square, a bar's thickness; text)
-RD.SIZE = { min = 4, max = 30, text = 9, textMin = 6, textMax = 20 }
+-- (2.1.53, the user's pick 2 of the Indicator Places sketch, "both numbers everywhere": the time left and the stack
+-- count, both 9, lay on each other on an icon 10 to 13 wide) a new indicator's texts are 7, its count hung on the
+-- icon's corner (RD.COUNT_AT) clear of the time in its middle. An indicator already saved keeps its own
+RD.SIZE = { min = 4, max = 30, text = 7, textMin = 6, textMax = 20 }
+RD.COUNT_AT = { point = "BOTTOMRIGHT", x = 3, y = -3 }
 
 --------------------------------------------------------------------------------
 -- Colours: an indicator's is the player's own (the colour wheel); a starter's
@@ -502,7 +506,7 @@ function RD:Fill(t)
 	end
 	t.text.size = tonumber(t.text.size) or RD.SIZE.text
 	if type(t.count) ~= "table" then
-		t.count = { show = true, point = "BOTTOMRIGHT", x = 1, y = -1 }
+		t.count = { show = true, point = RD.COUNT_AT.point, x = RD.COUNT_AT.x, y = RD.COUNT_AT.y }
 	end
 	t.count.size = tonumber(t.count.size) or RD.SIZE.text
 	if SG then
@@ -573,43 +577,92 @@ local function SpecOf(key)
 	return (key:gsub("^" .. PARTY_KEY, ""):gsub("^" .. GPARTY_KEY, ""))
 end
 
--- a starter's place on the normal party frame: icons and squares in a row
--- from the top right, leftwards; bars along the bottom under the bars; a
--- debuff's icon at the right
-local function PartyPlace(t, n)
+-- A starter's place on the normal party frame.
+-- (2.1.53, the user's pick B of the Indicator Places sketch, "two short rows beside": the row stood on the name's
+-- line, 14 on per GROUP while a spell group is up to three icons wide, so the groups lay on each other and on the
+-- name) Icons and squares stand beside the frame, never on it -- its top line holds the name, the level and the role
+-- icon, under its bars are its own buffs and debuffs: yours (a group of scope "own": heals over time, shields) in a
+-- row at the name's height, the others' (defensives, the boss's debuff) in a row under them; a set with nothing of
+-- yours has the one row. Each group has its whole width (Max icons and their spacing), so none lies on the next.
+-- Bars along the bottom under the bars, a single debuff's icon at the right, as before
+RD.PARTY_ROWS = { gap = 3, mid = 10, foot = 31 }   -- between groups and from the frame; row 1's middle; row 2's foot
+
+-- (2.1.53, the user: "Yes, past the tab") the damage meter's tab stands beside every portrait party frame while its
+-- Party Values is on (Modules/Meter.lua, M:PartyReach: how far past the frame's side, 0 while off), just where the
+-- rows would start: they start past it, and beside the frame itself while it is off (RD:PartyAgain below)
+local function PartyReach()
+	local meter = MelloUI:GetModule("Meter")
+	if not (meter and type(meter.PartyReach) == "function") then
+		return 0
+	end
+	local ok, reach = pcall(meter.PartyReach, meter)
+	return math.max(0, ok and tonumber(reach) or 0)
+end
+
+local function PartySpot(t, row, x)
+	local size = t.size or 10
+	t.point, t.x = "TOPRIGHT", x + size
+	t.y = row == 1 and -math.floor(RD.PARTY_ROWS.mid - size / 2 + 0.5) or -(RD.PARTY_ROWS.foot - size)
+	return size
+end
+
+local function PartyPlace(t)
 	if t.look == "bar" then
 		t.point, t.x, t.y, t.length = "BOTTOMRIGHT", -5, 6, 0.6
 	elseif t.look == "health" then
-		return n
+		return false
 	elseif t.kind == "debuff" then
 		t.point, t.x, t.y = "RIGHT", -4, -6
 	else
-		t.point, t.x, t.y = "TOPRIGHT", -4 - n * 14, -4
-		return n + 1
+		return true
 	end
-	return n
+	return false
+end
+
+local function PartyRows(list)
+	local SG = ns.SpellGroups
+	local rows = { {}, {} }
+	for _, t in ipairs(list) do
+		if PartyPlace(t) then
+			local def = SG and SG.DEF[t.group]
+			local row = rows[def and def.scope == "own" and 1 or 2]
+			row[#row + 1] = t
+		end
+	end
+	if #rows[1] == 0 then
+		rows[1], rows[2] = rows[2], rows[1]
+	end
+	local reach = PartyReach()
+	for r, row in ipairs(rows) do
+		local x = reach + RD.PARTY_ROWS.gap
+		for _, t in ipairs(row) do
+			local n = t.kind == "group" and math.max(1, tonumber(t.max) or 1) or 1
+			local size = PartySpot(t, r, x)
+			t.grow = "RIGHT"
+			x = x + n * size + (n - 1) * (tonumber(t.spacing) or 1) + RD.PARTY_ROWS.gap
+		end
+	end
 end
 
 -- (one look C10) an indicator's default place on its list's frames: the top
--- right corner on ours, a starter's place on the normal party frame
+-- right corner on ours, a starter's place on the normal party frame (2.1.53:
+-- the first spot beside it)
 function RD:Home(ind, listKey)
-	local t = { look = ind.look, kind = ind.kind, point = "TOPRIGHT", x = 0, y = 0 }
-	if self:KindOf(listKey) == "party" then
-		PartyPlace(t, 0)
+	local t = { look = ind.look, kind = ind.kind, size = ind.size, point = "TOPRIGHT", x = 0, y = 0 }
+	if self:KindOf(listKey) == "party" and PartyPlace(t) then
+		PartySpot(t, 1, PartyReach() + RD.PARTY_ROWS.gap)
 	end
 	return t
 end
 
 function RD:Starter(class, key)
 	local out = {}
-	local party, n = self:KindOf(key) == "party", 0
 	-- (1.2.4: the class's spell groups, GroupSpellGroups.lua)
 	for i, e in ipairs(ns.SpellGroups and ns.SpellGroups.Starter(class) or {}) do
-		local t = Laid(e, key and (key .. "#" .. i) or nil)
-		if party then
-			n = PartyPlace(t, n)
-		end
-		out[#out + 1] = t
+		out[#out + 1] = Laid(e, key and (key .. "#" .. i) or nil)
+	end
+	if self:KindOf(key) == "party" then
+		PartyRows(out)
 	end
 	return out
 end
@@ -696,6 +749,32 @@ function RD:Changed(ind, key)
 	MelloUI:NotifySettingChanged(OWNER, "sets", DB().sets)
 	MelloUI:Fire("groupframes", "list", ind)
 end
+
+-- (2.1.53) the damage meter's tab beside the party frames came or went (its Party Values switched, the meter itself
+-- switched): a portrait party list still the starter is laid again, its rows past the tab or beside the frame
+-- (PartyReach above). A list the player changed is theirs: its places stay as saved
+function RD:PartyAgain()
+	local again = false
+	for key in pairs(unsaved) do
+		if self:KindOf(key) == "party" then
+			unsaved[key] = nil
+			again = true
+		end
+	end
+	if again then
+		MelloUI:Fire("groupframes", "list")
+	end
+end
+MelloUI:On("setting", function(module, key)
+	if module == "Meter" and key == "party" then
+		RD:PartyAgain()
+	end
+end, "GroupFrames.reach")
+MelloUI:On("module", function(name)
+	if name == "Meter" then
+		RD:PartyAgain()
+	end
+end, "GroupFrames.reach")
 
 function RD:Add(entry, key)
 	key = key or self:Layout()

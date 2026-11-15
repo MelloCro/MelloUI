@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.53
+
+- Party and raid frames: the indicators a frame starts with no longer lie on its name, its health text or its raid mark. On raid frames your heals over time stand bottom right above the bars, shields on the right edge, other players' defensives beside the raid mark and the boss debuff on the left edge. On party frames with portraits they stand in two short rows beside the frame, past the Damage Meter's values where those show. Indicators you placed yourself stay where you put them.
+- Party and raid frames: a new indicator's time left and stack count no longer lie on each other. Both are smaller, and the count hangs on the icon's corner. Indicators you already have keep their own sizes.
+
 ## 2.1.52
 
 - Quest Moments: the game's yellow quest lines in the middle of the screen become moments. An item picked up counts up in a gilded ring and flies to its line in your quest tracker, a finished objective closes its ring with a flare of light and a tick, and a finished quest lands a gilded crest with its title. Each can be switched off on the Animations page.

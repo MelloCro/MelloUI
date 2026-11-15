@@ -513,6 +513,15 @@ local function G(group, point, extra)
 	return t
 end
 
+-- (2.1.53, the user's pick A of the Indicator Places sketch, "Edges": the starter's CENTER group lay on the health
+-- text and its TOPRIGHT one on the raid mark) the spots keep clear of the frame's own parts -- the name along the top,
+-- the health text in the middle, the raid mark top right: yours bottom right above the bars (SG.ABOVE_BARS), shields
+-- on the right edge, others' defensives top right beside the mark (SG.BESIDE_MARK), the boss's debuff on the left
+-- edge. A set with nothing of yours (no heals over time, no shields) has their own defensive where yours would be.
+-- The shields' squares show their time left too (pick 2: both numbers on every indicator)
+SG.EDGE = 2            -- an edge group's room from the frame's side
+SG.ABOVE_BARS = 10     -- a bottom group's room from the frame's foot: the dispel bar and a power bar under it
+SG.BESIDE_MARK = -17   -- the top right group's x: left of the raid mark (GroupParts.lua: 12 wide, 3 in)
 function SG.Starter(class)
 	if not class then
 		return nil
@@ -521,20 +530,22 @@ function SG.Starter(class)
 	local hots, shields = SG.ClassCount("hot", class), SG.ClassCount("shield", class)
 	if hots + shields > 0 then
 		if hots > 0 then
-			out[#out + 1] = G("hot", "TOPRIGHT", { grow = "LEFT", max = 3, size = 10, colour = "GREEN_FONT_COLOR" })
+			out[#out + 1] = G("hot", "BOTTOMRIGHT", { x = -SG.EDGE, y = SG.ABOVE_BARS, grow = "LEFT", max = 3, size = 10,
+				colour = "GREEN_FONT_COLOR" })
 		end
 		if shields > 0 then
-			out[#out + 1] = G("shield", "RIGHT", { grow = "LEFT", max = 2, size = 8, look = "square",
-				colour = "NORMAL_FONT_COLOR" })
+			out[#out + 1] = G("shield", "RIGHT", { x = -SG.EDGE, grow = "LEFT", max = 2, size = 8, look = "square",
+				colour = "NORMAL_FONT_COLOR", text = { show = true, point = "CENTER", x = 0, y = 0 } })
 		end
-		out[#out + 1] = G("external", "CENTER", { grow = "RIGHT", max = 1, size = 13 })
+		out[#out + 1] = G("external", "TOPRIGHT", { x = SG.BESIDE_MARK, y = -SG.EDGE, grow = "LEFT", max = 1, size = 13 })
 		out[#out + 1] = G("dispel", "BOTTOM", { grow = "UP", max = 2, size = 2, look = "bar", what = "mine" })
 	else
-		out[#out + 1] = G("defensive", "CENTER", { grow = "RIGHT", max = 1, size = 13 })
-		out[#out + 1] = G("external", "TOPRIGHT", { grow = "LEFT", max = 2, size = 10 })
+		out[#out + 1] = G("defensive", "BOTTOMRIGHT", { x = -SG.EDGE, y = SG.ABOVE_BARS, grow = "LEFT", max = 1,
+			size = 13 })
+		out[#out + 1] = G("external", "TOPRIGHT", { x = SG.BESIDE_MARK, y = -SG.EDGE, grow = "LEFT", max = 2, size = 10 })
 		out[#out + 1] = G("dispel", "BOTTOM", { grow = "UP", max = 2, size = 2, look = "bar", what = "group" })
 	end
-	out[#out + 1] = G("boss", "LEFT", { grow = "RIGHT", max = 1, size = 12 })
+	out[#out + 1] = G("boss", "LEFT", { x = SG.EDGE, grow = "RIGHT", max = 1, size = 12 })
 	return out
 end
 
