@@ -44,12 +44,20 @@ local TRANSPORT_PLACE = { [2] = "Zeppelin tower", [3] = "Portal", [4] = "Tram st
 local TRANSPORT_WHAT = { [2] = "zeppelin", [3] = "portal", [4] = "tram", [5] = "airship" }
 
 
+-- (2.1.54; the user, 2026-11-15: "Why do we have 2 dungeon entrances dor Hall of Thanes in ironforge") a door's name as
+-- doors are told apart: "The" and the case left out -- the data's "The Hall of Thanes" and the one learned by walking in,
+-- "Hall of Thanes", are one door (MelloUI_Map's MapLayers tells them apart the same way)
+local function DoorName(name)
+	return (name:lower():gsub("^the ", ""))
+end
+
 local function DungeonIDByName(name)
 	if not name then
 		return 0
 	end
+	local want = DoorName(name)
 	for id, dname in pairs(QL.Data().dungeons or {}) do
-		if dname:lower() == name:lower() then
+		if DoorName(dname) == want then
 			return id
 		end
 	end
@@ -986,7 +994,7 @@ local function AddEntrancePins(map, mapID, mapName)
 	local data = QL.Data()
 	local names = {}
 	for _, e in ipairs(data.entrances or {}) do
-		names[e[2]:lower()] = true
+		names[DoorName(e[2])] = true
 		local x, y
 		if QL.EntranceIsMine(e) then
 			x, y = WorldPointOnMap(mapID, mapName, e[3], e[4], e[5], e[6], e[7], e[8])
@@ -997,22 +1005,22 @@ local function AddEntrancePins(map, mapID, mapName)
 	end
 	-- Entrances learned by walking in (Forever's new instances).
 	for name, l in pairs(QL.LearnedStore("entrances")) do
-		if l.mapID == mapID and not names[name:lower()] then
-			names[name:lower()] = true
+		if l.mapID == mapID and not names[DoorName(name)] then
+			names[DoorName(name)] = true
 			Marks.Add("entrance", { dungeonID = DungeonIDByName(name), name = name, raid = l.raid == true, x = l.x, y = l.y, source = "learned" })
 		end
 	end
 	-- The client's own entrance list for the map, when this build has one.
 	for _, e in ipairs(QL.ClientEntrances(mapID)) do
-		if not names[e.name:lower()] then
-			names[e.name:lower()] = true
+		if not names[DoorName(e.name)] then
+			names[DoorName(e.name)] = true
 			Marks.Add("entrance", { dungeonID = DungeonIDByName(e.name), name = e.name, raid = e.raid, x = e.x, y = e.y, source = "client" })
 		end
 	end
 	-- Points of interest that are instance doors.
 	for _, poi in ipairs(QL.ClientPOIs(mapID)) do
-		if QL.IsEntrancePOI(poi) and not names[poi.name:lower()] then
-			names[poi.name:lower()] = true
+		if QL.IsEntrancePOI(poi) and not names[DoorName(poi.name)] then
+			names[DoorName(poi.name)] = true
 			local id = DungeonIDByName(poi.name)
 			Marks.Add("entrance", { dungeonID = id, name = poi.name, raid = (id ~= 0 and QL.Data().raids[id] == true) or poi.atlas:lower():find("raid") ~= nil, x = poi.x, y = poi.y, source = "client" })
 		end

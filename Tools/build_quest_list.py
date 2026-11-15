@@ -1107,7 +1107,9 @@ FOREVER_ENTRANCES = [
     # place at -4169.8, -1400.8 (up in the mountains towards Dun Morogh) is an old one that leads nowhere.
     (2998, None, 0, -3701.8, -2385.6, 0),
     (2999, None, 0, 1804.2, 175.0, 0),  # Ruins of Lordaeron, in the ruins above Undercity
-    (3065, None, 0, -4843.6, -1057.5, 0),  # The Hall of Thanes, down from Ironforge's throne room
+    # The Hall of Thanes (2.1.54; the user, 2026-11-15, its door learned by walking in at Ironforge 27.9, 47.8 -- "Where I
+    # walked in" -- not Warcraft Tavern's 43.5, 52.0 by the throne room: the client places no portal for it)
+    (3065, None, 0, -4821.4, -934.3, 0),
     (0, "The Drowned City", 0, -12354.2, 852.7, 0),  # under the Vile Reef by Gillijim's Isle (no map row yet)
     # the portal at the titan overlook in the Shaper's Terrace's own area, north of Un'Goro (no map row yet; a green
     # portal stands 350 yd north-west of it, an older one under Marshal's Refuge)

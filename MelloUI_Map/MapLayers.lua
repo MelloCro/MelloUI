@@ -706,6 +706,13 @@ local function EntranceSpec(kind)
 	return spec
 end
 
+-- (2.1.54; the user, 2026-11-15: "Why do we have 2 dungeon entrances dor Hall of Thanes in ironforge") a door's name as
+-- doors are told apart: "The" and the case left out -- the data's "The Hall of Thanes" and the one learned by walking in,
+-- "Hall of Thanes", are one door, the data's (the Quest List's game-map pins tell them apart the same way)
+local function DoorKey(name)
+	return (name:lower():gsub("^the ", ""))
+end
+
 local function Entrances()
 	local pins, data = S.pins, Data()
 	pins:Clear("entrances")
@@ -714,10 +721,10 @@ local function Entrances()
 	local mine = T.DATA_SIDE[Side()]
 	for _, row in ipairs(data and data.entrances or EMPTY) do
 		local id, name, kind, side = row[1], row[2], row[9], row[10]
-		if name and not seen[name] and ENTRANCE[kind] and (not (side and mine) or side == 0 or side == mine) then
+		if name and not seen[DoorKey(name)] and ENTRANCE[kind] and (not (side and mine) or side == 0 or side == mine) then
 			local wx, wy = WorldPoint(row[3], row[4], row[5])
 			if wx then
-				seen[name] = true
+				seen[DoorKey(name)] = true
 				local lv = data.dungeonLevel and data.dungeonLevel[id]
 				local pin = pins:Set("entrances", name, wx, wy, EntranceSpec(kind))
 				if pin then
@@ -732,8 +739,8 @@ local function Entrances()
 	local QL = rawget(MelloUI, "QuestList")
 	local learned = type(QL) == "table" and type(QL.LearnedStore) == "function" and QL.LearnedStore("entrances") or nil
 	for name, l in pairs(type(learned) == "table" and learned or EMPTY) do
-		if type(name) == "string" and not seen[name] and type(l) == "table" and l.mapID and l.x and l.y then
-			seen[name] = true
+		if type(name) == "string" and not seen[DoorKey(name)] and type(l) == "table" and l.mapID and l.x and l.y then
+			seen[DoorKey(name)] = true
 			local kind = l.raid == true and 2 or 1
 			local pin = pins:SetAt("entrances", name, l.mapID, l.x, l.y, EntranceSpec(kind))
 			if pin then
@@ -752,8 +759,8 @@ local function Entrances()
 			for _, e in ipairs(ok and type(list) == "table" and list or EMPTY) do
 				local name = Text(e.name)
 				local x, y = XY(e.position)
-				if name and x and not seen[name] then
-					seen[name] = true
+				if name and x and not seen[DoorKey(name)] then
+					seen[DoorKey(name)] = true
 					local kind = Text(e.atlasName) == "Raid" and 2 or 1
 					local pin = pins:SetAt("entrances", name, p.id, x, y, EntranceSpec(kind))
 					if pin then
