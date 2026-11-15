@@ -237,6 +237,10 @@ do
 			if r.Quiet then
 				pcall(r.Quiet, r == reader)
 			end
+			-- (a guide's own frame left showing, worn in MelloUI's look while it is followed: RestedXP's Active Targets)
+			if r.Dress then
+				pcall(r.Dress, r == reader)
+			end
 		end
 		for frame, v in pairs(veil) do
 			local on = want[frame] or false
@@ -746,12 +750,88 @@ do
 		return table.concat(parts, "\n")
 	end
 
+	-- (the user, 2026-11-15: its Active Targets "in MelloUI's whole design") RestedXP's Active Targets (RXPTargetFrame:
+	-- its own frame of secure target buttons, which only it can make) stays its own and where the player put it, but
+	-- wears MelloUI's look while RestedXP is followed: MelloUI's panel behind it (the palette's dark inner panel, the
+	-- gold hairline, the rim: W.Panel, as Questie's tracker wears it), its title in MelloUI's gold over the panel's top
+	-- (its own title out of sight: its alpha), a gold hairline round each of its buttons. Only new regions and frames
+	-- of MelloUI's own, and its title's alpha (given back); never in a fight (its own update does nothing then
+	-- either); all of it put away when RestedXP is not followed. on: dressed.
+	local look = { holder = nil, title = nil, rims = setmetatable({}, { __mode = "k" }) }
+	rxp.TARGET_ALPHA = 0.94   -- (the panel's: Questie's tracker's)
+
+	function rxp.Dress(on)
+		local R = rawget(_G, "RXP")
+		local tg = type(R) == "table" and rawget(R, "targeting")
+		local f = type(tg) == "table" and rawget(tg, "activeTargetFrame")
+		if type(f) ~= "table" or not f.GetFrameLevel or InCombatLockdown() then
+			return
+		end
+		local title = rawget(f, "title")
+		if not on then
+			if look.holder then
+				look.holder:Hide()
+				for _, rim in pairs(look.rims) do
+					rim:Hide()
+				end
+				if type(title) == "table" and title.SetAlpha then
+					title:SetAlpha(1)
+				end
+			end
+			return
+		end
+		local W, Look = MelloUI.Widgets, MelloUI.Look
+		if not (type(W) == "table" and W.Panel and W.HairEdges and type(Look) == "table" and Look.Text) then
+			return
+		end
+		if not look.holder then
+			local h = CreateFrame("Frame", nil, f)
+			h:SetAllPoints(f)
+			h:SetFrameLevel(f:GetFrameLevel())
+			h:EnableMouse(false)
+			W.Panel(h, { on = true, alpha = rxp.TARGET_ALPHA, rim = true })
+			local t = h:CreateFontString(nil, "OVERLAY")
+			Look.Text(t, "gold", 12)
+			t:SetPoint("BOTTOMLEFT", h, "TOPLEFT", 4, 3)
+			look.holder, look.title = h, t
+		end
+		look.holder:Show()
+		local text = type(title) == "table" and title.text and title.text.GetText and Plain(title.text:GetText())
+		look.title:SetText(type(text) == "string" and text ~= "" and text or "Active Targets")
+		if type(title) == "table" and title.SetAlpha then
+			title:SetAlpha(0)
+		end
+		for _, list in ipairs({ rawget(f, "enemyTargetButtons") or {}, rawget(f, "friendlyTargetButtons") or {} }) do
+			for _, b in ipairs(list) do
+				local rim = look.rims[b]
+				if not rim and type(b) == "table" and b.GetFrameLevel then
+					rim = CreateFrame("Frame", nil, b)
+					rim:SetAllPoints(b)
+					rim:SetFrameLevel(b:GetFrameLevel() + 1)
+					rim:EnableMouse(false)
+					W.HairEdges(rim)
+					look.rims[b] = rim
+				end
+				if rim then
+					rim:Show()
+				end
+			end
+		end
+	end
+
 	function rxp.Hook(changed)
 		local R = rawget(_G, "RXP")
 		if type(R) ~= "table" or type(rawget(R, "UpdateGotoSteps")) ~= "function" then
 			return false
 		end
 		hooksecurefunc(R, "UpdateGotoSteps", changed)
+		-- (its Active Targets dressed again after each of its own updates: new buttons, its title laid again)
+		local tg = rawget(R, "targeting")
+		if type(tg) == "table" and type(rawget(tg, "UpdateTargetFrame")) == "function" then
+			hooksecurefunc(tg, "UpdateTargetFrame", function()
+				rxp.Dress(Following() and Guide.active == rxp)
+			end)
+		end
 		return true
 	end
 
