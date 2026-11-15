@@ -127,7 +127,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		-- Designer's preview its place is theirs, and the two Offset sliders stood awake and moved nothing) what those
 		-- two rows ask (Core/ConfigLayout.lua's `when`): the combo points stand at the code's own place, at your offsets
 		-- -- false while the preview has given them a place. Read only, never a row of its own (L.unplaced), never saved
-		{ type = "toggle", key = "comboAtOffsets", name = "Combo Points At Their Offsets", new = "2.1.52",
+		{ type = "toggle", key = "comboAtOffsets", name = "Combo Points At Their Offsets",
 		  get = function(db)
 			local parts = db and db.parts
 			return not (type(parts) == "table" and type(parts.combo) == "table")

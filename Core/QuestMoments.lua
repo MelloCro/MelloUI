@@ -53,7 +53,6 @@ local M = MelloUI:RegisterModule("QuestMoments", {
 	desc = "The game's yellow quest lines in the middle of the screen become moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest.",
 	icon = "Interface\\Icons\\INV_Misc_Note_02",
 	flavour = "Every blossom counts, and you see it count.",
-	new = "2.1.52",
 	enabledByDefault = true,
 	defaults = {
 		progress = true,
@@ -61,11 +60,11 @@ local M = MelloUI:RegisterModule("QuestMoments", {
 		quest = true,
 	},
 	options = {
-		{ type = "toggle", key = "progress", play = "progress", name = "Item Picked Up", new = "2.1.52",
+		{ type = "toggle", key = "progress", play = "progress", name = "Item Picked Up",
 		  desc = "An item or a kill for a quest: its icon counts up in a gilded ring, then flies to its line in your quest tracker." },
-		{ type = "toggle", key = "objective", play = "objective", name = "Objective Done", new = "2.1.52",
+		{ type = "toggle", key = "objective", play = "objective", name = "Objective Done",
 		  desc = "An objective finished: its ring closes with a flare of light, sparks and a tick, and the count turns into Complete." },
-		{ type = "toggle", key = "quest", play = "quest", name = "Quest Done", new = "2.1.52",
+		{ type = "toggle", key = "quest", play = "quest", name = "Quest Done",
 		  desc = "A quest ready to turn in: a gilded crest lands with the hand-in mark, and the quest's title opens under Quest Complete." },
 	},
 })

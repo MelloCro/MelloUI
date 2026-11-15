@@ -179,17 +179,17 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "2.1.53", lines = {
 		"Map: with the addon HandyNotes: NPCs (Forever), the auction house, bank, trainers, mount sellers, inns and mailboxes show on the map and minimap in MelloUI's icons.",
-		"Map layers: a new HandyNotes group, a switch for each kind of place. Only your side's show, and trainers of your own professions and class. Repair and vendors start off.",
-		"Map: one addon draws a kind of place. With HandyNotes: NPCs (Forever), Questie's innkeepers and mailboxes are not shown a second time.",
+		"Map layers: a new HandyNotes group, a switch for each kind of place. Only your side's show; repair and vendors start off. Questie's inns and mailboxes are not shown a second time.",
+		"Nameplates: the cast bar in a fight now stands where the Nameplate Designer's preview shows it, and has a tab of its own with a new Height slider.",
+		"Nameplates: a new Threat Colours By Role switch colours an enemy's health bar in group fights by its threat on you. Each of the three colours has a colour wheel.",
 		"Party and raid frames: a group you join during a fight now shows its frames at once, not only when the fight is over.",
 		"Party and raid frames: the Lockouts group works now: it shows what your own spells left on a member, like Weakened Soul after your shield or Forbearance.",
-		"Widgets: up to four loot rolls show at once, each its own row with its own ring and Need, Greed and Pass. Rolling on one takes only its row away; a fifth waits, counted on the last row.",
-		"Widgets: hovering a loot roll now lists who has rolled on it so far, under the item's tooltip: each player in their class colour with Need, Greed or Pass, and who is still deciding.",
-		"Party and raid frames: the starting indicators no longer lie on the name, the health text or the raid mark. On party frames with portraits they stand beside the frame.",
-		"Party and raid frames: a new indicator's time left and stack count no longer lie on each other. Both are smaller, and the count hangs on the icon's corner.",
+		"Party and raid frames: the starting indicators no longer lie on the name, the health text or the raid mark, and a new indicator's time and count no longer lie on each other.",
+		"Widgets: up to four loot rolls show at once, each its own row. Hovering one lists who has rolled so far: Need, Greed or Pass, and who is still deciding.",
 		"Questie's tracker: it now follows the Quest Tracker page's Width, Height, text sizes, Nearest Quest First and Reset Position. Dragging its corner sets Width and Height.",
 		"Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own until Questie's tracker shows again.",
 		"Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP. Its switch is on the Addons page.",
+		"Offhand: Quest Moments, the Level Up card, the on-screen line and Combat Text now go by your main game screen, not the gap between your two screens.",
 	} },
 	{ version = "2.1.52", lines = {
 		"Quest Moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest. Switches on the Animations page.",
