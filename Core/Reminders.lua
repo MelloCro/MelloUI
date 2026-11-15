@@ -2902,7 +2902,7 @@ local function Column()
 		if not (Secret(title) or type(title) == "string") then
 			title = Rem:Label(key)
 		end
-		row.title:SetText(title)
+		row.title:SetText(W.Tr(title))   -- (a widget's own words in the language in use; a name or a quest's title as it is)
 		if type(r) == "number" and type(g) == "number" and type(b) == "number" and not (Secret(r) or Secret(g) or Secret(b)) then
 			local c = row.titleColour or {}
 			c[1], c[2], c[3] = r, g, b
@@ -2912,7 +2912,7 @@ local function Column()
 			Look.Colour(row.title, nil)
 		end
 		local text = Value(spec.text, key)
-		row.text:SetText((Secret(text) or type(text) == "string") and text or "")
+		row.text:SetText((Secret(text) or type(text) == "string") and W.Tr(text) or "")
 		-- the face: a 3D face, a unit's portrait (a pet's) or the icon
 		local id = Num(Value(spec.model, key))
 		if id and id > 0 then

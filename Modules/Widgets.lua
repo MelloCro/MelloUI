@@ -639,7 +639,7 @@ local CORPSE = {
 				end
 				local yards = type(R.YardsText) == "function" and R:YardsText(d) or (floor(d) .. " yd")
 				local dir = Bearing(corpse.mapID, corpse.x, corpse.y)
-				return dir and TEXT.corpseFar:format(yards, dir) or yards
+				return dir and W.Tr(TEXT.corpseFar):format(yards, W.Tr(dir)) or yards
 			end
 		end
 		return TEXT.corpseLine
