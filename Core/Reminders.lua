@@ -1192,7 +1192,7 @@ Lay = function()
 		b:SetIcon(SAMPLE_ICON)
 		ui.glow:SetShown(false)
 		Look.CountShown(ui.count, false)
-		ui.label:SetText(TEXT.preview)
+		ui.label:SetText(W.Tr(TEXT.preview))
 		SetWay()
 		Anim:Retract(ui.minis)
 		Detach()
@@ -1208,7 +1208,7 @@ Lay = function()
 	else
 		Look.CountShown(ui.count, false)
 	end
-	ui.label:SetText(Rem:Text(top))
+	ui.label:SetText(W.Tr(Rem:Text(top)))
 	for i = 2, n do
 		local m = Mini(i - 1)
 		local key = list[i]
@@ -1464,19 +1464,19 @@ Tip = function(self)
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, PLACES[ui.place].tip)
 	if not key then
-		GameTooltip:SetText(TEXT.title, gold[1], gold[2], gold[3])
-		GameTooltip:AddLine(TEXT.preview, text[1], text[2], text[3], true)
+		GameTooltip:SetText(W.Tr(TEXT.title), gold[1], gold[2], gold[3])
+		GameTooltip:AddLine(W.Tr(TEXT.preview), text[1], text[2], text[3], true)
 		GameTooltip:Show()
 		return
 	end
 	if self.isMain and list.n > 1 then
-		GameTooltip:SetText(TEXT.title, gold[1], gold[2], gold[3])
+		GameTooltip:SetText(W.Tr(TEXT.title), gold[1], gold[2], gold[3])
 		for i = 1, list.n do
-			GameTooltip:AddLine(Rem:Text(list[i]), text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(Rem:Text(list[i])), text[1], text[2], text[3], true)
 		end
 	else
-		GameTooltip:SetText(Rem:Label(key), gold[1], gold[2], gold[3])
-		GameTooltip:AddLine(Rem:Text(key), text[1], text[2], text[3], true)
+		GameTooltip:SetText(W.Tr(Rem:Label(key)), gold[1], gold[2], gold[3])
+		GameTooltip:AddLine(W.Tr(Rem:Text(key)), text[1], text[2], text[3], true)
 	end
 	local spec = specs[key]
 	if type(spec.tooltip) == "function" then
@@ -1487,18 +1487,18 @@ Tip = function(self)
 	end
 	local name = self.isMain and TargetName(key)
 	if spec.secure ~= nil and (S.combat or InCombatLockdown()) then
-		GameTooltip:AddLine(TEXT.secureFight, text[1], text[2], text[3], true)
+		GameTooltip:AddLine(W.Tr(TEXT.secureFight), text[1], text[2], text[3], true)
 	elseif name and ui.overlay and ui.overlay:IsShown() then
-		GameTooltip:AddLine(TEXT.target:format(name), text[1], text[2], text[3], true)
+		GameTooltip:AddLine(W.Tr(TEXT.target):format(name), text[1], text[2], text[3], true)
 		local bind = _G.GetBindingKey and _G.GetBindingKey("INTERACTTARGET")
 		if type(bind) == "string" and not Secret(bind) then
-			GameTooltip:AddLine(TEXT.interact:format(bind), text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.interact):format(bind), text[1], text[2], text[3], true)
 		end
 	else
 		local hint = spec.hint
-		GameTooltip:AddLine(type(hint) == "string" and hint or TEXT.go, text[1], text[2], text[3], true)
+		GameTooltip:AddLine(W.Tr(type(hint) == "string" and hint or TEXT.go), text[1], text[2], text[3], true)
 	end
-	GameTooltip:AddLine(TEXT.notNow, text[1], text[2], text[3], true)
+	GameTooltip:AddLine(W.Tr(TEXT.notNow), text[1], text[2], text[3], true)
 	GameTooltip:Show()
 end
 
@@ -2710,8 +2710,8 @@ local function Column()
 			r.entry = e
 			SetPicture(r.pic, e.glyph, e.icon)
 			r.pic:SetShown(e.glyph ~= nil or e.icon ~= nil)
-			r.text:SetText(e.text or "")
-			r.right:SetText(e.right or "")
+			r.text:SetText(W.Tr(e.text or ""))
+			r.right:SetText(W.Tr(e.right or ""))
 			r:Show()
 		end
 		for i = n + 1, #t.lines do
@@ -2719,7 +2719,7 @@ local function Column()
 			t.lines[i]:Hide()
 		end
 		local hasFoot = (Secret(foot) or (type(foot) == "string" and foot ~= "")) and true or false
-		t.foot:SetText(hasFoot and foot or "")
+		t.foot:SetText(hasFoot and W.Tr(foot) or "")
 		t.foot:SetShown(hasFoot)
 		t.rule:SetShown(hasFoot and n > 0)
 		t:SetHeight(12 + n * TRAY_ROW + (hasFoot and 26 or 0))
@@ -2838,7 +2838,7 @@ local function Column()
 		if not left then
 			return ""
 		end
-		return paused and TEXT.paused or TEXT.left:format(Clock(left))
+		return paused and W.Tr(TEXT.paused) or W.Tr(TEXT.left):format(Clock(left))
 	end
 
 	local function SetModel(row, id)
@@ -2903,7 +2903,7 @@ local function Column()
 		if not (Secret(title) or type(title) == "string") then
 			title = Rem:Label(key)
 		end
-		row.title:SetText(title)
+		row.title:SetText(W.Tr(title))   -- (a widget's own words in the language in use; a name or a quest's title as it is)
 		if type(r) == "number" and type(g) == "number" and type(b) == "number" and not (Secret(r) or Secret(g) or Secret(b)) then
 			local c = row.titleColour or {}
 			c[1], c[2], c[3] = r, g, b
@@ -2913,7 +2913,7 @@ local function Column()
 			Look.Colour(row.title, nil)
 		end
 		local text = Value(spec.text, key)
-		row.text:SetText((Secret(text) or type(text) == "string") and text or "")
+		row.text:SetText((Secret(text) or type(text) == "string") and W.Tr(text) or "")
 		-- the face: a 3D face, a unit's portrait (a pet's) or the icon
 		local id = Num(Value(spec.model, key))
 		if id and id > 0 then
@@ -3000,7 +3000,7 @@ local function Column()
 		local h = ROW_H
 		row.subText = (not Secret(sub) and type(sub) == "string") and sub or nil
 		if Secret(sub) or (type(sub) == "string" and sub ~= "") then
-			row.sub:SetText(sub)
+			row.sub:SetText(W.Tr(sub))
 			row.sub:Show()
 			local sh = Num(row.sub:GetStringHeight())
 			row.subH = sh
@@ -3326,7 +3326,7 @@ local function Column()
 			r.entry = key
 			SetPicture(r.pic, nil, Rem:Icon(key) or SAMPLE_ICON)
 			r.pic:Show()
-			r.text:SetText(title)
+			r.text:SetText(W.Tr(title))
 			r.right:SetText("")
 			r:Show()
 		end
@@ -3353,7 +3353,7 @@ local function Column()
 		end
 		f.label:ClearAllPoints()
 		f.label:SetPoint("LEFT", f.icons[k], "RIGHT", 8, 0)
-		f.label:SetText(TEXT.fold:format(folded.n))
+		f.label:SetText(W.Tr(TEXT.fold):format(folded.n))
 		local w = Num(f.label:GetStringWidth()) or 60
 		f:SetWidth(8 + k * (FOLD_ICON + 4) + 4 + w + 16)
 		if f.trayOpen then
@@ -4274,10 +4274,10 @@ local function Column()
 		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(owner, "ANCHOR_TOP")
-		GameTooltip:SetText(Rem:Label(key), gold[1], gold[2], gold[3])
+		GameTooltip:SetText(W.Tr(Rem:Label(key)), gold[1], gold[2], gold[3])
 		local line = Value(spec.text, key)
 		if Secret(line) or (type(line) == "string" and line ~= "") then
-			GameTooltip:AddLine(line, text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(line), text[1], text[2], text[3], true)
 		end
 		if type(spec.tooltip) == "function" then
 			local ok, err = pcall(spec.tooltip, key, GameTooltip)
@@ -4286,13 +4286,13 @@ local function Column()
 			end
 		end
 		if type(spec.hint) == "string" then
-			GameTooltip:AddLine(spec.hint, text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(spec.hint), text[1], text[2], text[3], true)
 		end
 		if spec.secure ~= nil and InCombatLockdown() then
-			GameTooltip:AddLine(TEXT.outOfCombat, text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.outOfCombat), text[1], text[2], text[3], true)
 		end
 		if not spec.rightClick then
-			GameTooltip:AddLine(TEXT.notNow, text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.notNow), text[1], text[2], text[3], true)
 		end
 		GameTooltip:Show()
 	end
@@ -4305,13 +4305,13 @@ local function Column()
 		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(owner or b, "ANCHOR_BOTTOMRIGHT")
-		GameTooltip:SetText(Value(a.tip, b.row.key) or "", gold[1], gold[2], gold[3])
+		GameTooltip:SetText(W.Tr(Value(a.tip, b.row.key) or ""), gold[1], gold[2], gold[3])
 		local desc = Value(a.desc, b.row.key)
 		if type(desc) == "string" and desc ~= "" then
-			GameTooltip:AddLine(desc, text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(desc), text[1], text[2], text[3], true)
 		end
 		if a.secure and InCombatLockdown() then
-			GameTooltip:AddLine(TEXT.outOfCombat, text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.outOfCombat), text[1], text[2], text[3], true)
 		end
 		GameTooltip:Show()
 	end
@@ -4489,17 +4489,17 @@ local function Column()
 		local P = MelloUI.Look.TipPalette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText(TEXT.foldTitle, gold[1], gold[2], gold[3])
+		GameTooltip:SetText(W.Tr(TEXT.foldTitle), gold[1], gold[2], gold[3])
 		local sitting = false
 		for i = 1, folded.n do
 			local key = folded[i]
-			GameTooltip:AddLine(Rem:Label(key), text[1], text[2], text[3])
+			GameTooltip:AddLine(W.Tr(Rem:Label(key)), text[1], text[2], text[3])
 			sitting = sitting or SitsFightOut(key)
 		end
 		if sitting then
-			GameTooltip:AddLine(TEXT.foldCombat, text[1], text[2], text[3], true)
+			GameTooltip:AddLine(W.Tr(TEXT.foldCombat), text[1], text[2], text[3], true)
 		end
-		GameTooltip:AddLine(TEXT.foldHint, text[1], text[2], text[3], true)
+		GameTooltip:AddLine(W.Tr(TEXT.foldHint), text[1], text[2], text[3], true)
 		GameTooltip:Show()
 	end, "script")
 

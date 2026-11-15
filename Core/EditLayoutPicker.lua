@@ -328,9 +328,9 @@ function K.SoloLabel()
 		return nil
 	end
 	if solo.kind == "cat" then
-		return TEXT.soloOf:format(LABEL_OF[solo.id] or solo.id)
+		return W.Tr(TEXT.soloOf):format(W.Tr(LABEL_OF[solo.id] or solo.id))
 	end
-	return TEXT.soloOf:format(solo.label or tostring(solo.id))
+	return W.Tr(TEXT.soloOf):format(solo.label or tostring(solo.id))
 end
 
 --------------------------------------------------------------------------------
@@ -639,7 +639,7 @@ local function LayHead(row, it, shownN, n)
 	row:SetHeight(HEAD_H)
 	row.label:SetFontObject("GameFontNormal")
 	W.Paint(row.label, "selectedTrim", "text")
-	row.label:SetText(LABEL_OF[it.cat] or it.cat)
+	row.label:SetText(W.Tr(LABEL_OF[it.cat] or it.cat))
 	row.label:ClearAllPoints()
 	row.label:SetPoint("LEFT", row, "LEFT", 8, 0)
 	row.count:SetText(string.format("%d / %d", shownN, n))
@@ -676,7 +676,7 @@ local function LayItem(row, it)
 	row.label:SetFontObject("GameFontHighlight")
 	W.Paint(row.label, "text", "text")
 	row.label:SetAlpha(on and 1 or 0.55)
-	row.label:SetText(it.gameHidden and TEXT.hidden:format(it.label) or it.label)
+	row.label:SetText(it.gameHidden and W.Tr(TEXT.hidden):format(it.label) or it.label)
 	row.label:ClearAllPoints()
 	row.label:SetPoint("LEFT", row.eye, "RIGHT", 6, 0)
 	row.label:SetPoint("RIGHT", row.lock, "LEFT", -6, 0)
@@ -844,7 +844,7 @@ local function Make()
 	search:SetMaxLetters(40)
 	W.Paint(search, "text", "text")
 	if search.Instructions then
-		search.Instructions:SetText(TEXT.find)
+		search.Instructions:SetText(W.Tr(TEXT.find))
 	end
 	Perf.HookScript(search, "OnTextChanged", SearchChanged)
 	Perf.SetScript(search, "OnEscapePressed", SearchEscape)
