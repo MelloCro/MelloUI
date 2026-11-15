@@ -9,12 +9,14 @@
 - Quest Tracker: the items a RestedXP step names are now the game's item links. Point at one for its tooltip, click it for its card, shift-click to link it in the chat. A step's own link opens a window to copy its address.
 - RestedXP Guides: its Active Targets wears MelloUI's look while its guide is followed.
 - Zygor Guides: its steps move on by themselves again when they are done. With its window tucked away beside the Quest Tracker, every step needed Skip Step.
+- Quest List and map: in a group, a party mark and a count after a quest's name show how many others have it, on the Quest List and the map's Quests tab. Its tooltip lists them in their class colours, with how far they are when they run Questie, and the quest's marks on the map and minimap list them too.
 - Edit Layout: hold Alt to put the dock out of the way and reach an element that lies under it. The dock says so when something does.
 - Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.
-- Bags: a split stack dropped on a + slot of the bag window now goes into a free slot. Before, it went back onto its stack.
+- Bags: a stack dropped on a + slot of the bag window now goes into a free slot, split or whole. Before, it went back where it was.
+- Group Frames: no longer asks for a /reload at every login and every reload on a slower computer.
 - Discard: items in the Reagent Bag count now. With Trade Goods Too on, the cheapest material there was passed over for a dearer one in your bags. The loot window's button still frees a slot in your bags only.
-- German: the bag window, the map's quest log, the widgets, the reminders, the chat and Edit Layout are translated now.
-- French: the on-screen lines, the tutorial tips, the reminders, the map's layers, the quest log, Services, Restock and Route's distances and times are translated now, and follow a language change at once. In French, Route's distances show in metres.
+- German: the bag window, the map's quest log, the widgets, the reminders, the chat and Edit Layout are translated now, and Route's and Services' distances, travel times and tracking lines. In German, distances show in metres.
+- French: the on-screen lines, the tutorial tips, the reminders, the map's layers, the quest log, Services, Restock and Route's distances and times are translated now, and follow a language change at once. In French, Route's and Services' distances show in metres.
 - Dungeon maps: Santiago Reyes' maps of The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace, a map for each part of a dungeon (Blackmaw Hold has six). City of Dalaran, Ruins of Lordaeron, The Hall of Thanes and Excavation Site: Wetlands show his newest versions, all of them sharper than before.
 - Dungeon Info: The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace have pages of their own, with their bosses and level ranges. No drops are known for them yet.
 - Map: clicking a dungeon's entrance opens its page in Dungeon Info with its map, for the new dungeons too. An entrance you found by walking in now shows on MelloUI's map as well.

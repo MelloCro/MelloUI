@@ -35,14 +35,18 @@ local function Questie(name)
 	return ok and type(mod) == "table" and mod or nil
 end
 
--- the group's other members' units (reused)
+-- the group's other members' units (reused): a raid's units name you too (one of raid1..raidN is you), a party's never
 local units = {}
 local function Units()
 	local n = 0
 	if IsInRaid() then
 		for i = 1, Num(GetNumGroupMembers()) or 0 do
-			n = n + 1
-			units[n] = "raid" .. i
+			local unit = "raid" .. i
+			local ok, me = pcall(UnitIsUnit, unit, "player")
+			if not (ok and Plain(me) == true) then
+				n = n + 1
+				units[n] = unit
+			end
 		end
 	elseif IsInGroup() then
 		for i = 1, 4 do
