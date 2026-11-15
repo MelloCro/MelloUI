@@ -186,6 +186,7 @@ local CHANGELOG = {
 		"Party and raid frames: a new indicator's time left and stack count no longer lie on each other. Both are smaller, and the count hangs on the icon's corner.",
 		"Questie's tracker: it now follows the Quest Tracker page's Width, Height, text sizes, Nearest Quest First and Reset Position. Dragging its corner sets Width and Height.",
 		"Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own until Questie's tracker shows again.",
+		"Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP. Its switch is on the Addons page.",
 	} },
 	{ version = "2.1.52", lines = {
 		"Quest Moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest. Switches on the Animations page.",

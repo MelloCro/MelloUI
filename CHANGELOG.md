@@ -10,6 +10,7 @@
 - Party and raid frames: a new indicator's time left and stack count no longer lie on each other. Both are smaller, and the count hangs on the icon's corner. Indicators you already have keep their own sizes.
 - Questie's tracker: it now follows the Quest Tracker page's settings: Width or Match The Minimap's Width, Height, Text Size, Header Text Size, Nearest Quest First and Reset Position. Dragging its corner sets Width and Height. Questie's own sizes come back when MelloUI's look or Quest Tracker is switched off, and the settings Questie's tracker has nothing for are greyed out while it lists your quests.
 - Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own in the Quest Tracker's place until Questie's tracker shows again.
+- Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP, with Zygor's own window and arrow tucked away. Until now this only worked after typing /route zygor on. Its switch is on the Addons page, where Show its own arrow too keeps Zygor's arrow beside MelloUI's World Marker, and with more than one guide on, the question at login lists Zygor too.
 
 ## 2.1.52
 
