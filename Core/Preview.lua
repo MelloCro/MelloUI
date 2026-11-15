@@ -507,7 +507,7 @@ local function Play(item)
 	if name and not MelloUI:IsModuleEnabled(name) then
 		-- (a feature of its own addon not loaded: named by Core's MelloUI.Features)
 		local m, f = MelloUI:GetModule(name), MelloUI.Features and MelloUI.Features[name]
-		MelloUI:Announce(TEXT.off:format((m and m.title) or (f and f.title) or name), "info")
+		MelloUI:Announce(MelloUI.Lang.F(TEXT.off, (m and m.title) or (f and f.title) or name), "info")
 		return false
 	end
 	return Preview:Start(item.key)
@@ -588,7 +588,7 @@ function Preview:Once(fn)
 	end
 	local ok, played, seconds, stay = pcall(fn)
 	if not ok then
-		MelloUI:Announce(TEXT.failed:format(tostring(played)), "info")
+		MelloUI:Announce(W.Tr(TEXT.failed):format(tostring(played)), "info")
 		return false
 	end
 	if not played then

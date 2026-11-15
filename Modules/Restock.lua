@@ -731,14 +731,19 @@ end
 local function Words(keys, n)
 	if n == 0 then
 		return ""
-	elseif n == 1 then
-		return EntryName(keys[1], true)
-	elseif n == 2 then
-		return EntryName(keys[1], true) .. " and " .. EntryName(keys[2], true)
-	elseif n == 3 then
-		return EntryName(keys[1], true) .. ", " .. EntryName(keys[2], true) .. " and " .. EntryName(keys[3], true)
 	end
-	return EntryName(keys[1], true) .. ", " .. EntryName(keys[2], true) .. " and " .. (n - 2) .. " more"
+	local function Name(key)
+		local name = EntryName(key, true)
+		return type(key) == "number" and name or W.Tr(name)
+	end
+	if n == 1 then
+		return Name(keys[1])
+	elseif n == 2 then
+		return string.format(W.Tr("%s and %s"), Name(keys[1]), Name(keys[2]))
+	elseif n == 3 then
+		return string.format(W.Tr("%s, %s and %s"), Name(keys[1]), Name(keys[2]), Name(keys[3]))
+	end
+	return string.format(W.Tr("%s, %s and %d more"), Name(keys[1]), Name(keys[2]), n - 2)
 end
 
 local lowKeys = {}   -- the low lines' keys, in list order (filled again)
@@ -812,7 +817,7 @@ local function RemText()
 		state.textMask, state.textVersion = state.lowMask, list.version
 		state.nameMissing = false
 		local keys, n = LowKeys()
-		state.text = n > 0 and ("Restock: " .. Words(keys, n)) or "Restock"
+		state.text = n > 0 and W.Tr("Restock: %s"):format(Words(keys, n)) or W.Tr("Restock")
 		if state.nameMissing then
 			state.textMask = -1   -- (made again at the next ask)
 		end
@@ -851,6 +856,11 @@ local function RemTooltip(_, tip)
 		end
 	end
 end
+
+MelloUI:On("language", function()
+	state.textMask = -1
+	Changed()
+end, M)
 
 -- (one table: the widget keeps it, its fields change in place). The widget's
 -- contract (Core/Reminders.lua): the reach is measured by it through
@@ -1105,7 +1115,7 @@ local function RouteOpts(keys, n)
 			least[letter] = state.famBest[letter]
 		end
 	end
-	route.what = "vendor with " .. Words(keys, n)
+	route.what = W.Tr("vendor with %s"):format(Words(keys, n))
 	wipe(route.skip)
 	wipe(route.extra)
 	local store = ServiceStore()
@@ -1162,17 +1172,17 @@ function M:GoTo()
 	Counted()
 	local keys, n = Wants()
 	if n == 0 then
-		MelloUI:Announce("Your restock list is empty. Add to it with /restock.", "fail")
+		MelloUI:Announce(W.Tr("Your restock list is empty. Add to it with /restock."), "fail")
 		return false, "empty"
 	end
 	local opts = RouteOpts(keys, n)
 	if opts.letters == "" and #opts.extra == 0 then
-		MelloUI:Announce("No " .. opts.what .. " known yet. Open a shop that sells it once and it is remembered.", "fail")
+		MelloUI:Announce(W.Tr("No %s known yet. Open a shop that sells it once and it is remembered."):format(opts.what), "fail")
 		return false, "none"
 	end
 	local services = MelloUI:GetModule("Services")
 	if not (services and type(services.GoTo) == "function") then
-		MelloUI:Announce("Switch on Services to route there.", "fail")
+		MelloUI:Announce(W.Tr("Switch on Services to route there."), "fail")
 		return false, "off"
 	end
 	return services:GoTo("vendor", opts)
@@ -1678,7 +1688,7 @@ function Pick.NotOffered()
 			notKeys[n] = key
 		end
 	end
-	return "Not offered: " .. (said or "") .. ". You carry better " .. Words(notKeys, n) .. "."
+		return W.Tr("Restock: Not offered: %s. You carry better %s."):format(said or "", Words(notKeys, n))
 end
 
 -- (2.1.51; Nixxen: at a merchant who only had a drink below the one carried, "I did not get the 'Not offered' note" --
@@ -1687,7 +1697,7 @@ end
 function Pick.TellNotOffered()
 	if plan.notN > 0 and plan.notLow and not shop.toldNot then
 		shop.toldNot = true
-		MelloUI:Announce("Restock: " .. Pick.NotOffered())
+		MelloUI:Announce(Pick.NotOffered())
 	end
 end
 
@@ -2229,11 +2239,11 @@ local function HaveText(i)
 	if fill then
 		local own = type(key) == "number" and ItemCount(key) or (state.famHave[key] or 0)
 		if list.cap[fill] == 0 then
-			return "in bags " .. own .. (fill == "a" and ", no quiver" or ", no ammo pouch")
+			return MelloUI.Lang.F(fill == "a" and "in bags %d, no quiver" or "in bags %d, no ammo pouch", own)
 		end
-		return "in bags " .. own
+		return MelloUI.Lang.F("in bags %d", own)
 	end
-	return "in bags " .. (state.have[i] or 0)
+	return MelloUI.Lang.F("in bags %d", state.have[i] or 0)
 end
 
 -- the Fill All Ammo Bags row's line: how full the quivers and the ammo pouches carried are ("ammo pouch 354 of 1600")
@@ -2246,11 +2256,11 @@ function win.FillHint()
 		local letter = i == 1 and "a" or "b"
 		local slots = list.cap[letter]
 		if slots > 0 then
-			local part = (i == 1 and "quiver " or "ammo pouch ") .. list.held[letter] .. " of " .. slots * list.Stack(letter)
+			local part = MelloUI.Lang.F(i == 1 and "quiver: %d of %d" or "ammo pouch: %d of %d", list.held[letter], slots * list.Stack(letter))
 			text = text and (text .. ", " .. part) or part
 		end
 	end
-	return text or "no quiver or ammo pouch equipped"
+	return text or MelloUI.Lang.T("no quiver or ammo pouch equipped")
 end
 
 -- the diets the pet out eats (C_PetInfo.CanPetEatItem on the first item of each), into out; true when it eats any
@@ -2288,16 +2298,16 @@ local function RowHint(key)
 		local need = type(key) == "number" and Families().level[key]
 		local n = type(key) == "number" and ItemCount(key) or (state.famHave[key] or 0)
 		if need and need > Level() then
-			text = "level " .. need
+			text = MelloUI.Lang.F("level %d", need)
 		elseif n > 0 then
-			text = "in bags " .. n
+			text = MelloUI.Lang.F("in bags %d", n)
 		else
 			text = ""
 		end
 	end
 	local diet = FAMILY[key] and FAMILY[key].diet
 	if diet and win.eats and win.eats[diet] then
-		text = text ~= "" and (text .. ", your pet eats this") or "your pet eats this"
+		text = text ~= "" and MelloUI.Lang.F("%s, your pet eats this", text) or W.Tr("your pet eats this")
 	end
 	return text
 end

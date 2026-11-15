@@ -778,7 +778,7 @@ local function BindPress(item, name, i)
 	pcall(rawget(_G, "PlaceAction"), slot)
 	ClearCursor()   -- (what the slot held, replaced)
 	if ActionKey(slot) == "item:" .. item then
-		MelloUI:Announce(TEXT.bound:format(name, Combo(lt, rt, KEYS[i])), "info")
+	MelloUI:Announce(MelloUI.Widgets.Tr(TEXT.bound):format(name, Combo(lt, rt, KEYS[i])), "info")
 		return "done"
 	end
 	MelloUI:Announce(TEXT.bindFailed, "info")

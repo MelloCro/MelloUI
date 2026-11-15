@@ -2200,7 +2200,7 @@ local function OnBlockEnter(block, onMark)
 		GameTooltip:SetOwner(block, "ANCHOR_LEFT")
 		GameTooltip:SetText(block.title:GetText() or "")
 		local c = MelloUI.Look.TipPalette().text
-		GameTooltip:AddLine("Click: mark this step on the map again  -  Right-click: remove its mark", c[1], c[2], c[3], true)
+		GameTooltip:AddLine(MelloUI.Widgets.Tr("Click: mark this step on the map again  -  Right-click: remove its mark"), c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		Act.Lit(block, true)
 		return
@@ -2216,7 +2216,7 @@ local function OnBlockEnter(block, onMark)
 			GameTooltip:SetText(block.title:GetText() or "")
 		end
 		local c = MelloUI.Look.TipPalette().text   -- (a hint: small text is never mutedText)
-		GameTooltip:AddLine("Click: open the recipe  -  Shift-click: stop tracking", c[1], c[2], c[3], true)
+		GameTooltip:AddLine(MelloUI.Widgets.Tr("Click: open the recipe  -  Shift-click: stop tracking"), c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		Act.Lit(block, true)
 		return
@@ -2233,11 +2233,12 @@ local function OnBlockEnter(block, onMark)
 	local QI = MelloUI.QuestInk
 	local name = block.tier and QI and QI.TIER_NAME and QI.TIER_NAME[block.tier]
 	if name then
-		GameTooltip:AddLine("Difficulty: " .. name, c[1], c[2], c[3], true)
+		MelloUI.Widgets.Tr("Difficulty: %s")
+		GameTooltip:AddLine(MelloUI.Lang.F("Difficulty: %s", name), c[1], c[2], c[3], true)
 	end
 	local pad = MelloUI.Safe.GamepadUI()
 	local hint = onMark and (pad and Act.HINT.markPad or Act.HINT.mark) or (pad and Act.HINT.blockPad or Act.HINT.block)
-	GameTooltip:AddLine(hint, c[1], c[2], c[3], true)
+	GameTooltip:AddLine(MelloUI.Widgets.Tr(hint), c[1], c[2], c[3], true)
 	GameTooltip:Show()
 	Act.Lit(block, true)
 end
@@ -2366,7 +2367,7 @@ local function NewBlock()
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			pcall(GameTooltip.SetHyperlink, GameTooltip, self.itemLink)
 			local c = MelloUI.Look.TipPalette().text
-			GameTooltip:AddLine("Out of combat, a click uses it.", c[1], c[2], c[3], true)
+			GameTooltip:AddLine(MelloUI.Widgets.Tr("Out of combat, a click uses it."), c[1], c[2], c[3], true)
 			GameTooltip:Show()
 		end
 	end)
@@ -3545,7 +3546,7 @@ local function FillBlock(block, questID, width, followedID)
 		local text = Near.TurnInLine(questID)
 		if not text then
 			text = logIndex and GetQuestLogCompletionText and GetQuestLogCompletionText(logIndex)
-			text = Plain(text) or "Ready for turn-in"
+			text = MelloUI.Lang.T(Plain(text) or "Ready for turn-in")
 		end
 		local fs
 		y, fs = PutLine(block, n, text, y, textWidth, false, 0.95, 0.95, 0.95)

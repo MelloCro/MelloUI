@@ -121,7 +121,7 @@ for _, e in ipairs(ELEMENTS) do
 	-- no merging")
 	options[#options + 1] = { type = "toggle", key = e.key, name = e.name, new = e.new,
 		search = "shadows",   -- (2.1.9: the word players look for it by)
-		desc = "A backdrop around " .. e.what .. ". Neighbours with a backdrop share one." }
+		desc = MelloUI.Widgets.Tr("A backdrop around %s. Neighbours with a backdrop share one."):format(MelloUI.Widgets.Tr(e.what)) }
 end
 
 local M = MelloUI:RegisterModule("ActionBars", {
@@ -1098,7 +1098,7 @@ do
 		end
 		if preset then
 			if say then
-				MelloUI:Announce(TEXT.preset:format(name), "info")
+			MelloUI:Announce(MelloUI.Widgets.Tr(TEXT.preset):format(name), "info")
 			end
 			return
 		end

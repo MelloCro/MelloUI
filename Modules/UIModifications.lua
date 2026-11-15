@@ -309,8 +309,8 @@ local function ShadeRow(a)
 	end
 	defaults[a.key] = true
 	if type(shade.strength) == "string" then
-		local opt = { type = "toggle", key = a.key, name = "Shade: " .. a.label, requires = shade.master, free = true,
-			new = a.new, desc = "The UI Shade around the " .. a.label:lower() .. "." }
+		local opt = { type = "toggle", key = a.key, name = MelloUI.Widgets.Tr("Shade: %s"):format(MelloUI.Widgets.Tr(a.label)), requires = shade.master, free = true,
+			new = a.new, desc = MelloUI.Widgets.Tr("The UI Shade around the %s."):format(MelloUI.Widgets.Tr(a.label:lower())) }
 		local prev = SHADE_ROW[shade.strength]
 		for _, b in ipairs(Kit.shadeAreas) do
 			if b == a then
@@ -373,7 +373,7 @@ for _, entry in ipairs(PARCHMENTS) do
 	local area = entry[1]:sub(11)
 	local own = Kit and type(Kit.ownParchments) == "table" and Kit.ownParchments[area] or nil
 	local skinless = Kit and type(Kit.skinlessParchments) == "table" and Kit.skinlessParchments[area] or nil
-	Add({ type = entry.values and "dropdown" or "toggle", key = entry[1], name = "Parchment: " .. entry[2], values = entry.values,
+	Add({ type = entry.values and "dropdown" or "toggle", key = entry[1], name = MelloUI.Widgets.Tr("Parchment: %s"):format(MelloUI.Widgets.Tr(entry[2])), values = entry.values,
 		requires = not own and "reskin" or nil, free = own, new = entry.new, desc = PARCHMENT_DESC[entry[1]],
 		missing = skinless and SkinlessLine or nil })
 end

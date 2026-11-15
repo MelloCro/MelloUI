@@ -876,6 +876,9 @@ function QL.Panel:Sync(off)
 	if not frame then
 		return
 	end
+	if frame.search and frame.search.Instructions then
+		frame.search.Instructions:SetText(MelloUI.Widgets.Tr("Search quests"))
+	end
 	if self.host then
 		-- (in MelloUI's map: shown with its tab; the game's list never faded)
 		frame:SetShown((not off and M.isEnabled and self.hostShown) and true or false)
@@ -894,7 +897,7 @@ function QL.Panel:Sync(off)
 	frame:SetShown(list)
 	local switch = frame.switch
 	switch:SetShown(column)
-	switch:SetText(list and "Quest Log" or "Quest List")
+	switch:SetText(MelloUI.Widgets.Tr(list and "Quest Log" or "Quest List"))
 	local _, sf = Column()
 	if sf and faded ~= list then
 		faded = list
@@ -1018,7 +1021,7 @@ function QL.Panel:Create(host)
 	local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
 	search:SetAutoFocus(false)
 	if search.Instructions then
-		search.Instructions:SetText("Search quests")
+		search.Instructions:SetText(MelloUI.Widgets.Tr("Search quests"))
 	end
 	Perf.HookScript(search, "OnTextChanged", function(_, userInput)
 		if userInput then
@@ -1037,7 +1040,7 @@ function QL.Panel:Create(host)
 		menu = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
 		menu:SetSize(94, 22)
 		if menu.SetDefaultText then
-			menu:SetDefaultText("Filter")
+			menu:SetDefaultText(MelloUI.Widgets.Tr("Filter"))
 		end
 	end
 	menu:SetupMenu(MenuSetup)
@@ -1046,7 +1049,7 @@ function QL.Panel:Create(host)
 	-- the switch on the count box: in the layer, not the page (it shows over
 	-- the log too), over the page's border
 	local switch = CreateFrame("Button", nil, layer, "UIPanelButtonTemplate")
-	switch:SetText("Quest List")
+	switch:SetText(MelloUI.Widgets.Tr("Quest List"))
 	Perf.SetScript(switch, "OnClick", SwitchClick)
 	Perf.HookScript(switch, "OnEnter", SwitchEnter)
 	Perf.HookScript(switch, "OnLeave", SwitchLeave)
@@ -1687,3 +1690,8 @@ function QL.Panel:Reveal(key, filter)
 end
 
 MelloUI:Profile("QuestList", "panel rebuild", QL.Panel.Update)
+MelloUI:On("language", function()
+	if QL.Panel.frame then
+		QL.Panel:Sync()
+	end
+end, "QuestListPanel.Language")

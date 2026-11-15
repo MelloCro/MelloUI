@@ -130,7 +130,7 @@ local options = {
 for _, group in ipairs(RACE_GROUPS) do
 	defaults["voice_" .. group.key] = AUTO_VOICE
 	options[#options + 1] = { type = "dropdown", key = "voice_" .. group.key, name = group.name, values = VOICE_VALUES,
-		desc = "The text-to-speech voice for " .. group.name:lower() .. " of either gender; recorded lines keep their own voice. Automatic uses the male / female voices above." }
+		desc = MelloUI.Widgets.Tr("The text-to-speech voice for %s of either gender; recorded lines keep their own voice. Automatic uses the male / female voices above."):format(MelloUI.Widgets.Tr(group.name:lower())) }
 end
 options[#options + 1] = { type = "header", name = "Sound Packs" }
 options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use Voice Packs",

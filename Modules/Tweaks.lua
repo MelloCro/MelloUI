@@ -1348,7 +1348,10 @@ function Level.Sub(new)
 		local ok, n = pcall(ql.NewQuestsAt, ql, new)
 		n = ok and Num(n) or nil
 		if n and n > 0 then
-			return n .. (n == 1 and " new quest nearby" or " new quests nearby")
+			if n == 1 then
+				return { key = "1 new quest nearby" }
+			end
+			return { key = "%d new quests nearby", args = { n } }
 		end
 	end
 	return nil
@@ -1372,7 +1375,7 @@ function Level.Notice()
 		return
 	end
 	if M.db and M.db.levelUp ~= false then
-		MelloUI:AnnounceMoment("Level " .. new, sub)
+		MelloUI:AnnounceMoment("Level %d", sub, new)
 	end
 end
 
@@ -1665,7 +1668,7 @@ function Rep.Up(from, to, reaction, name)
 	end
 	local standing = Rep.Standing(reaction)
 	if standing then
-		MelloUI:AnnounceMoment(standing, name)
+		MelloUI:AnnounceMoment(MelloUI.Widgets.Tr(standing), name)
 	end
 end
 

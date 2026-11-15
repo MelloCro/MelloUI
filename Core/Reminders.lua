@@ -1495,10 +1495,10 @@ Tip = function(self)
 			GameTooltip:AddLine(TEXT.interact:format(bind), text[1], text[2], text[3], true)
 		end
 	else
-		local hint = spec.hint
-		GameTooltip:AddLine(type(hint) == "string" and hint or TEXT.go, text[1], text[2], text[3], true)
+		local hint = Value(spec.hint, key)
+		GameTooltip:AddLine(MelloUI.Lang.T(type(hint) == "string" and hint or TEXT.go), text[1], text[2], text[3], true)
 	end
-	GameTooltip:AddLine(TEXT.notNow, text[1], text[2], text[3], true)
+	GameTooltip:AddLine(MelloUI.Lang.T(TEXT.notNow), text[1], text[2], text[3], true)
 	GameTooltip:Show()
 end
 
@@ -4284,14 +4284,15 @@ local function Column()
 				Report(err)
 			end
 		end
-		if type(spec.hint) == "string" then
-			GameTooltip:AddLine(spec.hint, text[1], text[2], text[3], true)
+		local hint = Value(spec.hint, key)
+		if type(hint) == "string" then
+			GameTooltip:AddLine(MelloUI.Lang.T(hint), text[1], text[2], text[3], true)
 		end
 		if spec.secure ~= nil and InCombatLockdown() then
 			GameTooltip:AddLine(TEXT.outOfCombat, text[1], text[2], text[3], true)
 		end
 		if not spec.rightClick then
-			GameTooltip:AddLine(TEXT.notNow, text[1], text[2], text[3], true)
+			GameTooltip:AddLine(MelloUI.Lang.T(TEXT.notNow), text[1], text[2], text[3], true)
 		end
 		GameTooltip:Show()
 	end
