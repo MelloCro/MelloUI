@@ -379,8 +379,12 @@ local function Dist(ax, ay, bx, by)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
+-- (2.1.54) the languages that read a distance in metres: their catalogue writes "%d m" for "%d yd", the yards turned
+-- into metres first (Services' errand distances read it too)
+M.METRIC = { frFR = true, deDE = true }
+
 local function Yards(d)
-	if M.Language() == "frFR" then
+	if M.METRIC[M.Language()] then
 		local metres = d * 0.9144
 		if metres >= 1000 then
 			local tenths = math.floor(metres / 100 + 0.5)
@@ -5028,8 +5032,8 @@ end
 function Travel.Line(f, d)
 	local suffix = Travel.suffix
 	local language = M.Language()
-	local distance = language == "frFR" and d * 0.9144 or d
-	local metric = language == "frFR"
+	local metric = M.METRIC[language] == true
+	local distance = metric and d * 0.9144 or d
 	if suffix == f.lineSuffix and language == f.lineLanguage then
 		if distance < 1000 then
 			local rounded = math.floor(distance + (metric and 0.5 or 0))

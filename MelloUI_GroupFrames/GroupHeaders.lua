@@ -1151,7 +1151,10 @@ local KINDS = { "party", "raid" }
 H.RELOAD_SAY = "Group Frames is on: type /reload to finish putting the game's party frames away."
 
 function H:Start(first)
-	if not S.on and not S.started and not (MelloUI.LoggingIn and MelloUI:LoggingIn()) then
+	-- (the login's module pass counts as the login: it can outlast LOGIN_SETTLE's 3 s on a slow client, and this addon's
+	-- module comes last in it -- then its Start ran after the login had "settled" and asked for a /reload at every login
+	-- and every reload; Modules/UnitFrames.lua asks the same two)
+	if not S.on and not S.started and not ((MelloUI.LoggingIn and MelloUI:LoggingIn()) or MelloUI.initializingModules) then
 		S.gameUsed = true   -- (on for the first time since the login: the game's were in use till now)
 	end
 	S.started = true
