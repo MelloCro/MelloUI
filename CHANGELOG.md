@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.1.52
+
+- Quest Moments: the game's yellow quest lines in the middle of the screen become moments. An item picked up counts up in a gilded ring and flies to its line in your quest tracker, a finished objective closes its ring with a flare of light and a tick, and a finished quest lands a gilded crest with its title. Each can be switched off on the Animations page.
+- Quests: MelloUI's quests now come from Questie. With Questie installed, the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI no longer ships quest data of its own.
+- Quests: without Questie, no quests are shown. The map's layers page and the Quest List say so, with a Get Questie button that opens Questie's card on the Addons page.
+- Addons page: Questie's switch is now named MelloUI's look. On, Questie's quests wear MelloUI's look. Off, Questie shows its own icons and its own tracker, on MelloUI's map too, and the Quest List and Route to a quest keep working.
+- Quest List: quests that Questie does not know are no longer listed, and the Attunements view is gone. So are the map options Include Givers You Are Done With and Hide Grey Quests: with the quest givers being Questie's, its own settings decide both.
+- Route: the First: loot line, for an item a quest needs before its objective, is gone. It came from MelloUI's own quest data.
+- Map: with Questie, every quest ! and ? on the map is Questie's, in MelloUI's look: its quest givers take the place of MelloUI's own, so Questie's quest level options decide which quests show. The map's Quest givers switch shows or hides them, pointing at one shows its quests, and clicking one sets Route's way there. Zoomed out past a zone, the map no longer shows MelloUI's own pin for each quest in your log.
+- Configurator: Buffs & Debuffs, Chat and Quality of Life line up with the other categories in the side list: evenly spaced, with a small icon and a gold name like theirs.
+- Configurator: a label or its "also ..." tag no longer runs under its slider or dropdown, and rows and lists whose text was cut short show it whole now.
+- Configurator: on Buffs & Debuffs, Icon Size is hidden while your buffs hang under the player frame, where it did nothing. On Nameplates, the combo points' Offset sliders give way to the preview's Place once you drag them there, and the CC icon and Quest icon have one Size slider each.
+- Nameplates: the CC icon, the Quest icon, the Threat line and the Combo points have one switch each. The preview no longer offers a second Show or Hide for them, and one hidden there before stays hidden by its switch.
+- Party and raid frames: an indicator group taken off the frame comes back at its place with its settings, a new indicator no longer lands on the name or the health text, and removing an indicator on the preview keeps the Indicators tab open.
+- Questie's tracker: the gold line under its title no longer runs through the first zone's name, and the panel's gold rim stays on the screen where the tracker touches the screen's edge.
+- Questie's tracker: where you have not moved it, it hangs under MelloUI's minimap, so a taller minimap or a second row of Services buttons no longer lies over it.
+- Questie 12.9: its quest givers and other icons show on MelloUI's map again. Questie 12.9 shares its map pins in a new way, which MelloUI did not find.
+- Map: a quest opened from the quest tracker or the map's search now shows its page when the map's panel was left on the Quest List, the layers or Dungeon Info. Before, the map opened and the page stayed hidden.
+- Map: places you explore while the map is closed now show as explored the next time you open it.
+- Map: explored areas stay inside their zone's outline, so they no longer cover the neighbouring zone's art, and the art at a zone's border no longer changes as you pan across it.
+- Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.
+- Addons page: on a new install, a Use with MelloUI switch turned off before the first /reload or logout is kept now. It was lost before.
+- Bags: with the Collapse Arrow on, the backpack stays still when the bag bar folds or opens, and the key ring fits a vertical bag bar.
+- Restock: a new Fill All Ammo Bags switch on the Restock List's Ammo page keeps your quivers and ammo pouches full, with no amounts to set. A single arrow or bullet on the list now goes up to 2000, and the Ammo page lists the best ammunition first.
+- Game Menu: with Polestar, its button and the MelloUI button no longer share a row, so both can be clicked.
+- French: the map, Dungeon Info, the quest tooltips, Services, Restock and Discard are translated now, and the Quest Tracker follows a language change at once.
+- Action Bars: MaxDPS's spell recommendations now light up MelloUI's action buttons, the controller's bars too. MaxDPS has its card and switch on the Addons page.
+
 ## 2.1.51
 
 - Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.

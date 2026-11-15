@@ -2068,7 +2068,6 @@ function Errand.Status(e)
 		end
 		if fs.nearest then
 			local yards = DistanceText(fs)
-			e.fallYards = yards
 			return Tr(fb.label) .. " " .. yards, "selectedTrim"
 		end
 	end

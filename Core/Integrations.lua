@@ -82,6 +82,8 @@ local BAG_DOES = { "Its bag window shows your bags: MelloUI's bag window and its
 local BAG_SHORT = "Its bags in place of MelloUI's bag window"
 local BAG_LINKS = { { "MelloUI Bag Window", id = "BagWindow.columns" } }
 
+-- (2.1.52) needed (what is missing without it: its card shown on the Installed tab even while it is not installed),
+-- use (its switch's own name, in place of Use with MelloUI), offPill / offLine (its state with the switch off)
 -- an addon: key (its switch's key), name, folders (any one loaded: installed), group, url (its page: the configurator
 -- opens no web page, its copy box does), switch (false: nothing of MelloUI's to switch off -- it only stays clear),
 -- does (what MelloUI does with it, a line each), short (the Compatibility tab's one line), links (its settings in
@@ -90,20 +92,22 @@ local BAG_LINKS = { { "MelloUI Bag Window", id = "BagWindow.columns" } }
 -- MelloUI_Route/Guides.lua: its card's switch, its own arrow shown beside the World Marker -- Guide.ArrowShown),
 -- noSwitch (with switch = false: the card's own line in place of "Nothing to switch")
 I.LIST = {
-	{ key = "MaxDps", name = "MaxDPS", folders = { "MaxDps" }, group = "frames",
-	  url = "https://www.curseforge.com/wow/addons/maxdps-rotation-helper",
-	  does = { "Its spell recommendations highlight MelloUI's action buttons, including the controller's display buttons." },
-	  short = "Spell recommendations on MelloUI's action bars",
-	},
+	-- (2.1.52, stage 2; the user, 2026-11-14: "Current and Future addons are the Engine, MelloUI Provides the Look")
+	-- MelloUI has no quest data of its own: the quests are Questie's (Core/QuestSource.lua's three states). Its card
+	-- stands first on the Installed tab even while it is not installed (`needed`); its switch is the look only (`use`),
+	-- and off is a state of its own, Questie's look (`offPill`, `offLine`), never "MelloUI leaves it alone"
 	{ key = "Questie", name = "Questie", folders = { "Questie" }, group = "quests",
 	  url = "https://www.curseforge.com/wow/addons/questie",
+	  needed = "Quests on the map and minimap, the Quest List and Route to a quest come from Questie.",
+	  use = "MelloUI's look",
+	  offPill = "Questie's look",
+	  offLine = "Questie shows its own icons and its own tracker, on MelloUI's map too. MelloUI's Quest List and Route to a quest still use its quest data.",
 	  does = {
-		"Its quest database feeds MelloUI's Quest List, map pins, objective marks and Route (MelloUI's own data fills any gaps).",
-		"Its tracker wears MelloUI's look; MelloUI's own tracker steps aside (never both).",
-		"Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures.",
+		"Its quest data feeds MelloUI's Quest List, map marks and Route.",
+		"Its icons and its tracker wear MelloUI's look.",
 		"Leveling guide steps dock under its tracker.",
 	  },
-	  short = "Its quest data for MelloUI's quests; its tracker in MelloUI's look",
+	  short = "Its quest data for MelloUI's quests; its icons and its tracker in MelloUI's look",
 	  links = { { "Quest List > Map", id = "QuestList.mapPins" }, { "Quest Tracker", id = "QuestTracker.showXP" },
 		{ "Nameplates > Quest Icon", id = "Nameplates.questIcon" }, { "Map layers", map = true } },
 	  parts = {
@@ -143,6 +147,16 @@ I.LIST = {
 		end
 		return out
 	  end },
+	{ key = "MaxDps", name = "MaxDPS", folders = { "MaxDps" }, group = "frames",
+	  url = "https://www.curseforge.com/wow/addons/maxdps-rotation-helper",
+	  does = { "Its spell recommendations highlight MelloUI's action buttons, including the controller's display buttons." },
+	  short = "Spell recommendations on MelloUI's action bars",
+	  -- (2.1.52, PR #18: Modules/MaxDps.lua hooks its AddButton and asks its ButtonFetch -- both there: working)
+	  parts = { { "its spell highlights", function()
+		local m = Global("MaxDps")
+		return type(m) == "table" and type(m.AddButton) == "function" and type(m.ButtonFetch) == "function"
+	  end } },
+	},
 	{ key = "RestedXP", name = "RestedXP Guide", folders = { "RXPGuides" }, group = "quests", arrow = "rxp",
 	  url = "https://www.curseforge.com/wow/addons/restedxp-guide",
 	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)." },
@@ -345,9 +359,20 @@ end
 -- The switch, the facts
 --------------------------------------------------------------------------------
 
-local function Store()
-	local db = rawget(_G, "MelloUIDB")
+-- the saved settings as the core holds them (2.1.52): MelloUI.db -- the saved variable itself, or in a new player's
+-- first session the table the logout hands the client, while the global is still nil (the switches saved nothing
+-- then and stayed on: wowsim's fresh login, 2026-11-14). A world without the core's: the global
+local function DB()
+	local db = MelloUI.db
 	if type(db) ~= "table" then
+		db = rawget(_G, "MelloUIDB")
+	end
+	return type(db) == "table" and db or nil
+end
+
+local function Store()
+	local db = DB()
+	if not db then
 		return nil
 	end
 	if type(db.integrations) ~= "table" then
@@ -381,8 +406,8 @@ function I.PlayArea()
 end
 
 function I.Use(key)
-	local db = rawget(_G, "MelloUIDB")
-	local t = type(db) == "table" and db.integrations
+	local db = DB()
+	local t = db and db.integrations
 	return not (type(t) == "table" and t[key] == false)
 end
 
@@ -399,6 +424,23 @@ function I.SetUse(key, on)
 	end
 	local e = I.ByKey[key]
 	MelloUI:AskReload(MelloUI.Lang.F(RELOAD, e and e.name or key))
+end
+
+-- (2.1.52, stage 2) a needed addon's card (the map's layers page and the Quest List without Questie: Get Questie):
+-- the Addons page on its Installed tab, at its top -- the needed addons' cards stand first there, installed or not
+-- (Core/AddonsPage.lua). The button's words: Get <its name>
+function I.Open()
+	MelloUI:OpenConfig("installed addons")
+	local okT, tour = pcall(MelloUI.ConfigTour, MelloUI)
+	local page = okT and type(tour) == "table" and type(tour.page) == "function" and tour.page("Addons")
+	if type(page) == "table" and page.pager and page.pager.ScrollTo then
+		page.pager:ScrollTo(0, true)
+	end
+end
+
+function I.GetLabel(key)
+	local e = I.ByKey[key]
+	return MelloUI.Lang.F("Get %s", e and e.name or key)
 end
 
 function I.Installed(e)
@@ -488,8 +530,12 @@ function I.Jobs()
 	else
 		rows[#rows + 1] = { "Quest tracker", "MelloUI's Quest Tracker" }
 	end
-	rows[#rows + 1] = { "Quest givers and objective marks on the maps", "MelloUI",
-		questie and "Questie's of the same kind hidden" or nil }
+	-- (2.1.52, stage 2) the quests on the maps are Questie's: none without it, its own icons with its switch off
+	local QS = rawget(MelloUI, "QuestSource")
+	local quests = QS and QS.State and QS.State() or "none"
+	rows[#rows + 1] = { "Quest givers and objective marks on the maps",
+		quests == "look" and "Questie's quest data, in MelloUI's look"
+			or (quests == "questie" and "Questie, in its own look" or "Not shown (Questie adds them)") }
 	rows[#rows + 1] = { "Flight masters on MelloUI's map", "MelloUI",
 		questie and "Questie's hidden while the Flight masters layer is on" or nil }
 	if By("rare") == "Polestar" then

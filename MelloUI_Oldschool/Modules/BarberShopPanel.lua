@@ -117,61 +117,21 @@ local function Replace(region, opts)
 end
 
 -- the non-nil values given, as a list (alsoFade stops at the first nil)
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a frame's name, secret-safe (nil when it has none or it reads secret)
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	return (ok and type(d) == "string" and not Secret(d)) and d or "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 -- a font string's text when it can be read (nil when empty or secret)
-local function TextOf(fs)
-	local ok, text = pcall(fs.GetText, fs)
-	if ok and type(text) == "string" and not Secret(text) and text ~= "" then
-		return text
-	end
-	return nil
-end
+local TextOf = MelloUI.Kit.Panel.TextOf
 
 local function Num(v)
 	return (type(v) == "number" and not Secret(v)) and string.format("%.0f", v) or "?"
 end
 
-local function Width(obj)
-	local ok, w = pcall(obj.GetWidth, obj)
-	if ok and type(w) == "number" and not Secret(w) then
-		return w
-	end
-	return nil
-end
+local Width = MelloUI.Kit.Panel.Width
 
 local function Shown(obj)
 	local ok, s = pcall(obj.IsShown, obj)

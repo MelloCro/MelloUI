@@ -3249,5 +3249,4 @@ do
 		end,
 		parts = UFS.Parts,
 	})
-	Preview.UnitStage = UFS   -- (the suite's)
 end

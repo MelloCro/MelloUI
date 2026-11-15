@@ -1623,7 +1623,7 @@ Lang:Add("koKR", {
 	["Most Levels Above Me"] = "내 레벨보다 최대 몇 레벨 위", -- draft
 	["Leaves out quests more than this many levels above you."] = "내 레벨보다 이만큼 넘게 높은 퀘스트를 뺍니다.", -- draft
 	["Quest Givers On Zone Maps"] = "지역 지도의 퀘스트 제공자", -- draft
-	["Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it."] = "지역 지도에 퀘스트 제공자를 ! 또는 ?로 표시. 마우스를 올리면 퀘스트, 클릭하면 추적.", -- draft
+	["Shows Questie's quest givers on the game's zone map as ! and ?. Point at one for its quests. Only with Questie in MelloUI's look."] = "게임의 지역 지도에 Questie의 퀘스트 제공자를 ! 와 ?로 표시. 마우스를 올리면 퀘스트. Questie가 MelloUI 모습일 때만.", -- draft
 	["Include Givers You Are Done With"] = "끝낸 제공자 포함", -- draft
 	["Also marks givers whose quests you have all done, with a grey tick."] = "퀘스트를 모두 마친 제공자도 회색 체크로 표시합니다.", -- draft
 	["Hide Grey Quests"] = "회색 퀘스트 숨기기", -- draft

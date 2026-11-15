@@ -538,7 +538,6 @@ end
 -- members, MelloUI-dressed: 120 x 53, the portrait on the left). A kind keeps
 -- its own list per spec (places differ on a portrait frame): a party list's key
 -- is "party@<specKey>".
-RD.KINDS_OF_FRAME = { "group", "party" }
 local PARTY_KEY = "party@"
 -- (one look C9b: our party's own lists, "gparty@<specKey>"; 1.2.4, the user 2026-10-28: "we are modifying the Party
 -- "Group Frames" and Raid Frames separatelly even tho they are the same" -- our party in raid frames shows the raid's
@@ -722,9 +721,44 @@ function RD:Remove(ind, key)
 	for i = #list, 1, -1 do
 		if list[i] == ind then
 			table.remove(list, i)
+			-- (2.1.52; the configurator pass in the test VM, 2026-11-14: Off the frame, then Onto the frame, and the
+			-- group came back at the top left with three icons, over the name, where it had stood in the middle with
+			-- one) a spell group taken off the frame is kept as it stood -- its place, its look and size, how many
+			-- show, its spells' switches -- for the day it goes back on (RD:TakeKept), a list at a time
+			if ind.kind == "group" and ind.group then
+				local db = DB()
+				if type(db.kept) ~= "table" then
+					db.kept = {}
+				end
+				local of = db.kept[key]
+				if type(of) ~= "table" then
+					of = {}
+					db.kept[key] = of
+				end
+				local t = {}
+				for k, v in pairs(ind) do
+					t[k] = type(v) == "table" and Copy(v) or v
+				end
+				t.id = nil
+				of[ind.group] = t
+			end
 		end
 	end
 	self:Changed()
+end
+
+-- (2.1.52) the group `group` as it stood when it was last taken off the list `key`, taken out of the keep (the caller
+-- puts it back on: RD:Add); nil: never taken off, or back on since
+function RD:TakeKept(group, key)
+	key = key or self:Layout()
+	local kept = DB().kept
+	local of = type(kept) == "table" and kept[key]
+	local t = type(of) == "table" and of[group] or nil
+	if type(t) ~= "table" then
+		return nil
+	end
+	of[group] = nil
+	return t
 end
 
 -- every spec's list copied from another (the Designer's "Copy from")

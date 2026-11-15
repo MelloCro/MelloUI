@@ -66,12 +66,9 @@ local Objectives = {}
 ns.Objectives = Objectives
 
 local T = {
-	-- over the quest givers (20), under the quest column's marks (25); (2.1.0) the quests zoomed out over the docks (12)
-	ORDER = { marks = 22, dots = 21, fx = 23, quests = 24 },
-	MARKS_FROM = 2.5,     -- the marks from a zone's zoom on (the givers' zoom: Layers.T.QUESTS_FROM)
-	QUESTS_TO = 2.49,     -- (2.1.0) one pin a quest until then (the user's pick W1: 16 px, touching ones merged)
-	QUEST_SIZE = 16,
-	QUEST_ICON = { todo = "track_todo", ready = "track_handin" },
+	-- over the quest givers (20), under the quest column's marks (25)
+	ORDER = { marks = 22, dots = 21, fx = 23 },
+	MARKS_FROM = 2.5,     -- the marks from a zone's zoom on (a zone's zoom)
 	DOTS_FROM = 5,        -- the places' dots from a zone filling the view on (the zoom the minimap ground came at
 	                      -- until 2026-10-21; kept: the dots belong to a zone's close look, painted or not)
 	MARK_SIZE = 20,
@@ -88,7 +85,7 @@ local T = {
 }
 Objectives.T = T
 
-local S = { canvas = nil, pins = nil, shown = false, asked = false, wait = nil, quests = {}, ready = {}, first = {},
+local S = { canvas = nil, pins = nil, shown = false, asked = false, wait = nil, quests = {}, first = {},
 	-- (1.2.0) the areas: their holder and painter, this lay's groups (by shape), the shapes drawn this session, the
 	-- counts, this lay's and the last lay's marks by objective, the ghosts to drive, the edge's zoom, the cull box's
 	holder = nil, painter = nil, groups = {}, seen = {}, counts = {}, now = {}, last = {}, ghosts = {}, nghost = 0, order = {},
@@ -100,28 +97,20 @@ local function QuestList()
 	return (type(QL) == "table" and QL.M and QL.M.isEnabled) and QL or nil
 end
 
--- the Companion's data: asked for once a session (a refusal is the Companion's own notice)
+-- (2.1.52, stage 2) the objectives' places are Questie's (Core/QuestSource.lua), and this map lays its own marks and
+-- areas of them only in MelloUI's look: with Questie's switch off Questie's own objective icons show (MapAddonPins),
+-- without Questie there are no quests at all
+-- (a world without the quest source -- a test's: the places are whatever MelloUI.QuestObjectives hands out)
 function Objectives.Data()
-	-- (2.1.39) the player's QuestieDB has places too (Core/QuestSource.lua); the Companion still asked for once, for
-	-- the quests it lacks
-	local questie = MelloUI.QuestSource and MelloUI.QuestSource.Lib() ~= nil
-	if rawget(_G, "MelloUI_QuestObjectiveData") then
-		return true
-	end
-	if S.asked or not MelloUI.LoadCompanion then
-		return questie or false
-	end
-	S.asked = true
-	local ok = pcall(MelloUI.LoadCompanion, MelloUI)
-	return questie or (ok and rawget(_G, "MelloUI_QuestObjectiveData") ~= nil)
+	local QS = MelloUI.QuestSource
+	return QS == nil or QS.Look()
 end
 
--- the quests in the log to show: not complete, not hidden, (Only The Tracked Quests) watched; (2.1.0) the complete
--- ones in S.ready (their turn-ins zoomed out)
+-- the quests in the log to show: not complete, not hidden, (Only The Tracked Quests) watched. (2.1.52: the complete
+-- ones' turn-ins zoomed out, one pin a quest -- 2.1.0's Summary -- went: with Questie the engine they never drew)
 local function LogQuests()
 	local out = S.quests
 	wipe(out)
-	wipe(S.ready)
 	if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo) then
 		return out
 	end
@@ -141,9 +130,8 @@ local function LogQuests()
 					local okW, watch = pcall(C_QuestLog.GetQuestWatchType, id)
 					watched = okW and not Secret(watch) and watch ~= nil
 				end
-				if watched then
-					local list = complete and S.ready or out
-					list[#list + 1] = id
+				if watched and not complete then
+					out[#out + 1] = id
 				end
 			end
 		end
@@ -252,28 +240,9 @@ local function GuideGoals()
 	return type(data) == "table" and type(data.goals) == "table" and #data.goals > 0 and data.goals or nil
 end
 
--- the quests the givers show a pin for: [questID] = { [state] = true } ("available", "locked", "ready", "progress")
-local function GiversShown()
-	local shown, QL = {}, QuestList()
-	local F = QL and QL.F_ID
-	if F and S.pins then
-		S.pins:Each("quests", function(pin)
-			local g = pin.data
-			for _, q in ipairs(type(g) == "table" and type(g.quests) == "table" and g.quests or NONE) do
-				local id = type(q) == "table" and type(q.row) == "table" and q.row[F]
-				if id then
-					shown[id] = shown[id] or {}
-					shown[id][q.state or "?"] = true
-				end
-			end
-		end)
-	end
-	return shown
-end
-
--- (2.1.4) what this map shows of a quest, for other addons' pins of it (MapAddonPins: Questie's, nothing twice): the
--- givers' pins, and whether its objectives are laid here
-Objectives.GiversShown = GiversShown
+-- (2.1.4) what this map shows of a quest, for other addons' pins of it (MapAddonPins: Questie's, nothing twice):
+-- whether its objectives are laid here. (2.1.52: this map has no givers of its own any more -- Questie's are the
+-- givers -- so GiversShown went)
 function Objectives.Laid(q)
 	return S.first[q] ~= nil
 end
@@ -310,13 +279,10 @@ local function At(a, x, y)
 end
 
 function GuideGroups(goals, byShape, n, QA)
-	local givers = GiversShown()
 	for _, goal in ipairs(goals or NONE) do
 		local q, places = goal.quest, goal.places
-		local giver = q and givers[q] or NONE
-		local shown = q and ((goal.verb == "objective" and S.first[q] ~= nil)
-			or (goal.verb == "accept" and (giver.available or giver.locked))
-			or (goal.verb == "turnin" and (giver.ready or giver.progress or S.first[q] ~= nil)))
+		-- (a quest whose objectives this map lays: its objective and turn-in goals not twice)
+		local shown = q and S.first[q] ~= nil and (goal.verb == "objective" or goal.verb == "turnin")
 		if not shown and type(places) == "table" and #places >= 2 and goal.cont then
 			-- (its places as the objective data's entry: kind, name, -, continent, x, y, ...)
 			local entry = { goal.kind, goal.text, false, goal.cont }
@@ -574,102 +540,6 @@ local function Gone(live)
 	end
 end
 
--- (2.1.0, qu-01: the user's pick W1) your quests zoomed out: one pin a quest, until a zone's zoom shows its marks
-local TEXT = {
-	quests = "%d quests",
-	handIn = "Ready to hand in",
-	handInTo = "Hand in to %s",
-	show = "Click: show it",
-	spread = "Click: zoom in",
-}
-
-local function Title(questID)
-	local ok, title = pcall(C_QuestLog.GetTitleForQuestID, questID)
-	return ok and Safe.Text(title) or nil
-end
-
-local questLines = {}
-local function QuestTip(pin)
-	wipe(questLines)
-	if pin.members then
-		for _, m in ipairs(pin.members) do
-			questLines[#questLines + 1] = m.data.title or ""
-		end
-		questLines[#questLines + 1] = W.Tr(TEXT.spread)
-		return W.Tr(TEXT.quests):format(#pin.members), table.concat(questLines, "\n")
-	end
-	local d = pin.data
-	if d.ready then
-		questLines[1] = d.to and W.Tr(TEXT.handInTo):format(d.to) or W.Tr(TEXT.handIn)
-	elseif MelloUI.QuestObjectives and MelloUI.QuestObjectives.Lines then
-		-- (what is still to do: the quest's own objective lines, the game's words)
-		local ok, lines = pcall(MelloUI.QuestObjectives.Lines, d.questID)
-		for _, o in ipairs(ok and type(lines) == "table" and lines or {}) do
-			if not o[2] and type(o[6]) == "string" then
-				questLines[#questLines + 1] = o[6]
-			end
-		end
-	end
-	questLines[#questLines + 1] = W.Tr(TEXT.show)
-	return d.title or "", table.concat(questLines, "\n")
-end
-
--- a click: the quest's page in the quest column, the map gliding to where it is done (the column's own Show)
-local function QuestClick(pin, button)
-	local log = ns.QuestLog
-	if button ~= "LeftButton" or not (log and log.Select and pin.data) then
-		return
-	end
-	MelloUI:PlayUISound("click")
-	log.Select(pin.data.questID)
-	if log.ShowQuest then
-		log.ShowQuest(pin.data.questID)
-	end
-end
-
-local QUEST_SPECS = {}
-local function QuestSpec(state)
-	local spec = QUEST_SPECS[state]
-	if not spec then
-		-- (many: a pin that holds others still to do shows the "!", though the first by place is ready; all ready: "?")
-		spec = { icon = T.ICONS .. T.QUEST_ICON[state], size = T.QUEST_SIZE, tip = QuestTip, click = QuestClick, sub = 2,
-			many = T.ICONS .. T.QUEST_ICON.todo }
-		QUEST_SPECS[state] = spec
-	end
-	return spec
-end
-
--- every quest's pin: an open one at its first open objective's middle (Lay's S.first), a done one at its turn-in
-local function Summary(on)
-	local pins = S.pins
-	pins:Clear("objective_quests")
-	if not on then
-		return
-	end
-	for _, questID in ipairs(S.quests) do
-		local f = S.first[questID]
-		local pin = f and pins:Set("objective_quests", questID, f[1], f[2], QuestSpec("todo"))
-		if pin then
-			pin.data = { questID = questID, title = Title(questID) }
-		end
-	end
-	local turnIn, point = rawget(MelloUI, "QuestTurnIn"), ns.Layers and ns.Layers.WorldPoint
-	for _, questID in ipairs(S.ready) do
-		local ok, name, _, cont, wx, wy
-		if type(turnIn) == "function" then
-			ok, name, _, cont, wx, wy = pcall(turnIn, MelloUI, questID)
-		end
-		local x, y
-		if ok and point and Finite(cont) and Finite(wx) and Finite(wy) then
-			x, y = point(cont, wx, wy)
-		end
-		local pin = x and pins:Set("objective_quests", questID, x, y, QuestSpec("ready"))
-		if pin then
-			pin.data = { questID = questID, title = Title(questID), ready = true, to = Safe.Text(name) }
-		end
-	end
-end
-
 function Objectives.AreaGone(area)
 	area.hold = nil
 	local painter = S.painter
@@ -876,7 +746,6 @@ function Objectives.Lay()
 			j.delay = delay < math.huge and delay or 0
 		end
 	end
-	Summary(layer and layer.on)
 	Gone(live)
 	Areas()
 	for _, g in ipairs(S.groups) do
@@ -969,8 +838,6 @@ function Objectives.Init(canvas, pins)
 	-- (2.1.50) the places' dots the first to wait past the map's icon cap (MapPins: the most of them, the least needed)
 	pins:Layer("objective_dots", T.ORDER.dots, { minZ = T.DOTS_FROM, priority = 1 })
 	pins:Layer("objective_fx", T.ORDER.fx, { minZ = T.MARKS_FROM })
-	-- (2.1.0) one pin a quest zoomed out, touching ones merged, stepping aside from the docks and the doors (MapPins)
-	pins:Layer("objective_quests", T.ORDER.quests, { maxZ = T.QUESTS_TO, merge = T.QUEST_SIZE, nudge = true })
 	DOT = { icon = T.ICONS .. "map_dot", size = T.DOT_SIZE, sub = 0 }
 	TICK = { icon = T.ICONS .. "map_dot", size = T.MARK_SIZE * 0.7, sub = 4, look = TickLook }
 	-- (2.1.0) the followed guide's goals changed (Route's guide bridges): laid again on the beat, as for the log;
@@ -1004,7 +871,6 @@ function Objectives.Close()
 		S.pins:Clear("objective_guide")
 		S.pins:Clear("objective_dots")
 		S.pins:Clear("objective_fx")
-		S.pins:Clear("objective_quests")
 	end
 	wipe(S.ghosts)
 	if S.holder then

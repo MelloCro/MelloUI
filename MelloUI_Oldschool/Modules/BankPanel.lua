@@ -146,28 +146,7 @@ local function Replace(region, opts)
 end
 
 -- the non-nil values given, as a list
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
-
--- a frame's name, secret-safe (nil when it has none or it reads secret)
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a region's IsShown, secret-safe (nil: unknown)
 local function IsShownSafe(obj)
@@ -1043,20 +1022,7 @@ end
 -- item and bag slot, "tabs" the tabs and the pictures alone; the other modes
 -- are Kit:DumpWindow's. Opens the copy window.
 --------------------------------------------------------------------------------
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	if ok and type(d) == "string" and not Secret(d) then
-		return d
-	end
-	return "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 local function Found(label, obj, more)
 	MelloUI:Print("  %-26s %s%s", label, obj and Label(obj) or "-- not found", more or "")

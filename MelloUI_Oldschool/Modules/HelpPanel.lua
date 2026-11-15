@@ -113,35 +113,9 @@ local function Replace(region, opts)
 	return rep
 end
 
-local function Compact(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local Compact = MelloUI.Kit.Panel.List
 
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
-
-local function TextOf(fs)
-	local ok, text = pcall(fs.GetText, fs)
-	if ok and type(text) == "string" and not Secret(text) and text ~= "" then
-		return text
-	end
-	return nil
-end
+local TextOf = MelloUI.Kit.Panel.TextOf
 
 local function Shown(obj)
 	local ok, s = pcall(obj.IsShown, obj)
@@ -678,20 +652,7 @@ end
 -- it), the title's place and font; "ticket" the ticket status box; the other
 -- modes Kit:DumpWindow's. Opens the copy window.
 --------------------------------------------------------------------------------
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	if ok and type(d) == "string" and not Secret(d) then
-		return d
-	end
-	return "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 local function Found(label, obj, more)
 	MelloUI:Print("  %-26s %s%s", label, obj and Label(obj) or "-- not found", more or "")

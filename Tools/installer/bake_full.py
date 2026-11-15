@@ -188,7 +188,10 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              "UIModifications.swingTimerBorder",
              # (1.2.4, fr-02: a raid-style party reads Raid's `parts`; the party's own places from one look C9 are
              # kept in a player's saved settings, unread, and never shipped)
-             "GroupFrames.partyParts"]
+             "GroupFrames.partyParts",
+             # (2.1.52, the audit's area 5: MelloUI's own quest giver marks went, and with them Include Givers You Are
+             # Done With and Hide Grey Quests; a saved value of either is simply not read)
+             "QuestList.pinCompleted", "QuestList.hideGrey"]
 # The same for entries inside a table setting: {setting: the entry keys' pattern}, those entries taken out of the
 # bake's copy (a player's own saved copy keeps them). (1.2.4, fr-02: the party's own spell groups and their marks,
 # gparty@<spec>, are no longer read by the frames)

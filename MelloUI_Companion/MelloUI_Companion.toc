@@ -1,12 +1,11 @@
 ## Interface: 16001
 ## Title: |cff9b8cffMello|rUI Companion
-## Notes: Route's road network and quest objective places for MelloUI, loaded when Route needs them. Keep it enabled together with MelloUI.
+## Notes: Route's road network for MelloUI, loaded when Route needs it. Keep it enabled together with MelloUI.
 ## Author: Mello
-## Version: 2.1.51
+## Version: 2.1.52
 ## X-License: MIT; RoadData.lua All Rights Reserved (MelloUI's LICENSE-DATA)
 ## Dependencies: MelloUI
 ## LoadOnDemand: 1
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 
 RoadData.lua
-QuestObjectiveData.lua

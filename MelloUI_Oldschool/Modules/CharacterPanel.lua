@@ -1535,23 +1535,7 @@ end
 -- A holder { icon } (its rep, the rim, in MelloUI.Kept.repOf) stands for the icon in the
 -- Kit's rim registry, since a set card's own rep is its plate.
 local iconRims = {}
-local function FitIconRim(holder)
-	local rim = repOf[holder] and repOf[holder].object
-	local icon = holder.icon
-	if not (rim and rim.base and icon) then
-		return
-	end
-	local name = rim.base .. "_normal"
-	local p = Kit:Piece(name)
-	local l, r, t, b = Kit:Insets(name, 1)
-	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
-		return
-	end
-	rim:ClearAllPoints()
-	rim:SetPoint("CENTER", icon, "CENTER")
-	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
-end
+local FitIconRim = MelloUI.Kit.Panel.FitIconRim
 
 -- a new Button Border has a new opening: every icon's rim fitted again
 Kit:OnBorderChanged("button", function()

@@ -105,8 +105,10 @@ local function PickUp()
 	end
 end
 
+-- (label and hint: in the chosen language as the reminder registers, below -- never at the file's load, where W.Tr's
+-- first call would load the language before MelloUI's saved choice may be read)
 local DOOR = {
-	key = "dungeonInfoDoor", column = true, label = W.Tr(TEXT.label), priority = "ongoing", hint = W.Tr(TEXT.hint),
+	key = "dungeonInfoDoor", column = true, label = TEXT.label, priority = "ongoing", hint = TEXT.hint,
 	when = { "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD", "where" },
 	check = function()
 		D.inst = Near()
@@ -155,6 +157,7 @@ function J.DoorRow(on)
 	end
 	D.on = on
 	if on then
+		DOOR.label, DOOR.hint = W.Tr(TEXT.label), W.Tr(TEXT.hint)
 		Rem:Register(DOOR)
 	else
 		Rem:Unregister(DOOR.key)

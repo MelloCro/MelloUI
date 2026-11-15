@@ -171,28 +171,10 @@ local function Replace(region, opts)
 end
 
 -- the non-nil values given, as a list
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a frame's name, secret-safe (nil when it has none or it reads secret)
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- Art faded while the kit is on with no piece on its own rect
 local function FadeArt(obj)
@@ -864,23 +846,7 @@ end
 -- merchant's tools' recipe) in place of the tab square; the count stays on
 -- top. The totals button under them keeps the game's art.
 --------------------------------------------------------------------------------
-local function FitIconRim(holder)
-	local rim = repOf[holder] and repOf[holder].object
-	local icon = holder.icon
-	if not (rim and rim.base and icon) then
-		return
-	end
-	local name = rim.base .. "_normal"
-	local p = Kit:Piece(name)
-	local l, r, t, b = Kit:Insets(name, 1)
-	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
-		return
-	end
-	rim:ClearAllPoints()
-	rim:SetPoint("CENTER", icon, "CENTER")
-	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
-end
+local FitIconRim = MelloUI.Kit.Panel.FitIconRim
 
 Kit:OnBorderChanged("button", function()
 	for _, holder in ipairs(rims) do
@@ -1177,32 +1143,13 @@ end
 -- window's parts; the other modes are Kit:DumpWindow's. Opens the copy
 -- window.
 --------------------------------------------------------------------------------
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	if ok and type(d) == "string" and not Secret(d) then
-		return d
-	end
-	return "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 local function Found(label, obj, more)
 	MelloUI:Print("  %-26s %s%s", label, obj and Label(obj) or "-- not found", more or "")
 end
 
-local function Shown(obj)
-	if not obj then
-		return "-"
-	end
-	local ok, s = pcall(obj.IsShown, obj)
-	return (ok and not Secret(s)) and tostring(s) or "?"
-end
+local Shown = MelloUI.Kit.Panel.Shown
 
 local function Dressed(obj)
 	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)

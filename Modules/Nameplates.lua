@@ -100,6 +100,17 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  desc = "Moves the combo points left or right on the nameplate." },
 		{ type = "slider", key = "comboY", parent = "comboPoints", name = "Vertical Offset", min = -50, max = 50, step = 1,
 		  desc = "Moves the combo points up or down on the nameplate. The name moves out of their way." },
+		-- (2.1.52; the configurator pass in the test VM, 2026-11-14: once the combo points were dragged on the Nameplate
+		-- Designer's preview its place is theirs, and the two Offset sliders stood awake and moved nothing) what those
+		-- two rows ask (Core/ConfigLayout.lua's `when`): the combo points stand at the code's own place, at your offsets
+		-- -- false while the preview has given them a place. Read only, never a row of its own (L.unplaced), never saved
+		{ type = "toggle", key = "comboAtOffsets", name = "Combo Points At Their Offsets", new = "2.1.52",
+		  get = function(db)
+			local parts = db and db.parts
+			return not (type(parts) == "table" and type(parts.combo) == "table")
+		  end,
+		  set = function() end,
+		  desc = "Whether the combo points stand at their own place (the Offset sliders), not at one given on the preview." },
 		-- (2.1.19; the user, 2026-11-08: "let users scale them from 50% - 200%") the badge Core/SwingBadge.lua lays on
 		-- your target's plate (the Swing Timers' or the Personal Display's)
 		{ type = "header", name = "Swing Badge" },
@@ -237,6 +248,11 @@ end
 -- option's (CC Icon Size, Quest Icon Size): the stage reads and writes it through the place
 --------------------------------------------------------------------------------
 M.PART_SIZE = { cc = "ccSize", quest = "questIconSize" }
+-- (2.1.52; the configurator pass in the test VM, 2026-11-14: two switches hid one part -- the preview's Show and the
+-- module's own; the user: "Yes, go ahead") a part with a switch of the module's own is shown and hidden by that
+-- switch alone: the preview offers no Show row and no Hide for it (Stage.Part), its row on the part's tab the one. A
+-- `show` kept in such a part's place from before (hidden on the preview) goes over to its switch once: M.FoldShow
+M.PART_SHOW = { cc = "bigCC", quest = "questIcon", threat = "threatLine", combo = "comboPoints" }
 M.nameHidden = setmetatable({}, { __mode = "k" })   -- [a plate's name] = true while its place hides it
 
 function M.PartPlace(key)
@@ -244,6 +260,46 @@ function M.PartPlace(key)
 	local all = db and db.parts
 	local t = type(all) == "table" and all[key]
 	return type(t) == "table" and t or nil
+end
+
+-- (2.1.52) the places read once at the module's start and whenever they are written whole (a profile): a part of
+-- M.PART_SHOW hidden by its place's `show` is hidden by its switch from then on, its place kept without the flag
+function M.FoldShow()
+	local db = M.db or MelloUI:GetModuleDB("Nameplates")
+	local all = db and db.parts
+	if type(all) ~= "table" then
+		return
+	end
+	local found = false
+	for key in pairs(M.PART_SHOW) do
+		local t = all[key]
+		if type(t) == "table" and t.show ~= nil then
+			found = true
+		end
+	end
+	if not found then
+		return
+	end
+	local fresh = {}
+	for k, v in pairs(all) do
+		fresh[k] = v
+	end
+	for key, switch in pairs(M.PART_SHOW) do
+		local t = all[key]
+		if type(t) == "table" and t.show ~= nil then
+			local copy = {}
+			for k, v in pairs(t) do
+				if k ~= "show" then
+					copy[k] = v
+				end
+			end
+			fresh[key] = copy
+			if t.show == false and db[switch] ~= false then
+				MelloUI:NotifySettingChanged("Nameplates", switch, false)
+			end
+		end
+	end
+	MelloUI:NotifySettingChanged("Nameplates", "parts", fresh)
 end
 
 -- (a fresh table each write: the saved one is never changed in place; a size goes to the part's own option)
@@ -2972,6 +3028,7 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	M.FoldShow()   -- (2.1.52: a part hidden on the preview before is hidden by its own switch now)
 	M.QuestieIconsOff()
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
@@ -3064,6 +3121,11 @@ function M:OnSettingChanged(key, value, db)
 		return
 	end
 	if key == "parts" or key == "plateSize" or key == "plateWidth" or key == "plateHeight" then
+		-- (2.1.52: places written whole -- a profile's -- may hold a `show` of a part its own switch shows: folded
+		-- into that switch; it writes the places again without it, and this pass runs once more for them)
+		if key == "parts" then
+			M.FoldShow()
+		end
 		-- (2.1.24, the Nameplate Designer) every plate's parts at their places again: the names, the CC icons, the
 		-- game's own parts and the plate's size (stage 2), the quest icons, the combo points, the threat lines, the
 		-- swing badge
@@ -3608,7 +3670,12 @@ do
 				return r and r:IsShown() and r or nil
 			end }
 		if Stage.MOVES[key] then
-			part.drag, part.hide, part.size = nil, true, Stage.SIZES[key]
+			-- (2.1.52: no Show row and no Hide for a part its module's own switch shows -- M.PART_SHOW)
+			part.drag, part.hide, part.size = nil, not M.PART_SHOW[key] and true or nil, Stage.SIZES[key]
+			-- (2.1.52; the configurator pass, 2026-11-14: two Size sliders on the CC icon and on the Quest icon) a size
+			-- that is an option of the module's (M.PART_SIZE) has that option's own row on the part's tab: the preview
+			-- makes no second one (the wheel on the preview sizes it all the same)
+			part.sizeRow = M.PART_SIZE[key] and true or nil
 			part.box = function(f)
 				return f.bar
 			end

@@ -1361,7 +1361,6 @@ end
 -- is never written: it shows the new level all along, under the copy. Its pieces made at the first level gained. Not
 -- under Reduce Motion; false when the bar's fill cannot be read (the caller's light then)
 local BAR = { RUN = 0.6, BURST = 0.7, DRAIN_AT = 0.95, DRAIN = 0.5, TOTAL = 1.5, SPARK = 3, BURST_H = 5, WASH = 0.35 }
-FX.LEVEL_BAR = BAR
 local barRun = {}   -- the copy: frame, fill, wash, spark, burst, ring; the bar's rect l, b, r, t; from, to
 
 local function OutCubic(p)

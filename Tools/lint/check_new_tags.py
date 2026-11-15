@@ -102,6 +102,8 @@ NOT_CONFIGURATOR = {
     "MelloUI_Map/MapQuestLog.lua": "the map window's layers page (2.1.0, the rail's gear): its switches are the map's "
                                    "layers (the window's own state, db.layers, as the gear's menu held them), not "
                                    "options",
+    "MelloUI_QuestList/QuestListPanel.lua": "the Quest List's page without Questie (2.1.52): its one button, Get "
+                                            "Questie, opens the Addons page -- an action, no option",
     "Core/ConfigPreview.lua": "the designer stage's part controls (stage:PartSpec: a part's Show, Size and X / Y): "
                               "they edit a part's place in its kind's store (the frames' parts layouts), not "
                               "options",

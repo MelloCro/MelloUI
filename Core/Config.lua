@@ -177,6 +177,20 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.52", lines = {
+		"Quest Moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest. Switches on the Animations page.",
+		"Quests: MelloUI's quests now come from Questie: the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI ships no quest data of its own any more.",
+		"Quests: without Questie, no quests are shown. The map's layers page and the Quest List say so, with a Get Questie button that opens Questie's card on the Addons page.",
+		"Addons page: Questie's switch is now named MelloUI's look. Off, Questie shows its own icons and tracker, on MelloUI's map too; the Quest List and Route to a quest keep working.",
+		"Quest List: quests Questie does not know are no longer listed. The Attunements view and the options Include Givers You Are Done With and Hide Grey Quests are gone.",
+		"Map: with Questie, every quest ! and ? is Questie's, in MelloUI's look, so Questie's quest level options decide which quests show. Point at one for its quests, click it for the route there.",
+		"Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.",
+		"Addons page: on a new install, a Use with MelloUI switch turned off before the first /reload or logout is kept now. It was lost before.",
+		"Bags: with the Collapse Arrow on, the backpack stays still when the bag bar folds or opens, and the key ring fits a vertical bag bar.",
+		"Restock: a new Fill All Ammo Bags switch on the Ammo page keeps your quivers and ammo pouches full. A single arrow or bullet now goes up to 2000, the best ammunition listed first.",
+		"Game Menu: with Polestar, its button and the MelloUI button no longer share a row, so both can be clicked.",
+		"French: the map, Dungeon Info, the quest tooltips, Services, Restock and Discard are translated now.",
+	} },
 	{ version = "2.1.51", lines = {
 		"Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.",
 		"Dungeon Info: Ctrl+Click on an item tries it on and Shift+Click links it in chat. In 2.1.50 both did nothing.",
@@ -216,9 +230,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.48", lines = {
 		"Minimap: the tracking and calendar buttons on the minimap's top bar take their clicks again, instead of opening the world map.",
-	} },
-	{ version = "2.1.47", lines = {
-		"Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked.",
 	} },
 }
 local LINKS = {
@@ -505,7 +516,7 @@ local function Queue(sec, job, run, height)
 		-- (1.2.4, the two columns: a half row beside the one before it while that one stands alone on its line --
 		-- CONFIG.Half; its column kept with it, every half row CONFIG.COL_H tall)
 		local col
-		if sec.columns and CONFIG.Half(job) then
+		if sec.columns and CONFIG.Half(job, sec) then
 			height = CONFIG.COL_H
 			if sec.planOpen then
 				y, col, sec.planOpen = sec.planOpen, 1, nil
@@ -912,7 +923,7 @@ CONFIG.COL_H, CONFIG.COL_GAP = 44, 0
 CONFIG.HALF = { toggle = true, slider = true, dropdown = true, picture = true, colour = true }
 CONFIG.HALF_DROPDOWN, CONFIG.HALF_SLIDER = 170, 196
 CONFIG.HALF_SPAN = { dropdown = 14 + 170, picture = 14 + 170, slider = 14 + 196 }
-function CONFIG.Half(job)
+function CONFIG.Half(job, sec)
 	if job.rows or job.dhead or job.dspec or job.note or not CONFIG.HALF[job.type] then
 		return false
 	end
@@ -921,7 +932,11 @@ function CONFIG.Half(job)
 		return false   -- (a module's own switch: the whole width, the sketch's)
 	end
 	local width = b.opt and b.opt.width
-	return not (type(width) == "number" and width > CONFIG.HALF_DROPDOWN)
+	if type(width) == "number" and width > CONFIG.HALF_DROPDOWN then
+		return false
+	end
+	-- (2.1.52: and one whose texts or choices a half row would cut -- CONFIG.HalfFits, below the rows' own measures)
+	return not (sec and CONFIG.HalfFits) or CONFIG.HalfFits(job, sec, b)
 end
 function CONFIG.ColW(sec)
 	return math.floor((sec:GetWidth() - SEC_INSET * 2 - CONFIG.COL_GAP) / 2)
@@ -2007,7 +2022,6 @@ do
 				good = false
 			end
 			if good then
-				lk.isLink = true
 				local list = lk.section.links
 				list[#list + 1] = lk
 			end
@@ -2186,6 +2200,8 @@ do
 			return "Addons"
 		elseif w == "compatibility" then
 			return "Addons", "Compatibility"
+		elseif w == "installedaddons" then
+			return "Addons", "Installed"   -- (2.1.52: Get Questie's place, MelloUI.Integrations.Open)
 		end
 		local t = all.extra[w] or all.modules[w]
 		if t and t[1] and resolved.pages[t[1]] then
@@ -2894,6 +2910,112 @@ local function Depth(m, opt)
 	return depth
 end
 
+-- (2.1.52; the configurator pass in the test VM, 2026-11-14 -- the user: "Texts cut short though there is room":
+-- "Never Throw Away Items Worth", "Bar Distance From The Minimap", Font Style's "preset: changes every font at once",
+-- "Yours And Your Group's" in its box) a row is a half row only while a half row shows it whole: its label with its
+-- New tag, its second line (its Shared / "also ..." mark and its hint) and, a list's, the longest of its choices in a
+-- half row's box. One that would be cut stands across the whole width instead, as a module's own switch does.
+-- Measured once as the page is laid (Queue), in the fonts and the language of then
+function CONFIG.HalfFits(job, sec, b)
+	local colW = CONFIG.ColW(sec)
+	if not (colW and colW > 0) then
+		return true
+	end
+	local t, opt = job.type, b.opt
+	if t == "dropdown" and opt and (CONFIG.ListNeeds(opt.values) or 0) > CONFIG.HALF_DROPDOWN then
+		return false
+	end
+	local span = CONFIG.HALF_SPAN[t] or SPAN[t] or 0
+	if job.cogRows and t == "toggle" then
+		span = span + CONFIG.COG.SIZE + CONFIG.COG.GAP
+	end
+	if job.keys and job.distinct and #job.distinct >= 2 then
+		span = span + ALL_W + ALL_GAP
+	end
+	if job.swatch == "palette" then
+		span = span + SWATCH_SPEC.width + SWATCH_GAP
+	end
+	local room = colW - 14 - Depth(b.mod, opt) * INDENT - span - 10
+	local tagSides = 2 * W.TAG_PAD + 6   -- (a tag's plate round its word, and the gap before it: W.Tag)
+	local label = W.Measure(W.Tr(job.name))
+	if job.new and MelloUI:IsNew(job.new) then
+		label = label + W.Measure(W.Tr(W.NEW), "GameFontHighlightSmall") + tagSides
+	end
+	if label > room then
+		return false
+	end
+	local second = 0
+	local hint = opt and not opt.important and opt.hint
+	if type(hint) == "string" and hint ~= "" then
+		second = W.Measure(W.Tr(hint))
+	end
+	local mark = CONFIG.MarkWidth(job)
+	if mark > 0 then
+		second = second + mark + (second > 0 and 10 or 0)
+	end
+	return second <= room
+end
+
+-- (2.1.52) the lists on rows across their section: their boxes as wide as the longest of their choices needs -- from
+-- the 200 they always had up to CONFIG.LIST_MOST -- and ONE width for a tab's (their left edges in line; a box a list
+-- wide would stand out among its neighbours). Never into a row's label or its Shared / "also ..." mark: the row with
+-- the least room sets the most (the column beside a preview is narrow: its lists keep their 200). Found once a tab,
+-- at its first list's row (sec.listW; false: the 200)
+-- (a list of a few fixed choices only -- CONFIG.LIST_FIT: one of many, the faces, the sounds, the voices, keeps its
+-- box, a long name among them cut as before; a whole tab of them would move for one rare name)
+CONFIG.LIST_MOST, CONFIG.LIST_FIT = 320, 12
+function CONFIG.ListNeeds(values)
+	if type(values) ~= "table" or #values > CONFIG.LIST_FIT then
+		return nil
+	end
+	return W.DropdownNeeds(values)
+end
+-- a row's Shared / "also ..." mark as wide as it stands: its word, its plate's sides and the gap before it; 0: none
+function CONFIG.MarkWidth(job)
+	local mark = job.shared
+	if job.sharedWith then
+		local names = {}
+		for k, name in ipairs(job.sharedWith) do
+			names[k] = MelloUI.Lang.T(name)
+		end
+		mark = MelloUI.Lang.F("also %s", table.concat(names, ", "))
+	end
+	if not mark then
+		return 0
+	end
+	return W.Measure(type(mark) == "string" and W.Tr(mark) or W.Tr(W.SHARED), "GameFontHighlightSmall") + 2 * W.TAG_PAD + 6
+end
+function CONFIG.ListWidth(sec, opt)
+	local width = sec.listW
+	if width == nil then
+		width = false
+		local rowW = Num(sec:GetWidth())
+		local needs, most = 0, CONFIG.LIST_MOST
+		for _, job in ipairs(sec.allJobs or sec.jobs or EMPTY) do
+			local b = job.type == "dropdown" and (job.b or (job.distinct and job.distinct[1])) or nil
+			local jo = b and b.opt
+			local n = jo and not jo.width and CONFIG.ListNeeds(jo.values)
+			if n and not (sec.columns and CONFIG.Half(job, sec)) then
+				needs = math.max(needs, n)
+				if rowW and rowW > 0 then
+					most = math.min(most, rowW - 2 * SEC_INSET - 14 - Depth(b.mod, jo) * INDENT - W.Measure(W.Tr(job.name))
+						- CONFIG.MarkWidth(job) - 10 - 14)
+				end
+			end
+		end
+		if needs > 200 and most > 200 then
+			width = math.floor(math.min(needs, most))
+		end
+		sec.listW = width
+	end
+	-- (a schema's own width is its least: Health Bar Colour's 240 for "Class (players) / reaction (NPCs)")
+	local own = opt and opt.width
+	if own then
+		return math.max(own, math.min(CONFIG.ListNeeds(opt.values) or 0, CONFIG.LIST_MOST))
+	end
+	return width or nil
+end
+
 -- the gate's cover of a row (W.Gate's, found once: its hint follows the pick)
 local function CoverAmong(row, ...)
 	for i = 1, select("#", ...) do
@@ -3431,7 +3553,7 @@ local function MakeRow(sec, r)
 	end
 	local hint, desc = Hint(page, r, b), Tip(page, r, shape)
 	local t = r.type
-	local row, control
+	local row, control, listW
 	if t == "toggle" then
 		row, control = W.ToggleRow(sec, sec.y, r.name, hint, desc, get, set, o)
 	elseif t == "slider" then
@@ -3446,7 +3568,9 @@ local function MakeRow(sec, r)
 		end
 	elseif t == "dropdown" then
 		-- (2026-10-20, the visual sweep: an option's `width` for a list whose choices are long -- Show Names As)
-		o.width = opt.width or (o.colW and CONFIG.HALF_DROPDOWN) or nil
+		-- (2.1.52: across the whole width, its box as wide as its longest choice needs -- CONFIG.ListWidth)
+		o.width = (o.colW and not opt.width and CONFIG.HALF_DROPDOWN) or CONFIG.ListWidth(sec, opt)
+		listW = not o.colW and o.width or nil
 		row, control = W.DropdownRow(sec, sec.y, r.name, hint, desc, get, set, opt.values, o)
 		o.width = nil
 		if opt.relist then
@@ -3480,7 +3604,8 @@ local function MakeRow(sec, r)
 	e.row, e.control = row, control
 	row.melloEntry = e
 	local half = o.colW or (o.narrow and t == "slider")
-	local span = (half and not (opt and opt.width) and CONFIG.HALF_SPAN[t]) or SPAN[t] or (12 + (opt and opt.width or 70))
+	local span = (half and not (opt and opt.width) and CONFIG.HALF_SPAN[t]) or (listW and 14 + listW) or SPAN[t]
+		or (12 + (opt and opt.width or 70))
 	if r.keys then
 		e.cover = CoverOf(row)
 		-- Apply to all (a row with several keys): its room always kept, so the
@@ -3622,6 +3747,7 @@ end
 -- row tall (ROW_HEIGHT, as planned) while its chips fit; wrapping, its job grows and the rows under it move (Reflow)
 CONFIG.LINKS = { CHIP = "%s: %s", GAP = 12, MIN_W = 60, CHIP_H = 22 }
 CONFIG.linkGroupOf = {}   -- (a refresh's scratch: its lines by the page they lead with)
+CONFIG.linkSeen = {}      -- (the same refresh's: the settings that have their chip on the line)
 -- a link's value as a chip says it: a switch On / Off, a choice or a number as its row shows it
 function CONFIG.LinkText(v)
 	if v == true then
@@ -3697,11 +3823,17 @@ function CONFIG.LinksRefresh(line)
 	local page, sec = line.page, line.sec
 	local groupOf, n = CONFIG.linkGroupOf, 0
 	wipe(groupOf)
+	-- (2.1.52; the configurator pass in the test VM, 2026-11-14: "UI Shade: On" twice on Quest Tracker > Look -- the
+	-- Quest Tracker's link and the Objective Tracker's, to the one setting, on one line) a setting has one chip a line:
+	-- a second link to it is not laid
+	local seen = CONFIG.linkSeen
+	wipe(seen)
 	for _, e in ipairs(line.entries) do
 		local lk = e.link
 		e.chip = nil
-		if CONFIG.LinkLive(page, lk) then
-			local b = LinkTarget(page, lk)
+		local b = CONFIG.LinkLive(page, lk) and LinkTarget(page, lk)
+		if b and not seen[b] then
+			seen[b] = true
 			local title = PageTitle(Lay.Get().place[b.id].r.page)
 			local g = groupOf[title]
 			if not g then
@@ -4670,6 +4802,18 @@ do
 			if page.dStaging or not el then
 				return
 			end
+			-- (2.1.52; the configurator pass in the test VM, 2026-11-14: a card dropped on the frame, or Remove from the
+			-- preview's list, and the page left Indicators for the frame's own rows -- the preview lets go of what it
+			-- held as its list changes) nothing picked on the tab of a family of parts (the Indicators: "ind:") is
+			-- still that tab: its list is the tab's own, the tray with no block open
+			if key == nil and page.current then
+				local name = rawget(page.current, "name")
+				local own = type(name) == "string" and name:sub(1, #el + 1) == el .. ":" and name:sub(#el + 2) or nil
+				local held = own and page.stageOfPart[el] and page.stageOfPart[el][own]
+				if type(held) == "string" and held:sub(-1) == ":" then
+					return
+				end
+			end
 			local map = page.partOfStage[el]
 			local part = key and map and (map[key] or (key:match("^ind:") and map["ind:"]))
 			local sec = (part and page.secByName[el .. ":" .. part]) or page.secByName[el .. ":element"]
@@ -5227,7 +5371,8 @@ do
 		if part.hide then
 			DUI.AddSpec(specs, "General", "before", "show")
 		end
-		if part.size then
+		-- (2.1.52: `sizeRow` -- its size is a setting with a row of its own on this tab: no second slider for it)
+		if part.size and not part.sizeRow then
 			DUI.AddSpec(specs, part.text and "Text" or "Layout", "before", "size")
 		end
 		if part.drag ~= false and not part.locked then
@@ -7054,10 +7199,14 @@ local function RailGroups()
 			end
 		end
 		-- (Suggestion 1 point 6, 2026-11-04: a group holding one page -- Chat, Quality of Life -- is that page's plain
-		-- entry, no header named like it over it)
+		-- entry, no header named like it over it) (2.1.52; the user, 2026-11-14, of Buffs & Debuffs and Chat standing
+		-- 10 apart from their neighbours: "not alligned like the rest is", then the pick "B: as categories" of
+		-- configurator-sidelist-sketch) that entry is drawn as the categories are -- W.NavRail's `category`: its
+		-- picture and name where a group's emblem and title stand, in gold -- at the list's one pitch
 		local title = #entries > 1 and g.title or nil
 		if #entries > 0 then
 			groups[#groups + 1] = { key = title or entries[1].key or gi, title = title,
+				category = (g.title ~= nil and title == nil) or nil,
 				collapsible = title ~= nil or nil, entries = entries,
 				icon = title and g.icon and ("Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\" .. g.icon) or nil }
 		end
@@ -8547,7 +8696,7 @@ local function CreateWindow()
 	window.fixed = fixed
 	local rail = W.NavRail(window, { width = width, rowHeight = CONFIG.LIST_ROW, headerHeight = CONFIG.LIST_HEAD,
 		iconSize = 20, iconMaker = NavIcon, box = false, inset = 4, onSelect = NavClick, skin = shell,
-		head = Search.HEAD, onResult = Search.Pick, tipAnchor = "ANCHOR_LEFT", bar = 3, groupGap = 10 })
+		head = Search.HEAD, onResult = Search.Pick, tipAnchor = "ANCHOR_LEFT", bar = 3 })
 	window.rail = rail
 	window.parts.nav = rail.box
 	-- the search box on its strip (nothing else of the search now)

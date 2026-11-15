@@ -140,43 +140,14 @@ local function Replace(region, opts)
 end
 
 -- the non-nil values given, as a list
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a frame's name, secret-safe (nil when it has none or it reads secret)
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	-- (the method looked up inside the pcall: the game's forbidden frames --
-	-- the player's money input -- refuse an addon on the lookup itself)
-	local ok, n = pcall(function() return obj:GetName() end)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- a part by its key on the frame, else by the global name the XML gives it
 -- ("$parent<suffix>"): the templates name some parts only
-local function Part(frame, key, suffix)
-	if not frame then
-		return nil
-	end
-	if key and frame[key] then
-		return frame[key]
-	end
-	local name = NameOf(frame)
-	return name and suffix and _G[name .. suffix] or nil
-end
+local Part = MelloUI.Kit.Panel.Part
 
 local function IsTexture(obj)
 	return obj ~= nil and obj.GetObjectType ~= nil and obj:GetObjectType() == "Texture"
@@ -319,28 +290,7 @@ end
 -- or resized, and the game's quality border stays on the icon, inside the
 -- rim's opening.
 --------------------------------------------------------------------------------
-local function FitIconRim(entry)
-	local rim = entry.rep and entry.rep.object
-	local icon = entry.icon
-	if not (rim and rim.base and icon) then
-		return
-	end
-	local name = rim.base .. "_normal"
-	local p = Kit:Piece(name)
-	local l, r, t, b = Kit:Insets(name, 1)
-	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not ok or Secret(iw) or Secret(ih) or not (iw and ih) or iw <= 0 or ih <= 0 then
-		-- an icon laid out by its points only reads 0 until the frame is drawn:
-		-- the button's size stands in (the icon fills it on these buttons)
-		ok, iw, ih = pcall(entry.button.GetSize, entry.button)
-	end
-	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
-		return
-	end
-	rim:ClearAllPoints()
-	rim:SetPoint("CENTER", icon, "CENTER")
-	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
-end
+local FitIconRim = MelloUI.Kit.Panel.FitEntryRim
 
 -- a new Button Border has a new opening: every rim fitted again
 Kit:OnBorderChanged("button", function()

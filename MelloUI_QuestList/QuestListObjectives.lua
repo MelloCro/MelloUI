@@ -107,21 +107,13 @@ local function LogQuests(trackedOnly)
 	return quests
 end
 
--- The data, loaded with the first map that has a quest to show (once a
--- session: a refusal is the Companion's own notice)
+-- (2.1.52, stage 2) the objectives' places are Questie's (Core/QuestSource.lua), and these marks -- on the game's map
+-- and the minimap -- are laid only in MelloUI's look: with Questie's switch off Questie's own icons show, without
+-- Questie there are no quests at all
+-- (a world without the quest source -- a test's: the places are whatever MelloUI.QuestObjectives hands out)
 local function DataReady()
-	-- (2.1.39) the player's QuestieDB has places too (Core/QuestSource.lua); the Companion still asked for once, for
-	-- the quests it lacks
-	local questie = MelloUI.QuestSource and MelloUI.QuestSource.Lib() ~= nil
-	if MelloUI_QuestObjectiveData then
-		return true
-	end
-	if O.asked or not MelloUI.LoadCompanion then
-		return questie or false
-	end
-	O.asked = true
-	local ok = MelloUI:LoadCompanion()
-	return questie or (ok and MelloUI_QuestObjectiveData ~= nil)
+	local QS = MelloUI.QuestSource
+	return QS == nil or QS.Look()
 end
 
 -- (1.2.0) world yards to a map's 0..1: the client's own answer at three points by a place (one ask a point

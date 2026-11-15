@@ -67,6 +67,9 @@ local TEXT = {
 	-- (2.1.51) a guide's card: its own arrow beside MelloUI's World Marker
 	arrow = "Show its own arrow too",
 	arrowTip = "Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way.",
+	-- (2.1.52, stage 2) a needed addon's card while it is not installed (I.LIST's `needed`: Questie)
+	notInstalled = "Not installed",
+	install = "Install it, then type /reload.",
 }
 AP.TEXT = TEXT
 AP.DISCORD = "https://discord.com/channels/1552056753833648140/1570155693305110558"
@@ -128,11 +131,11 @@ local function Pill(parent)
 end
 
 -- a state's look: its meaning colour (working, partly), else the palette's muted (off: painted by key, so a new
--- palette paints it again)
-local function PillShow(p, state)
+-- palette paints it again); `word` (2.1.52): the state's own word in place of the state's name
+local function PillShow(p, state, word)
 	local key = STATE[state]
 	local c = key and MelloUI.Meaning[key]
-	p.text:SetText(Tr(TEXT[state] or TEXT.off))
+	p.text:SetText(Tr(word or TEXT[state] or TEXT.off))
 	local Painter = MelloUI.Painter
 	if c then
 		Painter.Unpaint(p.text)
@@ -266,13 +269,17 @@ local function Card(parent, e, width, skin, ctx)
 			return I.Use(e.key)
 		end, function(on)
 			I.SetUse(e.key, on)
-			if card.Refresh then
+			-- (2.1.52: a card whose off state is another height -- Questie's -- has the tab laid again: Relay)
+			if card.Relay then
+				card.Relay()
+			elseif card.Refresh then
 				card.Refresh()
 			end
 		end)
 		sw:SetPoint("TOPRIGHT", card, "TOPRIGHT", -T.PAD, -9)
 		card.switch = sw
-		local label = W.Text(card, "GameFontHighlight", Tr(TEXT.use), "text")
+		-- (2.1.52: an entry's own name for its switch -- Questie's is MelloUI's look, the look being all it switches)
+		local label = W.Text(card, "GameFontHighlight", Tr(e.use or TEXT.use), "text")
 		label:SetPoint("RIGHT", sw, "LEFT", -8, 0)
 	end
 	Rule(card, y - 2)
@@ -285,13 +292,18 @@ local function Card(parent, e, width, skin, ctx)
 	local noteY = y
 	y = y + 6
 	card.afterNote = y
-	-- the rest under the note: laid again when the note's height changes (Refresh)
+	-- what MelloUI does with it, under the note (2.1.52: a part of its own -- an entry whose off is a state of its
+	-- own, `offLine`, shows that line in its place while switched off: Refresh)
+	local does = CreateFrame("Frame", nil, card)
+	does:SetPoint("TOPLEFT", card, "TOPLEFT", 0, -y)
+	does:SetWidth(width)
+	does:SetHeight(Lines(does, Heading(does, 4, TEXT.does), e.does, width))
+	card.does = does
+	-- the rest under it: laid again when the note's height changes (Refresh)
 	local body = CreateFrame("Frame", nil, card)
-	body:SetPoint("TOPLEFT", card, "TOPLEFT", 0, -y)
+	body:SetPoint("TOPLEFT", card, "TOPLEFT", 0, -(y + does:GetHeight()))
 	body:SetWidth(width)
-	local by = 4
-	by = Heading(body, by, TEXT.does)
-	by = Lines(body, by, e.does, width)
+	local by = 0
 	-- (2.1.51; the user: "a checkbox if people want to see the 'Arrow' of that specific addon aswell as the MelloUI
 	-- Navigation World Marker") a guide Route follows: its own arrow shown too, or veiled (Route's Guide.ArrowShown;
 	-- the setting is Route's, in the profile). No Route: no row
@@ -309,7 +321,7 @@ local function Card(parent, e, width, skin, ctx)
 		sw.melloTipTitle, sw.melloTipBody = Tr(TEXT.arrow), Tr(TEXT.arrowTip)
 		Perf.HookScript(sw, "OnEnter", ArrowTipEnter)
 		Perf.HookScript(sw, "OnLeave", W.TipLeave)
-		W.NewTag(sw:GetParent(), label, "2.1.51")   -- (the New tag after its label, while 2.1.51 is new)
+		W.NewTag(sw:GetParent(), label)   -- (the New tag after its label, while 2.1.51 is new)
 		card.arrowSwitch = sw
 		Rule(body, by + T.ROW_H - 2)
 		by = by + T.ROW_H
@@ -355,14 +367,21 @@ local function Card(parent, e, width, skin, ctx)
 	-- the live parts: the state and its line, the switch, the fixes' states (each show of the page)
 	function card.Refresh()
 		local state, why = I.Status(e)
-		PillShow(pill, state)
+		-- (2.1.52) an entry whose off is a state of its own (Questie's look): its word, in the colour of Partly, its
+		-- line, and what MelloUI does with it out of sight meanwhile (it does none of that then)
+		local own = state == "off" and e.offLine ~= nil
+		if own then
+			PillShow(pill, "partly", e.offPill)
+		else
+			PillShow(pill, state)
+		end
 		local line
 		if e.switch == false then
 			line = Tr(e.noSwitch or TEXT.noSwitch)   -- (2.1.51: an entry's own line, Guidelime's: switched with TomTom)
 		elseif state == "partly" then
 			line = MelloUI.Lang.F(TEXT.partlyLine, why or "")
 		elseif state == "off" then
-			line = Tr(TEXT.offLine)
+			line = Tr(e.offLine or TEXT.offLine)
 		end
 		note:SetText(line or "")
 		local c = state == "partly" and MelloUI.Meaning.addonPartly or nil
@@ -373,6 +392,10 @@ local function Card(parent, e, width, skin, ctx)
 			W.Paint(note, "text", "text")
 		end
 		local nh = line and (Height(note) + 8) or 0
+		does:SetShown(not own)
+		does:ClearAllPoints()
+		does:SetPoint("TOPLEFT", card, "TOPLEFT", 0, -(card.afterNote + nh))
+		nh = nh + (own and 0 or does:GetHeight())
 		body:ClearAllPoints()
 		body:SetPoint("TOPLEFT", card, "TOPLEFT", 0, -(card.afterNote + nh))
 		if card.switch then
@@ -398,11 +421,50 @@ local function Card(parent, e, width, skin, ctx)
 	return card
 end
 
+-- (2.1.52, stage 2) a needed addon that is not installed (I.LIST's `needed`: MelloUI's quests are Questie's): its
+-- card all the same -- Not installed, what is missing without it, its link to copy, what to do then
+local function Missing(parent, e, width)
+	local card = W.Panel(parent)
+	card:SetWidth(width)
+	local icon = card:CreateTexture(nil, "ARTWORK")
+	icon:SetSize(T.ICON, T.ICON)
+	icon:SetPoint("TOPLEFT", card, "TOPLEFT", T.PAD, -10)
+	MelloUI.Icons.Set(icon, ICONS .. (ICON_OF[e.key] or "svc_addons"), T.ICON)
+	local name = W.Text(card, "GameFontHighlightLarge", Tr(e.name), "text")
+	name:SetPoint("LEFT", icon, "RIGHT", 8, 0)
+	local pill = Pill(card)
+	pill:SetPoint("LEFT", name, "RIGHT", 10, 0)
+	card.pill = pill
+	Rule(card, T.HEAD_H - 2)
+	local line = W.Text(card, "GameFontHighlight", Tr(e.needed), "text")
+	line:SetWordWrap(true)
+	line:SetWidth(width - T.PAD * 2 - 8)
+	line:SetPoint("TOPLEFT", card, "TOPLEFT", T.PAD + 4, -(T.HEAD_H + 6))
+	local link = LinkBox(card, e.url, math.min(T.LINK_W + 60, width - T.PAD * 2 - 8))
+	local after = W.Text(card, "GameFontHighlight", Tr(TEXT.install), "text")
+	card.missing, card.note, card.link = true, line, link
+	function card.Refresh()
+		PillShow(pill, "off", TEXT.notInstalled)
+		local y = T.HEAD_H + 6 + Height(line) + 8
+		link:ClearAllPoints()
+		link:SetPoint("TOPLEFT", card, "TOPLEFT", T.PAD + 4, -y)
+		y = y + T.BUTTON_H + 8
+		after:ClearAllPoints()
+		after:SetPoint("TOPLEFT", card, "TOPLEFT", T.PAD + 4, -y)
+		y = y + Height(after) + 12
+		card:SetHeight(y)
+		return y
+	end
+	return card
+end
+
 function AP.Installed(sec, width, skin, ctx)
 	local cards = {}
 	for _, e in ipairs(I.LIST) do
 		if I.Installed(e) then
 			cards[#cards + 1] = Card(sec, e, width, skin, ctx)
+		elseif e.needed then
+			cards[#cards + 1] = Missing(sec, e, width)
 		end
 	end
 	local tail = W.Text(sec, "GameFontHighlight", Tr(#cards > 0 and TEXT.more or TEXT.none), "text")
@@ -420,10 +482,13 @@ function AP.Installed(sec, width, skin, ctx)
 		tail:SetPoint("TOPLEFT", sec, "TOPLEFT", 4, -y)
 		return y + Height(tail) + 4
 	end
-	sec.addonCards = cards
-	sec.refreshers[#sec.refreshers + 1] = function()
+	local function Relay()
 		sec.y = Lay()
 		sec:Finish()
+	end
+	sec.refreshers[#sec.refreshers + 1] = Relay
+	for _, card in ipairs(cards) do
+		card.Relay = Relay   -- (2.1.52: its switch may change its height)
 	end
 	return Lay()
 end
@@ -495,7 +560,6 @@ function AP.Compatibility(sec, width, skin)
 	end
 	Marks()
 	sec.refreshers[#sec.refreshers + 1] = Marks
-	sec.compatBox = box
 	return y + 8 + T.GAP + ask:GetHeight()
 end
 

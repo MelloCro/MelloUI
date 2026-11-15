@@ -126,42 +126,13 @@ local function Follow(rep, region)
 end
 
 -- A frame's name, secret-safe (nil when it has none or it cannot be read)
-local function NameOf(f)
-	local ok, name = pcall(f.GetName, f)
-	if ok and type(name) == "string" and not Secret(name) then
-		return name
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- A string's text: the text (nil when empty), and whether it read secret
-local function TextOf(fs)
-	local ok, text = pcall(fs.GetText, fs)
-	if not ok then
-		return nil, false
-	end
-	if Secret(text) then
-		return nil, true
-	end
-	if type(text) == "string" and text ~= "" then
-		return text, false
-	end
-	return nil, false
-end
+local TextOf = MelloUI.Kit.Panel.TextRead
 
 -- Whether `f` lies under `root` (a few parents up)
-local function IsUnder(f, root)
-	for _ = 1, 10 do
-		if not f then
-			return false
-		end
-		if f == root then
-			return true
-		end
-		f = f.GetParent and f:GetParent()
-	end
-	return false
-end
+local IsUnder = MelloUI.Kit.Panel.IsUnder
 
 --------------------------------------------------------------------------------
 -- The page: the game's parchment region of every panel replaced by the kit's
@@ -453,14 +424,7 @@ end
 -- its LOWEST texture (DialogPanel's way: on one above the label it covered
 -- it), its other art faded, and its label raised over the plate while dressed.
 --------------------------------------------------------------------------------
-local function PlainLabels(button)
-	local QI = MelloUI.QuestInk
-	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
-			pcall(QI.PlainText, region)
-		end
-	end
-end
+local PlainLabels = MelloUI.Kit.Panel.PlainLabels
 
 local function SkinTextButton(button)
 	if not button then
@@ -1149,15 +1113,7 @@ end
 -- regions and children, the page, portrait, title, buttons, item buttons,
 -- scroll bars and inked strings found and dressed; opens the copy window.
 --------------------------------------------------------------------------------
-local function Num(v)
-	if v == nil then
-		return "nil"
-	end
-	if Secret(v) then
-		return "[secret]"
-	end
-	return type(v) == "number" and string.format("%.0f", v) or tostring(v)
-end
+local Num = MelloUI.Kit.Panel.Num
 
 local function Size(obj)
 	local ok, w, h = pcall(obj.GetSize, obj)
@@ -1167,15 +1123,7 @@ local function Size(obj)
 	return Num(w) .. " x " .. Num(h)
 end
 
-local function RepState(rep)
-	if rep == nil then
-		return "not looked at"
-	elseif rep == false then
-		return "not dressed"
-	end
-	local shown = rep.object and rep.object.IsShown and rep.object:IsShown()
-	return tostring(rep.key) .. (shown and " (shown)" or " (hidden)")
-end
+local RepState = MelloUI.Kit.Panel.RepState
 
 local function DumpFrame(label, frame)
 	MelloUI:Print("%s: shown %s, size %s, level %s, strata %s", label, tostring(frame:IsShown()), Size(frame),

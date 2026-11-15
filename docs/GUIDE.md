@@ -71,7 +71,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 - **Opens where you are:** the first time you open the map after logging in, it shows your current zone, a city's own map in a city (2.1.40); after that, each open centres on you at the zoom you left it.
 - **Your size, your place:** drag the dotted grip in the map's bottom-right corner to make the map bigger or smaller (its quest log keeps its size, so it stays readable on any screen; right-click the grip for the standard size and place), and drag its title bar to move the window. No Edit Layout needed.
 - **One window, nothing covered:** your quest log, the map's layers and Dungeon Info open in a panel beside the whole map. The round buttons between them pick one (L opens your quests); click the lit one to fold the panel away and the window narrows to the map.
-- **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, attunements, events.
+- **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, events. Its quests are Questie's: it needs Questie installed (2.1.52).
 - **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock. The **Icons** slider in the map's title row makes every icon on it bigger or smaller (50 to 200 %), other addons' icons such as Questie's too.
 - **RareScanner:** with RareScanner installed, its rares, treasures and events show on the map in MelloUI's look (2.1.43): MelloUI's icon on a plate, its rim gold with a glow for one you just saw, red for one you haven't found yet, muted for one you found before, and faded once it's killed or opened. Hover one for its name and state, click it to put your pin there. RareScanner decides what shows (its own filters and options); its icons on the minimap wear the same look.
 - **Quest areas that touch:** areas whose places lie within about 120 yards of each other show one gold outline instead of a stack of rings (2.1.43). Each objective keeps its marks and its white dots where it is done; hover one of its marks and its own area shows lit inside the outline, which steps back with the other marks. The same on the game's own map and on the minimap (a minimap mark lifts when you hover it, as on the map).
@@ -1121,16 +1121,35 @@ Commands: `/vo stop`, `/vo pause`, `/vo skip`, `/vo read`, `/vo test`, `/vo voic
 
 ### Quest List
 
-With Questie installed (2.1.39), the Quest List, its map pins, the objective marks and Route take their quests,
-givers, turn-ins and objective places from Questie's quest database (QuestieDB, which Questie brings), the newest
-quest data there is; a quest it does not have yet keeps MelloUI's own. QuestieDB alone is enough: Questie itself
-may be switched off. Its rules decide what you can take now, as Questie's own do: a quest that needs an earlier
+**MelloUI's quests are Questie's (2.1.52).** MelloUI ships no quest data of its own any more: the Quest List, the
+quests on the map and the minimap, the objective marks and Route to a quest take their quests, givers, turn-ins and
+objective places from Questie's quest database (QuestieDB, which Questie brings). Three states:
+
+- **No Questie:** no quests are shown anywhere. The map's layers page keeps its two quest rows dimmed and off, with
+  the line "Quests on the map come from Questie." and a Get Questie button; the Quest List says "The Quest List needs
+  Questie" with the same button; a dungeon's quests in Dungeon Info say so in one line. Get Questie opens the Addons
+  page on Questie's card, which holds its link to copy. Nothing pops up and nothing is said in the chat.
+- **Questie, its MelloUI's look switch off** (the Addons page, Questie's card): Questie shows its own icons and its
+  own tracker, on MelloUI's map too (its quest givers under the map's Quest givers switch, its objectives under Your
+  quests' objectives). MelloUI draws no quest marks of its own. The Quest List and Route to a quest keep working from
+  Questie's quest data.
+- **Questie, MelloUI's look on** (the default): Questie's quests in MelloUI's look, as described below.
+
+Questie means the addon itself, loaded; its database alone is not enough. A quest Questie does not know is not
+listed. Gone with MelloUI's own data: the Quest List's Attunements view, and Route's "First: loot ..." line for an
+item a quest needs before its objective.
+
+Its rules decide what you can take now, as Questie's own do: a quest that needs an earlier
 quest, a breadcrumb handed in, a spell or a profession first waits in the list (its tooltip says what for).
-With Questie itself running, MelloUI's own quest givers, objective marks and quest areas stay, fed by Questie's
-data, and Questie's icons of the same kind stay out of sight wherever MelloUI draws that kind (MelloUI's map: while
-its quest givers' or objectives' layer is on; the game's map: while Quest Givers On Zone Maps or Objective Marks is
-on; the minimap: while Objective Marks On The Minimap is on). Switch one of MelloUI's off and Questie's fill in there,
-in MelloUI's pictures; Questie's quest givers on the minimap (MelloUI has none there) always show, in MelloUI's marks.
+With Questie running in MelloUI's look, its quest givers and turn-ins are the ones
+shown (2.1.52): MelloUI's own step aside on every map (the map's own ! and ? of your quests too), and Questie's are drawn in MelloUI's marks, so Questie's own
+choices decide which quests show (its Quest Level Options: only quests that grant experience, all low ones, a set
+number of levels below you, or between two levels). On MelloUI's map the Quest givers switch shows or hides them,
+whatever Other addons' pins is set to; on the game's map Quest Givers On Zone Maps does. MelloUI's objective marks and
+quest areas stay, fed by Questie's data, and Questie's objective icons stay out of sight wherever MelloUI draws them
+(MelloUI's map: while its objectives' layer is on; the game's map: while Objective Marks is on; the minimap: while
+Objective Marks On The Minimap is on). On the minimap, the quest givers are the game's own marks (Questie's stay out of
+sight there, so nothing shows twice); the game only lets addons show or hide its grey ones as a whole.
 Hovering one of Questie's icons that still show lists only what is not drawn by MelloUI already: Questie's tooltip
 gathers the quests of every icon of its own nearby (a dungeon's quests all sit on its entrance), and leaves out the
 ones MelloUI keeps out of sight. No setting of Questie's is changed. Its tracker: see Quest Tracker.
@@ -1147,8 +1166,8 @@ in a zone. A button on the quest log's top row, where the game shows its quest c
 column between your quest log ("Quest List") and the list ("Quest Log" takes you back); the
 column remembers which one it showed, and opening a quest's details shows the log until you go
 Back. The list has a "done / total" count, then every quest under collapsible gold headers, one per
-quest chain (named after its first quest; chains come from the vanilla database's hard
-prerequisites and Wowhead's series tables) plus "Single quests". Titles are coloured by
+quest chain (named after its first quest; a chain is the line of quests Questie's data says follow each
+other) plus "Single quests". Titles are coloured by
 difficulty like the quest log and carry the quest markers: yellow "!" for a quest you can pick
 up, grey "!" when your level is too low, yellow "?" for a quest in your log with its objectives
 done, grey "?" for one still in progress, and a tick for completed quests, which stay in the
@@ -1156,20 +1175,15 @@ list greyed. Each row shows the quest giver and its map coordinates; clicking a 
 a map pin on the giver and marks that row with the pin icon, clicking it again removes the pin. Everything is sorted by level, lowest first, and quests of the
 other faction are left out unless enabled. Views: All (grouped by zone), Current Continent,
 Current Zone (the zone the map shows, grouped by chain and dungeon), Class Quests, Dungeons and
-Raids (a header per instance, Forever's new ones included, taken from Wowhead's zone list),
-Attunements (the Onyxia, Molten Core, Blackwing Lair, Naxxramas, Scholomance and Upper
-Blackrock Spire key chains), and Events (Winter Veil, Hallow's End, Darkmoon Faire, Scourge
-Invasion, the Grand Tournament of Gnomeregan and so on). A search box like the quest log's
+Raids (a header per instance), and Events (Winter Veil, the Lunar Festival, Darkmoon Faire, the Scourge
+Invasion and so on, as Questie's data sorts them). A search box like the quest log's
 searches every zone by quest title, giver or zone. The dropdown under it picks the view; the gear
 beside the search box holds what quests start from (a quest giver, a mob drop, an item picked up,
 unknown), Hide quests 5+ levels above me and Hide completed quests. Options: hide completed; other faction's and other classes' quests (off by
-default); a level cap above your level. `Media\QuestListData.lua` is generated by
-`Tools\build_quest_list.py` from Wowhead's Forever listing (quest, level, faction, class,
-zone), the cmangos vanilla database (quest givers and their spawn points, converted to map
-coordinates with the Classic Era map bounds) and Wowhead's quest and NPC pages for Forever's
-new quests (giver and zone only, Wowhead has no coordinates for them). Positions the Voice Over
-collector records when you talk to an NPC fill in the coordinates of those givers, so re-run
-the build now and then.
+default); a level cap above your level. `Media\QuestListData.lua` (generated by
+`Tools\build_quest_list.py`) holds no quests since 2.1.52, only what is not Questie's: the zones' and
+dungeons' names, the entrances, boats and flight points, the service NPCs, the restock items and the
+trainers' levels.
 
 In the painted look (0.24.0) the list and the quest log beside it wear the chat's look: each header a small heading on a thin line (the list's with its done / total and its bar), each list row's marker in the kit's round rim, and on the parchment a quest's difficulty one gem before its title in the difficulty's colour, where five pips stood (the titles keep their whole width). The quest log's own ? buttons stay the game's.
 
@@ -1204,10 +1218,10 @@ own: the quest before it in Wowhead's series), so a yellow "!" means the giver h
 **On the map.** The module adds its own pins through the map's data provider system, so they
 zoom and pan with the map:
 
-- *Quest givers* on zone maps: one pin per giver location with the marker of the best thing
-  you can do there (yellow "!" pick up, yellow "?" turn in, grey "?" in progress, grey "!" too
-  low; givers you are done with are hidden unless enabled). Hover for the quests with their
-  state and chain step, click to set the waypoint.
+- *Quest givers* on zone maps are Questie's (2.1.52): its "!" and "?" in MelloUI's marks, shown
+  or hidden by Quest Givers On Zone Maps; which ones show (low-level quests, givers you are done
+  with) is set in Questie's options. The Quest List has no giver pins of its own any more, and
+  its options Include Givers You Are Done With and Hide Grey Quests went with them.
 - *Zone badges* on the continent maps: a "done / total" badge on every zone; hover for the
   level range and how many quests you could pick up now, click to open the zone.
 - *Dungeon and raid entrances* on zone maps, with the game's Dungeon and Raid icons. Positions
@@ -1293,24 +1307,10 @@ the Services bar's pins, or a waypoint you place on Blizzard's map. Without a pi
 follows the quest you super-track (click it in the objective tracker): to its objective area,
 and to its turn-in once it is complete, using the markers the client places for quests in
 your log ("Fall Back To The First Tracked Quest" follows the top of the tracker instead when
-nothing is super-tracked). An objective that needs an item in your bags first (Marla's Last
-Wish: Samuel's Remains, dropped by Samuel Fipps, before Marla's Grave) is routed to where the
-item comes from (the creature that drops it, the object that holds it, else a vendor) until
-the bags hold it: the route, the arrow, the World Marker (Route puts its own map pin on the
-source, the way it does on a dock, while every open objective waits on an item; remove the pin
-and the quest stays followed without it) and the Quest Tracker's "First: loot Samuel's Remains
-from Samuel Fipps" line under the objective; the moment it is looted they all go to the
-objective and the quest is super-tracked again. An item used up by the objective's own step (a
-carcass that calls the beast, remains buried) still counts until the objective moves on, five
-minutes at most. Where several are dropped for the quest, as many as the objective still lacks
-are asked for, or all at once where one thing is made of them. An objective item made by using
-other items (0.18.4; Traditions of the Bluff: buy four things from four Thunder Bluff vendors,
-combine them into the Prepared Incense) is routed to each of those items in turn, nearest
-first, the tracker's line naming the one the route goes for ("First: buy Sinew Thread from
-Mahu"); with all of them in the bags it says "Next: use Bundle of Herbs to make Prepared
-Incense". Which items are made of which comes from the client's own spell data, for every quest
-alike (`Toolsuild_quest_objectives.py`, made items); a Forever item that is only sold has
-its vendors as its places. `/route pin` reports where the game has the World Marker's place:
+nothing is super-tracked). (Until 2.1.52 an objective that needs an item in your bags first was routed to where
+the item comes from, with a "First: loot ..." line in the Quest Tracker. That stood on MelloUI's
+own quest data and went with it: Questie's data names such an item, not the objective it is for.)
+`/route pin` reports where the game has the World Marker's place:
 what it tracks, its distance against the flat one on the map (a point far above or below the
 ground shows as the difference), your height. The client has no road or terrain data
 for addons, so the roads come from two places: the ones traced from the zone maps' art
@@ -2087,12 +2087,7 @@ painted look, at its left in the game's). "Distances" (on) shows how far each
 quest is at the end of its title line ("240 yd", "1.2 km"): its open objectives, or the one who
 takes it back once it is done; the quest you follow shows the way left along its route, as the
 arrow does. "Turn-in Line" (on) makes a finished quest say who takes it and where ("Turn in:
-Gryan Stoutmantle, Sentinel Hill"). An objective that needs an item in your bags first says
-where to get it on a line of its own under it, in gold ("First: loot Samuel's Remains from
-Samuel Fipps"; a count when more than one is needed; the item the route goes for when several are
-missing), until the item is looted, and "Next: use ... to make ..." once the bags hold everything an
-objective item is made of; the quest stays
-the followed one while Route's own pin on the item's source holds the game's tracking. Inside an instance, with no position, or with Route off,
+Gryan Stoutmantle, Sentinel Hill"). (The "First: loot ..." line under an objective went in 2.1.52 with MelloUI's own quest data.) Inside an instance, with no position, or with Route off,
 the tracker keeps the watch order without distances. It asks Route for positions only while it
 is shown and its Quests section is open.
 

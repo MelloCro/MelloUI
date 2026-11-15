@@ -80,6 +80,19 @@ local function Used()
 end
 QL.Used = Used
 
+-- (2.1.51; the user, 2026-11-13, Questie's Quest Level Options at a set level below the player and MelloUI's map still
+-- full of low quests: "i dont want melloUI Quests to show if Questie is active") Questie decides which quest givers and
+-- turn-ins show while it is loaded and used with MelloUI (the Addons page): MelloUI's own step aside on every map (the
+-- Quest List's QL.GiverGroups and its dungeon starters) and Questie's are drawn by its own rules -- its level options
+-- too -- in MelloUI's pictures; a map's Quest givers switch shows or hides them. MelloUI's objective marks and quest
+-- areas stay MelloUI's (the user, 2026-11-10: "our own function which i like very much")
+-- (2.1.52, stage 2: MelloUI has no quest data of its own) so whenever Questie is there -- in MelloUI's look or, its
+-- switch off, in its own (Core/QuestSource.lua's states) -- and never MelloUI's own
+function QL.Givers()
+	local QS = rawget(MelloUI, "QuestSource")
+	return QS ~= nil and QS.Lib() ~= nil
+end
+
 -- dressed: MelloUI's Quest Tracker on, stepped aside for Questie's
 local function On()
 	local m = Tracker()
@@ -231,6 +244,103 @@ local function Panel(base)
 		Skin.Follow(holder, QL.GameLook)
 	end
 	return holder
+end
+
+-- (2.1.52; the test VM, 2026-11-14, the user: "Yes, keep it on") the panel's rim on the screen. Questie's default
+-- place is the game's quest watch frame's (QuestieCompat.GetWatchFramePoint): its frame's right edge the screen's, and
+-- the gold rim stands outward of the panel's edge (MelloUI.Rims.T: its band less its tuck) -- off the screen there.
+-- A side of Questie's frame nearer the screen's edge than the rim's room: the panel's side in by what is missing, never
+-- by more than that room (a tracker dragged past the screen's edge takes its panel with it). Clear of the edges, and
+-- under the Default skin (no rim there: Rims:OwnEdge): the panel on Questie's frame as before. Laid at every dressing
+-- (Questie's Update: its tracker moved or sized, the skin switched); Questie's frame and its place untouched
+local function Inward(room, out, scale)
+	return math.max(0, math.min(out, out - room)) / scale
+end
+
+local function Seat(base, panel)
+	local inL, inB, inR, inT = 0, 0, 0, 0
+	local Rims = rawget(MelloUI, "Rims")
+	local T = type(Rims) == "table" and Rims.T or nil
+	local out = T and (Number(T.band) or 0) - (Number(T.tuck) or 0) or 0
+	if out > 0 and not panel.game then
+		local Rect = MelloUI.Safe.ScreenRect
+		local l, b, r, t = Rect(base)
+		local sl, sb, sr, st = Rect(UIParent)
+		local scale = Number(base:GetEffectiveScale())
+		if l and sl and scale and scale > 0 then
+			local px = out * scale
+			inL, inB = Inward(l - sl, px, scale), Inward(b - sb, px, scale)
+			inR, inT = Inward(sr - r, px, scale), Inward(st - t, px, scale)
+		end
+	end
+	if panel.inL ~= inL or panel.inB ~= inB or panel.inR ~= inR or panel.inT ~= inT then
+		panel.inL, panel.inB, panel.inR, panel.inT = inL, inB, inR, inT
+		panel:ClearAllPoints()
+		panel:SetPoint("TOPLEFT", base, "TOPLEFT", inL, -inT)
+		panel:SetPoint("BOTTOMRIGHT", base, "BOTTOMRIGHT", -inR, inB)
+	end
+end
+
+-- (2.1.52; the configurator pass in the test VM, 2026-11-14: a taller minimap, or a second row of Services, lay under
+-- Questie's tracker -- the user: "Yes, go ahead") where nobody placed it, Questie's tracker hangs under MelloUI's
+-- minimap column as MelloUI's own tracker does (Modules/QuestTracker.lua's Glue): its top right corner QL.COLUMN_GAP
+-- under the column's bottom, on the frame the column lines up to (MinimapPanel's ColumnAnchor) -- an anchor, so it
+-- moves with the map; laid again at each dressing and at the bus's 'column' (the column's foot moved). "Nobody
+-- placed it": Questie keeps no place of the player's (its TrackerLocation: nil in a profile until the first drag;
+-- Questie's own Reset Tracker writes one too, the screen's middle -- seen in the test VM on 12.9) -- a tracker dragged
+-- or reset is the player's, never moved. No setting of Questie's is written: its frame's one
+-- anchor only, written when it stands elsewhere, never in a fight (the dressing's own rule). Without MelloUI's
+-- minimap, or once the look goes off: back on Questie's own default (QuestieCompat.GetWatchFramePoint, as Questie
+-- lays it at its start)
+QL.COLUMN_GAP = 8   -- (MelloUI's own tracker's: Modules/QuestTracker.lua's COLUMN_GAP)
+
+local function Unplaced()
+	local Q = rawget(_G, "Questie")
+	local profile = type(Q) == "table" and type(Q.db) == "table" and Q.db.profile
+	return type(profile) == "table" and profile.TrackerLocation == nil
+end
+
+local function Unfollow(base)
+	if not S.followed then
+		return
+	end
+	S.followed = nil
+	if not (base and Unplaced()) or InCombatLockdown() then
+		return   -- (a place of the player's since: Questie laid it there itself)
+	end
+	local QC = Questie("QuestieCompat")
+	local own = QC and rawget(QC, "GetWatchFramePoint")
+	if type(own) == "function" then
+		local point = { pcall(own) }
+		if point[1] and type(point[2]) == "string" then
+			base:ClearAllPoints()
+			pcall(base.SetPoint, base, unpack(point, 2))
+		end
+	end
+end
+
+local function HangUnder(base)
+	local mp = Unplaced() and MelloUI:GetModule("MinimapPanel")
+	if not (mp and mp.isEnabled and type(mp.ColumnAnchor) == "function") then
+		Unfollow(base)
+		return
+	end
+	local ok, region, point, dy = pcall(mp.ColumnAnchor, mp)
+	dy = ok and Number(dy) or nil
+	local scale = Number(base:GetEffectiveScale())
+	if not (region and type(point) == "string" and dy and scale and scale > 0) then
+		Unfollow(base)
+		return
+	end
+	-- (a thousandth of a unit: a column that did not move lays the same)
+	local y = math.floor((dy / scale - QL.COLUMN_GAP) * 1000 + 0.5) / 1000
+	local at, rel, relPoint, x0, y0 = base:GetPoint(1)
+	if not (base:GetNumPoints() == 1 and at == "TOPRIGHT" and rel == region and relPoint == point
+		and Number(x0) == 0 and Number(y0) and math.abs(y0 - y) < 0.005) then
+		base:ClearAllPoints()
+		base:SetPoint("TOPRIGHT", region, point, 0, y)
+	end
+	S.followed = true
 end
 
 -- the Quest Tracker's Background Opacity on the panel's fill and its shade (Default: the backing band's strength)
@@ -640,7 +750,8 @@ local function DressHeader(base, panel)
 		return
 	end
 	local right, left = Number(base:GetRight()), Number(label:GetLeft())
-	Head(label, panel, right and left and math.max(1, right - QL.EDGE - left) or nil)
+	-- (the panel's right edge: Questie's frame's, less what the panel stands in from the screen's edge -- Seat)
+	Head(label, panel, right and left and math.max(1, right - (panel.inR or 0) - QL.EDGE - left) or nil)
 	local top, bottom = Number(base:GetTop()), Number(base:GetBottom())
 	local hTop, hBottom = Number(header:GetTop()), Number(header:GetBottom())
 	if not (top and bottom and hTop and hBottom) then
@@ -648,7 +759,11 @@ local function DressHeader(base, panel)
 		return
 	end
 	local atFoot = (hTop + hBottom) / 2 < (top + bottom) / 2
-	local y = atFoot and (hTop + 2 - top) or (hBottom - 2 - top)
+	-- (2.1.52; the game, 2026-11-14, the user: "Yes, move it") under the title the hairline stands inside Questie's
+	-- header, in the air under its text (the header is its font's size + 5 high): Questie's first line starts at the
+	-- header's bottom with its text at the line's top, and 2 under the header the hairline ran through the top of the
+	-- first zone's name. At the foot as before, 2 over the header: the line above ends in its own padding
+	local y = (atFoot and (hTop + 2 - top) or (hBottom + 2 - top)) + (panel.inT or 0)   -- (from the panel's top: Seat)
 	hair:ClearAllPoints()
 	hair:SetPoint("TOPLEFT", panel, "TOPLEFT", QL.EDGE, y)
 	hair:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -QL.EDGE, y)
@@ -676,7 +791,8 @@ local function DressLine(line)
 		-- (out to the panel's right edge, as the tracker's headings: Questie's label is as wide as its text)
 		local base = rawget(_G, "Questie_BaseFrame")
 		local right, left = Number(base and base:GetRight()), Number(label:GetLeft())
-		local width = right and left and math.max(1, right - QL.EDGE - left) or (Number(label:GetWidth()) or 100)
+		local inR = S.panel and S.panel.inR or 0   -- (the panel in from the screen's edge: Seat)
+		local width = right and left and math.max(1, right - inR - QL.EDGE - left) or (Number(label:GetWidth()) or 100)
 		-- (its name up to the +/- at the right end)
 		Head(label, layer, math.max(1, width - (Number(select(2, label:GetFont())) or 12) - 4))
 		Rule(line, layer, label, width)
@@ -754,6 +870,28 @@ local function Lines(fn)
 	end
 end
 
+-- (2.1.52, Core/QuestMoments.lua: an item picked up flies to its line) Questie's tracker line of a quest's objective,
+-- shown: its text (or the line), else nil. Read only: the line's own fields as Questie sets them (TrackerLinePool:
+-- mode "objective", Quest.Id, Objective.Index)
+local lineFound, lineQuest, lineIndex
+local function LineOf(line)
+	if lineFound or rawget(line, "mode") ~= "objective" then
+		return
+	end
+	local quest, objective = rawget(line, "Quest"), rawget(line, "Objective")
+	if type(quest) == "table" and type(objective) == "table" and rawget(quest, "Id") == lineQuest
+		and rawget(objective, "Index") == lineIndex and line:IsVisible() then
+		lineFound = rawget(line, "label") or line
+	end
+end
+function QL.ObjectiveLine(questID, index)
+	lineFound, lineQuest, lineIndex = nil, questID, index
+	Lines(LineOf)
+	local found = lineFound
+	lineFound = nil
+	return found
+end
+
 -- (2.1.39; the user, 2026-11-10: "questie quest tracker does not load inside the dungeon" -- Questie folds its tracker
 -- to its heading there, its Minimize In Instances, on by default -- then "Yes, switch it off once") while Questie's
 -- tracker stands in MelloUI's place, its quests show in a dungeon as MelloUI's own tracker's did: that setting of
@@ -826,6 +964,7 @@ function QL.Dress()
 		if S.on then
 			S.on = false
 			Undress()
+			Unfollow(base)   -- (2.1.52: its own default place again)
 			Inked()
 			-- (its own fonts back: Questie sets them at its next Update)
 			local QT = Questie("QuestieTracker")
@@ -845,6 +984,8 @@ function QL.Dress()
 		return
 	end
 	panel:Show()
+	HangUnder(base)   -- (2.1.52: under MelloUI's minimap column where nobody placed it; then its rim, at that place)
+	Seat(base, panel)
 	Opacity(panel)
 	DressHeader(base, panel)
 	Lines(DressLine)
@@ -1017,7 +1158,10 @@ local function Drawn(look, mini)
 	if look.cover == "objective" then
 		return M.db.objectiveMarks and true or false
 	end
-	return M.db.mapPins and true or false
+	-- (2.1.51) Questie's givers are the givers: the Quest List's Quest Givers On Zone Maps shows or hides them.
+	-- (2.1.52: whatever QL.Givers answers -- MelloUI draws no givers of its own any more, so a Questie whose database
+	-- MelloUI cannot read keeps its givers too; they were hidden here behind marks MelloUI no longer draws)
+	return not M.db.mapPins
 end
 
 local iconPaths = setmetatable({}, { __mode = "k" })   -- [Questie's icon] = the picture Questie gave it
@@ -1068,6 +1212,13 @@ function QL.MiniOwn(icon, look)
 	return type(data) == "table" and data.Type == "manual"
 end
 
+-- (2.1.51) told when Questie sets the picture of an icon MelloUI's own map dresses (MapAddonPins: its own pictures kept
+-- hidden under MelloUI's; Questie's UpdateTexture shows its glow again)
+local mapPictures = {}
+function QL.OnMapPicture(fn)
+	mapPictures[#mapPictures + 1] = fn
+end
+
 -- an icon of Questie's laid again: out of sight where MelloUI draws its kind, else MelloUI's picture on it
 local function Restyle(icon)
 	local tex = rawget(icon, "texture")
@@ -1088,6 +1239,11 @@ local function Restyle(icon)
 	Unhide(icon)
 	if not look or (not mini and MapOurs()) then
 		Unswap(tex)
+		if not mini and MapOurs() then
+			for _, fn in ipairs(mapPictures) do
+				fn(icon)
+			end
+		end
 		return
 	end
 	if look.atlas then
@@ -1144,6 +1300,27 @@ end
 local adopted = setmetatable({}, { __mode = "k" })   -- [Questie's icon] = true: the hooks on its own functions
 local hookedFn, hookedUnload   -- QuestieFrame.private's UpdateTexture and Unload with MelloUI's hooks (a new frame's)
 QL.PINS = "HereBeDragonsQuestie-Pins-2.0"
+QL.HBD = "HereBeDragonsQuestie-2.0"
+-- (2.1.52; the user, 2026-11-14, on Questie 12.9: "now i dont see a single quest giver on the map") Questie's own copy
+-- of HereBeDragons, its pins and its coordinates: a LibStub library under those names until Questie 12.9, a module of
+-- Questie's loader since ("HBDPins", "HBD": "a Questie module instead of a LibStub library"). The one lookup, for this
+-- file and for MelloUI's map (MapAddonPins' FindLibs); nil while Questie has made neither. The loader is asked only
+-- when the library is not there: it makes a module that is asked for
+function QL.PinsLib()
+	local LS = rawget(_G, "LibStub")
+	if type(LS) == "table" or type(LS) == "function" then
+		local okP, pins = pcall(LS, QL.PINS, true)
+		if okP and type(pins) == "table" then
+			local okH, hbd = pcall(LS, QL.HBD, true)
+			return pins, okH and type(hbd) == "table" and hbd or nil
+		end
+	end
+	local pins = Questie("HBDPins")
+	if pins and type(rawget(pins, "worldmapPins")) == "table" then
+		return pins, Questie("HBD")
+	end
+	return nil
+end
 -- (the hooks on an adopted frame's own functions: one handler each for every frame, one row in /melloperf)
 local FrameTexture = Perf.Shared("UpdateTexture on Questie's adopted icons", OnIconTexture)
 local FrameUnload = Perf.Shared("Unload on Questie's adopted icons", OnIconUnload)
@@ -1488,6 +1665,17 @@ function QL.Unlist(icon, on)
 	unlisted[icon] = on and true or nil
 end
 
+-- (2.1.52; the user, 2026-11-14, of Questie's givers on MelloUI's map: "it only shows the tooltips of the quests from my
+-- Current Zone") Questie gathers a world-map icon's tooltip from the icons pinned on the game's own world map (its
+-- pins library's worldmapProvider:GetMap():EnumeratePinsByTemplate), which stays on your zone while MelloUI's map is
+-- open: a giver of another zone found nothing there and showed no tooltip. While the hovered icon is one MelloUI's map
+-- holds (MapAddonPins tells them: QL.MapIcons), the library's provider -- a field of Questie's own library table, never
+-- Blizzard's -- is for that call a stand-in whose map lists the icons MelloUI's map holds; put back right after
+local mapIcons   -- fn() -> [Questie's icon] = true: the ones MelloUI's map holds now
+function QL.MapIcons(fn)
+	mapIcons = fn
+end
+
 local function WrapTooltip()
 	local T = Questie("MapIconTooltip")
 	local show = T and rawget(T, "ShowOnTooltip")
@@ -1504,6 +1692,39 @@ local function WrapTooltip()
 		end
 		return n
 	end
+	-- (2.1.52) the stand-in: one pin record per icon, kept; the set filled for one tooltip, emptied after it
+	local pinOf = setmetatable({}, { __mode = "k" })
+	local set = {}
+	local standMap = { EnumeratePinsByTemplate = function()
+		return next, set
+	end }
+	local standProvider = { GetMap = function()
+		return standMap
+	end }
+	local function Lend(self)
+		if not (mapIcons and MapOurs() and type(self) == "table" and not rawget(self, "miniMapIcon")) then
+			return nil
+		end
+		local held = mapIcons()
+		if not (type(held) == "table" and held[self]) then
+			return nil
+		end
+		local lib = QL.PinsLib()
+		if not (lib and rawget(lib, "worldmapProvider")) then
+			return nil
+		end
+		for icon in pairs(held) do
+			local pin = pinOf[icon]
+			if not pin then
+				pin = { icon = icon }
+				pinOf[icon] = pin
+			end
+			set[pin] = true
+		end
+		local real = lib.worldmapProvider
+		lib.worldmapProvider = standProvider
+		return lib, real
+	end
 	T.ShowOnTooltip = function(...)
 		local n = 0
 		for icon in pairs(hidden) do
@@ -1514,7 +1735,14 @@ local function WrapTooltip()
 				n = Hold(icon, n)
 			end
 		end
+		local lib, real = Lend((...))
 		local ok, err = pcall(show, ...)
+		if lib then
+			lib.worldmapProvider = real
+			for pin in pairs(set) do
+				set[pin] = nil
+			end
+		end
 		for i = n, 1, -1 do
 			local icon = icons[i]
 			icon.hidden = before[i]
@@ -1546,9 +1774,8 @@ Perf.SetScript(login, "OnEvent", function(self)
 		hooksecurefunc(private, "Unload", OnIconUnload)
 		hookedFn, hookedUnload = private.UpdateTexture, private.Unload
 		-- (2.1.50) each icon placed on the minimap by its pins library (Adopt)
-		local LS = rawget(_G, "LibStub")
-		local okP, pins = pcall(LS, QL.PINS, true)
-		if okP and type(pins) == "table" and type(pins.AddMinimapIconMap) == "function" then
+		local pins = QL.PinsLib()
+		if pins and type(pins.AddMinimapIconMap) == "function" then
 			hooksecurefunc(pins, "AddMinimapIconMap", OnMinimapPin)
 			S.pinsHooked = true
 		end
@@ -1579,6 +1806,13 @@ Perf.SetScript(login, "OnEvent", function(self)
 	hooksecurefunc(QT, "Update", function()
 		QL.Dress()
 	end)
+	-- (2.1.52) the minimap column's foot moved (the map sized, a row of Services more): Questie's tracker under it
+	-- again, where it follows the column (HangUnder)
+	MelloUI:On("column", function()
+		if S.on and S.followed then
+			QL.Dress()
+		end
+	end, QL)
 	-- (its quest lines' marks: the followed quest changed -- the game's event MelloUI's own tracker lays its marks by)
 	local follow = CreateFrame("Frame")
 	follow:RegisterEvent("SUPER_TRACKING_CHANGED")

@@ -78,18 +78,6 @@ local function Replace(region, opts)
 	return rep
 end
 
--- a frame's name, secret-safe
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
-
 -- a part by its key, else by the global name an older XML gives it
 local function Part(f, key, global)
 	if f and f[key] then
@@ -470,20 +458,7 @@ end
 -- strings, the box's own regions and children; the modes are
 -- Kit:DumpWindow's. Opens the copy window.
 --------------------------------------------------------------------------------
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	if ok and type(d) == "string" and not Secret(d) then
-		return d
-	end
-	return "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 local function Found(label, obj, more)
 	MelloUI:Print("  %-26s %s%s", label, obj and Label(obj) or "-- not found", more or "")

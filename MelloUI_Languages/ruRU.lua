@@ -1623,7 +1623,7 @@ Lang:Add("ruRU", {
 	["Most Levels Above Me"] = "Не выше моего уровня на", -- draft
 	["Leaves out quests more than this many levels above you."] = "Не показывает задания выше вашего уровня больше чем на столько.", -- draft
 	["Quest Givers On Zone Maps"] = "Дающие задания на картах зон", -- draft
-	["Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it."] = "Отмечает дающих задания на карте зоны знаком ! или ?. Наведите для заданий; щелчок отслеживает.", -- draft
+	["Shows Questie's quest givers on the game's zone map as ! and ?. Point at one for its quests. Only with Questie in MelloUI's look."] = "Показывает дающих задания из Questie на карте зоны игры знаками ! и ?. Наведите для заданий. Только когда Questie в стиле MelloUI.", -- draft
 	["Include Givers You Are Done With"] = "Включать завершённых", -- draft
 	["Also marks givers whose quests you have all done, with a grey tick."] = "Отмечает и дающих, все задания которых выполнены, серой галочкой.", -- draft
 	["Hide Grey Quests"] = "Скрыть серые задания", -- draft

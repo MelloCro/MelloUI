@@ -139,7 +139,7 @@ ART_TOO = ["Core/GameLook.lua", "Core/Widgets.lua", "Modules/KitWindow.lua"]
 
 # ------------------------------------------------------------------------------------------------------------ the rules
 # MelloUI.Look's keys after stage E: onelook/lookcore K1's set (docs/plans/onelook-e-plans/E1v2.md: no AREA, On, Watch,
-# Hide, Show, Only, Pieces, Panel, Bar, GameFrame(Shown), GameBar(Parts), GameSwing(Parts), ColumnButton(Plate) ...)
+# Hide, Show, Only, Pieces, Panel, Bar, GameFrame(Shown), GameBar(Parts), ColumnButton(Plate) ...; GameSwing(Parts) went 2026-11-14)
 # (1.2.4, Dark Mode's one Brightness over MelloUI's own UI: SetDim / DimStamp, the palette's dimmed copy -- Palette's)
 # (2.1.31, Dark Mode never dims a tooltip's words: TipPalette, the palette undimmed for text on a tooltip -- Palette's)
 FINAL = ("Art", "ART", "Palette", "Text", "Tint", "RoleColour", "Colour", "Paint", "Unpaint", "Solid", "Mark", "Plate",
@@ -225,7 +225,7 @@ INSTEAD = {
 # a family:file not listed has 0. Lower one when the guard says so; never raise one to let a leftover pass.
 CEILINGS = {
     # api
-    "api:Core/GameLook.lua": 55,
+    "api:Core/GameLook.lua": 48,   # (2026-11-14, the audit: the retired swing bars' game look out, -7)
     "api:Core/Installer.lua": 2,
     "api:Core/InstallerWindow.lua": 2,
     "api:Core/Notice.lua": 0,
@@ -241,7 +241,8 @@ CEILINGS = {
     "api:Modules/MeterHistory.lua": 0,
     "api:Modules/QuestTracker.lua": 0,
     # art
-    "art:Core/GameLook.lua": 35,   # (2026-10-27: the grounds GAME_GROUND, the tooltip's colour named once, -4)
+    "art:Core/GameLook.lua": 30,   # (2026-10-27: the grounds GAME_GROUND, the tooltip's colour named once, -4;
+                                   # 2026-11-14, the audit: the swing bars' five atlases, -5)
     # area
     "area:Core/Reminders.lua": 0,
     "area:Core/Widgets.lua": 1,   # (0 at 492aae6; the tree's Kit:Paint move brings Kit.lua's 'look:own' here)

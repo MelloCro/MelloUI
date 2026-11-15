@@ -1088,7 +1088,6 @@ do
 		pasteTitle = "Edit Mode layout",
 		shareTitle = "Edit Mode layout '%s'",
 	}
-	K.LAYOUT_TEXT = LT
 	local L_W, L_ROW = 360, 24
 	local NAME_LETTERS = 30
 	local lp                         -- the panel, made at its first open

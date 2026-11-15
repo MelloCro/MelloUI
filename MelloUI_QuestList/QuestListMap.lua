@@ -31,17 +31,8 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local MAP_ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
 local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
 
--- Priority of what a giver offers, highest wins the icon.
-local STATE_RANK = { ready = 5, available = 4, progress = 3, locked = 2, done = 1 }
--- (a state's words, and its colour's name for QL.TipColour: the quest gold
--- for what can be done now, the body text for the rest)
-local STATE_TEXT = {
-	ready = { "Ready to turn in", "questGold" },
-	available = { "Available", "questGold" },
-	progress = { "In progress", "text" },
-	locked = { "Level too low", "text" },
-	done = { "Completed", "text" },
-}
+-- (2.1.52: the Quest List's own giver marks went -- Questie's givers are the givers, and there are no quest rows
+-- without Questie -- with their groups, their dungeon starters, their look, tooltip, click and moments)
 
 -- (0.25.0, the user's picks: MelloUI's icon set) a transport's pin by its kind: a dock's ship (0, 1), a zeppelin
 -- tower's airship (2), the portal between Darnassus and Rut'theran Village (3), the Deeprun Tram's stations (4);
@@ -51,9 +42,6 @@ local TRANSPORT_PIN = { [0] = "pin_boat", [1] = "pin_boat", [2] = "pin_zeppelin"
 	[5] = "pin_zeppelin" }
 local TRANSPORT_PLACE = { [2] = "Zeppelin tower", [3] = "Portal", [4] = "Tram station", [5] = "Airship dock" }
 local TRANSPORT_WHAT = { [2] = "zeppelin", [3] = "portal", [4] = "tram", [5] = "airship" }
-
--- A quest found only inside a dungeon or raid is pinned beside its entrance.
-local BESIDE_DOOR_X, BESIDE_DOOR_Y = 20, 10   -- pixels: off the entrance pin's own icon
 
 
 local function DungeonIDByName(name)
@@ -108,67 +96,18 @@ end
 -- A level gained (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/
 -- output/animation_previews, 5. Level up): the quests it opened -- their
 -- level just reached, for this character, not waiting on another quest, not
--- hidden, not done or in the log -- are fresh: their givers' marks pop in
--- (Anim:Pop) the first time the map shows them, once. How many have their
--- giver on the player's zone map is what the level-up notice says
--- ("Level 6 · 3 new quests nearby": the Unit Frames Kit's Level Up asks
--- M:NewQuestsAt). Worked out once per level (QL.NewAt)
+-- hidden, not done or in the log. How many have their giver on the player's
+-- zone map is what the level-up notice says ("Level 6 · 3 new quests nearby":
+-- the Unit Frames Kit's Level Up asks M:NewQuestsAt). Worked out once per
+-- level (QL.NewAt). (2.1.52: their givers' marks popping in the first time
+-- the map showed them -- QL.fresh, QL.Fresh -- went with MelloUI's own giver
+-- marks: the givers are Questie's)
 --------------------------------------------------------------------------------
 
-QL.fresh = setmetatable({}, { __mode = "k" })   -- [row] = true: opened by the last level gained, not popped yet
-QL.FRESH_POP, QL.FRESH_RISE = 0.3, 10
 local freshLevel, freshNear = nil, 0
 
--- whether a giver's group holds a fresh quest (its fresh ones let go: popped)
-function QL.Fresh(group)
-	local any = false
-	for _, q in ipairs(group.quests or {}) do
-		if QL.fresh[q.row] then
-			QL.fresh[q.row] = nil
-			any = true
-		end
-	end
-	return any
-end
-
--- (1.2.0; the user's "all eight" of BuildData/output/animation_previews/map_marks.html, 5) a quest ready to hand in
--- that no lay showed ready yet: its giver's "?" drops in with a ring of light (the first lay of a session counts every
--- ready one: the first open's own pops). [row] = true, weak: a quest is ready once. A map of its own keeps its own
--- `seen` (MelloUI_Map's givers: each map shows the moment once)
-QL.readySeen = setmetatable({}, { __mode = "k" })
-QL.READY_DROP, QL.READY_RISE = 0.32, 12
-
-function QL.ReadyNew(group, seen)
-	if group.state ~= "ready" then
-		return false
-	end
-	seen = seen or QL.readySeen
-	local any = false
-	for _, q in ipairs(group.quests or {}) do
-		local row = q.row
-		if row and not seen[row] and q.state == "ready" then
-			seen[row] = true
-			any = true
-		end
-	end
-	return any
-end
-
-function QL.ReadyDrop(b)
-	local anim = MelloUI.Anim
-	if not anim or anim.reduceMotion then
-		return
-	end
-	anim:FadeIn(b, QL.READY_DROP * 0.6)
-	anim:From(b, "y", QL.READY_RISE, QL.READY_DROP, "outCubic")
-	local QA = MelloUI.QuestAreas
-	if QA and QA.MarkBump then
-		QA.MarkBump(b, b.Icon, 22)
-	end
-end
-
 -- the rows whose giver is on the player's zone map (its children too), as the
--- zone's pins have them (AddGiverPins); `into` reused
+-- zone's quests are listed; `into` reused
 local nearRows = {}
 local function NearRows()
 	wipe(nearRows)
@@ -209,7 +148,7 @@ local function NearRows()
 	return nearRows
 end
 
--- the level's opened quests marked fresh; how many are near (once per level)
+-- how many of the level's opened quests are near (once per level)
 function QL.NewAt(level)
 	level = QL.Plain(level)
 	if not level then
@@ -218,16 +157,12 @@ function QL.NewAt(level)
 	if freshLevel == level then
 		return freshNear
 	end
-	wipe(QL.fresh)
 	local near = NearRows()
 	local n = 0
 	for _, row in ipairs(QL.allRows or {}) do
-		if row[QL.F_REQ] == level and QL.Eligible(row) and QuestState(row, level) == "available"
+		if near[row] and row[QL.F_REQ] == level and QL.Eligible(row) and QuestState(row, level) == "available"
 			and SeasonWanted(row, "available") and not QL.IsHidden(row[QL.F_ID]) then
-			QL.fresh[row] = true
-			if near[row] then
-				n = n + 1
-			end
+			n = n + 1
 		end
 	end
 	freshLevel, freshNear = level, n
@@ -436,15 +371,7 @@ function Marks.End(map)
 			b:SetPoint("CENTER", Marks.anchors[i], "CENTER", m.data.dx or 0, 0)
 			Mouse(b)
 			b:Show()
-			-- (0.21.3) a giver a level just gained opened: it pops in, once
-			if m.kind == "giver" and QL.Fresh(m.data) then
-				if anim and anim.Pop then
-					anim:Pop(b, QL.FRESH_POP, QL.FRESH_RISE)
-				end
-			-- (1.2.0) a giver with a quest newly ready to hand in: its ? drops in with a ring of light, once
-			elseif m.kind == "giver" and QL.ReadyNew(m.data) then
-				QL.ReadyDrop(b)
-			elseif m.kind == "objective" and QL.Objectives and QL.Objectives.Moment then
+			if m.kind == "objective" and QL.Objectives and QL.Objectives.Moment then
 				QL.Objectives.Moment(b, m.data, same)
 			end
 		else
@@ -568,9 +495,7 @@ end
 -- (0.25.0) the lift a mark's icon wears (MelloUI.Shade:Lift: a pin's glow, a mark's soft shade) -> name, size: the
 -- icon set's pictures only (a start's, an entrance's, a transport's), none on the game's atlases or a zone's badge
 function Marks.Lift(kind, data)
-	if kind == "giver" then
-		return data.item and QL.StarterIconName(data.item), (data.item == "dungeon" or data.item == "raid") and 22 or 20
-	elseif kind == "entrance" or kind == "transport" then
+	if kind == "entrance" or kind == "transport" then
 		return kind == "entrance" and (data.raid and "pin_raid" or "pin_dungeon") or TRANSPORT_PIN[data.kind]
 			or "pin_boat", 26
 	end
@@ -592,28 +517,7 @@ function QL.DressMark(self, kind, data)
 	self.Icon:SetTexCoord(0, 1, 0, 1)
 	self.Icon:SetVertexColor(1, 1, 1, 1)
 	self:SetHitRectInsets(0, 0, 0, 0)
-	if kind == "giver" then
-		self.Bg:Hide()
-		self.Icon:Show()
-		self:SetSize(22, 22)
-		if data.item == "dungeon" or data.item == "raid" then
-			-- the icon (and where it takes the mouse) moved beside the entrance's door
-			self.Icon:ClearAllPoints()
-			self.Icon:SetPoint("CENTER", BESIDE_DOOR_X, BESIDE_DOOR_Y)
-			self.Icon:SetSize(22, 22)
-			self:SetHitRectInsets(BESIDE_DOOR_X, -BESIDE_DOOR_X, -BESIDE_DOOR_Y, BESIDE_DOOR_Y)
-		end
-		if data.item then
-			self:SetSize(20, 20)
-		end
-		QL.GiverIcon(self.Icon, data)
-		self.Label:SetPoint("TOP", self.Icon, "BOTTOM", 0, 2)
-		self.Label:SetText(data.tracked and data.giver or "")
-		-- the tracked giver's pale blue, as its tooltip hint: the map's
-		-- quest-giver blue, a fixed meaning colour (QL.MEANING)
-		self.Label:SetTextColor(QL.TipColour("pinHint"))
-		self.Label:SetShown(data.tracked)
-	elseif kind == "objective" then
+	if kind == "objective" then
 		QL.Objectives.Dress(self, data)   -- (0.19.5: QuestListObjectives.lua)
 	elseif kind == "entrance" or kind == "transport" then
 		self.Bg:Hide()
@@ -647,37 +551,9 @@ function QL.DressMark(self, kind, data)
 		self:SetSize((self.Label:GetStringWidth() or 30) + 10, 15)
 	end
 	if kind ~= "objective" then   -- (an objective's own: QuestListObjectives.lua's Dress)
-		-- (its icon's size as laid above: the shade reads none -- the door's 22, an item's 20, a giver's 22, a
-		-- door or a transport pin's 26)
-		local size = (kind == "entrance" or kind == "transport") and 26
-			or ((data.item == "dungeon" or data.item == "raid") and 22) or (data.item and 20) or 22
+		-- (its icon's size as laid above: the shade reads none -- a door or a transport pin's 26)
+		local size = (kind == "entrance" or kind == "transport") and 26 or 22
 		MelloUI.Shade:Lift(self.Icon, Marks.Lift(kind, data), size)
-	end
-end
-
--- (the seamless map, MelloUI_Map) a giver mark's picture by its group's state: the game's "!" and "?" (paler for
--- what is not ready or not open yet), the check of a done one, or, for a quest begun by an item or object, crossed
--- swords where it drops, a chest where it is picked up, the entrance's icon for an instance -- the Quest List's marks
--- and MelloUI_Map's pins alike. (2.1.4; a player's map, 2026-11-05: the "!" stretched) each atlas with its crop reset:
--- the client's SetAtlas keeps the one a reused texture had (a starter's icon, cropped on its sheet)
-function QL.GiverIcon(icon, data)
-	local state = data.state
-	if data.item then
-		QL.SetStarterIcon(icon, data.item)
-		icon:SetDesaturated(state ~= "available")
-		icon:SetAlpha(state == "available" and 1 or 0.75)
-	elseif state == "done" then
-		icon:SetAtlas("questlog-icon-checkmark-yellow", false, nil, true)
-		icon:SetDesaturated(true)
-		icon:SetAlpha(0.7)
-	elseif state == "ready" or state == "progress" then
-		icon:SetAtlas("QuestTurnin", false, nil, true)
-		icon:SetDesaturated(state ~= "ready")
-		icon:SetAlpha(state == "ready" and 1 or 0.75)
-	else
-		icon:SetAtlas("QuestNormal", false, nil, true)
-		icon:SetDesaturated(state ~= "available")
-		icon:SetAlpha(state == "available" and 1 or 0.75)
 	end
 end
 
@@ -692,41 +568,7 @@ function QL.MarkTip(tip, kind, data, hints)
 			Line(tip, text, "pinHint")
 		end
 	end
-	if kind == "giver" then
-		-- (0.25.0, the user: "too much text, it only needs to show important stuff": who or what it is, its quests
-		-- one line each -- title and level, how it stands, an event's name when only then -- and one line of what a
-		-- click does)
-		-- (2.1.39, the user's pick B) an NPC's name a friend's green; an object's, an item's, a dungeon's the title's gold
-		local first = data.quests[1]
-		local npc = data.giver ~= "" and not data.item and first
-			and (first.state == "ready" or first.row[QL.F_KIND] ~= 2)
-		QL.TipTitle(tip, data.giver ~= "" and data.giver or W.Tr("Quest giver"), npc and "friend" or nil)
-		if data.item == "drop" then
-			Line(tip, W.Tr("An item that begins a quest drops here"), "text", true)
-		elseif data.item == "pickup" then
-			Line(tip, W.Tr("An item that begins a quest is picked up here"), "text", true)
-		elseif data.item then
-			Line(tip, W.Tr("Quests that begin inside this %s"):format(W.Tr(data.item)), "text", true)
-		end
-		local open = 0
-		for _, q in ipairs(data.quests) do
-			local row = q.row
-			local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
-			local text = STATE_TEXT[q.state]
-			local sr, sg, sb = QL.TipColour(text[2])
-			local right = MelloUI.Widgets.Tr(text[1])
-			if (row[QL.F_EVENT] or 0) ~= 0 and (q.state == "available" or q.state == "locked") then
-				right = QL.Data().events[row[QL.F_EVENT]] or right
-			end
-			tip:AddDoubleLine(string.format("%s (%d)", row[QL.F_TITLE], row[QL.F_LEVEL]), right, r, g, b, sr, sg, sb)
-			if q.state == "available" or q.state == "locked" then
-				open = open + 1
-			end
-		end
-		local click = W.Tr(data.tracked and "Click: remove the waypoint"
-			or ((data.item == "dungeon" or data.item == "raid") and "Click: route to the entrance" or "Click: waypoint"))
-		Hint(open > 0 and (click .. "   " .. W.Tr("Alt-click: hide")) or click)
-	elseif kind == "objective" then
+	if kind == "objective" then
 		QL.Objectives.Tip(tip, data, Line, hints)
 	elseif kind == "entrance" then
 		QL.TipTitle(tip, data.name)
@@ -844,23 +686,7 @@ MarkClick = function(self, button)
 	if not data or button ~= "LeftButton" then
 		return
 	end
-	if self.kind == "giver" then
-		if IsAltKeyDown() then
-			QL.HideGiver(data)   -- (0.19.5: its quests not taken, hidden for this character)
-			return
-		end
-		if data.tracked then
-			QL.ClearWaypoint()
-			MelloUI:PlayUISound("waypoint_clear")
-		else
-			-- (through Route its notice chimes instead: one sound, not two)
-			local set, chimed = QL.SetWaypoint(data.quests[1].row, data.quests[1].state == "ready")
-			if set and not chimed then
-				MelloUI:PlayUISound("waypoint_set")
-			end
-		end
-		C_Timer.After(0, RelayAfterClick)
-	elseif self.kind == "objective" then
+	if self.kind == "objective" then
 		QL.Objectives.Click(data)
 		C_Timer.After(0, RelayAfterClick)
 	elseif self.kind == "entrance" then
@@ -922,117 +748,6 @@ MarkClick = function(self, button)
 end
 
 QL.Provider = nil
-
--- "drop" / "pickup" for a quest begun by an item, nil for an NPC or object giver.
-local function ItemKind(row)
-	local kind = row[QL.F_KIND]
-	return kind == QL.KIND_DROP and "drop" or kind == QL.KIND_PICKUP and "pickup" or nil
-end
-
--- A quest begun by an item is pinned where the item is found only while it
--- can still be picked up; once in the log that spot means nothing.
-local function ItemPinWanted(row, state)
-	return not QL.IsItemStart(row) or state == "available" or state == "locked"
-end
-
--- The panel's "starts from" filter hides the pins of quests not taken yet;
--- a quest in the log keeps its turn-in pin whatever it started from.
-local function StartWanted(row, state)
-	return QL.StartShown(row) or not (state == "available" or state == "locked")
-end
-
--- (the seamless map, MelloUI_Map) the quest givers a map shows, grouped by giver and place: each group { giver, x,
--- y (on mapID), quests = { { row, state } } (by level), state (its highest), tracked, item }, done ones only with
--- Pin Completed or tracked -- the Quest List's marks and MelloUI_Map's pins alike
-function QL.GiverGroups(mapID, mapName)
-	local level = QL.Plain(UnitLevel("player")) or 60
-	local groups, order = {}, {}
-	local function Consider(row, x, y, who, state, item)
-		local key = string.format("%s|%.3f|%.3f|%s", who, x, y, item or "")
-		local group = groups[key]
-		if not group then
-			group = { giver = who, x = x, y = y, quests = {}, state = "done", tracked = false, item = item }
-			groups[key] = group
-			order[#order + 1] = group
-		end
-		group.quests[#group.quests + 1] = { row = row, state = state }
-		if STATE_RANK[state] > STATE_RANK[group.state] then
-			group.state = state
-		end
-		if QL.trackedQuestID == row[QL.F_ID] then
-			group.tracked = true
-		end
-	end
-	local seen = {}
-	-- A quest ready to hand in is pinned at its turn-in, everything else at its giver.
-	local function Place(row, endOnly)
-		if seen[row] or not QL.Eligible(row) then
-			return
-		end
-		local state = QuestState(row, level)
-		if state == "after" or not StartWanted(row, state) or not SeasonWanted(row, state) or QL.GreyHidden(row, state)
-			or (state == "available" or state == "locked") and QL.IsHidden(row[QL.F_ID]) then
-			return
-		end
-		local x, y, who, item
-		if state == "ready" and QL.resolvedEnd[row] then
-			x, y = QL.ProjectOnMap(mapID, QL.Placement(QL.resolvedEnd[row]))
-			who = row[QL.F_ENDER]
-		elseif not endOnly and QL.resolved[row] and ItemPinWanted(row, state) then
-			x, y = QL.ProjectOnMap(mapID, QL.Placement(QL.resolved[row]))
-			who, item = row[QL.F_GIVER], ItemKind(row)
-		end
-		if x then
-			seen[row] = true
-			Consider(row, x, y, who, state, item)
-		end
-	end
-	-- Rows the client placed on this map or on a city inside it.
-	local maps = { mapID }
-	local okC, children = pcall(C_Map.GetMapChildrenInfo, mapID)
-	if okC and type(children) == "table" then
-		for _, child in ipairs(children) do
-			if QL.Plain(child.mapID) then
-				maps[#maps + 1] = child.mapID
-			end
-		end
-	end
-	for _, id in ipairs(maps) do
-		for _, row in ipairs(QL.rowsByMap and QL.rowsByMap[id] or {}) do
-			Place(row, false)
-		end
-		for _, row in ipairs(QL.endRowsByMap and QL.endRowsByMap[id] or {}) do
-			Place(row, true)
-		end
-	end
-	-- Givers with a map percentage only (collected in game on this zone).
-	local areaID = mapName and QL.zoneByName[mapName:lower()]
-	for _, row in ipairs(areaID and QL.byZone[areaID] or {}) do
-		if not seen[row] and not (QL.resolved and QL.resolved[row]) and (row[QL.F_X] ~= 0 or row[QL.F_Y] ~= 0)
-			and QL.Eligible(row) then
-			local state = QuestState(row, level)
-			if state ~= "after" and ItemPinWanted(row, state) and StartWanted(row, state) and not QL.GreyHidden(row, state)
-				and not ((state == "available" or state == "locked") and QL.IsHidden(row[QL.F_ID])) then
-				seen[row] = true
-				Consider(row, row[QL.F_X] / 100, row[QL.F_Y] / 100, row[QL.F_GIVER], state, ItemKind(row))
-			end
-		end
-	end
-	local out = {}
-	for _, group in ipairs(order) do
-		if group.state ~= "done" or M.db.pinCompleted or group.tracked then
-			table.sort(group.quests, function(a, b) return QL.ByLevel(a.row, b.row) end)
-			out[#out + 1] = group
-		end
-	end
-	return out
-end
-
-local function AddGiverPins(_, mapID, mapName)
-	for _, group in ipairs(QL.GiverGroups(mapID, mapName)) do
-		Marks.Add("giver", group)
-	end
-end
 
 -- a zone's quests as the badges and the zone's ring tell them: done, of
 -- total (the ones for you), available now, in the log, the level range
@@ -1299,70 +1014,6 @@ local function AddEntrancePins(map, mapID, mapName)
 			names[poi.name:lower()] = true
 			local id = DungeonIDByName(poi.name)
 			Marks.Add("entrance", { dungeonID = id, name = poi.name, raid = (id ~= 0 and QL.Data().raids[id] == true) or poi.atlas:lower():find("raid") ~= nil, x = poi.x, y = poi.y, source = "client" })
-		end
-	end
-end
-
--- Quests begun by an item or object found only inside a dungeon or raid: one
--- pin per instance with the entrance's own icon, beside its door, while any
--- of them can still be picked up. A click routes to the entrance.
-local function AddInstanceStartPins(map, mapID, mapName)
-	local level = QL.Plain(UnitLevel("player")) or 60
-	local groups = {}
-	local rows = {}
-	for id in pairs(QL.Data().dungeons or {}) do   -- such a quest is listed under its instance
-		for _, row in ipairs(QL.byZone[id] or {}) do
-			rows[#rows + 1] = row
-		end
-	end
-	for _, row in ipairs(rows) do
-		local id = QL.InstanceStart(row)
-		if id and QL.Eligible(row) and QL.StartShown(row) then
-			local state = QuestState(row, level)
-			if (state == "available" or state == "locked") and not QL.GreyHidden(row, state) and not QL.IsHidden(row[QL.F_ID]) then
-				local group = groups[id]
-				if not group then
-					group = { quests = {}, state = "locked", tracked = false, dungeonID = id, giver = QL.Data().dungeons[id],
-						item = QL.IsRaid(id) and "raid" or "dungeon" }
-					groups[id] = group
-				end
-				group.quests[#group.quests + 1] = { row = row, state = state }
-				if state == "available" then
-					group.state = "available"
-				end
-				if QL.trackedQuestID == row[QL.F_ID] then
-					group.tracked = true
-				end
-			end
-		end
-	end
-	if not next(groups) then
-		return
-	end
-	local data = QL.Data()
-	local placed = {}
-	for _, e in ipairs(data.entrances or {}) do
-		local group = groups[e[1]]
-		if group and not placed[e[1]] and QL.EntranceIsMine(e) then
-			local x, y = WorldPointOnMap(mapID, mapName, e[3], e[4], e[5], e[6], e[7], e[8])
-			if x then
-				placed[e[1]] = true
-				group.x, group.y = x, y
-			end
-		end
-	end
-	-- Entrances learned by walking in (Forever's new instances).
-	for name, l in pairs(QL.LearnedStore("entrances") or {}) do
-		local id = DungeonIDByName(name)
-		if groups[id] and not placed[id] and l.mapID == mapID then
-			placed[id] = true
-			groups[id].x, groups[id].y = l.x, l.y
-		end
-	end
-	for id, group in pairs(groups) do
-		if placed[id] then
-			table.sort(group.quests, function(a, b) return QL.ByLevel(a.row, b.row) end)
-			Marks.Add("giver", group)
 		end
 	end
 end
@@ -1763,10 +1414,6 @@ function QL.CreateProvider()
 			end
 		end
 		if mapType == MAP_ZONE and name then
-			if M.db.mapPins then
-				Try("quest givers", AddGiverPins, map, mapID, name)
-				Try("instance quest items", AddInstanceStartPins, map, mapID, name)
-			end
 			if M.db.entrancePins then
 				Try("entrances", AddEntrancePins, map, mapID, name)
 			end

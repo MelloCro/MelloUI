@@ -121,41 +121,14 @@ local function Replace(region, opts)
 end
 
 -- the non-nil values given, as a list (alsoFade stops at the first nil)
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a frame's name, secret-safe (nil when it has none or it reads secret)
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local NameOf = MelloUI.Kit.Panel.NameOf
 
 -- a part by its key on the frame, else by the global name the XML gives it
 -- ("$parent<suffix>"): the templates name some parts only
-local function Part(frame, key, suffix)
-	if not frame then
-		return nil
-	end
-	if key and frame[key] then
-		return frame[key]
-	end
-	local name = NameOf(frame)
-	return name and suffix and _G[name .. suffix] or nil
-end
+local Part = MelloUI.Kit.Panel.Part
 
 -- Art faded while the kit is on with no piece on its own rect (the kit piece
 -- that stands in for it sits elsewhere: the card for the slot's square, the
@@ -334,23 +307,7 @@ end
 --------------------------------------------------------------------------------
 local TOOL_BUTTONS = { "MerchantRepairAllButton", "MerchantRepairItemButton", "MerchantGuildBankRepairButton", "MerchantSellAllJunkButton" }
 
-local function FitIconRim(holder)
-	local rim = repOf[holder] and repOf[holder].object
-	local icon = holder.icon
-	if not (rim and rim.base and icon) then
-		return
-	end
-	local name = rim.base .. "_normal"
-	local p = Kit:Piece(name)
-	local l, r, t, b = Kit:Insets(name, 1)
-	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
-		return
-	end
-	rim:ClearAllPoints()
-	rim:SetPoint("CENTER", icon, "CENTER")
-	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
-end
+local FitIconRim = MelloUI.Kit.Panel.FitIconRim
 
 -- a new Button Border has a new opening: every tool rim fitted again
 Kit:OnBorderChanged("button", function()
@@ -1016,20 +973,7 @@ end
 -- and dressed (every part, found or not, and its state) and the window's own
 -- regions and children; the modes are Kit:DumpWindow's. Opens the copy window.
 --------------------------------------------------------------------------------
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	if ok and type(d) == "string" and not Secret(d) then
-		return d
-	end
-	return "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 local function Found(label, obj, more)
 	MelloUI:Print("  %-26s %s%s", label, obj and Label(obj) or "-- not found", more or "")

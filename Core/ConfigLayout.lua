@@ -163,7 +163,7 @@ L.pages = {
 		flavour = "Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose.",
 		tabs = { "General", "Frames", "Nameplates", "Bars & Windows", "Travel" },
 		cards = { Frames = { "Heal Effects", "Cooldown Effects", "Personal Display" },
-			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Services Bar" } } },
+			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Quest Moments", "Services Bar" } } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
@@ -837,11 +837,13 @@ function L.Define(R, Link)
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
 	-- (2.1.30) the buffs' card: their size and rows (on the player frame, its own two)
-	R("Buffs", BUFFS, "Layout", "Tweaks.buffSize", { name = "Icon Size", card = "Buffs" })
-	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size", when = OWN_TARGET })
 	-- (0.20.1) the rows' own layout sleeps while they hang under the player frame (the target rows' look there)
 	local NOT_FRAMED = { any = { GAME_AURAS.any[1], { key = "Auras.playerAnchor", notValue = "frame" } },
 		line = "Not with Anchor: Unit Frame" }
+	-- (2.1.52; the configurator pass in the test VM, 2026-11-14: with Anchor: Unit Frame, the default, Icon Size stood
+	-- awake and moved nothing -- the icons there are Icon Size On The Frame's) their size too
+	R("Buffs", BUFFS, "Layout", "Tweaks.buffSize", { name = "Icon Size", card = "Buffs", when = NOT_FRAMED })
+	R("UnitGroupFrames", "target:auras", "Layout", "Auras.targetSize", { name = "Icon Size", when = OWN_TARGET })
 	R("Buffs", BUFFS, "Layout", "Tweaks.buffSpacing", { when = NOT_FRAMED, card = "Buffs" })
 	R("Buffs", BUFFS, "Layout", "Tweaks.buffPerRow", { when = NOT_FRAMED, card = "Buffs" })
 	R("Buffs", BUFFS, "Layout", "Tweaks.buffGrow", { when = NOT_FRAMED, card = "Buffs" })
@@ -878,8 +880,13 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:threat", "General", "Nameplates.threatLine")
 	R("Nameplates", "enemies:combo", "General", "Nameplates.comboPoints")
 	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboSize")   -- (under its switch: the user, 2026-10-04)
-	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboX")      -- (2.1.19: the user, "moveable")
-	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboY")
+	-- (2.1.52: their offsets move them only at the code's own place -- asleep once the preview gave them a place of
+	-- their own, its Place row the one that moves them then; back with its Default place)
+	local COMBO_OWN = { key = "Nameplates.comboAtOffsets", value = true,
+		line = "Moved on the preview: use Place, or its Default place" }
+	L.unplaced["Nameplates.comboAtOffsets"] = "asked by the Offset rows' `when` only: no setting to offer"
+	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboX", { when = COMBO_OWN })   -- (2.1.19: the user, "moveable")
+	R("Nameplates", "enemies:combo", "Layout", "Nameplates.comboY", { when = COMBO_OWN })
 	R("Nameplates", "enemies:cc", "General", "Nameplates.bigCC", { name = "Above The Name" })
 	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccSize", { name = "Size" })
 	R("Nameplates", "enemies:cc", "Layout", "Nameplates.ccGap")
@@ -1359,8 +1366,6 @@ function L.Define(R, Link)
 	R("QualityOfLife", "Quests", "Behaviour", "QuestAuto.skipKey", { when = { any = { { key = "QuestAuto.accept", value = true },
 		{ key = "QuestAuto.handIn", value = true } }, line = "Only with Auto Accept or Auto Hand In" } })
 	R("QuestList", "Map", "General", "QuestList.mapPins")
-	R("QuestList", "Map", "General", "QuestList.pinCompleted")
-	R("QuestList", "Map", "General", "QuestList.hideGrey")
 	R("QuestList", "Map", "General", "QuestList.zoneBadges")
 	R("QuestList", "Map", "General", "QuestList.zoneProgress")
 	R("QuestList", "Map", "General", "QuestList.entrancePins")
@@ -1491,6 +1496,11 @@ function L.Define(R, Link)
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.moneyRoll", { free = true, card = "Bag Window" })
 	R("Animations", "Bars & Windows", "Behaviour", "BagWindow.fullWarning", { free = true, card = "Bag Window" })
 	R("Animations", "Bars & Windows", "Look", "QuestTracker.progressMotion", { card = "Quest Tracker" })
+	-- (2.1.52, the user's picks "C, A, A" to the Quest Moments sketch: the game's yellow quest lines played as moments)
+	R("Animations", "Bars & Windows", "Look", "QuestMoments.!enabled", { name = "Quest Moments", card = "Quest Moments" })
+	R("Animations", "Bars & Windows", "Look", "QuestMoments.progress", { card = "Quest Moments" })
+	R("Animations", "Bars & Windows", "Look", "QuestMoments.objective", { card = "Quest Moments" })
+	R("Animations", "Bars & Windows", "Look", "QuestMoments.quest", { card = "Quest Moments" })
 	R("Animations", "Bars & Windows", "Look", "Services.trayDrawer", { card = "Services Bar" })   -- (0.22.1: the trays slide out)
 	R("Animations", "Travel", "General", "Route.drawIn")
 	R("Animations", "Travel", "General", "Route.markerWisp")

@@ -150,16 +150,7 @@ local function IsTexture(obj)
 end
 
 -- the non-nil values given, as a list (alsoFade stops at the first nil)
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
+local List = MelloUI.Kit.Panel.List
 
 -- for the dump: what was dressed as what, and what was seen but left alone
 local function Note(obj, piece)

@@ -1623,7 +1623,7 @@ Lang:Add("zhCN", {
 	["Most Levels Above Me"] = "最多高于我几级", -- draft
 	["Leaves out quests more than this many levels above you."] = "不显示比你高出这么多级以上的任务。", -- draft
 	["Quest Givers On Zone Maps"] = "区域地图上的任务给予者", -- draft
-	["Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it."] = "在区域地图上用 ! 或 ? 标出任务发布者。指向查看其任务；点击追踪。", -- draft
+	["Shows Questie's quest givers on the game's zone map as ! and ?. Point at one for its quests. Only with Questie in MelloUI's look."] = "在游戏的区域地图上用 ! 和 ? 显示 Questie 的任务发布者。指向查看其任务。仅在 Questie 使用 MelloUI 外观时。", -- draft
 	["Include Givers You Are Done With"] = "包括已完成的给予者", -- draft
 	["Also marks givers whose quests you have all done, with a grey tick."] = "也用灰色勾标出任务已全部完成的发布者。", -- draft
 	["Hide Grey Quests"] = "隐藏灰色任务", -- draft

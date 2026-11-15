@@ -1623,7 +1623,7 @@ Lang:Add("deDE", {
 	["Most Levels Above Me"] = "Höchstens Stufen über mir", -- draft
 	["Leaves out quests more than this many levels above you."] = "Lässt Quests weg, die mehr als so viele Stufen über dir liegen.", -- draft
 	["Quest Givers On Zone Maps"] = "Questgeber auf Zonenkarten", -- draft
-	["Marks quest givers on the zone map with a ! or ?. Point at one for its quests; click to track it."] = "Markiert Questgeber auf der Zonenkarte mit ! oder ?. Zeige auf einen für seine Quests; ein Klick verfolgt ihn.", -- draft
+	["Shows Questie's quest givers on the game's zone map as ! and ?. Point at one for its quests. Only with Questie in MelloUI's look."] = "Zeigt Questies Questgeber auf der Zonenkarte des Spiels als ! und ?. Zeige auf einen für seine Quests. Nur mit Questie in MelloUIs Aussehen.", -- draft
 	["Include Givers You Are Done With"] = "Erledigte Questgeber einbeziehen", -- draft
 	["Also marks givers whose quests you have all done, with a grey tick."] = "Markiert auch Questgeber, deren Quests du alle erledigt hast, mit einem grauen Haken.", -- draft
 	["Hide Grey Quests"] = "Graue Quests ausblenden", -- draft

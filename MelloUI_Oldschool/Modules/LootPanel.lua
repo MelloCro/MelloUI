@@ -139,39 +139,10 @@ local function RollReplace(region, opts)
 end
 
 -- the non-nil values given, as a list
-local function List(...)
-	local list = {}
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v then
-			list[#list + 1] = v
-		end
-	end
-	return list
-end
-
-local function NameOf(obj)
-	if not obj then
-		return nil
-	end
-	local ok, n = pcall(obj.GetName, obj)
-	if ok and type(n) == "string" and not Secret(n) then
-		return n
-	end
-	return nil
-end
+local List = MelloUI.Kit.Panel.List
 
 -- a part by its key on the frame, else by the global name the XML gives it
-local function Part(frame, key, suffix)
-	if not frame then
-		return nil
-	end
-	if key and frame[key] then
-		return frame[key]
-	end
-	local name = NameOf(frame)
-	return name and suffix and _G[name .. suffix] or nil
-end
+local Part = MelloUI.Kit.Panel.Part
 
 local function IsTexture(obj)
 	return obj ~= nil and obj.GetObjectType ~= nil and obj:GetObjectType() == "Texture"
@@ -253,26 +224,7 @@ end
 -- the icon inside the rim's opening; a roll frame's quality ring (a separate
 -- 42 px atlas round its icon) is faded and the rim takes its colour instead.
 --------------------------------------------------------------------------------
-local function FitIconRim(entry)
-	local rim = entry.rep and entry.rep.object
-	local icon = entry.icon
-	if not (rim and rim.base and icon) then
-		return
-	end
-	local name = rim.base .. "_normal"
-	local p = Kit:Piece(name)
-	local l, r, t, b = Kit:Insets(name, 1)
-	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not ok or Secret(iw) or Secret(ih) or not (iw and ih) or iw <= 0 or ih <= 0 then
-		ok, iw, ih = pcall(entry.button.GetSize, entry.button)
-	end
-	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
-		return
-	end
-	rim:ClearAllPoints()
-	rim:SetPoint("CENTER", icon, "CENTER")
-	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
-end
+local FitIconRim = MelloUI.Kit.Panel.FitEntryRim
 
 Kit:OnBorderChanged("button", function()
 	for _, entry in ipairs(rims) do
@@ -972,20 +924,7 @@ end
 -- roll frame's parts, levels and state; the other modes are Kit:DumpWindow's
 -- on the loot window. Opens the copy window.
 --------------------------------------------------------------------------------
-local function Label(obj)
-	if not obj then
-		return "nil"
-	end
-	local n = NameOf(obj)
-	if n then
-		return n
-	end
-	local ok, d = pcall(obj.GetDebugName, obj)
-	if ok and type(d) == "string" and not Secret(d) then
-		return d
-	end
-	return "[unnamed]"
-end
+local Label = MelloUI.Kit.Panel.Label
 
 local function Found(label, obj, more)
 	MelloUI:Print("  %-26s %s%s", label, obj and Label(obj) or "-- not found", more or "")

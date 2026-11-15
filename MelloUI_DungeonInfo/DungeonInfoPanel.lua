@@ -95,6 +95,7 @@ local TEXT = {
 	noLoot = "No drops known for this boss yet: what he drops is kept the first time he falls in front of you.",
 	noBosses = "No bosses known for this one.",
 	noQuests = "No quests for your side and class here.",
+	needsQuestie = "Its quests come from Questie. Get Questie, then type /reload.",   -- (2.1.52, stage 2)
 	mineEmpty = "Star an item on a boss's page to keep it here. A loot roll then marks it when it drops.",
 	elsewhere = "Elsewhere",
 	chance = "%d%%", chanceTenth = "%.1f%%", chanceSmall = "<0.1%",
@@ -872,6 +873,9 @@ function P.LayInst()
 	HideFrom(S.qrows[page] or {}, #quests)
 	S.noQuests:SetShown(#quests == 0)
 	if #quests == 0 then
+		-- (2.1.52, stage 2) without Questie there are no quests to list: the line says where they come from
+		local QS = MelloUI.QuestSource
+		S.noQuests:SetText(W.Tr((QS and not QS.Questie()) and TEXT.needsQuestie or TEXT.noQuests))
 		S.noQuests:ClearAllPoints()
 		S.noQuests:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -(y + 4))
 		y = y + 30
@@ -1302,6 +1306,7 @@ local function Build(pane)
 	Perf.SetScript(f, "OnEvent", OnEvent)
 	S.events = f
 	MelloUI:On("dungeonInfo:tracked", Queue, "Dungeon Info panel")
+	MelloUI:On("questsource", Queue, "Dungeon Info panel")   -- (2.1.52: the quests' rows are there, J.Quests)
 	for k, tab in pairs(S.tabs) do
 		tab:SetSelected(k == S.tab)
 	end

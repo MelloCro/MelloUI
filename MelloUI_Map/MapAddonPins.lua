@@ -65,7 +65,7 @@ ns.AddonPins = AddonPins
 local T = {
 	-- the layers: under the quest givers (20), over the docks and flights (14)
 	ORDER = { zone = 16, continent = 17, world = 18 },
-	ZONE_FROM = 2.5,         -- a zone's pins from a zone's zoom on (the quest givers' zoom: Layers.T.QUESTS_FROM)
+	ZONE_FROM = 2.5,         -- a zone's pins from a zone's zoom on (a zone's zoom)
 	CONTINENT_FROM = 1.15,   -- a continent's from a continent's zoom on (the docks' and flights': PLACES_FROM)
 	NODE = 14,               -- HandyNotes' and GatherMate2's 12 px icon at the game's map's top pin scale (1.2)
 	KEEP = 12,               -- zones' nodes kept built: the ones in view, then the nearest seen last
@@ -83,6 +83,14 @@ local T = {
 AddonPins.T = T
 
 local LAYER = { zone = "addons", continent = "addons_continent", world = "addons_world" }
+-- (2.1.51) Questie's givers and turn-ins while they are the givers (QuestieLook's Givers): a layer of their own under
+-- the map's Quest givers switch (Map.lua's SWITCHES), never the one of the other addons' pins
+LAYER.questGivers = "quests_questie"
+-- (2.1.52, stage 2) Questie's objective icons while Questie wears its own look (its switch on the Addons page off):
+-- a layer of their own under the map's Your quests' objectives switch. In MelloUI's look this map lays its own marks
+-- there and Questie's of that kind are never borrowed (Covered)
+LAYER.questObjectives = "objectives_questie"
+AddonPins.LAYER = LAYER
 
 local S = {
 	canvas = nil, pins = nil, shown = false,
@@ -133,46 +141,63 @@ local TOWN = MelloUI.QuestieLook.TOWN
 AddonPins.TOWN = TOWN
 local Town = MelloUI.QuestieLook.Town
 
--- what this map shows of the quests already (taken once a pass): MapObjectives' givers shown and objectives laid;
+-- what this map shows of the quests already (taken once a pass): MapObjectives' objectives laid;
 -- (2.1.39; the user, 2026-11-10: "didnt i say that we provide the look? this way we have lost our own function which i
--- like very much") and this map's own layers of them: while the quest givers' layer (quests) or the objectives' layer
--- is on, it draws that kind itself -- MelloUI's filters, areas and motions -- and Questie's of that kind are never
--- borrowed; with the layer switched off, Questie's fill in, in MelloUI's pictures
+-- like very much") and this map's own layer of them: while the objectives' layer is on, it draws them itself --
+-- MelloUI's areas and motions -- and Questie's of that kind are never borrowed; with the layer switched off,
+-- Questie's fill in, in MelloUI's pictures. (2.1.52: the quest givers are Questie's alone, never covered)
 local function Cover()
 	local O = ns.Objectives
-	if not (O and O.GiversShown and O.Laid) then
+	if not (O and O.Laid) then
 		return nil
 	end
-	local ok, givers = pcall(O.GiversShown)
 	local Map = MelloUI.modules and MelloUI.modules.Map
 	local on = type(Map) == "table" and type(Map.LayerOn) == "function"
-	return { givers = ok and type(givers) == "table" and givers or {}, laid = O.Laid,
-		quests = on and Map:LayerOn("quests") and true or false,
+	return { laid = O.Laid,
 		objectives = on and Map:LayerOn("objectives") and true or false,
 		flights = on and Map:LayerOn("flights") and true or false }
 end
 
 local function Covered(look, icon, cover)
-	if cover and ((look.cover == "objective" and cover.objectives)
-		or ((look.cover == "giver" or look.cover == "ender") and cover.quests)) then
+	-- (2.1.51; the user: "i dont want melloUI Quests to show if Questie is active") Questie's givers and turn-ins are
+	-- the givers (QuestieLook's Givers): always drawn, in this map's pictures, on their own layer, which the Quest givers
+	-- switch shows or hides (Place)
+	if look.cover ~= "objective" or not cover then
+		return false
+	end
+	if cover.objectives then
 		return true
 	end
 	local data = rawget(icon, "data")
-	local q = cover and look.cover and type(data) == "table" and Finite(data.Id)
-	if not q then
-		return false
+	local q = type(data) == "table" and Finite(data.Id)
+	return (q and cover.laid(q)) and true or false
+end
+
+-- (2.1.51; the user, 2026-11-13: Questie's givers on this map, "mouseovering the quests does not give me the tooltip")
+-- Questie's own pictures under ours: hidden (Hide), never at alpha 0 -- on this client a picture's alpha is its vertex
+-- colour's, and Questie's tooltip (MapIconTooltip.ShowOnTooltip) shows nothing for an icon whose picture's vertex alpha
+-- is 0; its hover recolour (SetVertexColor) and its fade cannot bring a hidden one back either. Each one given back as
+-- it was (shown or not: Questie's glow is shown only where it wants one)
+local partsOff = setmetatable({}, { __mode = "k" })   -- [Questie's picture] = true while hidden under ours
+
+local function PartsOff(icon)
+	for _, key in ipairs(QUESTIE_PARTS) do
+		local part = rawget(icon, key)
+		if part and part.Hide and part:IsShown() then
+			partsOff[part] = true
+			part:Hide()
+		end
 	end
-	if look.cover == "objective" then
-		return cover.laid(q) and true or false
+end
+
+local function PartsBack(icon)
+	for _, key in ipairs(QUESTIE_PARTS) do
+		local part = rawget(icon, key)
+		if part and partsOff[part] then
+			partsOff[part] = nil
+			part:Show()
+		end
 	end
-	local g = cover.givers[q]
-	if not g then
-		return false
-	end
-	if look.cover == "giver" then
-		return (g.available or g.locked) and true or false
-	end
-	return (g.ready or g.progress) and true or false
 end
 
 local function Restyle(icon, look)
@@ -182,12 +207,7 @@ local function Restyle(icon, look)
 		tex:SetAllPoints(icon)
 		styled[icon] = tex
 	end
-	for _, key in ipairs(QUESTIE_PARTS) do
-		local part = rawget(icon, key)
-		if part and part.SetAlpha then
-			part:SetAlpha(0)
-		end
-	end
+	PartsOff(icon)
 	if look.atlas then
 		MelloUI.Icons.Release(tex)
 		tex:SetTexCoord(0, 1, 0, 1)
@@ -221,12 +241,7 @@ local function Unstyle(icon, quiet)
 	if P and P.Lift then
 		P.Lift(tex, false)
 	end
-	for _, key in ipairs(QUESTIE_PARTS) do
-		local part = rawget(icon, key)
-		if part and part.SetAlpha then
-			part:SetAlpha(1)
-		end
-	end
+	PartsBack(icon)
 	if not quiet then
 		MelloUI.QuestieLook.Relay(icon)
 	end
@@ -235,6 +250,30 @@ end
 MelloUI.QuestieLook.OnRelease(function(icon)
 	Unstyle(icon, true)
 end)
+-- (2.1.51) Questie set an icon's picture again (its UpdateTexture shows its glow where it wants one): while ours is on
+-- it, its own stay hidden under ours
+-- (2.1.52) the Questie icons this map holds now, for Questie's tooltip of one of them (QuestieLook's QL.MapIcons: it
+-- gathers a tooltip from the icons of the map it is on); the set reused
+local held = {}
+if MelloUI.QuestieLook.MapIcons then
+	MelloUI.QuestieLook.MapIcons(function()
+		wipe(held)
+		for icon, entry in pairs(S.owner) do
+			if entry.questie and icon:IsShown() then
+				held[icon] = true
+			end
+		end
+		return held
+	end)
+end
+if MelloUI.QuestieLook.OnMapPicture then
+	MelloUI.QuestieLook.OnMapPicture(function(icon)
+		local tex = styled[icon]
+		if tex and tex:IsShown() then
+			PartsOff(icon)
+		end
+	end)
+end
 AddonPins.Restyled = function(icon)
 	local tex = styled[icon]
 	return tex ~= nil and tex:IsShown() and tex or nil
@@ -313,6 +352,56 @@ local function Drop(icon)
 	S.owner[icon], S.layerOf[icon] = nil, nil
 end
 
+-- (2.1.52; the user, 2026-11-14: "when clicking on a quest on the map to navigate to it, it does not draw a route to
+-- it, nor does it navigate") Questie's givers and turn-ins stand where MelloUI's own did, whose click set Route's way
+-- there, and Questie's own click does nothing off the game's map (QuestieFrame.lua's OnClick: only Shift, Ctrl with
+-- TomTom, or a link into the chat line). A plain left click on one held here: Route's way to it through the Quest
+-- List, as its giver pins did (QL.RouteToPoint, at Questie's own place of it), else the map's own pin there
+-- (Map:PinOn). Questie's click runs first as before; one post-hook per frame, and a frame given back (S.owner) or
+-- pooled into another kind is left to Questie
+local clickHooked = setmetatable({}, { __mode = "k" })   -- [Questie's frame] = true: GiverClick hooked on it
+local GIVER_MARK = { giver = "quest_mark", ender = "turnin_mark" }
+local GIVER_WHAT = { giver = "quest giver", ender = "turn-in" }
+local GiverClick = Perf.Shared("OnClick on Questie's givers on MelloUI's map", function(icon, button)
+	if button ~= "LeftButton" or _G.IsModifierKeyDown() or not S.owner[icon] then
+		return
+	end
+	local okC, chat = pcall(_G.ChatEdit_GetActiveWindow)
+	if okC and chat then
+		return   -- (Questie's own: the quest's link into the chat line)
+	end
+	local look = QuestieLook(icon)
+	local cover = look and look.cover
+	if not GIVER_MARK[cover] then
+		return
+	end
+	local d = rawget(icon, "data")
+	d = type(d) == "table" and d or nil
+	local quest = d and type(d.QuestData) == "table" and d.QuestData or nil
+	local title = quest and Text(quest.name) or ""
+	local who = d and Text(d.Name) or ""
+	local W = MelloUI.Widgets
+	local mark = W.IconMarkup(GIVER_MARK[cover], 16) .. " "
+	local label = mark .. title .. (who ~= "" and (" - " .. who) or "")
+	local QL = rawget(MelloUI, "QuestList")
+	local mapID, x, y = Finite(rawget(icon, "UiMapID")), Finite(rawget(icon, "x")), Finite(rawget(icon, "y"))
+	if type(QL) == "table" and QL.RouteToPoint and mapID and x and y then
+		local notice = mark .. string.format(W.Tr("Tracking %s %s for %s, {dist} away"), W.Tr(GIVER_WHAT[cover]), who,
+			title)
+		local set, chimed = QL.RouteToPoint(mapID, x / 100, y / 100, label, notice)
+		if set and not chimed then
+			MelloUI:PlayUISound("waypoint_set")
+		end
+		return
+	end
+	local Map = MelloUI.modules and MelloUI.modules.Map
+	local layer = S.pins and S.pins.layers[S.layerOf[icon]]
+	local pin = layer and layer.pins[icon]
+	if type(Map) == "table" and Map.PinOn and pin then
+		Map:PinOn(pin, label)
+	end
+end, "script")
+
 -- one icon of the library's registry laid (or let go: no place here); `cover`: Questie's, what this map shows already
 local function Place(entry, icon, t, cover)
 	if type(icon) ~= "table" or type(t) ~= "table" or not icon.SetPoint then
@@ -324,11 +413,19 @@ local function Place(entry, icon, t, cover)
 	end
 	-- (2.1.4) Questie's: a quest this map shows already is not drawn twice; the rest in MelloUI's own look; (2.1.43) its
 	-- townsfolk of a kind this map draws (its flight masters) not twice either
-	-- (2.1.44: Questie's icons as any addon's while its switch on the Addons page, Use with MelloUI, is off)
-	local questie = entry.questie and MelloUI.QuestieLook.Used()
+	-- (2.1.52, stage 2; the user, 2026-11-14: "with Questie Installed, the Quests are shown on the Map and Minimap from
+	-- the QuestieDB database with its default look") Questie's switch on the Addons page off, its own look: its icons
+	-- are hosted as Questie draws them (never restyled, its townsfolk all its own), and this map's two quest switches
+	-- still decide them -- its givers and turn-ins on the Quest givers' layer, its objectives on Your quests'
+	-- objectives' (each layer shown or hidden by its switch). MelloUI lays no quest marks of its own then (MapObjectives)
+	local questie = entry.questie
+	local dressed = questie and MelloUI.QuestieLook.Used()
 	local look = questie and QuestieLook(icon) or nil
-	local town = questie and not look and Town(icon) or nil
-	local covered = (look and Covered(look, icon, cover)) or (town and cover and cover[town]) or false
+	local town = dressed and not look and Town(icon) or nil
+	local covered = false
+	if dressed then
+		covered = (look and Covered(look, icon, cover)) or (town and cover and cover[town]) or false
+	end
 	if questie then
 		MelloUI.QuestieLook.Unlist(icon, covered)   -- (2.1.39: left out of Questie's tooltip too)
 	end
@@ -357,6 +454,13 @@ local function Place(entry, icon, t, cover)
 		-- (a pin on a continent's own map: there; one set by world yards placed through its continent: a zone's)
 		or ((flag >= T.SHOW_CONTINENT or (t.uiMapID and c.byID[target].kind == "continent")) and "continent") or "zone"
 	local layer = LAYER[kind]
+	-- (2.1.51) Questie's givers, the givers: on the Quest givers switch's layer, from a zone's zoom on as MelloUI's own
+	-- (Questie lays them with the world's flag, SHOW_WORLD: on every zoom else)
+	if look and (look.cover == "giver" or look.cover == "ender") then
+		layer = LAYER.questGivers
+	elseif look and not dressed and look.cover == "objective" then
+		layer = LAYER.questObjectives   -- (2.1.52: Questie's own look, its objectives under their switch)
+	end
 	if S.layerOf[icon] and S.layerOf[icon] ~= layer then
 		Drop(icon)
 	end
@@ -367,7 +471,11 @@ local function Place(entry, icon, t, cover)
 	end
 	S.pins:Set(layer, icon, wx, wy, spec)
 	S.owner[icon], S.layerOf[icon] = entry, layer
-	if look then
+	if look and GIVER_MARK[look.cover] and not clickHooked[icon] and icon.HookScript then
+		clickHooked[icon] = true
+		Perf.HookScript(icon, "OnClick", GiverClick)   -- (2.1.52: a giver's or turn-in's click, Route's way there)
+	end
+	if look and dressed then
 		Restyle(icon, look)
 	elseif styled[icon] then
 		Unstyle(icon)   -- (Questie's pooled frame now one of no look of ours)
@@ -422,9 +530,18 @@ local function FindLibs()
 		return
 	end
 	for _, names in ipairs(T.HBD) do
-		local okP, lib = pcall(LibStub, names.pins, true)
-		local okH, hbd = pcall(LibStub, names.hbd, true)
-		if okP and okH and type(lib) == "table" and type(hbd) == "table" and not S.byLib[lib]
+		local lib, hbd
+		local QLook = MelloUI.QuestieLook
+		if names.questie and QLook and QLook.PinsLib then
+			-- (2.1.52) Questie's own copy: a LibStub library until Questie 12.9, a module of its loader since
+			lib, hbd = QLook.PinsLib()
+		else
+			local okP, okH
+			okP, lib = pcall(LibStub, names.pins, true)
+			okH, hbd = pcall(LibStub, names.hbd, true)
+			lib, hbd = okP and lib or nil, okH and hbd or nil
+		end
+		if type(lib) == "table" and type(hbd) == "table" and not S.byLib[lib]
 			and type(lib.worldmapPins) == "table" and type(hbd.GetZoneCoordinatesFromWorldInstance) == "function" then
 			local entry = { pins = lib, hbd = hbd, maps = {}, conts = {}, full = true, hooked = {},
 				questie = names.questie == true }
@@ -901,7 +1018,10 @@ function AddonPins.Init(canvas, pins)
 	local zone = pins:Layer(LAYER.zone, T.ORDER.zone, { minZ = T.ZONE_FROM })
 	local cont = pins:Layer(LAYER.continent, T.ORDER.continent, { minZ = T.CONTINENT_FROM })
 	local world = pins:Layer(LAYER.world, T.ORDER.world)
-	S.ours[zone.frame], S.ours[cont.frame], S.ours[world.frame] = true, true, true
+	local givers = pins:Layer(LAYER.questGivers, T.ORDER.zone, { minZ = T.ZONE_FROM })   -- (2.1.51: as the zone's)
+	local objectives = pins:Layer(LAYER.questObjectives, T.ORDER.zone, { minZ = T.ZONE_FROM })   -- (2.1.52: too)
+	S.ours[zone.frame], S.ours[cont.frame], S.ours[world.frame], S.ours[givers.frame] = true, true, true, true
+	S.ours[objectives.frame] = true
 end
 
 -- (the API's pins added before the map's places were made: laid at its first open, the canvas laid out)
@@ -918,8 +1038,31 @@ local function ApiEarly()
 	end
 end
 
+-- (2.1.51) borrowing wanted: other addons' pins on, or Questie's givers -- the givers while Questie is active
+-- (QuestieLook's Givers) -- with the Quest givers switch on (their own layer); the other addons' layer stays hidden
+-- while its switch is off, so nothing of theirs shows then
+function AddonPins.Wanted()
+	if not S.pins then
+		return false
+	end
+	if S.pins.layers[LAYER.zone].on then
+		return true
+	end
+	local QLook = MelloUI.QuestieLook
+	if not (QLook.Givers and QLook.Givers()) then
+		return false
+	end
+	local givers = S.pins.layers[LAYER.questGivers]
+	if givers and givers.on then
+		return true
+	end
+	-- (2.1.52, stage 2) Questie in its own look: its objectives too, on their own layer, while their switch is on
+	local objectives = S.pins.layers[LAYER.questObjectives]
+	return (objectives and objectives.on and not QLook.Used()) and true or false
+end
+
 function AddonPins.Open()
-	if not S.pins or not S.pins.layers[LAYER.zone].on then
+	if not AddonPins.Wanted() then
 		return   -- (switched off: other addons' icons left to the game's map)
 	end
 	S.shown = true

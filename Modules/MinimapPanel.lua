@@ -2509,22 +2509,7 @@ MelloUI:On("editmode", function(entering)
 		M:LayColumn()
 	end
 end, "Minimap column")
--- Match The Quest Tracker's Width (`matchTracker`) came and went during the
--- 0.13.7 build, never shipped: the map's size is Edit Mode's now. A saved one
--- is dead data that would travel in profiles, share strings and the backup:
--- dropped at login (OnInit) and after a profile load (the bus's 'restart').
-local function DropStale(db)
-	if type(db) == "table" then
-		db.matchTracker = nil
-	end
-end
-
-function M:OnInit(db)
-	DropStale(db)
-end
-
 function Column.Restart()
-	DropStale(MelloUI:GetModuleDB("MinimapPanel"))
 	M:LayColumn()
 end
 
