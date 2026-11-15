@@ -2367,7 +2367,7 @@ local function NewBlock()
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			pcall(GameTooltip.SetHyperlink, GameTooltip, self.itemLink)
 			local c = MelloUI.Look.TipPalette().text
-			GameTooltip:AddLine("Out of combat, a click uses it.", c[1], c[2], c[3], true)
+			GameTooltip:AddLine(MelloUI.Widgets.Tr("Out of combat, a click uses it."), c[1], c[2], c[3], true)
 			GameTooltip:Show()
 		end
 	end)
@@ -3397,19 +3397,6 @@ local function DifficultyColor(level)
 	return 1, 0.82, 0
 end
 
--- What to do first for the quest's objectives whose needed item is not in
--- the bags yet: Route's { [objective line] = "First: ..." } (Route:ItemFirst,
--- read at once: the table is Route's), or nil (none, Route off, or its
--- objective data not loaded)
-local function ItemFirst(questID)
-	local R = MelloUI:GetModule("Route")
-	if not (R and R.isEnabled and type(R.ItemFirst) == "function") then
-		return nil
-	end
-	local ok, hints = pcall(R.ItemFirst, R, questID)
-	return ok and type(hints) == "table" and hints or nil
-end
-
 -- a quest item button's cooldown, from its quest's log entry
 local function ItemCooldown(item)
 	if GetQuestLogSpecialItemCooldown and item.logIndex then
@@ -3571,13 +3558,17 @@ local function FillBlock(block, questID, width, followedID)
 	else
 		lastComplete[questID] = false
 		local finished = 0
-		-- an objective whose needed item is not in the bags yet says where
-		-- it comes from, under it (Route:ItemFirst: "First: loot Samuel's
-		-- Remains from Samuel Fipps"), in the heading's gold -- the title ink
-		-- on parchment; gone the moment the item is looted (the bags' event
-		-- rebuilds the tracker)
-		local first = ItemFirst(questID)
-		local hinted = 0
+		-- (2.1.52, Core/QuestMoments.lua's flight to a line) each objective's line by its index, laid again here
+		local lines = M.objLines[questID]
+		if not lines then
+			lines = {}
+			M.objLines[questID] = lines
+		end
+		for k in pairs(lines) do
+			lines[k] = nil
+		end
+		-- (2.1.52: the "First: loot ..." line under an objective whose needed
+		-- item was not in the bags went with MelloUI's own quest data)
 		for i, obj in ipairs(objectives) do
 			local text = Plain(obj.text)
 			if text and text ~= "" then
@@ -3586,25 +3577,16 @@ local function FillBlock(block, questID, width, followedID)
 				local fs
 				y, fs = PutLine(block, n, text, y, textWidth, true, shade, shade, shade)
 				Progress(questID, i, Plain(obj.numFulfilled), fs, Plain(obj.finished) and true or false)
-				local hint = first and not Plain(obj.finished) and first[i]
-				if type(hint) == "string" then
-					n = n + 1
-					y, fs = PutLine(block, n, hint, y, textWidth, false, 1, 0.82, 0, true)
-					if block.ink then
-						QI.Ink(fs, "title")
-					end
-					hinted = hinted + 1
-				end
+				lines[i] = fs
 			end
 			if Plain(obj.finished) then
 				finished = finished + 1
 			end
 		end
-		-- (what its places were found for: found again when it changes; a
-		-- needed item's line coming or going too, as the item's sources stand
-		-- in for the objective's places until it is looted); a quest done whose
-		-- turn-in look waits (Motion.Hold) is done for its places already
-		Near.filled[questID] = Motion.hold[questID] and -1 or (finished + hinted * 100)
+		-- (what its places were found for: found again when it changes); a
+		-- quest done whose turn-in look waits (Motion.Hold) is done for its
+		-- places already
+		Near.filled[questID] = Motion.hold[questID] and -1 or finished
 	end
 	HideLines(block, n + 1)
 	local h = math.max(y, link and ITEM_SIZE + 4 or 0, mark and 22 or 0)
@@ -4262,6 +4244,17 @@ local function MarkDirty()
 end
 Near.MarkDirty = MarkDirty
 Motion.Dirty = MarkDirty
+-- (2.1.52) an objective's line in this tracker while it shows (Core/QuestMoments.lua flies an item picked up to it)
+M.objLines = M.objLines or {}
+function M:ObjectiveLine(questID, index)
+	local lines = self.objLines[questID]
+	local fs = lines and lines[index]
+	if fs and fs:IsVisible() then
+		return fs
+	end
+	return nil
+end
+
 M.SlashWords = { progress = Motion.Preview }   -- (0.21.3: /mello tracker progress)
 M.Plays = { progress = function() return Motion.Preview(), Motion.PREVIEW.AFTER end }   -- (2.1.20, the Animations page)
 M.Motion = Motion   -- (the tests')
