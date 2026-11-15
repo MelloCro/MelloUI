@@ -23,6 +23,7 @@ local Plain, Num = Safe.Value, Safe.Number
 
 local P = { cache = {}, at = nil }
 QL.Party = P
+MelloUI.QuestParty = P   -- (the map's Quests tab, MelloUI_Map/MapQuestLog.lua, another addon, reads it here)
 
 -- a module of Questie's (its loader's; nil when it is not there): as Core/QuestieLook.lua asks it
 local function Questie(name)
