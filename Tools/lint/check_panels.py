@@ -57,7 +57,9 @@ CEILINGS = {
     "start-moving": 0,
     "animation-group": 3,
     "new-ticker": 9,   # (2026-11-06: Zygor's reader: no hook on its methods can be used, they yield. Opt-in, with Zygor only)
-    "hook-bag-call": 0,
+    # (2026-11-15, the user: "Merge #23 with the limit raised to 1") the one hook: the bag window's note of a split
+    # stack, a post-hook on C_Container.SplitContainerItem (PR #23, Modules/BagWindow.lua's M.Split). No other.
+    "hook-bag-call": 1,
     "combat-guard": 1,
     "safe-standin": 0,
     "fn-standin": 0,

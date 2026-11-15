@@ -10,6 +10,7 @@
 - RestedXP Guides: its Active Targets wears MelloUI's look while its guide is followed.
 - Edit Layout: hold Alt to put the dock out of the way and reach an element that lies under it. The dock says so when something does.
 - Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.
+- Bags: a split stack dropped on a + slot of the bag window now goes into a free slot. Before, it went back onto its stack.
 - German: the bag window, the map's quest log, the widgets, the reminders, the chat and Edit Layout are translated now.
 - French: the on-screen lines, the tutorial tips, the reminders, the map's layers, the quest log, Services, Restock and Route's distances and times are translated now, and follow a language change at once. In French, Route's distances show in metres.
 - Dungeon maps: Santiago Reyes' maps of The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The Shaper's Terrace, a map for each part of a dungeon (Blackmaw Hold has six). City of Dalaran, Ruins of Lordaeron, The Hall of Thanes and Excavation Site: Wetlands show his newest versions, all of them sharper than before.

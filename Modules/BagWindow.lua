@@ -1501,6 +1501,58 @@ local function PlusLook(b, lit)
 	end
 end
 
+-- A split stack dropped on a + slot: the game's split (its stack split frame, or the pad's: C_Container.SplitContainerItem)
+-- puts part of a stack on the cursor, and ClearCursor only joins that part to its stack again -- dropped on a + slot it
+-- went nowhere (the + slot's place was kept, the stack stayed whole). The split item is noted here (M.Split.id, from
+-- the split until the cursor is empty again; a watch on CURSOR_CHANGED only while one is noted), and the + slot puts
+-- it into the first free slot of its view instead (a normal bag's before a bag type's; no free slot: back on its stack).
+-- (On M, not in new file locals: the file's main chunk is close to Lua's 200 locals.)
+M.Split = { id = nil, watch = nil }
+
+M.Split.Watch = Shared("OnEvent of the bag window's split watch", function()
+	if not CursorItem() then
+		M.Split.id = nil
+		M.Split.watch:UnregisterEvent("CURSOR_CHANGED")
+	end
+end, "event")
+
+M.Split.Hook = Shared("the bag window's note of a split stack", function(bag, slot)
+	local ok, id = pcall(C_Container.GetContainerItemID, bag, slot)
+	local split = M.Split
+	split.id = ok and Num(id) or nil
+	if split.id then
+		if not split.watch then
+			split.watch = CreateFrame("Frame")
+			Perf.SetScript(split.watch, "OnEvent", split.Watch)
+		end
+		split.watch:RegisterEvent("CURSOR_CHANGED")
+	end
+end, "hook")
+
+-- the split part held put into the first free slot of the view `view`'s containers; false: none free
+function M.Split.Put(view)
+	local C = C_Container
+	local fb, fs
+	for _, bag in ipairs(view and view.containers() or {}) do
+		for slot = 1, Num(C.GetContainerNumSlots(bag)) or 0 do
+			if not C.GetContainerItemInfo(bag, slot) then
+				local ok, _, family = pcall(C.GetContainerNumFreeSlots, bag)
+				if bag == 0 or not (ok and Num(family) and Num(family) ~= 0) then
+					C.PickupContainerItem(bag, slot)
+					return true
+				end
+				fb, fs = fb or bag, fs or slot
+				break
+			end
+		end
+	end
+	if fb then
+		C.PickupContainerItem(fb, fs)
+		return true
+	end
+	return false
+end
+
 local PlusDrop = Shared("OnReceiveDrag / OnClick on a bag window + slot", function(self)
 	local id = CursorItem()
 	if not id then
@@ -1512,7 +1564,10 @@ local PlusDrop = Shared("OnReceiveDrag / OnClick on a bag window + slot", functi
 		placed[k] = v
 	end
 	placed[id] = (kind ~= NaturalKind(id)) and kind or nil
-	ClearCursor()
+	-- (a split part: into a free slot, not back on its stack -- M.Split)
+	if not (M.Split.id == id and M.Split.Put(self.view)) then
+		ClearCursor()
+	end
 	MelloUI:PlayUISound("check_on")
 	MelloUI:NotifySettingChanged(M.name, "placed", placed)
 end, "script")
@@ -1547,6 +1602,7 @@ local function LayPlus(i, key, x, y)
 		S.pluses[i] = b
 	end
 	b.placeKind = key
+	b.view = S   -- (the view it is laid in: the bags' or the bank's -- M.Split.Put)
 	b:SetSize(G.SLOT, G.SLOT)
 	b.markSize = math.floor(G.SLOT * 0.55 + 0.5)
 	b.mark:SetSize(b.markSize, b.markSize)
@@ -2091,6 +2147,10 @@ local function Hook()
 		hooksecurefunc("ToggleBag", Shared("the bag window's step with the game's ToggleBag", function(id)
 			Sync(id == G.REAGENT and "flip" or nil)
 		end, "hook"))
+	end
+	-- a split stack noted for the + slots (M.Split)
+	if type(C_Container) == "table" and type(C_Container.SplitContainerItem) == "function" then
+		hooksecurefunc(C_Container, "SplitContainerItem", M.Split.Hook)
 	end
 end
 
