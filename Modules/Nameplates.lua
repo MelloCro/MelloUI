@@ -52,6 +52,9 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		questIconSize = 22,
 		threatLine = true,
 		threatColours = false,   -- (2.1.53) the health bar coloured by threat and your role
+		-- (2.1.53) its three colours, each a colour wheel's (W.ColourValue), starting on the meaning colours
+		threatSafeColour = "meaning:threatSafe", threatCloseColour = "meaning:threatClose",
+		threatAggroColour = "meaning:threatAggro",
 		comboPoints = true,
 		comboSize = 90,
 		comboX = 0, comboY = 0,   -- (2.1.19) the row moved off the bar's top edge
@@ -101,6 +104,14 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		-- on the Role") M.THREAT_TINT
 		{ type = "toggle", key = "threatColours", name = "Threat Colours By Role", new = "2.1.53",
 		  desc = "In group fights, an enemy's health bar takes a colour by its threat on you and your role. Tanks see the mobs they hold, are losing and have lost; healers and damage dealers see the mobs about to turn on them and the ones that have." },
+		-- (2.1.53; the user's pick A of the Threat Colours Picks sketch, one colour a state for every role, then "Yes, add
+		-- wheels")
+		{ type = "colour", key = "threatSafeColour", parent = "threatColours", name = "Safe Colour", new = "2.1.53",
+		  desc = "Threat Colours By Role: a mob that is safe. For a tank, one it holds; for a healer or damage dealer, one nowhere near turning on them." },
+		{ type = "colour", key = "threatCloseColour", parent = "threatColours", name = "Close Colour", new = "2.1.53",
+		  desc = "Threat Colours By Role: a mob a tank is losing, or one close to turning on a healer or damage dealer." },
+		{ type = "colour", key = "threatAggroColour", parent = "threatColours", name = "Aggro Colour", new = "2.1.53",
+		  desc = "Threat Colours By Role: a mob a tank has lost, or one that has turned on a healer or damage dealer." },
 		{ type = "header", name = "Combo Points" },
 		{ type = "toggle", key = "comboPoints", name = "Combo Points",
 		  desc = "Rogues and cat druids: your combo points on your target's nameplate." },
@@ -2094,21 +2105,20 @@ end
 
 -- (2.1.53; the user, 2026-11-15: "i need a checkbox to enable Custom Threat Nameplate Healthbar colours depending on
 -- the Role") Threat Colours By Role: in a group fight, the health bar of an enemy whose list you are on takes a colour
--- by the threat (MelloUI.Threat's state, the threat line's) and your role (Threat.Role): M.THREAT_TINT, a meaning
--- colour each; a state its role has no colour for keeps the plate's own. A COVER over the game's fill, never a colour
+-- by the threat (MelloUI.Threat's state, the threat line's; your role decides what counts as safe: Threat.Role), in
+-- the colour its state wears (M.THREAT_TINT: the user's pick A of the Threat Colours Picks sketch, one colour a state
+-- for every role; then "Yes, add wheels": each a colour option, W.ColourValue's string, starting on MelloUI.Meaning's
+-- threatSafe, threatClose and threatAggro). A COVER over the game's fill, never a colour
 -- written on the game's bar: the game colours its bar again on its threat events (CompactUnitFrame_UpdateHealthColor,
 -- UNIT_THREAT_LIST_UPDATE with considerSelectionInCombatAsHostile), so a colour of ours there would be undone and
 -- written back on each (hard rule 1). Our texture lies over the fill in the fill's own art (its atlas or file, read
 -- plain), cut to the fill's rect by a mask on it (the engine moves the fill with the value, a secret one too) and by
 -- the fill's own masks; made on a plate's first colour, kept in this file's table (nothing on the game's frame),
 -- written only on a change
-M.THREAT_TINT = {
-	TANK = { safe = "threatSafe", close = "threatClose", aggro = "threatAggro" },
-	HEALER = { safe = "threatSafe", close = "threatClose", aggro = "threatAggro" },
-	DAMAGER = { safe = "threatSafe", close = "threatClose", aggro = "threatAggro" },
-}
+M.THREAT_TINT = { safe = "threatSafeColour", close = "threatCloseColour", aggro = "threatAggroColour" }
+M.THREAT_KEYS = { threatSafeColour = true, threatCloseColour = true, threatAggroColour = true }
 M.GAME_BAR_ATLAS = "UI-HUD-CoolDownManager-Bar"   -- (the game's own fill: Blizzard_NamePlates.xml)
-local tints = setmetatable({}, { __mode = "k" })   -- [the plate's UnitFrame] = { tex, fill, masks, art, c, shown }
+local tints = setmetatable({}, { __mode = "k" })   -- [the plate's UnitFrame] = { tex, fill, masks, art, r, g, b, shown }
 M.tints = tints   -- (the tests' and /npdump's: read only)
 
 local function TintOf(uf)
@@ -2158,12 +2168,10 @@ local function TintHide(uf)
 	end
 end
 
--- a plate's colour for a threat state and a role (nil state, or none of the role's: the cover hidden)
-local function TintPlate(uf, state, role)
-	local set = state and M.THREAT_TINT[role or "DAMAGER"]
-	local key = set and set[state]
-	local c = key and MelloUI.Meaning[key]
-	if not c then
+-- a plate's colour for a threat state (nil: the cover hidden)
+local function TintPlate(uf, state)
+	local key = state and M.THREAT_TINT[state]
+	if not key then
 		TintHide(uf)
 		return
 	end
@@ -2189,9 +2197,14 @@ local function TintPlate(uf, state, role)
 			t.tex:SetTexture(art)
 		end
 	end
-	if t.c ~= c then
-		t.c = c
-		t.tex:SetVertexColor(c[1], c[2], c[3])
+	local v = M.db[key]
+	if type(v) ~= "string" then
+		v = M.defaults and M.defaults[key]
+	end
+	local r, g, b = W.ColourValue(v)
+	if t.r ~= r or t.g ~= g or t.b ~= b then
+		t.r, t.g, t.b = r, g, b
+		t.tex:SetVertexColor(r, g, b)
 	end
 	if not t.shown then
 		t.shown = true
@@ -2207,8 +2220,8 @@ local function HideThreat(uf)
 	TintHide(uf)
 end
 
--- one plate as the fight stands now (tank, fight, role: read once for all plates)
-local function ThreatPlate(uf, unit, tank, fight, role)
+-- one plate as the fight stands now (tank, fight: read once for all plates)
+local function ThreatPlate(uf, unit, tank, fight)
 	if not (fight and ThreatOn() and unit) then
 		HideThreat(uf)
 		return
@@ -2226,7 +2239,7 @@ local function ThreatPlate(uf, unit, tank, fight, role)
 		return
 	end
 	local state = Threat.State(status, fraction, tank)
-	TintPlate(uf, M.db.threatColours == true and state or nil, role)
+	TintPlate(uf, M.db.threatColours == true and state or nil)
 	if M.db.threatLine == false then
 		local off = threatLines[uf]
 		if off then
@@ -2253,20 +2266,18 @@ local function ThreatUnit(unit)
 	local plate = C_NamePlate.GetNamePlateForUnit(unit)
 	local uf = plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame
 	if uf then
-		local role = Threat.Role()
-		ThreatPlate(uf, unit, role == "TANK", GroupFight(), role)
+		ThreatPlate(uf, unit, Threat.Role() == "TANK", GroupFight())
 	end
 end
 
 local function ThreatAll()
-	local role, fight = Threat.Role(), GroupFight()
-	local tank = role == "TANK"
+	local tank, fight = Threat.Role() == "TANK", GroupFight()
 	for i = 1, #PLATE_UNITS do
 		local unit = PLATE_UNITS[i]
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		local uf = plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame
 		if uf then
-			ThreatPlate(uf, unit, tank, fight, role)
+			ThreatPlate(uf, unit, tank, fight)
 		end
 	end
 end
@@ -3359,7 +3370,8 @@ function M:OnSettingChanged(key, value, db)
 		Plate.All()
 		return
 	end
-	if key == "threatLine" or key == "threatColours" then   -- (2.1.53: either of them keeps the threat events)
+	-- (2.1.53: either switch keeps the threat events; a threat colour picked: the plates coloured again)
+	if key == "threatLine" or key == "threatColours" or M.THREAT_KEYS[key] then
 		RegisterThreatEvents(ThreatOn())
 		if ThreatOn() then
 			ThreatAll()

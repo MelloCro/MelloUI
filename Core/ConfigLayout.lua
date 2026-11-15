@@ -879,6 +879,11 @@ function L.Define(R, Link)
 	-- (2.1.24, the Nameplate Designer's stage 2: the plate's width and height, on its health bar's part)
 	-- (2.1.53; the user: "a checkbox to enable Custom Threat Nameplate Healthbar colours depending on the Role")
 	R("Nameplates", "enemies:health", "Look", "Nameplates.threatColours")
+	-- (the user's pick A, one colour a state for every role, then "Yes, add wheels")
+	local THREAT_ON = { key = "Nameplates.threatColours", value = true, line = "Only with Threat Colours By Role on" }
+	for _, key in ipairs({ "threatSafeColour", "threatCloseColour", "threatAggroColour" }) do
+		R("Nameplates", "enemies:health", "Look", "Nameplates." .. key, { when = THREAT_ON })
+	end
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateSize")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateWidth")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateHeight")
