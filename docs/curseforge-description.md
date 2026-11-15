@@ -1,6 +1,6 @@
 # **MelloUI – An All-in-One UI for World of Warcraft: Forever**
 
-_Everything is a switch. On your first login the installer sets MelloUI up with you, fitted to your screen. Type `/mello` for the settings any time._
+_On your first login the installer sets MelloUI up with you, fitted to your screen. Type `/mello` for the settings any time._
 
 ## Install Questie too
 
