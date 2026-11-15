@@ -332,7 +332,7 @@ local function Tag(chatType, channel, index)
 	if M.ShortTag then
 		short, hex = M.ShortTag(chatType, channel, index)
 	end
-	local name = TYPE_NAME[chatType]
+	local name = TYPE_NAME[chatType] and W.Tr(TYPE_NAME[chatType])   -- (the chat type's name in the language in use: "Says", "Guild")
 	if chatType == "CHANNEL" then
 		name = type(channel) == "string" and channel:gsub("%s*%-.*$", "") or nil
 	end
@@ -1856,7 +1856,7 @@ function View.Rail()
 			Restore(key, key)
 		end
 		t.key, t.channel, t.number = key, name, number
-		t.button.tabName, t.button.tabTip = name, TEXT.channelTip:format(number)
+		t.button.tabName, t.button.tabTip = name, W.Tr(TEXT.channelTip):format(number)
 		t.label:SetText(name)
 		order[#order + 1] = t
 	end)
@@ -2059,13 +2059,13 @@ function View.ChannelMenu(t)
 	end
 	MenuUtil.CreateContextMenu(t.button, function(_, root)
 		root:CreateTitle(t.channel)
-		root:CreateButton(TEXT.speakIn:format(t.channel), function()
+		root:CreateButton(W.Tr(TEXT.speakIn):format(t.channel), function()
 			Open("/" .. t.number .. " ")
 		end)
-		root:CreateButton(TEXT.leave:format(t.channel), function()
+		root:CreateButton(W.Tr(TEXT.leave):format(t.channel), function()
 			MelloUI:Confirm({
-				text = TEXT.leaveAsk:format(t.channel),
-				accept = TEXT.leave:format(t.channel),
+				text = W.Tr(TEXT.leaveAsk):format(t.channel),
+				accept = W.Tr(TEXT.leave):format(t.channel),
 				onAccept = function()
 					local leave = rawget(_G, "LeaveChannelByName")
 					if type(leave) == "function" then
@@ -2642,7 +2642,7 @@ local function Build()
 	glow:SetPoint("CENTER", wb, "CENTER", 0, 0)
 	W.Paint(glow, "selectedTrim", "vertex")
 	glow:SetAlpha(0)
-	wt.label:SetText(TEXT.whispers)
+	wt.label:SetText(W.Tr(TEXT.whispers))
 	wt.glow = glow
 	View.whisperTab = wt
 	-- the row's hairline

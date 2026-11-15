@@ -85,6 +85,15 @@ local Num = MelloUI.Safe.Number
 local Text = MelloUI.Safe.Text
 
 local floor, select, pcall, type, format = math.floor, select, pcall, type, string.format
+-- a line in the language in use (MelloUI.Widgets.Tr: the language's table loaded first); Tf: string.format of a
+-- translated template, its string arguments looked up too (Lang.F)
+local function Tr(s)
+	return MelloUI.Widgets.Tr(s)
+end
+local function Tf(fmt, ...)
+	MelloUI.Widgets.Tr(fmt)
+	return MelloUI.Lang.F(fmt, ...)
+end
 
 local PLACES = {
 	{ value = "left", label = "Left of the portrait" },
@@ -242,15 +251,16 @@ end
 local function MailText()
 	local from = mail.sender or false
 	local kind = mail.waiting and (mail.seen and 2 or 1) or 3
-	if mail.textFrom ~= from or mail.textKind ~= kind then
+	if mail.textFrom ~= from or mail.textKind ~= kind or mail.textLang ~= MelloUI.Lang.code then
 		mail.textFrom, mail.textKind = from, kind
 		if kind == 1 then
-			mail.text = from and ("New mail from " .. from) or "New mail"
+			mail.text = from and Tf("New mail from %s", from) or Tr("New mail")
 		elseif kind == 2 then
-			mail.text = "Mail waiting at the mailbox"
+			mail.text = Tr("Mail waiting at the mailbox")
 		else
-			mail.text = "No new mail"
+			mail.text = Tr("No new mail")
 		end
+		mail.textLang = MelloUI.Lang.code   -- (after Tr: the language's table in by now)
 	end
 	return mail.text
 end
@@ -325,9 +335,10 @@ end
 
 local function GearText()
 	local pct = gear.broken and -2 or floor(gear.lowest * 100 + 0.5)
-	if gear.pct ~= pct then
+	if gear.pct ~= pct or gear.textLang ~= MelloUI.Lang.code then
 		gear.pct = pct
-		gear.text = gear.broken and "Repair Gear: broken gear" or format("Repair Gear: %d%%", pct)
+		gear.text = gear.broken and Tr("Repair Gear: broken gear") or Tf("Repair Gear: %d%%", pct)
+		gear.textLang = MelloUI.Lang.code
 	end
 	return gear.text
 end
@@ -543,19 +554,21 @@ end
 -- while not (when the next spells come)
 local function TrainerText()
 	local class, prof, rank, from = trainer.class, trainer.prof, trainer.rank, trainer.from
-	if trainer.textClass ~= class or trainer.textProf ~= prof or trainer.textRank ~= rank or trainer.textFrom ~= from then
+	if trainer.textClass ~= class or trainer.textProf ~= prof or trainer.textRank ~= rank or trainer.textFrom ~= from
+		or trainer.textLang ~= MelloUI.Lang.code then
 		trainer.textClass, trainer.textProf, trainer.textRank, trainer.textFrom = class, prof, rank, from
 		if class and prof then
-			trainer.text = format("New spells, and %s %s", rank, prof)
+			trainer.text = Tf("New spells, and %s %s", rank, prof)
 		elseif prof then
-			trainer.text = format("%s %s at a trainer", rank, prof)
+			trainer.text = Tf("%s %s at a trainer", rank, prof)
 		elseif class then
-			trainer.text = "New spells at your class trainer"
+			trainer.text = Tr("New spells at your class trainer")
 		elseif from > 0 then
-			trainer.text = format("Next new spells at level %d", from)
+			trainer.text = Tf("Next new spells at level %d", from)
 		else
-			trainer.text = "Nothing new at your trainers"
+			trainer.text = Tr("Nothing new at your trainers")
 		end
+		trainer.textLang = MelloUI.Lang.code
 	end
 	return trainer.text
 end
