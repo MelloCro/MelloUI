@@ -1227,18 +1227,16 @@ QL.ICONS = {
 QL.ICON_DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\"
 QL.GREY_ALPHA = 0.75   -- (a greyed mark's: MapAddonPins')
 
--- (2.1.43, MapAddonPins; 2.1.50 here, one table for the map and the minimap) Questie's townsfolk (its "manual" icons:
--- the game's tracking pictures) of a kind MelloUI draws itself: [the picture's file name] = MelloUI's map's layer
-QL.TOWN = { flightmaster = "flights" }
-function QL.Town(icon)
+-- (2.1.43, MapAddonPins; 2.1.50 here) Questie's townsfolk (its "manual" icons: the game's tracking pictures): one's
+-- picture, nil for an icon that is no townsfolk. (2.1.53) Which kind of place that picture stands for, and whether
+-- an owner before Questie has that kind, is the map's town marks' to say (MelloUI_Map/MapTownMarks.lua: one owner a
+-- kind across every addon) -- the flight masters, MelloUI's own, among them as before
+function QL.TownPicture(icon)
 	local data = rawget(icon, "data")
 	if type(data) ~= "table" or data.Type ~= "manual" then
 		return nil
 	end
-	local path = MelloUI.Safe.Text(data.Icon)
-	local name = path and path:match("([^\\/]+)$")
-	name = name and name:gsub("%.%w+$", ""):lower()
-	return name and QL.TOWN[name] or nil
+	return MelloUI.Safe.Text(data.Icon)
 end
 
 -- a picture's look by its file's name, nil for one of no look of ours

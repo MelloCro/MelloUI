@@ -49,7 +49,8 @@ local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
 local Canvas, Pins, Layers, Log, Search = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog, ns.Search
 local AddonPins, Objectives = ns.AddonPins, ns.Objectives
-local Trails = ns.Trails   -- (2.1.0: the boats' and the zeppelins' trails, MapTrails.lua)
+local Town = ns.TownMarks   -- (2.1.53: the town marks, MapTownMarks.lua)
+local Trails = ns.Trails  -- (2.1.0: the boats' and the zeppelins' trails, MapTrails.lua)
 local Dungeon = ns.Dungeon -- (2.1.0: a dungeon's own plan inside one, MapDungeon.lua)
 local floor, max, min = math.floor, math.max, math.min
 
@@ -97,7 +98,11 @@ local TEXT = {
 -- shows: a switch per layer, kept in the module's settings (db.layers[key] = false: off; every one on until switched).
 -- (2.1.0, the user's pick B: the gear's page beside the map, MapQuestLog's Log.Layers) each in its group, with its
 -- icon (the map's own picture of it, as the look draws it: MelloUI.Icons)
-local GROUPS = { "Quests", "Travel", "People and more" }
+-- (2.1.53; the user, 2026-11-15: "the best way where we can place those settings is on the Map Layers in the Map
+-- Directly, under the HandyNotes Category") the fourth group: a row a kind of town place (MapTownMarks' KINDS, added
+-- below), `town`: its marks are the plugin's places -- not a pins' layer shown or hidden but which kinds a zone's
+-- marks are built of; some start off (Town.Starts), kept in db.layers as true once switched on
+local GROUPS = { "Quests", "Travel", "People and more", "HandyNotes" }
 local SWITCHES = {
 	-- (2.1.51) Questie's givers too while they are the givers (MapAddonPins' LAYER.questGivers)
 	-- (2.1.52, stage 2) `questie`: a row whose marks are Questie's quest data -- without Questie it stands dimmed and
@@ -120,6 +125,9 @@ local SWITCHES = {
 	  icon = "svc_addons" },
 	{ key = "caves", label = "Caves (zoomed in close)", layers = {}, canvas = true, group = 3, icon = "obj_explore" },
 }
+for _, k in ipairs(Town.KINDS) do
+	SWITCHES[#SWITCHES + 1] = { key = k.layer, label = k.label, layers = {}, group = 4, town = k }
+end
 
 local M   -- (the module: its button opens it)
 M = MelloUI:RegisterModule("Map", {
@@ -461,9 +469,13 @@ end
 -- The layers' switches (the layers' page beside the map)
 --------------------------------------------------------------------------------
 
+-- (2.1.53) a layer never switched is as it starts: on, but for the town kinds that start off (Town.Starts)
 local function LayerOn(key)
 	local l = M.db and M.db.layers
-	return not (type(l) == "table" and l[key] == false)
+	if type(l) == "table" and (l[key] == true or l[key] == false) then
+		return l[key]
+	end
+	return Town.Starts(key) ~= false
 end
 
 local function ApplyLayers()
@@ -487,16 +499,25 @@ end
 local function SetLayer(key, on)
 	local db = M.db
 	db.layers = type(db.layers) == "table" and db.layers or {}
-	if on then
+	-- (kept only where it differs from how the layer starts: on -- off for the town kinds that start off)
+	on = on and true or false
+	if on == (Town.Starts(key) ~= false) then
 		db.layers[key] = nil
 	else
-		db.layers[key] = false
+		db.layers[key] = on
 	end
-	ApplyLayers()
-	local shown = win.frame and win.frame:IsShown()
+	-- (2.1.53; seen in the test client: M:SetLayer before the map's first open of a session raised "attempt to index
+	-- field 'canvas'") the window not made yet: the setting alone, and what the minimap wears of it below -- the
+	-- window applies every layer as it is made
+	local built = win.canvas ~= nil
+	if built then
+		ApplyLayers()
+	end
+	local shown = built and win.frame and win.frame:IsShown()
 	if key == "objectives" and shown then
 		Objectives.Lay()
 	end
+	local town = Town.Starts(key) ~= nil
 	if (key == "addons" or key == "quests" or key == "objectives") and shown then
 		-- (2.1.51) borrowing while any is wanted: other addons' icons, or Questie's givers, the givers then, (2.1.52) or
 		-- its objectives in its own look (MapAddonPins' Wanted); each on its own layer, which its switch shows or hides
@@ -506,9 +527,16 @@ local function SetLayer(key, on)
 			AddonPins.Close()
 		end
 	end
+	-- (2.1.53) a town kind's switch: the zones' marks built again of the kinds on now, the minimap's too; the other
+	-- addons' pins' switch: their nodes built or let go (MapAddonPins' BuildZone builds them only while it is on)
+	if town then
+		Town.Changed()
+	elseif key == "addons" and shown then
+		AddonPins.Stale()
+	end
 	-- (2.1.39) the quest givers' or objectives' layer on or off: Questie's icons of that kind looked at again (shown
 	-- here, in MelloUI's pictures, only while MelloUI's own layer of them is off: MapAddonPins' Cover); (2.1.43) the
-	-- flight masters' too: Questie's own then shown or not (MapAddonPins.TOWN)
+	-- flight masters' too: Questie's own then shown or not (MapTownMarks' Held: one owner a kind)
 	if (key == "quests" or key == "objectives" or key == "flights") and shown and AddonPins.Recheck then
 		AddonPins.Recheck()
 	end
@@ -517,7 +545,9 @@ local function SetLayer(key, on)
 	if key == "flights" then
 		Layers.MiniFlights(on and M.isEnabled)
 	end
-	win.pins:Lay()
+	if built then
+		win.pins:Lay()
+	end
 	Log.LayersChanged()
 end
 M.SetLayer, M.LayerOn = function(_, key, on) SetLayer(key, on) end, function(_, key) return LayerOn(key) end
@@ -1632,6 +1662,7 @@ function M:OnEnable(db)
 	Dungeon.Listen(true)   -- (2.1.0: the bosses down this run, for a dungeon's plan)
 	Fog()   -- (a profile's)
 	Layers.MiniFlights(LayerOn("flights"))   -- (2.1.50: the flight masters on the minimap)
+	Town.Mini(true)   -- (2.1.53: the town marks there, by the same switches)
 end
 
 function M:OnSettingChanged(key, _, db)
@@ -1661,6 +1692,7 @@ function M:OnDisable()
 	TakeHeader(false)
 	Dungeon.Listen(false)
 	Layers.MiniFlights(false)   -- (2.1.50)
+	Town.Mini(false)   -- (2.1.53)
 	if win.frame then
 		Dungeon.Hide()
 	end

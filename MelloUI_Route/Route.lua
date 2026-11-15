@@ -10760,6 +10760,9 @@ end
 -- (for the road recorder, Modules/RouteRecorder.lua) continent yards -> a
 -- map's 0..1 place, nil off that map's continent: OnMap(mapID, cont, x, y)
 M.OnMap = OnMap
+-- (2.1.53, the map's town marks on the minimap) a map's 0..1 place -> its continent, yards east, yards south; nil
+-- for a map with no place on a continent: ToYards(mapID, x, y)
+M.ToYards = ToYards
 
 function M:FollowedRemaining(questID)
 	local d = destination

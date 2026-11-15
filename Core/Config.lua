@@ -178,6 +178,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.53", lines = {
+		"Map: with the addon HandyNotes: NPCs (Forever), the auction house, bank, trainers, mount sellers, inns and mailboxes show on the map and minimap in MelloUI's icons.",
+		"Map layers: a new HandyNotes group, a switch for each kind of place. Only your side's show, and trainers of your own professions and class. Repair and vendors start off.",
+		"Map: one addon draws a kind of place. With HandyNotes: NPCs (Forever), Questie's innkeepers and mailboxes are not shown a second time.",
 		"Party and raid frames: a group you join during a fight now shows its frames at once, not only when the fight is over.",
 		"Party and raid frames: the Lockouts group works now: it shows what your own spells left on a member, like Weakened Soul after your shield or Forbearance.",
 		"Widgets: up to four loot rolls show at once, each its own row with its own ring and Need, Greed and Pass. Rolling on one takes only its row away; a fifth waits, counted on the last row.",

@@ -79,6 +79,7 @@ local T = {
 	SHOW_CONTINENT = 2,      -- HBD_PINS_WORLDMAP_SHOW_CONTINENT
 	SHOW_WORLD = 3,          -- HBD_PINS_WORLDMAP_SHOW_WORLD
 	DEPTH = 8,               -- parents walked up from a map this canvas does not have (a micro zone's, a cave's)
+	PICTURES = { "texture", "icon", "Texture", "Icon" },   -- (2.1.53) where an addon's icon frame keeps its picture
 }
 AddonPins.T = T
 
@@ -90,6 +91,9 @@ LAYER.questGivers = "quests_questie"
 -- a layer of their own under the map's Your quests' objectives switch. In MelloUI's look this map lays its own marks
 -- there and Questie's of that kind are never borrowed (Covered)
 LAYER.questObjectives = "objectives_questie"
+-- (2.1.53) the town marks (MapTownMarks: the plugin's places in MelloUI's icons): a layer of their own, each kind
+-- under its own switch of the layers' page -- never the other addons' pins' one
+LAYER.town = "addons_town"
 AddonPins.LAYER = LAYER
 
 local S = {
@@ -135,11 +139,32 @@ end
 
 -- (2.1.43; the user's pick, 2026-11-11: "Hide Questie's town icons that MelloUI already draws") Questie's townsfolk
 -- (its "manual" icons: one flight master, inn and mailbox a zone, the game's tracking pictures) of a kind this map
--- draws itself: [the picture's file name] = the map's layer that draws it. Its inns and mailboxes stay (none here)
--- (2.1.50: the core's table and test, MelloUI.QuestieLook.TOWN / Town -- one for this map and the minimap)
-local TOWN = MelloUI.QuestieLook.TOWN
-AddonPins.TOWN = TOWN
-local Town = MelloUI.QuestieLook.Town
+-- draws itself are not borrowed.
+-- (2.1.53; the user, 2026-11-15: "i only want 1 addon to have Priority on that even if 5 different addons are being
+-- used, no duplicate Icons from Different addons") ONE owner a kind of place, for every source: MapTownMarks' Held --
+-- a town pin's kind is known by the picture it wears (Questie's: its data's, QL.TownPicture; another addon's: its
+-- frame's own), and one whose kind an owner before its source has is not drawn
+local function TownKind(entry, icon)
+	local Town = ns.TownMarks
+	if not Town then
+		return nil
+	end
+	if entry.questie then
+		return Town.KindOfPicture(MelloUI.QuestieLook.TownPicture(icon))
+	end
+	for _, key in ipairs(T.PICTURES) do
+		local tex = rawget(icon, key)
+		if type(tex) == "table" and tex.GetTexture then
+			local get = tex.GetTextureFilePath or tex.GetTexture
+			local ok, path = pcall(get, tex)
+			local kind = ok and Town.KindOfPicture(path) or nil
+			if kind then
+				return kind
+			end
+		end
+	end
+	return nil
+end
 
 -- what this map shows of the quests already (taken once a pass): MapObjectives' objectives laid;
 -- (2.1.39; the user, 2026-11-10: "didnt i say that we provide the look? this way we have lost our own function which i
@@ -279,14 +304,24 @@ AddonPins.Restyled = function(icon)
 	return tex ~= nil and tex:IsShown() and tex or nil
 end
 
--- (MapLayers' quest givers and MapObjectives' objectives laid again) Questie's icons looked at again on the next beat
-function AddonPins.Recheck()
+-- (MapLayers' quest givers and MapObjectives' objectives laid again) Questie's icons looked at again on the next beat;
+-- (2.1.53) `others`: the other addons' instead -- their borrowed icons and their nodes (a town kind got an owner)
+function AddonPins.Recheck(others)
+	others = others == true
 	for _, entry in ipairs(S.libs) do
-		if entry.questie then
+		if entry.questie ~= others then
 			entry.full = true
 			S.queued = true
 		end
 	end
+	if others then
+		S.stale = true
+	end
+end
+
+-- (2.1.53; MapTownMarks: a kind's switch, a profession learned) the zones' nodes built again on the next beat
+function AddonPins.Stale()
+	S.stale = true
 end
 
 --------------------------------------------------------------------------------
@@ -421,10 +456,21 @@ local function Place(entry, icon, t, cover)
 	local questie = entry.questie
 	local dressed = questie and MelloUI.QuestieLook.Used()
 	local look = questie and QuestieLook(icon) or nil
-	local town = dressed and not look and Town(icon) or nil
 	local covered = false
-	if dressed then
-		covered = (look and Covered(look, icon, cover)) or (town and cover and cover[town]) or false
+	if dressed and look then
+		covered = Covered(look, icon, cover) or false
+	end
+	-- (2.1.53) a town pin (Questie's townsfolk, another addon's) of a kind an owner before it has: not twice
+	local town = not look and TownKind(entry, icon) or nil
+	if town then
+		local Town = ns.TownMarks
+		if Town.Held(town, questie and "questie" or "other") then
+			covered = true
+		elseif questie and not Town.questie[town] then
+			-- (Questie's townsfolk of this kind stand here now: the other addons' pins of it looked at again)
+			Town.questie[town] = true
+			AddonPins.Recheck(true)
+		end
 	end
 	if questie then
 		MelloUI.QuestieLook.Unlist(icon, covered)   -- (2.1.39: left out of Questie's tooltip too)
@@ -596,6 +642,7 @@ local function Ace(name)
 	local ok, addon = pcall(ace.GetAddon, ace, name, true)
 	return ok and type(addon) == "table" and addon or nil
 end
+AddonPins.Ace = Ace   -- (MapTownMarks)
 
 -- a node's own picture cut from a sheet (HandyNotes' iconpath tables)
 local function CutLook(tex, pin)
@@ -633,6 +680,8 @@ local function NodeClick(pin, button, anchor)
 		pcall(handler.OnClick, anchor, button, false, mapID, coord)
 	end
 end
+-- (2.1.53, MapTownMarks: a town mark's tooltip and click are its plugin's too; data = { plugin, map, coord })
+AddonPins.NODE = { enter = NodeEnter, leave = NodeLeave, click = NodeClick }
 
 -- (GatherMate2) the node's name in its tracking colour, as its own tooltip has it
 local function GatherTip(tooltip, pin)
@@ -666,8 +715,12 @@ Sources[1] = function(id, add)
 	local db = hn.db.profile
 	local enabled = type(db.enabledPlugins) == "table" and db.enabledPlugins or {}
 	local scale, alpha = Finite(db.icon_scale) or 1, Finite(db.icon_alpha) or 1
+	-- (2.1.53) the town marks' plugin in MelloUI's look: its places are MapTownMarks' (their own layer and switches),
+	-- never drawn here too; and another plugin's node of a town kind an owner before it has: not twice (Town.Held)
+	local Town = ns.TownMarks
+	local mine = Town and Town.Used() and Town.T.PLUGIN or nil
 	for name, handler in pairs(hn.plugins) do
-		if enabled[name] and type(handler) == "table" and type(handler.GetNodes2) == "function" then
+		if name ~= mine and enabled[name] and type(handler) == "table" and type(handler.GetNodes2) == "function" then
 			local ok, iter, state, value = pcall(handler.GetNodes2, handler, id, false)
 			if ok and type(iter) == "function" then
 				local guard = 0
@@ -697,7 +750,9 @@ Sources[1] = function(id, add)
 						else
 							spec.icon = icon
 						end
-						add("hn:" .. name .. ":" .. (map2 or id) .. ":" .. coord, map2 or id, x, y, spec)
+						if not (Town and Town.Held(Town.KindOfPicture(spec.icon), "other")) then
+							add("hn:" .. name .. ":" .. (map2 or id) .. ":" .. coord, map2 or id, x, y, spec)
+						end
 					end
 				end
 			end
@@ -783,13 +838,18 @@ Sources[3] = function(id, add)
 		end
 	end
 end
-local building   -- the zone being built (its pins' keys)
+local building, buildingTown   -- the zone being built (its pins' keys: the other addons' nodes, the town marks)
 local function AddNode(key, mapID, x, y, spec)
 	if spec.icon or spec.atlas then
 		local pin = S.pins:SetAt(LAYER.zone, key, mapID, x, y, spec)
 		if pin then
 			building[#building + 1] = key
 		end
+	end
+end
+local function AddTown(key, mapID, x, y, spec)
+	if S.pins:SetAt(LAYER.town, key, mapID, x, y, spec) then
+		buildingTown[#buildingTown + 1] = key
 	end
 end
 
@@ -800,6 +860,9 @@ local function DropZone(id)
 	end
 	for _, key in ipairs(z.keys) do
 		S.pins:Remove(LAYER.zone, key)
+	end
+	for _, key in ipairs(z.town) do
+		S.pins:Remove(LAYER.town, key)
 	end
 	S.zones[id] = nil
 	S.zoneCount = S.zoneCount - 1
@@ -812,14 +875,23 @@ local function DropZones()
 	S.cut = nil
 end
 
+-- (2.1.53) the other addons' nodes only while their layer is on (its switch off, and the map open for Questie's
+-- givers or the town marks: none built for a layer nobody sees -- Map.lua's SetLayer builds the zones again as the
+-- switch turns); the town marks by their own switches (MapTownMarks)
 local function BuildZone(id)
-	building = {}
-	for _, source in ipairs(Sources) do
-		source(id, AddNode)
+	building, buildingTown = {}, {}
+	if S.pins.layers[LAYER.zone].on then
+		for _, source in ipairs(Sources) do
+			source(id, AddNode)
+		end
 	end
-	S.zones[id] = { keys = building, gen = S.zoneGen }
+	local Town = ns.TownMarks
+	if Town then
+		Town.Zone(id, AddTown)
+	end
+	S.zones[id] = { keys = building, town = buildingTown, gen = S.zoneGen }
 	S.zoneCount = S.zoneCount + 1
-	building = nil
+	building, buildingTown = nil, nil
 end
 
 -- the zones in view at a zone's zoom built (a few a frame), the farthest seen last let go past KEEP
@@ -1022,6 +1094,7 @@ function AddonPins.Init(canvas, pins)
 	local objectives = pins:Layer(LAYER.questObjectives, T.ORDER.zone, { minZ = T.ZONE_FROM })   -- (2.1.52: too)
 	S.ours[zone.frame], S.ours[cont.frame], S.ours[world.frame], S.ours[givers.frame] = true, true, true, true
 	S.ours[objectives.frame] = true
+	pins:Layer(LAYER.town, T.ORDER.zone, { minZ = T.ZONE_FROM })   -- (2.1.53: the town marks, as the zone's)
 end
 
 -- (the API's pins added before the map's places were made: laid at its first open, the canvas laid out)
@@ -1046,6 +1119,11 @@ function AddonPins.Wanted()
 		return false
 	end
 	if S.pins.layers[LAYER.zone].on then
+		return true
+	end
+	-- (2.1.53) the town marks: their own layer, whatever the other addons' pins' switch says
+	local Town = ns.TownMarks
+	if Town and Town.Used() then
 		return true
 	end
 	local QLook = MelloUI.QuestieLook
@@ -1091,6 +1169,9 @@ function AddonPins.Close()
 	end
 	wipe(S.queue)
 	DropZones()
+	if ns.TownMarks then
+		wipe(ns.TownMarks.questie)   -- (2.1.53: which town kinds Questie has, found again at the next open)
+	end
 	-- (2.1.43: RareScanner asked again at the next open: what was killed or opened since)
 	local RL = MelloUI.RareScannerLook
 	if RL and RL.Forget then

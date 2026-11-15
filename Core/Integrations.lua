@@ -7,7 +7,7 @@
 -- (MelloUIDB.integrations[key] = false: off; on until switched), read where MelloUI meets that addon (I.Use(key)):
 -- Questie in Core/QuestSource.lua, Core/QuestieLook.lua, MelloUI_Map/MapAddonPins.lua and Modules/Nameplates.lua;
 -- RareScanner in Core/RareScannerLook.lua; Polestar in Core/Overlaps.lua; GatherMate2 and HandyNotes in
--- MapAddonPins' sources; the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
+-- MapAddonPins' sources; HandyNotes: NPCs (Forever) in MelloUI_Map/MapTownMarks.lua (2.1.53); the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
 -- MelloUI:ClickCast; SharedMedia in Core/SharedMedia.lua (2.1.45: the sounds too); the bag addons in Core/Overlaps.lua's
 -- "bags" job (2.1.49: MelloUI's bag window steps aside); AHledger's auction prices in Modules/Discard.lua (2.1.50). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
 -- but two quest trackers never show at once (Core/Overlaps.lua's questTracker stays).
@@ -275,6 +275,27 @@ I.LIST = {
 		local hn = Ace("HandyNotes")
 		return hn ~= nil and type(hn.plugins) == "table"
 	  end } } },
+	-- (2.1.53; the user, 2026-11-15: "people were asking for Important NPC locations on the Map and minimap, can we
+	-- utilize HandyNotes Addon for this", "Yes, MelloUI Decides") the HandyNotes plugin with the town NPCs' places:
+	-- MelloUI_Map/MapTownMarks.lua reads its places and shows them by the map's layers page's switches, in MelloUI's
+	-- icons, one owner a kind across the addons. Its switch is the look only: off, it shows its own way
+	{ key = "HandyNotesNPCs", name = "HandyNotes: NPCs (Forever)", folders = { "HandyNotes_NPCs_Forever" }, group = "map",
+	  url = "https://www.curseforge.com/wow/addons/handynotes-npcs-forever",
+	  use = "MelloUI's look",
+	  offPill = "Its own look",
+	  offLine = "It shows its own icons, chosen in its own menu, on MelloUI's map and on the minimap.",
+	  does = {
+		"Its places of the auction house, the bank, trainers, mount sellers and more on MelloUI's map and the minimap, in MelloUI's icons.",
+		"The map's layers page chooses which kinds show, under HandyNotes: your side's only, and trainers of your own professions and class.",
+		"One addon draws a kind of place: its places stand before Questie's innkeepers and mailboxes and other addons' pins of the same kind.",
+	  },
+	  short = "Its town NPC places in MelloUI's icons, chosen on the map's layers page",
+	  links = { { "Map layers", map = true } },
+	  parts = { { "its places", function()
+		local hn = Ace("HandyNotes")
+		local handler = hn and type(hn.plugins) == "table" and hn.plugins.HandyNotes_NPCs_Forever
+		return type(handler) == "table" and type(handler.GetNodes2) == "function"
+	  end } } },
 	-- (2.1.51; Shumi's report) Offhand keeps the game on one screen and panels on another: what centres on the character
 	-- centres on its main screen (I.PlayArea)
 	{ key = "Offhand", name = "Offhand", folders = { "Offhand" }, group = "frames",
@@ -431,8 +452,11 @@ end
 -- (2.1.52, stage 2) a needed addon's card (the map's layers page and the Quest List without Questie: Get Questie):
 -- the Addons page on its Installed tab, at its top -- the needed addons' cards stand first there, installed or not
 -- (Core/AddonsPage.lua). The button's words: Get <its name>
-function I.Open()
-	MelloUI:OpenConfig("installed addons")
+-- (2.1.53) `key`: an addon that is not installed and has no card of its own there (not `needed`: the town marks'
+-- plugin) is on the Compatibility tab, with its link
+function I.Open(key)
+	local e = key and I.ByKey[key]
+	MelloUI:OpenConfig((e and not e.needed and not I.Installed(e)) and "compatibility" or "installed addons")
 	local okT, tour = pcall(MelloUI.ConfigTour, MelloUI)
 	local page = okT and type(tour) == "table" and type(tour.page) == "function" and tour.page("Addons")
 	if type(page) == "table" and page.pager and page.pager.ScrollTo then
@@ -540,6 +564,13 @@ function I.Jobs()
 			or (quests == "questie" and "Questie, in its own look" or "Not shown (Questie adds them)") }
 	rows[#rows + 1] = { "Flight masters on MelloUI's map", "MelloUI",
 		questie and "Questie's hidden while the Flight masters layer is on" or nil }
+	-- (2.1.53) the town NPCs' places: one owner a kind (MelloUI_Map/MapTownMarks.lua)
+	local places = Used("HandyNotes") and Used("HandyNotesNPCs")
+	local installed = I.Installed(I.ByKey.Questie) ~= nil
+	rows[#rows + 1] = { "Auction houses, banks, trainers, inns and mailboxes on the maps",
+		places and "HandyNotes: NPCs (Forever), in MelloUI's icons"
+			or (installed and "Questie's innkeepers and mailboxes" or "Not shown (HandyNotes: NPCs (Forever) adds them)"),
+		places and installed and "Questie's of the same kinds hidden on MelloUI's map" or nil }
 	if By("rare") == "Polestar" then
 		rows[#rows + 1] = { "Rare alerts", "Polestar", "MelloUI's Rare Alert steps aside" }
 	else

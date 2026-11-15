@@ -2,6 +2,10 @@
 
 ## 2.1.53
 
+- Map: important NPC places now show on MelloUI's map and on the minimap, in MelloUI's own icons, with the addon HandyNotes: NPCs (Forever) installed: the auction house, the bank, riding trainers, mount sellers, trainers of your professions and your class, innkeepers and mailboxes. Only your side's and the neutral ones are shown. Point at one for its tooltip, click it for a waypoint.
+- Map layers: a new HandyNotes group with a switch for each kind of place. Repair, stable masters, vendors by what they sell, battlemasters, weapon masters, guild masters, transmogrifiers and spirit healers start off, so a city stays readable. Stable masters start on for a hunter.
+- Map: one addon draws a kind of place. With HandyNotes: NPCs (Forever), Questie's innkeepers and mailboxes and other addons' pins of the same kinds are not shown a second time on MelloUI's map.
+- Addons page: HandyNotes: NPCs (Forever) has a card of its own. With its MelloUI's look switch off, it shows its own icons, chosen in its own menu.
 - Party and raid frames: a group you join during a fight now shows its frames at once. Before, your own frame and your party's showed only when the fight was over.
 - Party and raid frames: the Lockouts group works now. It shows the debuffs your own spells left on a member, such as Weakened Soul after your shield or Forbearance after your blessing. The game does not let a debuff be picked by its spell, so another player's are not shown, and a debuff typed as a spell of its own now says so instead of never showing.
 - Widgets: up to four loot rolls show at once, each its own row with its own ring and Need, Greed and Pass. Rolling on one takes only its row away; a fifth waits, counted on the last row.

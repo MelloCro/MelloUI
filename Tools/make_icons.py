@@ -40,7 +40,11 @@ for n in ("track_todo", "track_handin", "svc_repair", "svc_mail", "svc_inn", "sv
           # (Batch 30, 2026-10-20: Services' Errands and AddOns groups, the user's "needs its own icon to fit the theme")
           "svc_errands", "svc_addons",
           # (2.1.50, Batch 33: the hunters' Stable Master, the user's pick S2 of craft_stable_turnin_sketch)
-          "svc_stable"):
+          "svc_stable",
+          # (2.1.53, Batch 34: the map's town marks with no icon yet -- MelloUI_Map/MapTownMarks.lua's kinds; the
+          # user's pick "All A" of town_mark_icons_sketch, 2026-11-15)
+          "svc_riding", "svc_mounts", "svc_battlemaster", "svc_weaponmaster", "svc_guild", "svc_transmog",
+          "svc_spirit"):
     SET.append(("services", n, n, 64))
 for n in ("chat_general", "chat_combat", "chat_loot", "chat_whispers", "chan_say", "chan_party", "chan_raid",
           "chan_instance", "chan_guild", "chan_yell", "chan_whisper", "chan_emote", "chat_channels", "chat_friends",
