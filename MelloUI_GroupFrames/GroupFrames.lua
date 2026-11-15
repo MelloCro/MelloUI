@@ -132,6 +132,16 @@ end
 RD.POINTS = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
 
 -- the sizes a part may take (an icon, a square, a bar's thickness; text)
+-- (2.1.53; the user, 2026-11-15: "when in combat and i join a group, the group frames only show once the combat is
+-- done" -- measured on two clients in a fight after a join: in a group, party1 there, the member's frame shown by the
+-- game's unit watch, yours and the members' holder not, both waiting on "[group]") The game's own group tests
+-- ("[group]", "[group:raid]") do not turn while you fight on this client; a unit's being there does (the unit watch;
+-- "[@target,exists]" hid a frame of ours in a fight as its target died). So every rule that shows or hides a group
+-- frame asks by a unit: in a raid its first unit is there, in a group your first party member is. RD.IN_RAID comes
+-- first in a rule: party1 is there in a raid too (your own subgroup's)
+RD.IN_RAID = "[@raid1,exists]"
+RD.IN_GROUP = "[@party1,exists]"
+
 -- (2.1.53, the user's pick 2 of the Indicator Places sketch, "both numbers everywhere": the time left and the stack
 -- count, both 9, lay on each other on an icon 10 to 13 wide) a new indicator's texts are 7, its count hung on the
 -- icon's corner (RD.COUNT_AT) clear of the time in its middle. An indicator already saved keeps its own
