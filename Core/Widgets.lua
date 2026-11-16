@@ -3720,7 +3720,9 @@ do
 	-- a path to one of the set's round buttons and pins (Services, the chat, the buttons, the pins, Route's goal):
 	-- pictures with their own disc and ring, which a round button shows whole, with no rim of its own over them (a
 	-- path in a look's own set's folder too, 1.2.4: Oldschool's, its square frames -- MelloUI.Icons)
-	local RINGED = { "svc_", "track_", "pin_", "chat_", "chan_", "btn_", "goal_", "obj_" }
+	-- (2.1.55: the role picker's role_, Modules/RolePicker.lua -- each set draws its own ring or frame, the Default
+	-- skin's game medallions theirs)
+	local RINGED = { "svc_", "track_", "pin_", "chat_", "chan_", "btn_", "goal_", "obj_", "role_" }
 	function W.IconRinged(texture)
 		if type(texture) ~= "string" or not texture:find("\\", 1, true) then
 			return false

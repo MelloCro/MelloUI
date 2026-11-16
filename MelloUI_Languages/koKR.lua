@@ -2956,6 +2956,22 @@ Lang:Add("koKR", {
 	["Nearest trainer: %s"] = "가장 가까운 상급자: %s", -- draft
 	["Visit your class trainer"] = "직업 상급자를 찾아가세요", -- draft
 	["Route after the fight"] = "전투 후 경로", -- draft
+	-- the role picker (Modules/RolePicker.lua, 2.1.55)
+	["Role Picker"] = "역할 선택", -- draft
+	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "파티로 던전이나 공격대에 들어가면 직업이 맡을 수 있는 역할이 캐릭터 위에 나타납니다. 하나를 클릭하면 그 역할이 됩니다. 다음 던전에도 기억을 체크하면 다음부터는 자동으로 정해집니다.", -- draft
+	["Tank, heal or hit: one click at the door."] = "방어, 치유, 공격: 입구에서 클릭 한 번.", -- draft
+	["Role On Entering"] = "입장 시 역할", -- draft
+	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "매번 묻기는 입장할 때 역할을 보여 줍니다. 여기서 정한 역할은 파티로 들어가는 모든 던전과 공격대에서 선택 없이 내 역할이 됩니다. 선택 창의 다음 던전에도 기억으로도 정할 수 있습니다.", -- draft
+	["Ask Every Time"] = "매번 묻기", -- draft
+	["Tank"] = "방어 전담", -- draft
+	["Healer"] = "치유 전담", -- draft
+	["Role Picker Motion"] = "역할 선택 움직임", -- draft
+	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "역할이 캐릭터 위로 하나씩 떨어지고, 고른 역할은 별빛 폭발 위로 커집니다. 끄면 바로 나타났다 사라집니다.", -- draft
+	["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "역할 선택: 파티로 던전에 들어가면 직업의 역할이 캐릭터 위로 떨어집니다. 클릭 한 번으로 정하고, 다음 던전을 위해 기억해 둘 수도 있습니다.", -- draft
+	["Role: %s"] = "역할: %s", -- draft
+	["Role: %s (remembered)"] = "역할: %s (기억됨)", -- draft
+	["Remember for future dungeons"] = "다음 던전에도 기억", -- draft
+	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "역할 선택이 꺼져 있습니다: 편의 기능 > 역할 선택에서 켜세요.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

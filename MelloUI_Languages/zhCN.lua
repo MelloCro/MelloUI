@@ -2956,6 +2956,22 @@ Lang:Add("zhCN", {
 	["Nearest trainer: %s"] = "最近的训练师：%s", -- draft
 	["Visit your class trainer"] = "去拜访你的职业训练师", -- draft
 	["Route after the fight"] = "战斗结束后设置路线", -- draft
+	-- the role picker (Modules/RolePicker.lua, 2.1.55)
+	["Role Picker"] = "职责选择", -- draft
+	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "与队伍一起进入地下城或团队副本时，你的职业能担任的职责会出现在角色上方：点击其中一个，它就是你的职责。勾选“记住用于以后的地下城”，以后的副本会自动设置它。", -- draft
+	["Tank, heal or hit: one click at the door."] = "坦克、治疗还是输出：门口一键搞定。", -- draft
+	["Role On Entering"] = "进入时的职责", -- draft
+	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "“每次都询问”会在进入时显示职责。在这里设置的职责会在你与队伍进入的每个地下城和团队副本中自动成为你的职责，不再显示选择。选择框上的“记住用于以后的地下城”也会设置它。", -- draft
+	["Ask Every Time"] = "每次都询问", -- draft
+	["Tank"] = "坦克", -- draft
+	["Healer"] = "治疗者", -- draft
+	["Role Picker Motion"] = "职责选择动画", -- draft
+	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "职责会一个接一个地落在角色上方，你选择的那个会在星光爆发中放大。关闭：它们会立即出现和消失。", -- draft
+	["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "职责选择：与队伍进入地下城时，你职业的职责会落在角色上方。点击一下即可设置，也可以让它为以后的副本记住。", -- draft
+	["Role: %s"] = "职责：%s", -- draft
+	["Role: %s (remembered)"] = "职责：%s（已记住）", -- draft
+	["Remember for future dungeons"] = "记住用于以后的地下城", -- draft
+	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "职责选择已关闭：请在 便捷功能 > 职责选择 中开启。", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

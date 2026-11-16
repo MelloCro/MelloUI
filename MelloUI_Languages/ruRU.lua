@@ -2956,6 +2956,22 @@ Lang:Add("ruRU", {
 	["Nearest trainer: %s"] = "Ближайший наставник: %s", -- draft
 	["Visit your class trainer"] = "Посетите классового наставника", -- draft
 	["Route after the fight"] = "Маршрут после боя", -- draft
+	-- the role picker (Modules/RolePicker.lua, 2.1.55)
+	["Role Picker"] = "Выбор роли", -- draft
+	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "Когда вы входите в подземелье или рейд в группе, над персонажем появляются роли, доступные вашему классу: щёлкните по одной, и она ваша. Отметьте «Запомнить для следующих подземелий», и в следующих она будет выбрана сама.", -- draft
+	["Tank, heal or hit: one click at the door."] = "Танк, лекарь или урон: один щелчок у входа.", -- draft
+	["Role On Entering"] = "Роль при входе", -- draft
+	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "«Спрашивать каждый раз» показывает роли при входе. Роль, выбранная здесь, будет вашей в каждом подземелье и рейде, куда вы входите в группе, без выбора. «Запомнить для следующих подземелий» в окне выбора тоже задаёт её.", -- draft
+	["Ask Every Time"] = "Спрашивать каждый раз", -- draft
+	["Tank"] = "Танк", -- draft
+	["Healer"] = "Лекарь", -- draft
+	["Role Picker Motion"] = "Анимация выбора роли", -- draft
+	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "Роли падают над персонажем одна за другой, а выбранная увеличивается на фоне звёздной вспышки. Выкл.: они появляются и исчезают сразу.", -- draft
+	["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "Выбор роли: при входе в подземелье в группе роли вашего класса падают над персонажем. Один щелчок задаёт вашу, и он может запомнить её для следующих.", -- draft
+	["Role: %s"] = "Роль: %s", -- draft
+	["Role: %s (remembered)"] = "Роль: %s (запомнена)", -- draft
+	["Remember for future dungeons"] = "Запомнить для следующих подземелий", -- draft
+	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Выбор роли выключен: включите его в «Удобство» > «Выбор роли».", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

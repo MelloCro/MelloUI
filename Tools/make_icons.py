@@ -62,6 +62,10 @@ for n in ("btn_pause", "btn_play", "btn_next", "btn_stop", "btn_list", "btn_lock
           # (1.2.0, Dungeon Info's button over the map: btn_list's ring and disc, a door; icons_v2/make_btn_dungeon.py)
           "btn_dungeon"):
     SET.append(("buttons", n, n, 64))
+# (2.1.55, Batch 36: the role picker's three roles on the round buttons' ring -- icons_v2/make_btn_roles.py; the user's
+# pick "B, 4, B" of role_picker_sketch, 2026-11-16; Oldschool's sheet14 has its painted ones)
+for n in ("role_tank", "role_healer", "role_damage"):
+    SET.append(("roles", n, n, 64))
 for n in ("ql_completed", "ql_chest", "ql_notyet"):
     SET.append(("questlist", n, n, 64))
 SET += [("bags", "bag_backpack", "bag_backpack", 128), ("bags", "bag_reagent", "bag_reagent", 64)]

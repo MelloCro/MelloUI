@@ -3734,6 +3734,22 @@ Lang:Add("deDE", {
 	["Quest: %s"] = "Quest: %s",
 	["Door: %s"] = "Eingang: %s",
 	["%s, level %d to %d"] = "%s, Stufe %d bis %d",
+	-- the role picker (Modules/RolePicker.lua, 2.1.55)
+	["Role Picker"] = "Rollenwahl", -- draft
+	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "Betrittst du in einer Gruppe einen Dungeon oder Schlachtzug, erscheinen die Rollen deiner Klasse über deinem Charakter: Klicke eine an, und sie gehört dir. Hake Für künftige Dungeons merken an, und die nächsten setzen sie von selbst.", -- draft
+	["Tank, heal or hit: one click at the door."] = "Tank, Heiler oder Schaden: ein Klick an der Tür.", -- draft
+	["Role On Entering"] = "Rolle beim Betreten", -- draft
+	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "Jedes Mal fragen zeigt die Rollen beim Betreten. Eine hier gesetzte Rolle ist deine in jedem Dungeon und Schlachtzug, den du in einer Gruppe betrittst, ohne Auswahl. Für künftige Dungeons merken in der Auswahl setzt sie ebenfalls.", -- draft
+	["Ask Every Time"] = "Jedes Mal fragen", -- draft
+	["Tank"] = "Tank", -- draft
+	["Healer"] = "Heiler", -- draft
+	["Role Picker Motion"] = "Bewegung der Rollenwahl", -- draft
+	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "Die Rollen fallen nacheinander über deinem Charakter herein, und die gewählte schwillt über einem Sternenblitz an. Aus: Sie erscheinen und verschwinden sofort.", -- draft
+	["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "Rollenwahl: Betrittst du in einer Gruppe einen Dungeon, fallen die Rollen deiner Klasse über deinem Charakter herein. Ein Klick setzt deine, und sie kann sie sich für die nächsten merken.", -- draft
+	["Role: %s"] = "Rolle: %s", -- draft
+	["Role: %s (remembered)"] = "Rolle: %s (gemerkt)", -- draft
+	["Remember for future dungeons"] = "Für künftige Dungeons merken", -- draft
+	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Die Rollenwahl ist aus: Schalte sie unter Komfort > Rollenwahl ein.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

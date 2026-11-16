@@ -2956,6 +2956,22 @@ Lang:Add("esES", {
 	["Nearest trainer: %s"] = "Instructor más cercano: %s", -- draft
 	["Visit your class trainer"] = "Visita a tu instructor de clase", -- draft
 	["Route after the fight"] = "Ruta tras el combate", -- draft
+	-- the role picker (Modules/RolePicker.lua, 2.1.55)
+	["Role Picker"] = "Selector de rol", -- draft
+	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "Al entrar en una mazmorra o banda en grupo, los roles que puede tomar tu clase aparecen sobre tu personaje: haz clic en uno y es tuyo. Marca Recordar para futuras mazmorras y las siguientes lo asignan solas.", -- draft
+	["Tank, heal or hit: one click at the door."] = "Tanque, sanar o golpear: un clic en la puerta.", -- draft
+	["Role On Entering"] = "Rol al entrar", -- draft
+	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "Preguntar siempre muestra los roles al entrar. Un rol elegido aquí es el tuyo en cada mazmorra y banda a la que entres en grupo, sin selector. Recordar para futuras mazmorras en el selector también lo elige.", -- draft
+	["Ask Every Time"] = "Preguntar siempre", -- draft
+	["Tank"] = "Tanque", -- draft
+	["Healer"] = "Sanador", -- draft
+	["Role Picker Motion"] = "Movimiento del selector de rol", -- draft
+	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "Los roles caen uno tras otro sobre tu personaje, y el que eliges se agranda sobre un estallido de estrellas. Desactivado: aparecen y se van al instante.", -- draft
+	["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "Selector de rol: al entrar en una mazmorra en grupo, los roles de tu clase caen sobre tu personaje. Un clic elige el tuyo, y puede recordarlo para las siguientes.", -- draft
+	["Role: %s"] = "Rol: %s", -- draft
+	["Role: %s (remembered)"] = "Rol: %s (recordado)", -- draft
+	["Remember for future dungeons"] = "Recordar para futuras mazmorras", -- draft
+	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "El selector de rol está desactivado: actívalo en Comodidad > Selector de rol.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

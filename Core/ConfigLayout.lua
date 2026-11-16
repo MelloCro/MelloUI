@@ -163,7 +163,8 @@ L.pages = {
 		flavour = "Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose.",
 		tabs = { "General", "Frames", "Nameplates", "Bars & Windows", "Travel" },
 		cards = { Frames = { "Heal Effects", "Cooldown Effects", "Personal Display" },
-			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Quest Moments", "Services Bar" } } },
+			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Quest Moments", "Role Picker",
+				"Services Bar" } } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
 	-- party and raid frames (MelloUI's own) and the Personal Display: pick a frame, then a part of it; its own
 	-- options under the part's (docs/plans/onelook-designer/c7-lite.md, ugf-audit.md)
@@ -354,7 +355,7 @@ L.pages = {
 	QualityOfLife = { title = "Quality of Life", icon = "module:Vendor", set = "page_automation",
 		flavour = "The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip.",
 		tabs = { "Vendor", "Restock", "Quests", "Notices", "Combat Text", "Gains", "Error Messages", "Reminders", "Widgets",
-			"FPS / Latency", "Tooltip" } },
+			"Role Picker", "FPS / Latency", "Tooltip" } },
 	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", set = "page_voice", module = "VoiceOver",
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
 	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", set = "page_sounds", module = "CustomSounds",
@@ -1440,6 +1441,10 @@ function L.Define(R, Link)
 	R("Map", "Dungeon Info", "General", "DungeonInfo.doorRow")
 
 	-- Reminders (each tab's first row its module's switch)
+	-- (2.1.55; the user, 2026-11-16: "every time i enter a instance, above my character there appears a role
+	-- selection", "And a checkbox that asks if i want to save that role for future dungeons") its own tab
+	R("QualityOfLife", "Role Picker", "General", "RolePicker.!enabled", { name = "Role Picker" })
+	R("QualityOfLife", "Role Picker", "Behaviour", "RolePicker.remember")
 	R("QualityOfLife", "Reminders", "General", "Reminders.!enabled", { name = "Reminders" })
 	R("QualityOfLife", "Reminders", "General", "Reminders.remind_mail")
 	R("QualityOfLife", "Reminders", "General", "Reminders.remind_repair")
@@ -1540,6 +1545,8 @@ function L.Define(R, Link)
 	R("Animations", "Bars & Windows", "Look", "QuestMoments.progress", { card = "Quest Moments" })
 	R("Animations", "Bars & Windows", "Look", "QuestMoments.objective", { card = "Quest Moments" })
 	R("Animations", "Bars & Windows", "Look", "QuestMoments.quest", { card = "Quest Moments" })
+	-- (2.1.55; the user, 2026-11-16: the role picker above the character, "A, but make it animated", the pick "B, 4, B")
+	R("Animations", "Bars & Windows", "Look", "RolePicker.motion", { card = "Role Picker" })
 	R("Animations", "Bars & Windows", "Look", "Services.trayDrawer", { card = "Services Bar" })   -- (0.22.1: the trays slide out)
 	R("Animations", "Travel", "General", "Route.drawIn")
 	R("Animations", "Travel", "General", "Route.markerWisp")

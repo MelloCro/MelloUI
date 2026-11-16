@@ -4247,6 +4247,22 @@ Lang:Add("frFR", {
 	["Ready Check"] = "Vérification de disponibilité",
 	["Centre Icon"] = "Icône centrale",
 	["Leader Icon"] = "Icône du chef",
+	-- the role picker (Modules/RolePicker.lua, 2.1.55)
+	["Role Picker"] = "Choix du rôle", -- draft
+	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "Quand vous entrez dans un donjon ou un raid en groupe, les rôles de votre classe apparaissent au-dessus de votre personnage : cliquez sur l’un d’eux et il est à vous. Cochez Retenir pour les prochains donjons et les suivants le choisissent tout seuls.", -- draft
+	["Tank, heal or hit: one click at the door."] = "Tank, soin ou dégâts : un clic à l’entrée.", -- draft
+	["Role On Entering"] = "Rôle en entrant", -- draft
+	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "Demander à chaque fois montre les rôles quand vous entrez. Un rôle choisi ici est le vôtre dans chaque donjon et raid où vous entrez en groupe, sans choix à faire. Retenir pour les prochains donjons sur le sélecteur le règle aussi.", -- draft
+	["Ask Every Time"] = "Demander à chaque fois", -- draft
+	["Tank"] = "Tank", -- draft
+	["Healer"] = "Soigneur", -- draft
+	["Role Picker Motion"] = "Animation du choix du rôle", -- draft
+	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "Les rôles tombent l’un après l’autre au-dessus de votre personnage, et celui que vous choisissez grossit sur une explosion d’étoiles. Désactivé : ils apparaissent et partent aussitôt.", -- draft
+	["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "Choix du rôle : en entrant dans un donjon en groupe, les rôles de votre classe tombent au-dessus de votre personnage. Un clic règle le vôtre, et il peut le retenir pour les suivants.", -- draft
+	["Role: %s"] = "Rôle : %s", -- draft
+	["Role: %s (remembered)"] = "Rôle : %s (retenu)", -- draft
+	["Remember for future dungeons"] = "Retenir pour les prochains donjons", -- draft
+	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Le choix du rôle est désactivé : activez-le dans Confort > Choix du rôle.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

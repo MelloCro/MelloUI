@@ -2956,6 +2956,22 @@ Lang:Add("ptBR", {
 	["Nearest trainer: %s"] = "Instrutor mais próximo: %s", -- draft
 	["Visit your class trainer"] = "Visite seu instrutor de classe", -- draft
 	["Route after the fight"] = "Rota depois do combate", -- draft
+	-- the role picker (Modules/RolePicker.lua, 2.1.55)
+	["Role Picker"] = "Seletor de função", -- draft
+	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "Ao entrar em uma masmorra ou raide em grupo, as funções que sua classe pode assumir aparecem acima do seu personagem: clique em uma e ela é sua. Marque Lembrar nas próximas masmorras e as seguintes a definem sozinhas.", -- draft
+	["Tank, heal or hit: one click at the door."] = "Tanque, cura ou dano: um clique na porta.", -- draft
+	["Role On Entering"] = "Função ao entrar", -- draft
+	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "Perguntar sempre mostra as funções ao entrar. Uma função escolhida aqui é a sua em cada masmorra e raide em que você entrar em grupo, sem seletor. Lembrar nas próximas masmorras no seletor também a define.", -- draft
+	["Ask Every Time"] = "Perguntar sempre", -- draft
+	["Tank"] = "Tanque", -- draft
+	["Healer"] = "Curador", -- draft
+	["Role Picker Motion"] = "Movimento do seletor de função", -- draft
+	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "As funções caem uma após a outra acima do seu personagem, e a que você escolhe cresce sobre uma explosão de estrelas. Desligado: elas aparecem e somem na hora.", -- draft
+	["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "Seletor de função: ao entrar em uma masmorra em grupo, as funções da sua classe caem acima do seu personagem. Um clique define a sua, e ele pode lembrá-la nas próximas.", -- draft
+	["Role: %s"] = "Função: %s", -- draft
+	["Role: %s (remembered)"] = "Função: %s (lembrada)", -- draft
+	["Remember for future dungeons"] = "Lembrar nas próximas masmorras", -- draft
+	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "O seletor de função está desligado: ligue-o em Conveniência > Seletor de função.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

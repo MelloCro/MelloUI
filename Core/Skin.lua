@@ -637,6 +637,11 @@ local ICON = {
 	svc_mail = { atlas = "Mailbox", disc = true }, svc_proftrainer = { atlas = "Profession", disc = true },
 	svc_vendor = { atlas = "Food", disc = true }, svc_addons = { atlas = "mechagon-projects", disc = true },
 	svc_stable = { atlas = "StableMaster", disc = true },   -- (2.1.50, the pick S2: the game's horseshoe)
+	-- (2.1.55, the role picker: Modules/RolePicker.lua) the game's group finder medallions, its own gold rims, the
+	-- squares its GetTexCoordsForRole crops from the sheet
+	role_tank = { file = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES", coords = { 0, 19 / 64, 22 / 64, 41 / 64 } },
+	role_healer = { file = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES", coords = { 20 / 64, 39 / 64, 1 / 64, 20 / 64 } },
+	role_damage = { file = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES", coords = { 20 / 64, 39 / 64, 22 / 64, 41 / 64 } },
 	-- (2.1.53; the map's town marks, MelloUI_Map/MapTownMarks.lua's kinds: the user, 2026-11-15, "custom icons for all 3
 	-- themes as usual") the game's own pictures of the seven kinds -- its map's where it has one, else its icon of the
 	-- thing (the riding skill's, a mount's, a sword, the spirit healer's spell), cut round as the set's pins

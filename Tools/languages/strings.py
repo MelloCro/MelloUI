@@ -45,6 +45,8 @@ FILES = {
     "MelloUI_GroupFrames/GroupFrames.lua": (),
     # (1.2.4, an-06: the Level Up Card's window draws its texts through Tr)
     "Core/LevelCard.lua": (),
+    # (2.1.55: the role picker's box and its on-screen lines)
+    "Modules/RolePicker.lua": ("TEXT",),
 }
 # a section of a file the windows never draw (the slash commands' chat output, the probes): left out
 SKIP_FROM = {
