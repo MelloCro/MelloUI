@@ -1055,7 +1055,7 @@ local function Build()
 	win.drag = { on = false }
 	win.shell = Kit:OwnWindow(f, {
 		area = "config", ring = { at = "tl", texture = ICON }, plate = "rail",
-		title = TEXT.title, close = true, escape = true, fit = true, sounds = true,
+		title = W.Tr(TEXT.title), close = true, escape = true, fit = true, sounds = true,   -- (2.1.56: "Karte" in German, as the bags' title)
 		-- (2.1.36: dragged by its title bar at any time, Edit Layout not needed -- the player's "moveable on screen like
 		-- a window you can drag")
 		mover = { key = "MelloUIMap", label = TEXT.title, page = "Map", default = Home, plainDrag = "always" },
