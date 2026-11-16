@@ -276,11 +276,6 @@ for _, entry in ipairs(PREVIEW) do
 		Yours.OPT[entry[1]].desc = entry[3]
 	end
 end
-Yours.OPT.window_open.new = "2.1.54"
-Yours.OPT.window_close.new = "2.1.54"
-Yours.OPT.window_tab.new = "2.1.54"
-Yours.OPT.bags_open.new = "2.1.54"
-Yours.OPT.bags_close.new = "2.1.54"
 
 local M = MelloUI:RegisterModule("CustomSounds", {
 	title = "Custom Sounds",

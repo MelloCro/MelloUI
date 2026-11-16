@@ -143,7 +143,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  set = function() end,
 		  desc = "Whether MelloUI's tracker lists the quests itself, not Questie's tracker in MelloUI's look." },
 		-- (a player's wish: with RestedXP's own window veiled only the current step showed)
-		{ type = "slider", key = "guideNext", name = "Guide: Next Steps", min = 0, max = 5, step = 1, new = "2.1.54",
+		{ type = "slider", key = "guideNext", name = "Guide: Next Steps", min = 0, max = 5, step = 1,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Off" or tostring(v) end,
 		  desc = "How many of a leveling guide's next steps show under its current one, dimmed (RestedXP Guides). Off: only the current step." },
 		{ type = "button", name = "Reset Position", text = "Reset",

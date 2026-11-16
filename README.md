@@ -110,7 +110,7 @@ The voice pack's two parts unzip into the same `AddOns` folder; without it, the 
 <!-- legends:start (written by MBot's `npm run supporters`; empty until there is a Legend) -->
 ## Legends
 
-Thank you to MelloUI's Legends, who help keep it going: Poko 🧡
+Thank you to MelloUI's Legends, who help keep it going: Poko · Slayristo 🧡
 
 <!-- legends:end -->
 

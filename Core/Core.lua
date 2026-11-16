@@ -4666,7 +4666,7 @@ do
 			Row("reaction" .. s.key, type(game) == "string" and game or s.label, "reaction:" .. s.key, REACTION_DESC)
 		end
 		for _, d in ipairs(DISPELS) do
-			Row("dispel" .. d.key, d.label, "dispel:" .. d.key, DISPEL_DESC, "2.1.54")
+			Row("dispel" .. d.key, d.label, "dispel:" .. d.key, DISPEL_DESC)
 		end
 		M = MelloUI:RegisterModule("Colours", {
 			title = "Colours",
