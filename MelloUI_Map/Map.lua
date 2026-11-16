@@ -235,7 +235,7 @@ end
 --------------------------------------------------------------------------------
 
 local function ShowName(name)
-	local text = name or (Dungeon.Shown() and Dungeon.Hint()) or TEXT.hint
+	local text = name or (Dungeon.Shown() and Dungeon.Hint()) or W.Tr(TEXT.hint)   -- (2.1.56: in German too)
 	if text ~= win.shownName then
 		win.shownName = text
 		win.name:SetText(text)

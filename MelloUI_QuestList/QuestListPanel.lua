@@ -1666,7 +1666,7 @@ function QL.Panel:Update(quiet)
 	if frame.group.OverrideText then
 		frame.group:OverrideText(title)
 	end
-	frame.count:SetText(string.format("%d of %d done", done, total))
+	frame.count:SetText(MelloUI.Widgets.Tr("%d of %d done"):format(done, total))   -- (2.1.56: in German too)
 	artLaid = artLaid + 1   -- (each row's art set again as it is laid: NewArt)
 	frame.scrollBox:SetDataProvider(CreateDataProvider(entries), ScrollBoxConstants.RetainScrollPosition)
 	if #entries == 0 then

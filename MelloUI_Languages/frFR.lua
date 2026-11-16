@@ -4303,6 +4303,8 @@ Lang:Add("frFR", {
 	["Guild masters and tabards"] = "Maîtres de guilde et tabards", -- draft
 	["Transmogrifiers"] = "Transmogrifieurs", -- draft
 	["Spirit healers"] = "Gardiens des âmes", -- draft
+	-- the Quest List's count (2.1.56)
+	["%d of %d done"] = "%d sur %d terminées", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

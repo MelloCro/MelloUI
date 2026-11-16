@@ -3795,6 +3795,52 @@ Lang:Add("deDE", {
 	["Guild masters and tabards"] = "Gildenmeister und Wappenröcke", -- draft
 	["Transmogrifiers"] = "Transmogrifizierer", -- draft
 	["Spirit healers"] = "Geistheiler", -- draft
+	-- the map and the Quest List: lines French had and German not yet (2.1.56)
+	["%d of %d done"] = "%d von %d erledigt", -- draft
+	["%s%s: %d quests listed, %d done"] = "%s%s: %d Quests gelistet, %d erledigt", -- draft
+	["%s: %d of %d quests done, %d in your log, %d not picked up%s."] = "%s: %d von %d Quests erledigt, %d in deinem Log, %d nicht angenommen%s.", -- draft
+	["'%s' now opens %s when clicked."] = "„%s“ öffnet jetzt beim Klicken %s.", -- draft
+	["/qlmap  (diagnostics)  |  /qlmap dock <label> [| alliance|horde]  |  /qlmap zeppelin <label>  |  /qlmap arrive <label>  |  /qlmap entrance <name> [| raid]  |  /qlmap remove <name>  |  /qlmap list"] = "/qlmap  (Diagnose)  |  /qlmap dock <Name> [| alliance|horde]  |  /qlmap zeppelin <Name>  |  /qlmap arrive <Name>  |  /qlmap entrance <Name> [| raid]  |  /qlmap remove <Name>  |  /qlmap list", -- draft
+	["Alliance"] = "Allianz", -- draft
+	["Horde"] = "Horde", -- draft
+	["Cannot read your position here."] = "Deine Position lässt sich hier nicht lesen.", -- draft
+	["Darnassus"] = "Darnassus", -- draft
+	["Ironforge"] = "Eisenschmiede", -- draft
+	["Orgrimmar"] = "Orgrimmar", -- draft
+	["Thunder Bluff"] = "Donnerfels", -- draft
+	["Elite"] = "Elite", -- draft
+	["Filter"] = "Filter", -- draft
+	["Fish bite from %d, none get away from %d. Your skill: %d."] = "Fische beißen ab %d an, ab %d entkommt keiner mehr. Deine Fertigkeit: %d.", -- draft
+	["Fishing %s"] = "Angeln %s", -- draft
+	["You have not learned fishing."] = "Du hast Angeln nicht erlernt.", -- draft
+	["Get Questie, then type /reload."] = "Installiere Questie und gib dann /reload ein.", -- draft
+	["It lists every quest of a zone from Questie's quest data."] = "Sie listet jede Quest einer Zone aus Questies Questdaten.", -- draft
+	["Its quests come from Questie. Get Questie, then type /reload."] = "Ihre Quests kommen von Questie. Installiere Questie und gib dann /reload ein.", -- draft
+	["The Quest List needs Questie"] = "Die Questliste braucht Questie", -- draft
+	["Quests on the map come from Questie."] = "Die Quests auf der Karte kommen von Questie.", -- draft
+	["Level %s"] = "Stufe %s", -- draft
+	["Mob drop"] = "Beute von Gegnern", -- draft
+	["Picked up"] = "Angenommen", -- draft
+	["Search quests"] = "Quests durchsuchen", -- draft
+	["Quest List map pins"] = "Kartenmarkierungen der Questliste", -- draft
+	["Quest List: learned where the entrance of %s is; %s."] = "Questliste: Der Eingang von %s ist jetzt bekannt; %s.", -- draft
+	["Quest List: the entrance of %s will be put on the map when you walk out of it."] = "Questliste: Der Eingang von %s kommt auf die Karte, sobald du hinausgehst.", -- draft
+	["No recorded dock called '%s'."] = "Kein aufgezeichneter Anleger namens „%s“.", -- draft
+	["Recorded '%s' at %s (%.1f, %.1f). Sail there and type  /qlmap arrive %s  to link the destination map."] = "„%s“ bei %s aufgezeichnet (%.1f, %.1f). Fahr hin und gib  /qlmap arrive %s  ein, um die Zielkarte zu verknüpfen.", -- draft
+	["Recorded pins:"] = "Aufgezeichnete Markierungen:", -- draft
+	["Recorded the entrance of %s at %.1f, %.1f."] = "Eingang von %s bei %.1f, %.1f aufgezeichnet.", -- draft
+	["Stand at the entrance and type:  /qlmap entrance Hall of Thanes   (add  | raid  for a raid)."] = "Stell dich an den Eingang und gib ein:  /qlmap entrance Hall of Thanes   (für einen Schlachtzug  | raid  anhängen).", -- draft
+	["Stand on the dock and type:  /qlmap dock Boat to Auberdine   (add  | horde  or  | alliance  for a faction-only route; default neutral)."] = "Stell dich auf den Anleger und gib ein:  /qlmap dock Boat to Auberdine   (für eine Route nur einer Fraktion  | horde  oder  | alliance  anhängen; sonst neutral).", -- draft
+	["Tracking %s %s for %s, {dist} away"] = "Verfolge %s %s für %s, {dist} entfernt", -- draft
+	["Tracking the %s entrance of %s for %s (%s is found inside), {dist} away"] = "Verfolge den Eingang %s von %s für %s (%s ist drinnen), {dist} entfernt", -- draft
+	["Unknown"] = "Unbekannt", -- draft
+	["and %d more"] = "und %d weitere", -- draft
+	["item"] = "Gegenstand", -- draft
+	["quest"] = "Quest", -- draft
+	["quest giver"] = "Questgeber", -- draft
+	["turn-in"] = "Abgabe", -- draft
+	["on"] = "an", -- draft
+	["off"] = "aus", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

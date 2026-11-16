@@ -2856,7 +2856,7 @@ local QITEM = {
 		end
 	end,
 	time = function()
-		return not InCombatLockdown() and TEXT.qiUse or ""
+		return not InCombatLockdown() and M.Tr(TEXT.qiUse) or ""   -- (2.1.56: "Click to use" in German too)
 	end,
 	secure = function()
 		if qitem.spell then
@@ -3741,7 +3741,7 @@ local PV = {
 		icon = function() return "Interface\\Icons\\INV_Misc_Bundle_01" end,
 		count = function() return 5 end,
 		fraction = function() return 3 / 8 end,
-		time = function() return TEXT.qiUse end },
+		time = function() return M.Tr(TEXT.qiUse) end },
 	healer = { key = "preview:healer", column = true, label = TEXT.healerLabel, combat = false,
 		check = PvWanted("healer"), onClick = PvClick,
 		title = function()
