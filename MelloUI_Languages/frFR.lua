@@ -4274,6 +4274,11 @@ Lang:Add("frFR", {
 	["Remember for future dungeons"] = "Retenir pour les prochains donjons", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Le choix du rôle est désactivé : activez-le dans Confort > Choix du rôle.", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Page Addons : elle s’ouvre de nouveau avec MaxDPS installé, alors qu’elle restait sur Profils.", -- draft
+	-- the installer's layout check: why Mello's layout goes in or not (Core/LayoutFit.lua's verdicts, 2.1.56)
+	["Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."] = "Votre écran est trop petit pour la disposition de Mello à votre échelle d’interface ; votre propre disposition du mode Édition est conservée.", -- draft
+	["Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."] = "La disposition de Mello tient sur votre écran, mais pas avec certains de vos réglages ; votre propre disposition du mode Édition est conservée.", -- draft
+	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "La disposition de Mello est ajustée au mieux de ce que permet cet écran ; quelques éléments se chevauchent ou sont près du bord, et Modifier la disposition les déplace.", -- draft
+	["Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."] = "La disposition de Mello est conçue pour cet écran, elle est donc appliquée ; certains de vos réglages la chevauchent, et Modifier la disposition les déplace.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

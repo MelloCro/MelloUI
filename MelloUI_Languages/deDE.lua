@@ -3375,9 +3375,9 @@ Lang:Add("deDE", {
 	["Drink, food, ammunition and reagents: a list to buy at the shop, bought on a click."] = "Trinken, Essen, Munition und Reagenzien: eine Liste zum Kaufen beim Händler, gekauft per Klick.",
 	["A button that sells or throws away your cheapest junk to free a slot."] = "Ein Knopf, der deinen billigsten Plunder verkauft oder wegwirft, um einen Platz frei zu machen.",
 	["MelloUI Sounds"] = "MelloUI-Sounds",
-	["The sounds of your skin: soft clicks, a chime for a waypoint, a quest done."] = "Die Sounds deines Skins: sanfte Klicks, ein Klang für einen Wegpunkt, eine erledigte Quest.",
+	["The sounds of your skin: soft clicks, a chime for a waypoint, a quest done."] = "Die Sounds von MelloUI: sanfte Klicks, ein Klang für einen Wegpunkt, eine erledigte Quest.",
 	["The Game's Sounds"] = "Die Sounds des Spiels",
-	["The game's own interface sounds. The Default skin always uses them."] = "Die Oberflächen-Sounds des Spiels. Der Skin Standard nutzt sie immer.",
+	["The game's own interface sounds. The Default skin always uses them."] = "Die Standard-Sounds des Spiels. Der Skin Standard nutzt sie immer.",
 	["Which frames show your group, in your skin. Both can be clicked to heal."] = "Welche Fenster deine Gruppe zeigen, in deinem Skin. Auf beide kann zum Heilen geklickt werden.",
 	["Your chat window, in your skin."] = "Dein Chatfenster, in deinem Skin.",
 	["Your bags, in your skin."] = "Deine Taschen, in deinem Skin.",
@@ -3751,6 +3751,11 @@ Lang:Add("deDE", {
 	["Remember for future dungeons"] = "Für künftige Dungeons merken",
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Die Rollenwahl ist aus: Schalte sie unter Komfort > Rollenwahl ein.",
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Addons-Seite: Sie öffnet sich wieder mit installiertem MaxDPS, wo sie bei Profile blieb.",
+	-- the installer's layout check: why Mello's layout goes in or not (Core/LayoutFit.lua's verdicts, 2.1.56)
+	["Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."] = "Dein Bildschirm ist bei deiner UI-Skalierung zu klein für Mellos Layout; dein eigenes Bearbeitungsmodus-Layout bleibt.", -- draft
+	["Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."] = "Mellos Layout passt auf deinen Bildschirm, aber nicht mit einigen deiner Einstellungen; dein eigenes Bearbeitungsmodus-Layout bleibt.", -- draft
+	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "Mellos Layout ist so gut angepasst, wie dieser Bildschirm es zulässt; ein paar Teile überlappen oder sitzen nah am Rand, und mit Layout bearbeiten lassen sie sich verschieben.", -- draft
+	["Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."] = "Mellos Layout ist für diesen Bildschirm gezeichnet, also wird es übernommen; einige deiner Einstellungen überlappen es, und mit Layout bearbeiten lassen sie sich verschieben.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
