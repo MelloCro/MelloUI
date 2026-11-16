@@ -11,9 +11,8 @@
 --                        cannot remember are there while they are offline too
 -- What it keeps, account-wide in its own settings (`keep`: never in a profile or a share string, as Services' learned
 -- services), only on this computer:
---   alts       ["Name-Realm"] = { name, realm, class (the class's token), level, faction, seen } -- this character as
---              it logs in and levels; the Quest List's record of your characters (MelloUIQuestRecord) read once for the
---              ones not seen yet (their faction unknown until they log in)
+--   alts       ["Name-Realm"] = { name (the full name, first name and surname), realm, class (the class's token),
+--              level, faction, seen } -- this character as it logs in and levels
 --   bnetChars  [BattleTag] = { ["Name-Realm"] = { name, realm, class, level, faction, seen } } -- read from the game's
 --              friend list while a friend plays this game, a moment after it changes (its events come in bursts)
 -- Nothing of the game's is replaced: the button is MelloUI's own frame on the Send Mail page, the menu the game's
@@ -45,7 +44,8 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 	icon = "Interface\\Icons\\INV_Letter_15",
 	flavour = "Who was that again? One click and the letter has its name.",
 	enabledByDefault = true,
-	keep = { "alts", "bnetChars" },   -- your characters and your friends': never in a profile or a share string
+	slash = "mail",   -- /mello mail names
+	keep ={ "alts", "bnetChars" },   -- your characters and your friends': never in a profile or a share string
 	defaults = {
 		bnet = true,
 	},
@@ -60,7 +60,6 @@ local R = {
 	SIZE = 18,       -- the button
 	GAP = 4,         -- from the To field's right edge
 	SETTLE = 2,      -- seconds: the friend list read once its events have stopped coming
-	SEED_SEEN = 0,   -- a character from the Quest List's record: never seen here
 }
 
 local function Tr(text)
@@ -94,13 +93,17 @@ local function Store(key)
 	return db[key]
 end
 
--- this character: its key, name, realm and faction ("Alliance" / "Horde"); nil while they cannot be read
+-- this character: its key, name, realm and faction ("Alliance" / "Horde"); nil while they cannot be read. The name
+-- is the FULL one (the user: names on this client have a first name and a surname, "Hopfen Hilda", and a letter
+-- needs the whole name): the game's display name with its surname (MelloUI:UnitNameAs "both"), UnitName's when not.
+-- The key stays UnitName's, as the Quest List's record keys a character
 local function Me()
-	local name, realm = Text(Call(UnitName, "player")), Text(Call(GetRealmName))
-	if not name or name == "" or not realm or realm == "" then
+	local short, realm = Text(Call(UnitName, "player")), Text(Call(GetRealmName))
+	if not short or short == "" or not realm or realm == "" then
 		return nil
 	end
-	return name .. "-" .. realm, name, realm, Text(Call(UnitFactionGroup, "player"))
+	local full = Text(MelloUI.UnitNameAs and Call(MelloUI.UnitNameAs, MelloUI, "player", "both"))
+	return short .. "-" .. realm, (full and full ~= "") and full or short, realm, Text(Call(UnitFactionGroup, "player"))
 end
 
 -- the class token of a class's shown name (a friend's game account names the class in the client's language)
@@ -120,7 +123,8 @@ local function ClassToken(shown)
 	return nil
 end
 
--- this character as it logs in and levels; the Quest List's record read once for the characters not seen yet
+-- this character as it logs in and levels (the Quest List's record of your characters is not read: it keeps
+-- UnitName's name, which may be the first name alone, and a letter to it would not arrive)
 local function WriteMe()
 	local key, name, realm, faction = Me()
 	if not key then
@@ -130,13 +134,6 @@ local function WriteMe()
 	local _, class = Call(UnitClass, "player")
 	alts[key] = { name = name, realm = realm, class = Text(class), level = Num(Call(UnitLevel, "player")),
 		faction = faction, seen = time() }
-	local record = rawget(_G, "MelloUIQuestRecord")
-	local chars = type(record) == "table" and record.chars
-	for k, c in pairs(type(chars) == "table" and chars or {}) do
-		if alts[k] == nil and type(c) == "table" and type(c.name) == "string" and type(c.realm) == "string" then
-			alts[k] = { name = c.name, realm = c.realm, class = c.class, level = c.level, seen = R.SEED_SEEN }
-		end
-	end
 end
 
 -- the friend list: each friend's characters of this game they play now, noted
@@ -382,6 +379,36 @@ function M:OnSettingChanged(_, _, db)
 	self.db = db
 	ReadFriendsSoon()
 end
+
+-- /mello mail names: the names this client gives -- yours (UnitName and the full display name) and, for each
+-- Battle.net friend playing this game now, every name field of their game account -- to see which one a letter needs
+M.SlashWords = {
+	names = function()
+		local say = function(...) MelloUI:Print(...) end
+		say("Mail Recipients: UnitName " .. tostring(Text(Call(UnitName, "player")))
+			.. ", full name " .. tostring(Text(MelloUI.UnitNameAs and Call(MelloUI.UnitNameAs, MelloUI, "player", "both")))
+			.. ", realm " .. tostring(Text(Call(GetRealmName))))
+		local BN = rawget(_G, "C_BattleNet")
+		local count = Num(Call(rawget(_G, "BNGetNumFriends"))) or 0
+		for i = 1, type(BN) == "table" and count or 0 do
+			local info = Call(BN.GetFriendAccountInfo, i)
+			local tag = type(info) == "table" and Text(info.battleTag) or "?"
+			for j = 1, Num(Call(BN.GetFriendNumGameAccounts, i)) or 0 do
+				local g = Call(BN.GetFriendGameAccountInfo, i, j)
+				if type(g) == "table" and Text(g.clientProgram) == rawget(_G, "BNET_CLIENT_WOW") then
+					local parts = {}
+					for k, v in pairs(g) do
+						if type(k) == "string" and k:lower():find("name") then
+							parts[#parts + 1] = k .. "=" .. tostring(Text(v))
+						end
+					end
+					table.sort(parts)
+					say("  " .. tag .. ": " .. table.concat(parts, ", "))
+				end
+			end
+		end
+	end,
+}
 
 -- for the test harness
 M.TEXT, M.R = TEXT, R
