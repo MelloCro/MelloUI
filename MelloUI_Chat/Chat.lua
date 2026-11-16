@@ -3228,7 +3228,7 @@ end
 
 -- the other person's name for a tooltip or a question ("them" for one not plain)
 local function PopupWho(f)
-	return MelloUI.Safe.Text(f.titleText) or "them"
+	return MelloUI.Safe.Text(f.titleText) or W.Tr("them")
 end
 
 -- a Battle.net friend's game account while they play this game, else nil
@@ -3334,7 +3334,8 @@ end
 
 local function ActionTip(b, owner)
 	local t = ACTION_TEXT[b.id]
-	W.ShowTooltip(owner or b, t.title, b.note, W.Tr(t.desc):format(PopupWho(b.popup)), "ANCHOR_BOTTOMRIGHT")
+	W.ShowTooltip(owner or b, W.Tr(t.title), b.note and W.Tr(b.note) or nil,
+		W.Tr(t.desc):format(PopupWho(b.popup)), "ANCHOR_BOTTOMRIGHT")
 end
 
 local function ActionEnter(self)
@@ -3363,9 +3364,9 @@ local function ActionClick(self)
 		-- own (its CopyLines) or a popup's kept parts (M.Whisper.PopupLines)
 		local lines = f.CopyLines and f.CopyLines(f) or M.Whisper.PopupLines(f)
 		if #lines == 0 then
-			MelloUI:Print(ACTION_TEXT.copy.away)
+			MelloUI:Print(W.Tr(ACTION_TEXT.copy.away))
 		else
-			MelloUI:ShowText(("%s  (%d lines)"):format(PopupWho(f), #lines), table.concat(lines, "\n"))
+			MelloUI:ShowText(W.Tr("%s  (%d lines)"):format(PopupWho(f), #lines), table.concat(lines, "\n"))
 		end
 		return
 	elseif id == "friend" then
@@ -3383,7 +3384,7 @@ local function ActionClick(self)
 	elseif id == "ignore" then
 		MelloUI:Confirm({
 			text = W.Tr(IGNORE_ASK):format(PopupWho(f)),
-			accept = ACTION_TEXT.ignore.title,
+			accept = W.Tr(ACTION_TEXT.ignore.title),
 			onAccept = function()
 				pcall(C_FriendList.AddIgnore, target)
 				RefreshActions(f)
@@ -3861,7 +3862,7 @@ local function OnWhisper(_, event, text, sender, ...)
 	f.level = level or f.level
 	UpdateHeader(f)
 	local r, g, b = PopupColor(how.kind, how.incoming)
-	local who = how.incoming and ShortPerson(f.titleText, NameStyle()) or (YOU or "You")
+	local who = how.incoming and ShortPerson(f.titleText, NameStyle()) or W.Tr("You")
 	-- A SECRET text gets the same line as any other: this client lets a
 	-- secret be joined into text, the line staying secret and still shown
 	-- (/mello secrets, 2026-09-23; user: "go ahead with the whisper popup").

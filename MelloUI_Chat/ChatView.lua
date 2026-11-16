@@ -1103,7 +1103,7 @@ do
 			return true
 		end
 		if link:sub(1, 11) == "clubTicket:" and not IsModifiedClick() then
-			MelloUI:Announce(Fake.TEXT.invite, "info")
+			MelloUI:Announce(W.Tr(Fake.TEXT.invite), "info")
 			return true
 		end
 		return false
@@ -1330,7 +1330,9 @@ local TabEnter = Perf.Shared("OnEnter on a chat view tab", function(f)
 	end
 	local b = t.button
 	b:LockHighlight()   -- (its round light: the strip takes the mouse)
-	W.ShowTooltip(f, b.tabName or "", b.tabTip or TEXT.tabTip)
+	local tip = t.kind == "channel" and W.Tr(TEXT.channelTip):format(t.number)
+		or W.Tr(b.tabTip or TEXT.tabTip)
+	W.ShowTooltip(f, b.tabName or "", tip)
 end, "script")
 
 local TabLeave = Perf.Shared("OnLeave on a chat view tab", function(f)
@@ -1546,9 +1548,16 @@ local StandEnter = Perf.Shared("OnEnter on a chat view tab's stand-in", function
 	end
 	b:LockHighlight()
 	if p.which == "2" then
-		W.ShowTooltip(b, b.tabName or "", b.tabTip or TEXT.tabTip)
+		local entry = b.entry
+		local tip = entry and entry.kind == "channel" and W.Tr(TEXT.channelTip):format(entry.number)
+			or W.Tr(b.tabTip or TEXT.tabTip)
+		W.ShowTooltip(b, b.tabName or "", tip)
 	else
-		W.ShowTooltip(b, b.tipTitle or "", b.tipText)
+		local body = W.Tr(b.tipText or "")
+		if b.tipArg1 then
+			body = body:format(W.Tr(b.tipArg1):lower(), b.tipArg2)
+		end
+		W.ShowTooltip(b, W.Tr(b.tipTitle or ""), body)
 	end
 end, "script")
 
@@ -1856,7 +1865,7 @@ function View.Rail()
 			Restore(key, key)
 		end
 		t.key, t.channel, t.number = key, name, number
-		t.button.tabName, t.button.tabTip = name, W.Tr(TEXT.channelTip):format(number)
+		t.button.tabName, t.button.tabTip = name, TEXT.channelTip
 		t.label:SetText(name)
 		order[#order + 1] = t
 	end)
@@ -2082,7 +2091,11 @@ local PickClick = Perf.Shared("OnClick on a chat view pick", function(b)
 end, "script")
 
 local ButtonEnter = Perf.Shared("OnEnter on a chat view button", function(b)
-	W.ShowTooltip(b, b.tipTitle or "", b.tipText)
+	local body = W.Tr(b.tipText or "")
+	if b.tipArg1 then
+		body = body:format(W.Tr(b.tipArg1):lower(), b.tipArg2)
+	end
+	W.ShowTooltip(b, W.Tr(b.tipTitle or ""), body)
 end, "script")
 
 local ACTIONS = {
@@ -2135,7 +2148,8 @@ local function ButtonRow(frame)
 			end
 			letter:SetText(pick[1])
 			b.label = letter
-			b.slash, b.tipTitle, b.tipText = pick[2], pick[4], "Speak in " .. pick[4]:lower() .. " (" .. pick[2] .. ")."
+			b.slash, b.tipTitle, b.tipText = pick[2], pick[4], "Speak in %s (%s)."
+			b.tipArg1, b.tipArg2 = pick[4], pick[2]
 			Perf.SetScript(b, "OnClick", PickClick)
 		else
 			b.action, b.tipTitle, b.tipText = act[4], act[2], act[3]
@@ -2217,7 +2231,7 @@ end, "script")
 local FoldEnter = Perf.Shared("OnEnter on the chat view's fold handle", function(f)
 	W.FlatState(f.plate, true)
 	local folded = Folded()
-	W.ShowTooltip(f, folded and TEXT.unfold or TEXT.fold, folded and TEXT.unfoldTip or TEXT.foldTip)
+	W.ShowTooltip(f, W.Tr(folded and TEXT.unfold or TEXT.fold), W.Tr(folded and TEXT.unfoldTip or TEXT.foldTip))
 end, "script")
 
 local FoldLeave = Perf.Shared("OnLeave on the chat view's fold handle", function(f)
@@ -2440,6 +2454,10 @@ local function LogTab(i)
 	tab.Text = fs
 	W.FlatTab(tab)
 	tab.tipText = TEXT.logFilterTip
+	tab:SetScript("OnEnter", function(self)
+		W.ShowTooltip(self, self.tipTitle or "", W.Tr(self.tipText))
+	end)
+	tab:SetScript("OnLeave", W.TipLeave)
 	Log.tabs[i] = tab
 	return tab
 end
@@ -2634,7 +2652,7 @@ local function Build()
 	local wt = View.NewTab("chat_whispers", "whispers", nil)
 	local wb = wt.button
 	wt.key = WHISPERS_KEY
-	wb.tabName, wb.tabTip = TEXT.whispers, TEXT.whispersTip
+	wb.tabName, wb.tabTip = W.Tr(TEXT.whispers), TEXT.whispersTip
 	local glow = wb:CreateTexture(nil, "OVERLAY", nil, 7)
 	glow:SetTexture(ROUND_MASK)
 	glow:SetBlendMode("ADD")
@@ -2731,6 +2749,18 @@ local function Build()
 	-- (the configurator walk, 2026-11-04: Look > Fonts' Chat text changed the game's windows, the view's lines kept
 	-- theirs -- the Fonts module sets the windows' font objects, which no SetFont hook sees) any font change: the rows
 	MelloUI:On("fonts", View.FontChanged, "Chat view fonts")
+	MelloUI:On("language", function()
+		local tab = View.whisperTab
+		if tab then
+			tab.label:SetText(W.Tr(TEXT.whispers))
+			tab.button.tabName, tab.button.tabTip = W.Tr(TEXT.whispers), TEXT.whispersTip
+		end
+		if View.on then
+			View.Rail()
+			View.PlaceRail()
+			Log.Refresh()
+		end
+	end, "Chat view language")
 	local Kit = MelloUI.Kit
 	if Kit and Kit.OnCover then
 		Kit:OnCover(function(group)

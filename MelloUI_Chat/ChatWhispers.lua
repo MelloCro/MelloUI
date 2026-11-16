@@ -88,13 +88,13 @@ local Colour, ChatColour, Shadow = View.Colour, View.ChatColour, View.Shadow
 local function Ago(at)
 	local s = GetTime() - (at or 0)
 	if s < 60 then
-		return TEXT.now
+		return W.Tr(TEXT.now)
 	elseif s < 3600 then
-		return math.floor(s / 60) .. "m"
+		return W.Tr("%dm"):format(math.floor(s / 60))
 	elseif s < 86400 then
-		return math.floor(s / 3600) .. "h"
+		return W.Tr("%dh"):format(math.floor(s / 3600))
 	end
-	return math.floor(s / 86400) .. "d"
+	return W.Tr("%dd"):format(math.floor(s / 86400))
 end
 
 --------------------------------------------------------------------------------
@@ -179,7 +179,7 @@ function WV.CopyLines()
 	for j = c.count - 1, 0, -1 do
 		local rec = Nth(c, j)
 		local text = rec and plain(rec.text)
-		local who = rec and (rec.mine and TEXT.you or them)
+		local who = rec and (rec.mine and W.Tr(TEXT.you) or them)
 		if text and who then
 			local stamp = type(rec.time) == "string" and not Secret(rec.time) and rec.time ~= ""
 				and ("[" .. rec.time .. "] ") or ""
@@ -445,11 +445,11 @@ function WV.PersonMenu(row)
 	end
 	local name = WV.Shown(c)
 	MenuUtil.CreateContextMenu(row, function(_, root)
-		root:CreateTitle((not Secret(name) and type(name) == "string") and name or TEXT.title)
-		root:CreateButton(TEXT.remove, function()
+		root:CreateTitle((not Secret(name) and type(name) == "string") and name or W.Tr(TEXT.title))
+		root:CreateButton(W.Tr(TEXT.remove), function()
 			WV.Remove(c)
 		end)
-		root:CreateButton(TEXT.removeAll, function()
+		root:CreateButton(W.Tr(TEXT.removeAll), function()
 			WV.RemoveAll()
 		end)
 	end)
@@ -601,7 +601,7 @@ function WV.LayList()
 			Shadow(row.ago)
 			local last = c.lastText
 			if c.lastMine and not Secret(last) and type(last) == "string" then
-				last = TEXT.you .. ": " .. last
+				last = W.Tr(TEXT.you) .. ": " .. last
 			end
 			pcall(row.last.SetText, row.last, last)
 			Colour(row.last, "text")
@@ -774,7 +774,7 @@ function WV.LayTalk()
 		if not SameRun(rec, older) then
 			local stamp = b.stamp
 			stamp:ClearAllPoints()
-			local who = mine and TEXT.you or WV.Shown(c)
+			local who = mine and W.Tr(TEXT.you) or WV.Shown(c)
 			pcall(stamp.SetText, stamp, (Secret(who) and "" or (tostring(who) .. "  ")) .. (rec.time or ""))
 			if mine then
 				stamp:SetPoint("BOTTOMRIGHT", text, "TOPRIGHT", PADX, PADY + 2)
@@ -934,7 +934,7 @@ function WV.Head()
 	local zone = P().Where(c.kind, c.target, c.guid)
 	local info = ""
 	if c.level then
-		info = TEXT.level:format(c.level)
+		info = W.Tr(TEXT.level):format(c.level)
 	end
 	local class = Text(c.classFile)
 	local localized = class and LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[class]
@@ -949,8 +949,8 @@ function WV.Head()
 	Shadow(WV.info)
 	local shown = WV.Shown(c)
 	local who = Secret(shown) and "" or tostring(shown)
-	WV.hint:SetText(TEXT.reply:format(who))
-	WV.boxHint:SetText(TEXT.reply:format(who))
+	WV.hint:SetText(W.Tr(TEXT.reply):format(who))
+	WV.boxHint:SetText(W.Tr(TEXT.reply):format(who))
 end
 
 -- Input Box Only While Typing (Chat's, the game's chat style): the answer box shows while you type; else a "Reply
@@ -1029,7 +1029,7 @@ local function Build()
 	-- the title, the close cross, the title's hairline
 	local title = f:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontNormal")
 	title:SetPoint("LEFT", f, "TOPLEFT", 10, -TITLE_H / 2)
-	title:SetText(TEXT.title)
+	title:SetText(W.Tr(TEXT.title))
 	if MelloUI.Kit and MelloUI.Kit.TitleFont then
 		MelloUI.Kit:TitleFont(title, true)   -- (the title face for everyone: one look, the user's pick 9, 2026-10-15)
 	end
@@ -1142,7 +1142,7 @@ local function Build()
 	WV.none = talk:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlight")
 	WV.none:SetPoint("CENTER", talk, "CENTER", 0, 0)
 	WV.none:SetWidth(220)
-	WV.none:SetText(TEXT.none)
+	WV.none:SetText(W.Tr(TEXT.none))
 	-- the answer: Enter sends (the key press the game wants behind it) and keeps the box; Enter on an empty box lets
 	-- go of it, as the game's chat box does; Escape lets go
 	local box = CreateFrame("EditBox", nil, f)
@@ -1397,6 +1397,19 @@ function WV.Fonts()
 		WV.LayTalk()
 	end
 end
+
+function WV.LanguageChanged()
+	if not WV.frame then
+		return
+	end
+	WV.title:SetText(W.Tr(TEXT.title))
+	WV.none:SetText(W.Tr(TEXT.none))
+	WV.LayList()
+	WV.Head()
+	WV.LayTalk()
+end
+
+MelloUI:On("language", WV.LanguageChanged, "Chat whisper language")
 
 -- (1.2.0) out on the chat's top edge: one gold rim round it and the chat (MelloUI.Rims: snapped windows)
 function WV.DrawerOut()
