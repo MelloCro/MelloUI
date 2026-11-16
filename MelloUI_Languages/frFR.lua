@@ -2188,6 +2188,8 @@ Lang:Add("frFR", {
 	["The power an ability costs stays lit for a moment, so you see the cost."] = "La ressource que coûte une technique reste éclairée un instant, pour voir le coût.",
 	["Power Gained"] = "Ressource gagnée",
 	["New power lights up ahead of the bar before it fills."] = "La nouvelle ressource s'éclaire devant la barre avant qu'elle se remplisse.",
+	["Five-Second Rule"] = "Règle des cinq secondes", -- draft
+	["After a spell costs you mana, a light runs along the power bar for five seconds. Until it reaches the end, Spirit does not regenerate your mana."] = "Après un sort qui vous coûte du mana, une lumière parcourt la barre de ressource pendant cinq secondes. Tant qu’elle n’a pas atteint le bout, l’Esprit ne régénère pas votre mana.", -- draft
 	["Dodge, Parry, Block"] = "Esquive, Parade, Blocage",
 	["Your dodge, parry or block flicks its word off the health bar."] = "Votre esquive, parade ou blocage s'envole de la barre de vie.",
 	["Low Health"] = "Vie basse",
