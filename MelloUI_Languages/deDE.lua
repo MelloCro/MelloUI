@@ -2497,8 +2497,8 @@ Lang:Add("deDE", {
 	["The power an ability costs stays lit for a moment, so you see the cost."] = "Die Kraft, die eine Fähigkeit kostet, leuchtet kurz, damit du die Kosten siehst.", -- draft
 	["Power Gained"] = "Gewonnene Ressource", -- draft
 	["New power lights up ahead of the bar before it fills."] = "Neue Kraft leuchtet vor der Leiste auf, bevor sie sich füllt.", -- draft
-	["Five-Second Rule"] = "Fünf-Sekunden-Regel", -- draft
-	["After a spell costs you mana, a light runs along the power bar for five seconds. Until it reaches the end, Spirit does not regenerate your mana."] = "Nachdem ein Zauber dich Mana gekostet hat, läuft fünf Sekunden lang ein Licht über die Ressourcenleiste. Bis es das Ende erreicht, regeneriert Willenskraft dein Mana nicht.", -- draft
+	["Mana Regen Pause"] = "Manaregeneration-Pause", -- draft
+	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "Nachdem ein Zauber dich Mana gekostet hat, regeneriert Willenskraft dein Mana fünf Sekunden lang nicht. So lange läuft ein Licht über die Ressourcenleiste, und die Leiste leuchtet auf, sobald die Regeneration wieder einsetzt.", -- draft
 	["Dodge, Parry, Block"] = "Ausweichen, Parieren, Blocken", -- draft
 	["Your dodge, parry or block flicks its word off the health bar."] = "Dein Ausweichen, Parieren oder Blocken schnellt als Wort von der Gesundheitsleiste.", -- draft
 	["Low Health"] = "Niedrige Gesundheit", -- draft

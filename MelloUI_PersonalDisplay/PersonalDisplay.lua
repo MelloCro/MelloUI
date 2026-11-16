@@ -5427,9 +5427,10 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		{ type = "toggle", key = "gain", name = "Power Gained", play = "gain",
 		  desc = "New power lights up ahead of the bar before it fills." },
 		-- (2.1.56; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the resource
-		-- bar?")
-		{ type = "toggle", key = "fiveSecond", name = "Five-Second Rule", new = "2.1.56",
-		  desc = "After a spell costs you mana, a light runs along the power bar for five seconds. Until it reaches the end, Spirit does not regenerate your mana." },
+		-- bar?"; its name theirs: "Mana Regen Pause" -- the five-second rule a players' word, kept for the search)
+		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause", new = "2.1.56",
+		  search = "five second rule 5sr fsr mana regeneration regen spirit pause",
+		  desc = "After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again." },
 		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block", play = "avoid",
 		  desc = "Your dodge, parry or block flicks its word off the health bar." },
 		{ type = "toggle", key = "lowHealth", name = "Low Health",
