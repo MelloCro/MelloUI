@@ -106,7 +106,8 @@ local T = {
 	sparkShare = 0.08, sparkW = 8, sparkH = 2.4, spark = 0.42,
 	-- (2.1.56, Five-Second Rule) the rule's span after mana spent, the light's width and how far it stands past the
 	-- fill over and under, the veil it leaves behind it, the fade once the span is over
-	five = 5, fiveW = 6, fiveOver = 2, fiveVeil = 0.18, fiveFade = 0.35,
+	five = 5, fiveW = 6, fiveOver = 2, fiveVeil = 0.18, fiveFade = 0.6,
+	fiveFlash = 0.55,   -- (the regeneration back: the whole bar lit this strong, then faded -- the player: "that I see when my mana regen starts again")
 	rimFeather = 12, rimFeatherY = 9, rimTuck = 3,
 	wordX = 4, wordY = 2, wordDX = 22, wordDY = 8, word = 0.85,
 	lineH = 3, locRim = 0.8, locFade = 0.15, locGrace = 0.2,
@@ -2771,6 +2772,7 @@ function Motion.FiveStart()
 		return
 	end
 	Anim:Stop(five, "alpha")
+	Motion.FivePaint(S.ui)   -- (the veil faint again after the last end's flash)
 	five:Show()
 	five:SetAlpha(1)
 	S.fiveEnds = GetTime() + T.five
@@ -2793,6 +2795,9 @@ function Motion.FiveOff(fade)
 	end
 	Anim:Stop(five, "alpha")
 	if fade then
+		local r, g, b = Motion.Look("text")
+		Anim:StopTimer(five, true)   -- (full: the flash over the whole bar)
+		five:SetStatusBarColor(r, g, b, T.fiveFlash)
 		Anim:To(five, "alpha", 0, T.fiveFade, "outQuad", HideFrame)
 	else
 		five:SetAlpha(0)
