@@ -2566,9 +2566,9 @@ do
 	-- caller keeps it owed for the next login then.
 	-- Never asked, and no ask counted, while the game's own Edit Mode has not yet been handed the saved layouts (its
 	-- manager's IsInitialized: a list saved before that could be one without the account's own layouts), during the
-	-- intro, in a fight or with Edit Mode open; such waits end after DUE_WAITS looks. One at a time: the newest wins.
-	-- done(ok, how) once
-	local DUE_EVERY, DUE_ASKS, DUE_WAITS = 2, 8, 900
+	-- intro, in a fight or with Edit Mode open; such waits end after DUE_WAITS looks (of DUE_EVERY seconds: half an
+	-- hour). One at a time: the newest wins. done(ok, how) once
+	local DUE_EVERY, DUE_ASKS, DUE_WAITS, DUE_SOON = 2, 8, 900, 0.5
 	local due = nil
 	local INTRO = { "InCinematic", "IsInCinematicScene" }   -- (the game's: a new character's opening flight)
 
@@ -2631,21 +2631,28 @@ do
 			return
 		end
 		if d.asks >= DUE_ASKS or d.waits >= DUE_WAITS then
-			Note("profile layout: not in place after %d asks and %d waits, owed", d.asks, d.waits)
+			Note("profile layout: not in place after %d asks and %d waits, owed", d.asks, math.floor(d.waits))
 			Done(d, false)
 			return
 		end
-		if Ready() and not InIntro() and not Blocked() then
+		-- (a brand-new character's first login, filmed in the real client, 2026-11-16: the intro ends and the UI fades
+		-- in over about a second -- looked at every DUE_SOON seconds while only the intro or the game's own list is
+		-- waited for, the game's frames stand at the profile's places within that fade, not two seconds after it)
+		local every = DUE_EVERY
+		if not Ready() or InIntro() then
+			d.waits = d.waits + DUE_SOON / DUE_EVERY
+			every = DUE_SOON
+		elseif Blocked() then
+			d.waits = d.waits + 1
+		else
 			d.asks = d.asks + 1
 			local ok, why, how = MelloUI:EditModeToProfile(d.kind, d.name, d.text)
 			d.how = how or d.how
 			if not ok then
 				Note("profile layout: ask %d refused: %s", d.asks, tostring(why))
 			end
-		else
-			d.waits = d.waits + 1
 		end
-		C_Timer.After(DUE_EVERY, DueStep)
+		C_Timer.After(every, DueStep)
 	end
 
 	function MelloUI:EditModeProfileSoon(kind, name, text, done)
