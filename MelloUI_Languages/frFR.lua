@@ -3324,6 +3324,8 @@ Lang:Add("frFR", {
 	["Ready to turn in"] = "À rendre",
 	["Turn in: %s"] = "À rendre à %s",
 	["Turn in: %s, %s"] = "À rendre à %s, %s",
+	["Turn in here: %s"] = "À rendre ici : %s",
+	["Quest ends here: %s"] = "Cette quête se termine ici : %s",
 	["found inside"] = "à l'intérieur",
 	["quest giver unknown"] = "donneur de quête inconnu",
 	["Available"] = "Disponible",
