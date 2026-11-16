@@ -2895,7 +2895,7 @@ Lang:Add("frFR", {
 	["%d settings"] = "%d réglages",
 	["%s and %s"] = "%s et %s",
 	["IMPORTANT"] = "IMPORTANT",
-	["also %s"] = "aussi %s",
+	["also %s"] = "également dans %s",
 	["Run"] = "Lancer",
 	["%s: %s"] = "%s : %s",
 	["The game keeps your settings; /mello status shows where they came from. The voice pack, MelloUI_VoicePack, replaces the old pack: a separate download in two parts from the 0.15.0 release (the Voice pack link above). Unzip both into the AddOns folder, where they make one MelloUI_VoicePack folder."] = "Le jeu garde vos réglages ; /mello status montre d'où ils viennent. Le pack de voix, MelloUI_VoicePack, remplace l'ancien pack : un téléchargement à part en deux parties depuis la version 0.15.0 (le lien Pack de voix ci-dessus). Décompressez les deux dans le dossier AddOns, où ils forment un seul dossier MelloUI_VoicePack.",
