@@ -2972,6 +2972,7 @@ Lang:Add("ptBR", {
 	["Role: %s (remembered)"] = "Função: %s (lembrada)", -- draft
 	["Remember for future dungeons"] = "Lembrar nas próximas masmorras", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "O seletor de função está desligado: ligue-o em Conveniência > Seletor de função.", -- draft
+	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Página Addons: abre de novo com o MaxDPS instalado, onde ficava em Perfis.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

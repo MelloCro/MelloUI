@@ -2972,6 +2972,7 @@ Lang:Add("zhCN", {
 	["Role: %s (remembered)"] = "职责：%s（已记住）", -- draft
 	["Remember for future dungeons"] = "记住用于以后的地下城", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "职责选择已关闭：请在 便捷功能 > 职责选择 中开启。", -- draft
+	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "插件页面：安装了 MaxDPS 时可以再次打开，之前会停留在配置文件页面。", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

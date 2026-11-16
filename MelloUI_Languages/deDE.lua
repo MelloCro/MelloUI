@@ -3750,6 +3750,7 @@ Lang:Add("deDE", {
 	["Role: %s (remembered)"] = "Rolle: %s (gemerkt)", -- draft
 	["Remember for future dungeons"] = "Für künftige Dungeons merken", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Die Rollenwahl ist aus: Schalte sie unter Komfort > Rollenwahl ein.", -- draft
+	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Addons-Seite: Sie öffnet sich wieder mit installiertem MaxDPS, wo sie bei Profile blieb.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

@@ -78,6 +78,14 @@ local function Tr(s)
 	return MelloUI.Lang.T(s)
 end
 
+-- (2.1.55; Slayristo, Discord: "My MelloUI Addons page will not load" with MaxDPS installed -- its entry, PR #18, has no
+-- `links`, and `#e.links` stopped the whole page's build, so the configurator stayed on Profiles) an entry's lists read
+-- through this: one an entry leaves out is an empty one, and every card is built whatever an entry leaves out
+local NONE = {}
+local function List(t)
+	return type(t) == "table" and t or NONE
+end
+
 local function Height(fs, least)
 	local h = fs:GetStringHeight()
 	h = type(h) == "number" and h or 0
@@ -297,7 +305,7 @@ local function Card(parent, e, width, skin, ctx)
 	local does = CreateFrame("Frame", nil, card)
 	does:SetPoint("TOPLEFT", card, "TOPLEFT", 0, -y)
 	does:SetWidth(width)
-	does:SetHeight(Lines(does, Heading(does, 4, TEXT.does), e.does, width))
+	does:SetHeight(Lines(does, Heading(does, 4, TEXT.does), List(e.does), width))
 	card.does = does
 	-- the rest under it: laid again when the note's height changes (Refresh)
 	local body = CreateFrame("Frame", nil, card)
@@ -326,10 +334,11 @@ local function Card(parent, e, width, skin, ctx)
 		Rule(body, by + T.ROW_H - 2)
 		by = by + T.ROW_H
 	end
-	if #e.links > 0 then
+	local links = List(e.links)
+	if #links > 0 then
 		by = Heading(body, by + 4, TEXT.settings)
 		local x = T.PAD + 4
-		for _, link in ipairs(e.links) do
+		for _, link in ipairs(links) do
 			local b = W.Button(body, Tr(link[1]), 60, skin, { onClick = JumpClick })
 			W.FitButton(b)
 			b:SetWidth(math.max(60, (b:GetFontString():GetStringWidth() or 40) + 22))

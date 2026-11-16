@@ -2972,6 +2972,7 @@ Lang:Add("koKR", {
 	["Role: %s (remembered)"] = "역할: %s (기억됨)", -- draft
 	["Remember for future dungeons"] = "다음 던전에도 기억", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "역할 선택이 꺼져 있습니다: 편의 기능 > 역할 선택에서 켜세요.", -- draft
+	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "애드온 페이지: MaxDPS가 설치되어 있어도 다시 열립니다. 전에는 프로필 페이지에 머물렀습니다.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
