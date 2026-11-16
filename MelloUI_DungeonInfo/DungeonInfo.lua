@@ -245,6 +245,24 @@ local function BuildNpcNames(Npc)
 	Slice()
 end
 
+-- a zone's name (its AreaTable id, the quest data's) in the client's language (C_Map.GetAreaInfo), `english` else
+local zoneShown = {}
+function J.ZoneShown(id, english)
+	local code = Speaks()
+	if not code or not id then
+		return english
+	end
+	if zoneShown.code ~= code then
+		zoneShown = { code = code }
+	end
+	if zoneShown[id] == nil then
+		local ok, name = pcall(C_Map.GetAreaInfo, id)
+		name = ok and Text(name) or nil
+		zoneShown[id] = (name and name ~= "") and name or (english or false)
+	end
+	return zoneShown[id] or english
+end
+
 -- (for /run) the creature an English name was read as; nil while the names are not read yet, or none has it
 function J.NpcIdOf(name)
 	return npcByEnglish and npcByEnglish[name] or nil

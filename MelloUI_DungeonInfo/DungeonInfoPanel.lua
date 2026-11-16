@@ -710,7 +710,7 @@ local function QuestLine(q)
 		return W.Tr(TEXT.after)
 	end
 	local data = rawget(_G, "MelloUI_QuestListData")
-	local zone = data and data.zones and data.zones[row[8]]
+	local zone = J.ZoneShown(row[8], data and data.zones and data.zones[row[8]])   -- (2.1.56: in the client's language)
 	return zone and (row[F.GIVER] .. ", " .. zone) or row[F.GIVER] or ""
 end
 
