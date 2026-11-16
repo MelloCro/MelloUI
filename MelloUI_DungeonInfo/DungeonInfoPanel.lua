@@ -216,7 +216,7 @@ local RowEnter = Perf.Shared("OnEnter on Dungeon Info's list rows", function(sel
 	if self.inst then
 		local map = MelloUI:GetModule("Map")
 		local plan = map and map.HasDungeonMap and map:HasDungeonMap(self.inst.map)
-		W.ShowTooltip(self, self.inst.name, plan and TEXT.rowTipMap or TEXT.rowTip)
+		W.ShowTooltip(self, J.Shown(self.inst), plan and TEXT.rowTipMap or TEXT.rowTip)
 	end
 end, "script")
 
@@ -313,7 +313,7 @@ local function FillDungeonRow(r, inst, width, near)
 	for _, e in ipairs(r.edges) do
 		e:SetShown(near)
 	end
-	r.title:SetText(inst.name)
+	r.title:SetText(J.Shown(inst))
 	r.line:SetText(Where(inst))
 	local q, s = Takeable(inst), J.TrackedIn(inst)
 	r.qn:SetText(q > 0 and q or "")
@@ -729,7 +729,7 @@ local ButtonClick = Perf.Shared("OnClick on Dungeon Info's page buttons", functi
 	elseif self == B.route then
 		local R = rawget(MelloUI, "Route")
 		if R and R.SetDestinationTo then
-			R:SetDestinationTo({ cont = door.cont, wx = door.wx, wy = door.wy }, inst.name, true)
+			R:SetDestinationTo({ cont = door.cont, wx = door.wx, wy = door.wy }, J.Shown(inst), true)
 		end
 	elseif self == B.quests then
 		if J.Trip and J.Trip.Start then
@@ -799,7 +799,7 @@ function P.LayInst()
 	H.picture:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
 	H.picture:SetSize(width, picH)
 	H.emblem:SetIcon(EMBLEM .. inst.emblem)
-	H.title:SetText(inst.name)
+	H.title:SetText(J.Shown(inst))
 	local sub = Where(inst)
 	if inst.kind == 2 and inst.players and inst.players >= 10 then
 		sub = sub .. ", " .. W.Tr(TEXT.raidOf):format(inst.players)
@@ -895,7 +895,7 @@ function P.LayBoss()
 		return
 	end
 	local H = S.bossHead
-	H.back.text:SetText(inst.name)
+	H.back.text:SetText(J.Shown(inst))
 	local y = T.FOLD + 10
 	H.title:SetText(boss.trash and W.Tr(TEXT.trashDrops) or boss.name)
 	local n = #inst.bosses

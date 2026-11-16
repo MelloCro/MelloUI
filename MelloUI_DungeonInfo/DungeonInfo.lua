@@ -167,7 +167,29 @@ function J.List(kind, out)
 	return out
 end
 
--- the instance by name (the slash command's): its own name or the start of it
+-- (2.1.56; a German player: "Razorfen Downs", "Scarlet Monastery" in English on a German client) an instance's name as
+-- the game names it in the client's language (GetRealZoneText of its map: "Hügel von Razorfen"), while MelloUI speaks
+-- that language too; else, or when the game has none, the data's English. Only for showing: matching, the bridge and
+-- the doors keep `inst.name`
+function J.Shown(inst)
+	if type(inst) ~= "table" then
+		return ""
+	end
+	local Lang = MelloUI.Lang
+	local code = Lang and Lang.code
+	local ok, locale = pcall(GetLocale)
+	if not code or code == "enUS" or not ok or code ~= locale or not inst.map then
+		return inst.name
+	end
+	if inst.shownFor ~= code then
+		local okZ, zone = pcall(GetRealZoneText, inst.map)
+		zone = okZ and Text(zone) or nil
+		inst.shown, inst.shownFor = (zone and zone ~= "") and zone or inst.name, code
+	end
+	return inst.shown
+end
+
+-- the instance by name (the slash command's): its own name or the start of it (the shown one too)
 function J.Find(text)
 	Build()
 	text = (text or ""):lower()
@@ -181,7 +203,7 @@ function J.Find(text)
 		end
 	end
 	for _, inst in ipairs(S.list) do
-		if inst.name:lower():find(text, 1, true) then
+		if inst.name:lower():find(text, 1, true) or J.Shown(inst):lower():find(text, 1, true) then
 			return inst
 		end
 	end
