@@ -232,8 +232,8 @@ local function CondenseEntry(entry, rep)
 			elseif point:find("^BOTTOM") then
 				y = y + inset
 			end
-			local ok = pcall(bar.SetPoint, bar, point, rel, relPoint, x, y)
-			if not ok then
+			local setPointOK = pcall(bar.SetPoint, bar, point, rel, relPoint, x, y)
+			if not setPointOK then
 				local parent = bar:GetParent()
 				if parent then
 					pcall(bar.SetPoint, bar, point, parent, point, x, y)
