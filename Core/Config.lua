@@ -181,6 +181,7 @@ local CHANGELOG = {
 		"Controller Forever: MelloUI works beside it now. Its buttons and binds are the controller's, MelloUI's gamepad bars step aside, and its buttons step aside while a MelloUI window is open.",
 		"Controller Forever: its frames, minimap, chat, damage meter, bags and automatic quests step back where MelloUI has that part. A card on the Addons page has its switch.",
 		"Quest Tracker: with a controller, a Quest Tracker action (Key Bindings or /mellotracker) steps into the tracker: D-pad, A, X its item, Y its menu, B leaves. /mellonext marks the next quest.",
+		"Whispers: with a controller, the whisper window takes the D-pad: people and buttons, A picks, LB and RB turn the conversation, B closes.",
 	} },
 	{ version = "2.1.54", lines = {
 		"Profiles: a profile carries your real Edit Mode layout now, and each character keeps it in a layout of its own. Alts and a loaded profile no longer end up on the preset Modern.",

@@ -1214,6 +1214,32 @@ local function Build()
 	job.holder, job.content, job.p, job.rel, job.rp, job.x, job.y = holder, f, "BOTTOM", view, "TOP", 0, 2
 	job.pad, job.lag, job.h = 6, 0.35, WIN_H
 	f:Hide()
+	-- (2.1.55, docs/plans/controller-forever.md stage 2; the user, 2026-11-16: "Read and pick people") the pad in the
+	-- whisper window, through MelloUI's one pad navigation: the D-pad walks the people and the window's buttons, A
+	-- picks, LB and RB turn the talk back and on, B closes it. Typing an answer still needs a keyboard. (After the
+	-- OnHide above: SetScript drops the navigation's hooks)
+	local Pad = MelloUI.Gamepad
+	if Pad and Pad.Window and Pad.Own then
+		local PAGE = 4   -- (wheel steps a press)
+		Pad.Window(f, { back = function()
+			WV.Close()
+			return true
+		end })
+		Pad.Own(f, { nav = f, keys = { PADDUP = "UP", PADDDOWN = "DOWN", PADDLEFT = "LEFT", PADDRIGHT = "RIGHT",
+			PAD1 = "A", PAD2 = "BACK", PADLSHOULDER = "OLDER", PADRSHOULDER = "NEWER" },
+			press = function(name, down)
+				if not down then
+					return
+				end
+				if name == "BACK" then
+					WV.Close()
+				elseif name == "OLDER" then
+					WV.Scroll(PAGE)
+				elseif name == "NEWER" then
+					WV.Scroll(-PAGE)
+				end
+			end })
+	end
 	WV.Restyle()
 end
 
