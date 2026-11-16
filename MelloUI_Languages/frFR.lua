@@ -2994,7 +2994,7 @@ Lang:Add("frFR", {
 	["%s: %.1f ms in one frame."] = "%s : %.1f ms en une image.",
 	["The installer opens when combat ends."] = "L'installateur s'ouvre à la fin du combat.",
 	["Close Edit Mode first, then open the installer again."] = "Fermez d'abord le mode Édition, puis rouvrez l'installateur.",
-	["Version %s. /mello shows what's new; Install... there sets MelloUI up again."] = "Version %s. /mello montre les nouveautés ; Installer... y configure de nouveau MelloUI.",
+	["Version %s. /mello shows what's new; Install... there sets MelloUI up again."] = "Version %s. /mello affiche les nouveautés ; le bouton « Installer… » permet de reconfigurer MelloUI.",
 	["Use MelloUI's Edit Mode layout on this character too?\n\nYour own layouts stay in Edit Mode's list. Later: /mello layout apply."] = "Utiliser aussi la disposition du mode Édition de MelloUI sur ce personnage ?\n\nVos propres dispositions restent dans la liste du mode Édition. Plus tard : /mello layout apply.",
 	["Use it"] = "L'utiliser",
 	["MelloUI's Edit Mode layout is not active on this character: pick it in Edit Mode's layout list, or log in without the Gamepad UI to be asked."] = "La disposition du mode Édition de MelloUI n'est pas active sur ce personnage : choisissez-la dans la liste des dispositions du mode Édition, ou connectez-vous sans l'interface manette pour qu'on vous le demande.",
