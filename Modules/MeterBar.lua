@@ -297,7 +297,7 @@ local function Build()
 	end
 	ui.me = NewPin(ui, true)
 	SetPinShown(ui.me, false)
-	ui.me.label:SetText(Meter.TEXT.you)
+	ui.me.label:SetText(W.Tr(Meter.TEXT.you))
 	-- the pointer on it: everyone in order
 	holder:EnableMouse(true)
 	Perf.SetScript(holder, "OnEnter", ListShow)
@@ -556,7 +556,7 @@ ListShow = Shared("OnEnter on the race bar", function(holder)
 		local src, row = sources[i], ListRow(i)
 		row.rank:SetText(Meter.Ordinal(i))
 		if src.isLocalPlayer == true then
-			row.name:SetText(Meter.TEXT.you)
+			row.name:SetText(W.Tr(Meter.TEXT.you))
 			Look.Text(row.name, "value", B.CAPTION)
 			Look.Colour(row.name, nil)
 		else
