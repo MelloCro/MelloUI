@@ -163,7 +163,7 @@ end
 
 -- a player's name as the window says it: "You" in gold
 local function NameOf(s)
-	return s.me and Meter.TEXT.you or s.n or Meter.TEXT.someone
+	return s.me and W.Tr(Meter.TEXT.you) or s.n or W.Tr(Meter.TEXT.someone)
 end
 
 --------------------------------------------------------------------------------
