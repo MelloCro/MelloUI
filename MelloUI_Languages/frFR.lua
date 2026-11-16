@@ -4274,6 +4274,19 @@ Lang:Add("frFR", {
 	["Remember for future dungeons"] = "Retenir pour les prochains donjons", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Le choix du rôle est désactivé : activez-le dans Confort > Choix du rôle.", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Page Addons : elle s’ouvre de nouveau avec MaxDPS installé, alors qu’elle restait sur Profils.", -- draft
+	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.56)
+	["Mail Recipients"] = "Destinataires du courrier", -- draft
+	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Un bouton à côté du champ Destinataire de la boîte aux lettres liste vos personnages et ceux de vos amis Battle.net : cliquez sur l’un d’eux et son nom est saisi.", -- draft
+	["Who was that again? One click and the letter has its name."] = "C’était qui, déjà ? Un clic et la lettre a son destinataire.", -- draft
+	["Battle.net Friends' Characters"] = "Personnages des amis Battle.net", -- draft
+	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "Le menu liste aussi vos amis Battle.net, chacun avec les personnages que le jeu a montrés d’eux pendant qu’ils jouaient. Désactivé : vos propres personnages seulement, et aucun des leurs n’est retenu.", -- draft
+	["Recipients"] = "Destinataires", -- draft
+	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Choisissez l’un de vos personnages ou celui d’un ami Battle.net pour lui envoyer cette lettre.", -- draft
+	["Your Characters"] = "Vos personnages", -- draft
+	["Battle.net Friends"] = "Amis Battle.net", -- draft
+	["None yet: each of your characters is noted as it logs in."] = "Aucun pour l’instant : chacun de vos personnages est retenu dès qu’il se connecte.", -- draft
+	["None yet: a friend's characters are noted while they play."] = "Aucun pour l’instant : les personnages d’un ami sont retenus pendant qu’il joue.", -- draft
+	["online"] = "en ligne", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
