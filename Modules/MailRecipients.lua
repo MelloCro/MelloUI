@@ -5,7 +5,8 @@
 --
 -- A small button at the right of the mailbox's To field (Send Mail) opens a menu:
 --   Your Characters      your other characters of your faction, each in its class colour with its level; a click puts
---                        the name in the To field (Name-Realm when it lives on another realm) and moves on to Subject
+--                        the full name in the To field and moves on to Subject; one on another realm of this server
+--                        stays a grey line with its realm (no letter reaches it from here)
 --   Battle.net Friends   a friend a row (their BattleTag's name, "online" while they play), their characters under it
 --                        as a submenu; every character the game has shown of them while they played, so the ones you
 --                        cannot remember are there while they are offline too
@@ -35,6 +36,7 @@ local TEXT = {
 	noAlts = "None yet: each of your characters is noted as it logs in.",
 	noFriends = "None yet: a friend's characters are noted while they play.",
 	online = "online",
+	elsewhere = "other realm: %s",
 }
 
 local M = MelloUI:RegisterModule("MailRecipients", {
@@ -97,6 +99,12 @@ end
 -- is the FULL one (the user: names on this client have a first name and a surname, "Hopfen Hilda", and a letter
 -- needs the whole name): the game's display name with its surname (MelloUI:UnitNameAs "both"), UnitName's when not.
 -- The key stays UnitName's, as the Quest List's record keys a character
+-- a realm as the game names it in an address: its spaces left out ("CAMWOW EU5 Realm 7 PvE" -> "CAMWOWEU5Realm7PvE",
+-- as a Battle.net friend's realmName reads)
+local function RealmKey(realm)
+	return type(realm) == "string" and (realm:gsub("%s", "")) or nil
+end
+
 local function Me()
 	local short, realm = Text(Call(UnitName, "player")), Text(Call(GetRealmName))
 	if not short or short == "" or not realm or realm == "" then
@@ -104,6 +112,13 @@ local function Me()
 	end
 	local full = Text(MelloUI.UnitNameAs and Call(MelloUI.UnitNameAs, MelloUI, "player", "both"))
 	return short .. "-" .. realm, (full and full ~= "") and full or short, realm, Text(Call(UnitFactionGroup, "player"))
+end
+
+-- a character a letter reaches from here: on your realm (the user's friends play on several realms of this server,
+-- "CAMWOW EU5 Realm 5 PvE" and "... Realm 7 PvE", and the mail goes within one)
+local function Here(c)
+	local _, _, realm = Me()
+	return realm == nil or RealmKey(c.realm) == RealmKey(realm)
 end
 
 -- the class token of a class's shown name (a friend's game account names the class in the client's language)
@@ -156,11 +171,15 @@ local function ReadFriends()
 			local g = Call(BN.GetFriendGameAccountInfo, i, j)
 			if type(g) == "table" and Text(g.clientProgram) == wow
 				and (not project or Num(g.wowProjectID) == project) then
-				local name, realm = Text(g.characterName), Text(g.realmName)
+				-- (/mello mail names on this client: characterName is the full name, "Asmegor Baskerville";
+				-- realmName without spaces, realmDisplayName with them; classFilename the class's token)
+				local name = Text(g.characterName)
+				local realm = Text(g.realmDisplayName) or Text(g.realmName)
 				if name and name ~= "" and realm and realm ~= "" then
 					local chars = known[tag] or {}
 					known[tag] = chars
-					chars[name .. "-" .. realm] = { name = name, realm = realm, class = ClassToken(Text(g.className)),
+					chars[name .. "-" .. RealmKey(realm)] = { name = name, realm = realm,
+						class = Text(g.classFilename) or ClassToken(Text(g.className)),
 						level = Num(g.characterLevel), faction = Text(g.factionName), seen = time() }
 				end
 			end
@@ -184,11 +203,25 @@ end
 -- The menu
 --------------------------------------------------------------------------------
 
--- a character's line: its name in its class colour, its level after it dimmed
+-- a character's line: its name in its class colour, its level after it dimmed; on another realm all of it grey, the
+-- realm after it (no letter reaches it from here)
 local function Line(c)
+	if not Here(c) then
+		local text = c.level and (c.name .. "  " .. c.level) or c.name
+		return "|cff9d9d9d" .. text .. "  (" .. Tr(TEXT.elsewhere):format(c.realm) .. ")|r"
+	end
 	local hex = c.class and MelloUI.Colours and MelloUI.Colours.ClassHex and MelloUI.Colours.ClassHex(c.class)
 	local name = hex and ("|c" .. hex .. c.name .. "|r") or c.name
 	return c.level and (name .. "  |cff9d9d9d" .. c.level .. "|r") or name
+end
+
+-- a character's entry in the menu: a click on yours to write to, a grey line on another realm
+local function Entry(menu, c, Put)
+	if Here(c) then
+		menu:CreateButton(Line(c), function() Put(c) end)
+	else
+		menu:CreateTitle(Line(c))
+	end
 end
 
 -- the characters of a list you can write to: your faction (or not known yet), you yourself left out; highest level first
@@ -201,6 +234,9 @@ local function Writable(list, me, faction)
 		end
 	end
 	table.sort(out, function(a, b)
+		if Here(a) ~= Here(b) then
+			return Here(a)   -- (the ones a letter reaches first)
+		end
 		if (a.level or 0) ~= (b.level or 0) then
 			return (a.level or 0) > (b.level or 0)
 		end
@@ -209,18 +245,13 @@ local function Writable(list, me, faction)
 	return out
 end
 
--- the To field gets the name (with its realm when it lives on another one), the cursor moves on to Subject
+-- the To field gets the full name (only a character on your realm is clickable), the cursor moves on to Subject
 local function Put(c)
 	local to, subject = rawget(_G, "SendMailNameEditBox"), rawget(_G, "SendMailSubjectEditBox")
 	if not to then
 		return
 	end
-	local _, _, realm = Me()
-	local name = c.name
-	if realm and c.realm ~= realm then
-		name = name .. "-" .. c.realm:gsub("%s", "")
-	end
-	to:SetText(name)
+	to:SetText(c.name)
 	if subject then
 		subject:SetFocus()
 	end
@@ -256,7 +287,7 @@ local function Menu(owner)
 		root:CreateTitle(Tr(TEXT.alts))
 		local alts = Writable(Store("alts"), me, faction)
 		for _, c in ipairs(alts) do
-			root:CreateButton(Line(c), function() Put(c) end)
+			Entry(root, c, Put)
 		end
 		if #alts == 0 then
 			root:CreateTitle("|cff9d9d9d" .. Tr(TEXT.noAlts) .. "|r")
@@ -282,7 +313,7 @@ local function Menu(owner)
 				end
 				local sub = root:CreateButton(label)
 				for _, c in ipairs(chars) do
-					sub:CreateButton(Line(c), function() Put(c) end)
+					Entry(sub, c, Put)
 				end
 				shown = shown + 1
 			end

@@ -4287,6 +4287,7 @@ Lang:Add("frFR", {
 	["None yet: each of your characters is noted as it logs in."] = "Aucun pour l’instant : chacun de vos personnages est retenu dès qu’il se connecte.", -- draft
 	["None yet: a friend's characters are noted while they play."] = "Aucun pour l’instant : les personnages d’un ami sont retenus pendant qu’il joue.", -- draft
 	["online"] = "en ligne", -- draft
+	["other realm: %s"] = "autre royaume : %s", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
