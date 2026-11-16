@@ -5,8 +5,8 @@
 --
 -- A small button at the right of the mailbox's To field (Send Mail) opens a menu:
 --   Your Characters      your other characters of your faction, each in its class colour with its level; a click puts
---                        the full name in the To field and moves on to Subject; one on another realm of this server
---                        stays a grey line with its realm (no letter reaches it from here)
+--                        the full name in the To field and moves on to Subject (a friend's character on another realm of this
+--                        server too: same faction, the letter goes)
 --   Battle.net Friends   a friend a row (their BattleTag's name, "online" while they play), their characters under it
 --                        as a submenu; every character the game has shown of them while they played, so the ones you
 --                        cannot remember are there while they are offline too
@@ -36,7 +36,6 @@ local TEXT = {
 	noAlts = "None yet: each of your characters is noted as it logs in.",
 	noFriends = "None yet: a friend's characters are noted while they play.",
 	online = "online",
-	elsewhere = "other realm: %s",
 }
 
 local M = MelloUI:RegisterModule("MailRecipients", {
@@ -114,13 +113,6 @@ local function Me()
 	return short .. "-" .. realm, (full and full ~= "") and full or short, realm, Text(Call(UnitFactionGroup, "player"))
 end
 
--- a character a letter reaches from here: on your realm (the user's friends play on several realms of this server,
--- "CAMWOW EU5 Realm 5 PvE" and "... Realm 7 PvE", and the mail goes within one)
-local function Here(c)
-	local _, _, realm = Me()
-	return realm == nil or RealmKey(c.realm) == RealmKey(realm)
-end
-
 -- the class token of a class's shown name (a friend's game account names the class in the client's language)
 local function ClassToken(shown)
 	if type(shown) ~= "string" or shown == "" then
@@ -147,7 +139,7 @@ local function WriteMe()
 	end
 	local alts = Store("alts")
 	local _, class = Call(UnitClass, "player")
-	alts[key] = { name = name, realm = realm, class = Text(class), level = Num(Call(UnitLevel, "player")),
+	alts[key] = { name = name, full = true, realm = realm, class = Text(class), level = Num(Call(UnitLevel, "player")),
 		faction = faction, seen = time() }
 end
 
@@ -203,40 +195,31 @@ end
 -- The menu
 --------------------------------------------------------------------------------
 
--- a character's line: its name in its class colour, its level after it dimmed; on another realm all of it grey, the
--- realm after it (no letter reaches it from here)
+-- a character's line: its name in its class colour, its level after it dimmed (a friend's on another realm of this
+-- server is written to as well: the user, "same faction, I can still send", the game's own name list offering it)
 local function Line(c)
-	if not Here(c) then
-		local text = c.level and (c.name .. "  " .. c.level) or c.name
-		return "|cff9d9d9d" .. text .. "  (" .. Tr(TEXT.elsewhere):format(c.realm) .. ")|r"
-	end
 	local hex = c.class and MelloUI.Colours and MelloUI.Colours.ClassHex and MelloUI.Colours.ClassHex(c.class)
 	local name = hex and ("|c" .. hex .. c.name .. "|r") or c.name
 	return c.level and (name .. "  |cff9d9d9d" .. c.level .. "|r") or name
 end
 
--- a character's entry in the menu: a click on yours to write to, a grey line on another realm
+-- a character's entry in the menu: a click writes to it
 local function Entry(menu, c, Put)
-	if Here(c) then
-		menu:CreateButton(Line(c), function() Put(c) end)
-	else
-		menu:CreateTitle(Line(c))
-	end
+	menu:CreateButton(Line(c), function() Put(c) end)
 end
 
--- the characters of a list you can write to: your faction (or not known yet), you yourself left out; highest level first
-local function Writable(list, me, faction)
+-- the characters of a list you can write to: your faction (or not known yet), you yourself left out, and only the ones
+-- noted with their full name (`full`: an early build of this module took the Quest List's record, first names alone
+-- -- "Sovari" where the letter needs "Sovari Mara" -- and those wait till that character logs in); highest level first
+local function Writable(list, me, faction, needFull)
 	local out = {}
 	for key, c in pairs(type(list) == "table" and list or {}) do
-		if key ~= me and type(c) == "table" and type(c.name) == "string"
+		if key ~= me and type(c) == "table" and type(c.name) == "string" and (c.full or not needFull)
 			and (c.faction == nil or faction == nil or c.faction == faction) then
 			out[#out + 1] = c
 		end
 	end
 	table.sort(out, function(a, b)
-		if Here(a) ~= Here(b) then
-			return Here(a)   -- (the ones a letter reaches first)
-		end
 		if (a.level or 0) ~= (b.level or 0) then
 			return (a.level or 0) > (b.level or 0)
 		end
@@ -285,7 +268,7 @@ local function Menu(owner)
 	local me, _, _, faction = Me()
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(Tr(TEXT.alts))
-		local alts = Writable(Store("alts"), me, faction)
+		local alts = Writable(Store("alts"), me, faction, true)
 		for _, c in ipairs(alts) do
 			Entry(root, c, Put)
 		end

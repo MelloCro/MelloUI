@@ -3764,7 +3764,6 @@ Lang:Add("deDE", {
 	["None yet: each of your characters is noted as it logs in."] = "Noch keine: Jeder deiner Charaktere wird gemerkt, sobald er sich einloggt.", -- draft
 	["None yet: a friend's characters are noted while they play."] = "Noch keine: Die Charaktere eines Freundes werden gemerkt, während er spielt.", -- draft
 	["online"] = "online", -- draft
-	["other realm: %s"] = "anderer Realm: %s", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
