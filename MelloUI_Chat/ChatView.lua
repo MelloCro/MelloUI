@@ -2148,8 +2148,8 @@ local function ButtonRow(frame)
 			end
 			letter:SetText(pick[1])
 			b.label = letter
-			b.slash, b.tipTitle, b.tipText = pick[2], pick[4], "Speak in %s (%s)."
-			b.tipArg1, b.tipArg2 = pick[4], pick[2]
+			b.slash, b.tipTitle = pick[2], pick[4]
+			b.tipText = "Speak in " .. pick[4]:lower() .. " (" .. pick[2] .. ")."
 			Perf.SetScript(b, "OnClick", PickClick)
 		else
 			b.action, b.tipTitle, b.tipText = act[4], act[2], act[3]
