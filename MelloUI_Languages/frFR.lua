@@ -707,7 +707,7 @@ Lang:Add("frFR", {
 	["Grey Out Junk"] = "Griser la camelote",
 	["Junk items show grey in your bags and bank."] = "La camelote s'affiche en gris dans vos sacs et la banque.",
 	["Level Up"] = "Montée de niveau",
-	["LEVEL UP"] = "MONTÉE DE NIVEAU", -- draft
+	["LEVEL UP"] = "NIVEAU SUPÉRIEUR",
 	["A level up fills the bar with light and announces your new level."] = "À chaque gain de niveau, la barre se remplit de lumière et votre nouveau niveau est annoncé.",
 	["Level Up Card"] = "Carte de niveau",
 	["A level up shows a small window with the stats you gained and the spells now at your class trainer."] = "Au gain d’un niveau, une fenêtre récapitulative présente les caractéristiques gagnées et les sorts disponibles auprès de votre maître de classe.",
@@ -2680,7 +2680,7 @@ Lang:Add("frFR", {
 	["Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures."] = "Ses icônes sur la carte et la minicarte : masquées là où MelloUI dessine la même chose, les autres avec les images de MelloUI.",
 	["Leveling guide steps dock under its tracker."] = "Les étapes des guides de montée de niveau s'ancrent sous son suivi.",
 	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)."] = "L'Itinéraire suit les étapes du guide, et ses étapes s'affichent dans le Suivi des quêtes de MelloUI (son propre cadre d'étapes masqué).",
-	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "Des flèches Retour et Ignorer dans son en-tête du Suivi des quêtes lancent le retour et le saut d’étape du guide lui-même.", -- draft
+	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "Dans l’en-tête du suivi des quêtes, les flèches permettent de revenir à l’étape précédente du guide ou de passer à la suivante.",
 	["The jobs it does while its own switches are on go before MelloUI's (Who does what lists them)."] = "Les tâches qu'il accomplit tant que ses propres options sont activées passent avant celles de MelloUI (Qui fait quoi les liste).",
 	["Route follows its guide's steps."] = "L'Itinéraire suit les étapes de son guide.",
 	["Route follows its waypoint arrow."] = "L'Itinéraire suit sa flèche de point de passage.",
@@ -3191,7 +3191,7 @@ Lang:Add("frFR", {
 	["Stats gained"] = "Caractéristiques gagnées",
 	["New at your trainer"] = "Nouveau chez votre maître",
 	["Set a route ›"] = "Tracer un itinéraire ›",
-	["Set a route"] = "Tracer un itinéraire", -- draft
+	["Set a route"] = "Tracer un itinéraire",
 	["+%d talent point to spend"] = "+%d point de talent à dépenser",
 	["+%d talent points to spend"] = "+%d points de talent à dépenser",
 	["Level %d -"] = "Niveau %d -",
@@ -3349,9 +3349,9 @@ Lang:Add("frFR", {
 	["Choose one:"] = "Choisissez une récompense :",
 	["%d XP"] = "%d points d'expérience",
 	["Ready to hand in"] = "À rendre",
-	["In your group"] = "Dans votre groupe", -- draft
-	["ready to hand in"] = "prête à rendre", -- draft
-	["%d of %d objectives"] = "%d objectifs sur %d", -- draft
+	["In your group"] = "Membres du groupe",
+	["ready to hand in"] = "Quête prête à rendre",
+	["%d of %d objectives"] = "%d objectifs sur %d",
 	["Ready to hand in: %s"] = "À rendre : %s",
 	["Routing"] = "Itinéraire actif",
 	["Tracked"] = "Suivie",
@@ -3982,8 +3982,8 @@ Lang:Add("frFR", {
 	["%s - step %s"] = "%s – étape %s",
 	["%s - step %s%s"] = "%s – étape %s%s",
 	["Skip this step"] = "Ignorer cette étape",
-	["Back a step"] = "Revenir d’une étape", -- draft
-	["Forward a step"] = "Avancer d’une étape", -- draft
+	["Back a step"] = "Revenir à l’étape précédente",
+	["Forward a step"] = "Passer à l’étape suivante",
 	["Click: the way there"] = "Clic : afficher l’itinéraire",
 	["This guide step has no place to mark on the map."] = "Cette étape du guide n’indique aucun lieu à marquer sur la carte.",
 	["The map pin is your own, not this step's: it stays."] = "Ce repère sur la carte est le vôtre, pas celui de cette étape : il reste en place.",
