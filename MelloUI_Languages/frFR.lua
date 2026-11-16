@@ -2680,6 +2680,7 @@ Lang:Add("frFR", {
 	["Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures."] = "Ses icônes sur la carte et la minicarte : masquées là où MelloUI dessine la même chose, les autres avec les images de MelloUI.",
 	["Leveling guide steps dock under its tracker."] = "Les étapes des guides de montée de niveau s'ancrent sous son suivi.",
 	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)."] = "L'Itinéraire suit les étapes du guide, et ses étapes s'affichent dans le Suivi des quêtes de MelloUI (son propre cadre d'étapes masqué).",
+	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "Des flèches Retour et Ignorer dans son en-tête du Suivi des quêtes lancent le retour et le saut d’étape du guide lui-même.", -- draft
 	["The jobs it does while its own switches are on go before MelloUI's (Who does what lists them)."] = "Les tâches qu'il accomplit tant que ses propres options sont activées passent avant celles de MelloUI (Qui fait quoi les liste).",
 	["Route follows its guide's steps."] = "L'Itinéraire suit les étapes de son guide.",
 	["Route follows its waypoint arrow."] = "L'Itinéraire suit sa flèche de point de passage.",
@@ -2696,8 +2697,6 @@ Lang:Add("frFR", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "Afficher aussi sa propre flèche",
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Sa flèche reste à l'écran à côté du Marqueur du monde de MelloUI tant que Route la suit. Désactivé : seul le Marqueur du monde montre le chemin.",
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route suit les étapes du guide, et ses étapes s'affichent dans le Suivi des quêtes de MelloUI avec une case pour passer l'étape (sa propre fenêtre d'étape masquée).",
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route suit les étapes du guide, et ses étapes s'affichent dans le Suivi des quêtes de MelloUI avec une case pour passer l'étape (son propre panneau d'étape masqué).",
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "Avec sa propre option de flèche TomTom activée, Route suit ses étapes via la flèche de TomTom (la carte de TomTom affiche cette flèche ou non).",
 	["Route follows its steps through TomTom"] = "Route suit ses étapes via TomTom",
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "Suivi via TomTom : la carte de TomTom l'active ou non et affiche sa flèche ou non.",
@@ -3973,6 +3972,8 @@ Lang:Add("frFR", {
 	["%s - step %s"] = "%s – étape %s",
 	["%s - step %s%s"] = "%s – étape %s%s",
 	["Skip this step"] = "Ignorer cette étape",
+	["Back a step"] = "Revenir d’une étape", -- draft
+	["Forward a step"] = "Avancer d’une étape", -- draft
 	["Click: the way there"] = "Clic : afficher l’itinéraire",
 	["This guide step has no place to mark on the map."] = "Cette étape du guide n’indique aucun lieu à marquer sur la carte.",
 	["The map pin is your own, not this step's: it stays."] = "Ce repère sur la carte est le vôtre, pas celui de cette étape : il reste en place.",

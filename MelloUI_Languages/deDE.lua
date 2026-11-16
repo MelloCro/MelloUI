@@ -2980,6 +2980,7 @@ Lang:Add("deDE", {
 	["Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures."] = "Seine Karten- und Minikartensymbole: ausgeblendet, wo MelloUI dasselbe zeichnet, der Rest in MelloUIs Bildern.", -- draft
 	["Leveling guide steps dock under its tracker."] = "Schritte von Levelguides docken unter seinem Tracker an.", -- draft
 	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)."] = "Route folgt den Schritten des Guides, und seine Schritte erscheinen in MelloUIs Questverfolgung (sein eigenes Schrittfenster ausgeblendet).", -- draft
+	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "Pfeile für Zurück und Überspringen in seiner Überschrift in der Questverfolgung rufen den eigenen Schritt zurück und das Überspringen des Guides auf.", -- draft
 	["The jobs it does while its own switches are on go before MelloUI's (Who does what lists them)."] = "Die Aufgaben, die es erledigt, solange seine eigenen Schalter an sind, gehen MelloUIs vor (Wer macht was listet sie).", -- draft
 	["Route follows its guide's steps."] = "Route folgt den Schritten seines Guides.", -- draft
 	["Route follows its waypoint arrow."] = "Route folgt seinem Wegpunktpfeil.", -- draft
@@ -2996,8 +2997,6 @@ Lang:Add("deDE", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "Auch seinen eigenen Pfeil zeigen", -- draft
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Sein Pfeil bleibt neben MelloUIs Weltmarkierung sichtbar, solange Route ihm folgt. Aus: Nur die Weltmarkierung zeigt den Weg.", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route folgt den Schritten des Guides, und seine Schritte erscheinen in MelloUIs Questverfolgung mit einem Kästchen zum Überspringen des Schritts (sein eigenes Schrittfenster ausgeblendet).", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route folgt den Schritten des Guides, und seine Schritte erscheinen in MelloUIs Questverfolgung mit einem Kästchen zum Überspringen des Schritts (sein eigenes Schrittfeld ausgeblendet).", -- draft
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "Ist seine eigene Option für den TomTom-Pfeil an, folgt Route seinen Schritten über TomToms Pfeil (TomToms Karte zeigt diesen Pfeil oder nicht).", -- draft
 	["Route follows its steps through TomTom"] = "Route folgt seinen Schritten über TomTom", -- draft
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "Über TomTom verfolgt: TomToms Karte schaltet es und zeigt seinen Pfeil oder nicht.", -- draft

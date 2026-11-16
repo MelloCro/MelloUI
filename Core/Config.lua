@@ -181,7 +181,7 @@ local CHANGELOG = {
 		"Profiles: a profile carries your real Edit Mode layout now, and each character keeps it in a layout of its own. Alts and a loaded profile no longer end up on the preset Modern.",
 		"Custom Sounds: the Spellbook and Talents window, the profession windows and other newer windows are no longer silent, and a window opens with one sound, not a click on top of it.",
 		"Custom Sounds: Your Sounds has five new rows: Window Opened, Window Closed, Window Tab, Bags Opened and Bags Closed. Each starts on the sound it had.",
-		"RestedXP Guides: a new Guide: Next Steps slider shows up to five next steps on the Quest Tracker, a step's items are the game's item links, and Active Targets wears MelloUI's look.",
+		"Leveling guides: Back and Skip arrows in their Quest Tracker heading. RestedXP: Guide: Next Steps shows up to five next steps, its items are item links, Active Targets in MelloUI's look.",
 		"Quest List and map: in a group, a mark after a quest shows how many others have it, and its tooltip lists them and how far they are.",
 		"Bags: a stack dropped on a + slot now goes into a free slot, split or whole, and Discard counts the Reagent Bag's items too.",
 		"Edit Layout: hold Alt to reach an element under the dock. Cooldown numbers no longer keep an old time when a running cooldown changes.",

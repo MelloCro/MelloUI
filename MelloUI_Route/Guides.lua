@@ -46,7 +46,29 @@ M.Guide = Guide
 -- (a reader's steps.upcoming: its next steps for the Quest Tracker's Guide: Next Steps, which shows up to this many)
 Guide.NEXT_MAX = 5
 
-local function SkipText() return W.Tr("Skip this step") end   -- (a guide that skips whole steps: the box under its lines)
+-- (2.1.54; the user, 2026-11-16: "leveling addons have buttons to go back to certain stepps and skip some, can we add
+-- buttons for it", the sketch's pick A: two arrows in the guide's heading on the Quest Tracker, in place of the
+-- "Skip this step" box under its lines) a reader's step buttons, steps.nav: Back runs the guide's own step back, Skip
+-- its own skip -- ahead: the guide is looking at an earlier step, and the arrow walks forward as its own window's
+-- does; the guide read again a frame later (its own update may wait for its next one)
+local function StepButtons(reader, back, skip, ahead)
+	if type(back) ~= "function" and type(skip) ~= "function" then
+		return nil
+	end
+	local function Run(fn)
+		return type(fn) == "function" and function()
+			pcall(fn)
+			C_Timer.After(0, function() Guide.Changed(reader) end)
+		end or nil
+	end
+	return { Back = Run(back), Skip = Run(skip), ahead = ahead and true or nil, name = reader.name }
+end
+
+-- (a step's buttons in its signatures: one shown or gone, or Skip turned into a walk forward, is a change)
+local function NavSig(steps)
+	local nav = steps and steps.nav
+	return nav and ((nav.Back and "<" or "") .. (nav.Skip and (nav.ahead and ">" or ">>") or "")) or ""
+end
 
 local function Following()
 	return M.isEnabled and M.db and M.db.followGuide ~= false or false
@@ -296,6 +318,7 @@ local function Read(reader)
 	for _, line in ipairs(steps and steps.lines or {}) do
 		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-")
 	end
+	parts[#parts + 1] = NavSig(steps)
 	reader.mapID, reader.x, reader.y, reader.steps = m, x, y, steps
 	reader.runs = (m or steps) and true or false
 	-- (its step itself -- the guide, the step's number in its title, the spot -- not its lines' progress: what takes over)
@@ -572,6 +595,7 @@ function Guide.Publish()
 			parts[#parts + 1] = tostring(l.shown or l.text)
 		end
 	end
+	parts[#parts + 1] = NavSig(steps)
 	local sig = steps and table.concat(parts, "\n") or ""
 	if sig == Guide.sig then
 		return
@@ -591,7 +615,7 @@ function Guide.Publish()
 		end
 	end
 	MelloUI:Fire("guide", { section = reader.section or reader.name, lines = steps.lines, Repin = Guide.Repin,
-		Unpin = Guide.Unpin, title = Guide.title, cog = steps.cog, upcoming = steps.upcoming })
+		Unpin = Guide.Unpin, title = Guide.title, cog = steps.cog, nav = steps.nav, upcoming = steps.upcoming })
 end
 
 -- the followed guide's items for its step on the bus's "guideitem" (the user, 2026-10-18: "when you need to use an
@@ -722,7 +746,8 @@ end
 -- The readers. Each: key, name, section (the Quest Tracker's heading; none for
 -- an arrow alone); Hook(changed) post-hooks the addon's step update, true when
 -- hooked; Point() its step's spot: uiMapID, x, y in 0..1; Steps() { title,
--- lines = { { text, done, box, Toggle } }, cog } or nil; Items() { { kind
+-- lines = { { text, done, box, Toggle } }, cog, nav (StepButtons: its own step back
+-- and skip) } or nil; Items() { { kind
 -- "item" or "spell", id, known } }; Frames() its own arrow and windows;
 -- Quiet(on), optional, its drawings on no frame of its own, through its own
 -- setting (on: followed); Goals(), optional, its step's goals with places
@@ -1192,7 +1217,28 @@ do
 		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
 		local settings = type(open) == "function" and function() open() end or nil
 		local title = type(name) == "string" and name or "RestedXP"
-		return { title = n and W.Tr("%s - step %s"):format(title, n) or title,
+		-- (its step buttons: the step before or after the current one, as its own "Go to step" menu sets it; going back,
+		-- a sticky step -- one RestedXP passes on to the next -- left out; the current step read at the click)
+		local set = type(R.SetStep) == "function" and R.SetStep
+		local all = type(guide) == "table" and type(guide.steps) == "table" and guide.steps
+		local function Now()
+			local c = rawget(_G, "RXPCData")
+			return type(c) == "table" and tonumber(c.currentStep) or nil
+		end
+		local nav = set and all and n and StepButtons(rxp, n > 1 and function()
+			for i = (Now() or 1) - 1, 1, -1 do
+				if type(all[i]) == "table" and not all[i].sticky then
+					set(i)
+					return
+				end
+			end
+		end, function()
+			local now = Now()
+			if now then
+				set(now + 1)
+			end
+		end)
+		return { title = n and W.Tr("%s - step %s"):format(title, n) or title, nav = nav,
 			lines = lines, upcoming = rxp.Upcoming(R, guide, steps, cdata),
 			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",
 				hint = W.Tr("Click: its menu (guides, settings)  -  Right-click: its settings") } }
@@ -1322,7 +1368,8 @@ do
 		return m, x / 100, y / 100
 	end
 
-	-- its step: what to do (StepTitle), its lines (StepLines: turn-ins, accepts, objectives), and a box to skip it
+	-- its step: what to do (StepTitle), its lines (StepLines: turn-ins, accepts, objectives); its step buttons as its
+	-- own window's Back and Skip (PrevStep; SkipStep, or Resume while it looks at an earlier step: pinned)
 	function fta.Steps()
 		local t = F()
 		local ok, step = pcall(t and t.CurrentStep, t)
@@ -1344,11 +1391,15 @@ do
 		if #lines == 0 then
 			return nil
 		end
-		lines[#lines + 1] = { text = SkipText(), done = false, box = true, skip = true, Toggle = function(skip)
-			if skip then
-				pcall(t.SkipStep, t)
-			end
-		end }
+		local pinned = rawget(t, "pinned") and true or false
+		local nav = StepButtons(fta, type(t.PrevStep) == "function" and function() t:PrevStep() end,
+			(pinned and type(t.Resume) == "function" or type(t.SkipStep) == "function") and function()
+				if rawget(t, "pinned") and type(t.Resume) == "function" then
+					t:Resume()
+				else
+					t:SkipStep()
+				end
+			end, pinned)
 		local guide = Pcall(t.GetGuide, t)
 		local char = rawget(t, "char")
 		local n = type(char) == "table" and tonumber(Plain(char.step)) or nil
@@ -1378,7 +1429,7 @@ do
 			end
 		end
 		local title = name or "Follow The Arrow"
-		return { title = n and W.Tr("%s - step %s"):format(title, n) or title, lines = lines,
+		return { title = n and W.Tr("%s - step %s"):format(title, n) or title, lines = lines, nav = nav,
 			cog = { Left = Guides, Right = Settings, tip = "Follow The Arrow",
 				hint = W.Tr("Click: its guides  -  Right-click: its settings") } }
 	end
@@ -1502,12 +1553,15 @@ do
 		if #lines == 0 then
 			return nil
 		end
-		lines[#lines + 1] = { text = SkipText(), done = false, box = true, skip = true, Toggle = function(skip)
-			if skip then
-				pcall(t.SkipQuestStep, t)
-				pcall(t.UpdateMapId, t)   -- (as its own /apr skip)
-			end
-		end }
+		-- (its step buttons: its rollback, which first undoes a skip, and its skip -- each as its own /apr rollback and
+		-- /apr skip run it, the map's zone looked at again after)
+		local function Step(fn)
+			return type(fn) == "function" and function()
+				fn(t)
+				pcall(t.UpdateMapId, t)
+			end or nil
+		end
+		local nav = StepButtons(apr, Step(t.PreviousQuestStep), Step(t.SkipQuestStep))
 		local progress = type(details.progress) == "table" and details.progress or {}
 		local n, total = tonumber(Plain(progress.step)), tonumber(Plain(progress.total))
 		local route = Text(rawget(t, "ActiveRoute"))
@@ -1528,7 +1582,7 @@ do
 		end
 		local title = route or "Azeroth Pilot"
 		return { title = n and W.Tr("%s - step %s%s"):format(title, n, total and ("/" .. total) or "") or title,
-			lines = lines,
+			lines = lines, nav = nav,
 			cog = { Left = Own, Right = Settings, tip = "Azeroth Pilot Reloaded",
 				hint = W.Tr("Click: its menu  -  Right-click: its settings") } }
 	end
@@ -1636,7 +1690,9 @@ do
 	end
 
 	-- its step: a line per goal as its window words it (UI.PlainGoalText, the count after it), done when done or
-	-- skipped, a box on the goals it lets the player tick; then a box to skip the step
+	-- skipped, a box on the goals it lets the player tick; its step buttons as its own window's arrows and Skip: Prev
+	-- looks a step back, and while it looks at an earlier step Next walks forward (nothing skipped), at the live one
+	-- Skip moves on
 	local seen   -- { step, view }: the step's view Steps read, for Goals right after it (one view a read)
 	function polestar.Steps()
 		local t, e = P(), Engine()
@@ -1670,11 +1726,19 @@ do
 		if #lines == 0 then
 			return nil
 		end
-		lines[#lines + 1] = { text = SkipText(), done = false, box = true, skip = true, Toggle = function(skip)
-			if skip then
-				pcall(e.Skip)
-			end
-		end }
+		local live = tonumber(Pcall(e.GetLiveStep))
+		local function Behind()
+			local at, now = tonumber(Pcall(e.GetStepIndex)), tonumber(Pcall(e.GetLiveStep))
+			return at and now and at < now or false
+		end
+		local nav = StepButtons(polestar, type(e.Prev) == "function" and e.Prev or nil,
+			(type(e.Skip) == "function" or type(e.Next) == "function") and function()
+				if Behind() and type(e.Next) == "function" then
+					e.Next()
+				elseif type(e.Skip) == "function" then
+					e.Skip()
+				end
+			end, live and i < live)
 		local guide = Pcall(e.GetGuide)
 		local name = type(guide) == "table" and Text(guide.title) or nil
 		local total = tonumber(Pcall(e.GetStepCount))
@@ -1686,7 +1750,7 @@ do
 			pcall(t.Fire, "SHOW_OPTIONS")
 		end
 		return { title = W.Tr("%s - step %s%s"):format(name or "Polestar", i, total and ("/" .. total) or ""), lines = lines,
-			cog = { Left = Picker, Right = Settings, tip = "Polestar",
+			nav = nav, cog = { Left = Picker, Right = Settings, tip = "Polestar",
 				hint = W.Tr("Click: its guides  -  Right-click: its settings") } }
 	end
 
@@ -2027,13 +2091,9 @@ do
 		if #lines == 0 then
 			return nil
 		end
-		if type(z.SkipStep) == "function" then
-			lines[#lines + 1] = { text = SkipText(), done = false, box = true, skip = true, Toggle = function(skip)
-				if skip then
-					pcall(z.SkipStep, z)
-				end
-			end }
-		end
+		-- (its step buttons: its own previous step and skip, as its window's arrows)
+		local nav = StepButtons(zygor, type(z.PreviousStep) == "function" and function() z:PreviousStep() end,
+			type(z.SkipStep) == "function" and function() z:SkipStep() end)
 		local guide = z.CurrentGuide
 		local name = type(guide) == "table" and (Text(guide.title_short) or Text(guide.title)) or nil
 		name = name and (name:match("([^\\/]+)$") or name) or "Zygor"
@@ -2042,7 +2102,7 @@ do
 		local menu = z.GuideMenu
 		local pick = type(menu) == "table" and type(menu.Show) == "function" and function() pcall(menu.Show, menu) end or nil
 		local settings = type(z.OpenOptions) == "function" and function() pcall(z.OpenOptions, z) end or nil
-		return { title = n and W.Tr("%s - step %s"):format(name, n) or name, lines = lines,
+		return { title = n and W.Tr("%s - step %s"):format(name, n) or name, lines = lines, nav = nav,
 			cog = (pick or settings) and { Left = pick or settings, Right = settings or pick, tip = "Zygor Guides",
 				hint = W.Tr("Click: its guides  -  Right-click: its settings") } or nil }
 	end

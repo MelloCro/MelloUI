@@ -2461,6 +2461,7 @@ Lang:Add("zhCN", {
 	["Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures."] = "它在地图和小地图上的图标：MelloUI 绘制相同内容的地方会隐藏，其余换成 MelloUI 的图片。", -- draft
 	["Leveling guide steps dock under its tracker."] = "练级指南的步骤停靠在它的追踪器下方。", -- draft
 	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)."] = "路线会跟随指南的步骤，步骤显示在 MelloUI 的任务追踪器中（指南自己的步骤框隐藏）。", -- draft
+	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "任务追踪器中其标题上的“后退”和“跳过”箭头会调用该指南自己的后退一步和跳过步骤。", -- draft
 	["The jobs it does while its own switches are on go before MelloUI's (Who does what lists them)."] = "在它自己的开关打开时，它负责的工作优先于 MelloUI（见“谁负责什么”）。", -- draft
 	["Route follows its guide's steps."] = "路线会跟随它的指南步骤。", -- draft
 	["Route follows its waypoint arrow."] = "路线会跟随它的路径点箭头。", -- draft
@@ -2477,8 +2478,6 @@ Lang:Add("zhCN", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "同时显示它自己的箭头", -- draft
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Route 跟随它时，它的箭头会和 MelloUI 的世界标记一起留在屏幕上。关闭：只有世界标记指路。", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route 跟随指南的步骤，步骤显示在 MelloUI 的任务追踪器中，并带有跳过此步骤的勾选框（隐藏它自己的步骤窗口）。", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route 跟随指南的步骤，步骤显示在 MelloUI 的任务追踪器中，并带有跳过此步骤的勾选框（隐藏它自己的步骤面板）。", -- draft
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "开启它自己的 TomTom 箭头选项后，Route 通过 TomTom 的箭头跟随它的步骤（TomTom 的卡片决定是否显示该箭头）。", -- draft
 	["Route follows its steps through TomTom"] = "Route 通过 TomTom 跟随它的步骤", -- draft
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "通过 TomTom 跟随：由 TomTom 的卡片开关它，并决定是否显示它的箭头。", -- draft

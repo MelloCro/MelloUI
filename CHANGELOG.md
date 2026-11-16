@@ -14,6 +14,8 @@
 - Quest Tracker: the items a RestedXP step names are now the game's item links. Point at one for its tooltip, click it for its card, shift-click to link it in the chat. A step's own link opens a window to copy its address.
 - RestedXP Guides: its Active Targets wears MelloUI's look while its guide is followed.
 - Zygor Guides: its steps move on by themselves again when they are done. With its window tucked away beside the Quest Tracker, every step needed Skip Step.
+- Quest Tracker: a leveling guide's heading has Back and Skip arrows beside its cog. They run the guide's own step back and skip, with RestedXP, Zygor, Azeroth Pilot Reloaded, Follow The Arrow and Polestar, and work while the section is folded. They replace the Skip this step box under the step, and RestedXP gets a whole-step skip there for the first time.
+- Quest Tracker: after a step back, the right arrow walks forward again with Follow The Arrow and Polestar, as their own windows do, without skipping the steps between.
 - Quest List and map: in a group, a party mark and a count after a quest's name show how many others have it, on the Quest List and the map's Quests tab. Its tooltip lists them in their class colours, with how far they are when they run Questie, and the quest's marks on the map and minimap list them too.
 - Edit Layout: hold Alt to put the dock out of the way and reach an element that lies under it. The dock says so when something does.
 - Cooldown numbers: MelloUI's countdown no longer keeps an old time when the game changes a cooldown that is already running.

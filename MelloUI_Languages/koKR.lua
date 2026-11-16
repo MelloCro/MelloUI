@@ -2461,6 +2461,7 @@ Lang:Add("koKR", {
 	["Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures."] = "지도와 미니맵 아이콘: MelloUI가 같은 것을 그리는 곳에서는 숨기고, 나머지는 MelloUI 그림으로 바뀝니다.", -- draft
 	["Leveling guide steps dock under its tracker."] = "레벨업 가이드 단계가 추적기 아래에 붙습니다.", -- draft
 	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)."] = "경로가 가이드 단계를 따라가고, 단계는 MelloUI의 퀘스트 추적기에 표시됩니다 (가이드 자체 단계 창은 숨김).", -- draft
+	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "퀘스트 추적기의 제목에 있는 뒤로 및 건너뛰기 화살표는 가이드 자체의 이전 단계와 단계 건너뛰기를 실행합니다.", -- draft
 	["The jobs it does while its own switches are on go before MelloUI's (Who does what lists them)."] = "자체 스위치가 켜져 있는 동안 하는 작업은 MelloUI보다 우선합니다 (누가 무엇을 하나에 나옵니다).", -- draft
 	["Route follows its guide's steps."] = "경로가 그 가이드의 단계를 따라갑니다.", -- draft
 	["Route follows its waypoint arrow."] = "경로가 웨이포인트 화살표를 따라갑니다.", -- draft
@@ -2477,8 +2478,6 @@ Lang:Add("koKR", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "자체 화살표도 표시", -- draft
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Route가 따라가는 동안 그 화살표가 MelloUI의 월드 마커 옆에 화면에 남습니다. 끄기: 월드 마커만 길을 안내합니다.", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route가 가이드의 단계를 따라가며, 단계는 단계 건너뛰기 상자와 함께 MelloUI의 퀘스트 추적기에 표시됩니다(자체 단계 창은 숨김).", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route가 가이드의 단계를 따라가며, 단계는 단계 건너뛰기 상자와 함께 MelloUI의 퀘스트 추적기에 표시됩니다(자체 단계 패널은 숨김).", -- draft
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "자체 TomTom 화살표 옵션을 켜면 Route가 TomTom의 화살표를 통해 그 단계를 따라갑니다(TomTom 카드에서 그 화살표 표시 여부를 정합니다).", -- draft
 	["Route follows its steps through TomTom"] = "Route가 TomTom을 통해 그 단계를 따라갑니다", -- draft
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "TomTom을 통해 따라감: TomTom 카드에서 켜고 끄며, 그 화살표 표시 여부도 정합니다.", -- draft

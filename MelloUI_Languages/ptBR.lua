@@ -2461,6 +2461,7 @@ Lang:Add("ptBR", {
 	["Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures."] = "Os ícones dele no mapa e no minimapa: ocultos onde o MelloUI desenha a mesma coisa, o resto com as imagens do MelloUI.", -- draft
 	["Leveling guide steps dock under its tracker."] = "As etapas dos guias de nível ficam presas sob o rastreador dele.", -- draft
 	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)."] = "A Rota segue as etapas do guia, e as etapas aparecem no Rastreador de missões do MelloUI (o quadro de etapas dele fica oculto).", -- draft
+	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "As setas Voltar e Pular no cabeçalho dele no Rastreador de missões usam o voltar e o pular etapa do próprio guia.", -- draft
 	["The jobs it does while its own switches are on go before MelloUI's (Who does what lists them)."] = "As tarefas que ele faz enquanto os próprios interruptores estão ligados vêm antes das do MelloUI (Quem faz o quê lista todas).", -- draft
 	["Route follows its guide's steps."] = "A Rota segue as etapas do guia dele.", -- draft
 	["Route follows its waypoint arrow."] = "A Rota segue a seta de ponto de passagem dele.", -- draft
@@ -2477,8 +2478,6 @@ Lang:Add("ptBR", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "Mostrar também a própria seta", -- draft
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "A seta dele fica na tela ao lado do Marcador do mundo do MelloUI enquanto a Route a segue. Desligado: só o Marcador do mundo mostra o caminho.", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "A Route segue os passos do guia, e os passos aparecem no Rastreador de missões do MelloUI com uma caixa para pular o passo (a janela de passos dele oculta).", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "A Route segue os passos do guia, e os passos aparecem no Rastreador de missões do MelloUI com uma caixa para pular o passo (o painel de passos dele oculto).", -- draft
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "Com a opção de seta do TomTom dele ligada, a Route segue os passos dele pela seta do TomTom (o cartão do TomTom mostra essa seta ou não).", -- draft
 	["Route follows its steps through TomTom"] = "A Route segue os passos dele pelo TomTom", -- draft
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "Seguido pelo TomTom: o cartão do TomTom o liga ou desliga e mostra a seta dele ou não.", -- draft

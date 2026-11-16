@@ -2461,6 +2461,7 @@ Lang:Add("esES", {
 	["Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures."] = "Sus iconos del mapa y del minimapa: ocultos donde MelloUI dibuja lo mismo, el resto con las imágenes de MelloUI.", -- draft
 	["Leveling guide steps dock under its tracker."] = "Los pasos de las guías de nivel se acoplan bajo su rastreador.", -- draft
 	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)."] = "La Ruta sigue los pasos de la guía, y sus pasos aparecen en el Rastreador de misiones de MelloUI (su propio marco de pasos oculto).", -- draft
+	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "Las flechas Atrás y Saltar en su encabezado del Rastreador de misiones usan el retroceso y el salto de paso de la propia guía.", -- draft
 	["The jobs it does while its own switches are on go before MelloUI's (Who does what lists them)."] = "Las tareas que hace mientras sus propios interruptores están activados van antes que las de MelloUI (Quién hace qué las enumera).", -- draft
 	["Route follows its guide's steps."] = "La Ruta sigue los pasos de su guía.", -- draft
 	["Route follows its waypoint arrow."] = "La Ruta sigue su flecha de punto de ruta.", -- draft
@@ -2477,8 +2478,6 @@ Lang:Add("esES", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "Mostrar también su propia flecha", -- draft
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Su flecha sigue en pantalla junto al Marcador del mundo de MelloUI mientras Route la sigue. Desactivado: solo el Marcador del mundo indica el camino.", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route sigue los pasos de la guía, y sus pasos aparecen en el Rastreador de misiones de MelloUI con una casilla para saltar el paso (su propia ventana de pasos oculta).", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route sigue los pasos de la guía, y sus pasos aparecen en el Rastreador de misiones de MelloUI con una casilla para saltar el paso (su propio panel de pasos oculto).", -- draft
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "Con su propia opción de flecha de TomTom activada, Route sigue sus pasos a través de la flecha de TomTom (la tarjeta de TomTom muestra esa flecha o no).", -- draft
 	["Route follows its steps through TomTom"] = "Route sigue sus pasos a través de TomTom", -- draft
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "Seguido a través de TomTom: la tarjeta de TomTom lo activa o no y muestra su flecha o no.", -- draft

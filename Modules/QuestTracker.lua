@@ -3920,6 +3920,80 @@ local function SectionCog(row, spec)
 	cog:Show()
 end
 
+-- (2.1.54; the user, 2026-11-16: "leveling addons have buttons to go back to certain stepps and skip some", the
+-- sketch's pick A) a guide's step buttons in its section's heading, left of its cog (of the fold button without one):
+-- `nav` = { Back, Skip, ahead, name } (Route's Guides.lua, StepButtons: the guide's own step back and skip; ahead:
+-- it looks at an earlier step, and the right arrow walks forward), the icon set's round arrow turned either way, as
+-- the cog dims and lights. (On GUIDE: the file's top-level locals stand near Lua's 200.)
+do
+	local function Enter(self)
+		self.icon:SetAlpha(1)
+		local nav = self.spec
+		local W = MelloUI.Widgets
+		local text = self.back and "Back a step" or (nav and nav.ahead and "Forward a step" or "Skip this step")
+		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+		GameTooltip:SetText(W.Tr(text))
+		if nav and nav.name then
+			local c = MelloUI.Look.TipPalette().text   -- (a hint: small text is never mutedText)
+			GameTooltip:AddLine(nav.name, c[1], c[2], c[3], true)
+		end
+		GameTooltip:Show()
+	end
+	local function Leave(self)
+		self.icon:SetAlpha(0.8)
+		GameTooltip:Hide()
+	end
+	local function Click(self)
+		local nav = self.spec
+		local fn = nav and (self.back and nav.Back or nav.Skip)
+		if fn then
+			pcall(fn)
+		end
+	end
+	local function Arrow(parent, back)
+		local b = CreateFrame("Button", nil, parent)
+		b:SetSize(14, 14)
+		b.back = back
+		b.icon = b:CreateTexture(nil, "ARTWORK")
+		b.icon:SetAllPoints(b)
+		MelloUI.Widgets.Icon(b.icon, "btn_arrow", 14)
+		b.icon:SetRotation(back and math.pi / 2 or -math.pi / 2)   -- (the set's arrow points up)
+		b.icon:SetAlpha(0.8)
+		Perf.SetScript(b, "OnClick", Click)
+		Perf.SetScript(b, "OnEnter", Enter)
+		Perf.SetScript(b, "OnLeave", Leave)
+		return b
+	end
+
+	function GUIDE.Nav(row, nav)
+		local back, skip = row.navBack, row.navSkip
+		local has = type(nav) == "table" and (nav.Back or nav.Skip)
+		if not has then
+			if back then
+				back:Hide()
+				skip:Hide()
+			end
+			return
+		end
+		if not back then
+			local parent = row.toggle:GetParent()
+			back, skip = Arrow(parent, true), Arrow(parent, false)
+			skip:SetPoint("RIGHT", back, "RIGHT", 16, 0)
+			row.navBack, row.navSkip = back, skip
+		end
+		-- (the pair's right end left of the cog, or of the fold button when the guide has no cog)
+		local cog = row.cog and row.cog:IsShown() and row.cog
+		back:ClearAllPoints()
+		back:SetPoint("RIGHT", cog or row.toggle, "LEFT", -6 - 16, 0)
+		back.spec, skip.spec = nav, nav
+		back:SetShown(nav.Back ~= nil)
+		skip:SetShown(nav.Skip ~= nil)
+		if GameTooltip:IsOwned(back) or GameTooltip:IsOwned(skip) then
+			Enter(GameTooltip:IsOwned(back) and back or skip)   -- (the words follow the guide: Skip or Forward)
+		end
+	end
+end
+
 local function HideBoxes(block, from)
 	for i = from, #(block.boxes or {}) do
 		block.boxes[i]:Hide()
@@ -4325,9 +4399,10 @@ local function Rebuild()
 		row:Hide()
 	end
 	local y = 0
-	local function Head(key, label, count, cog)
+	local function Head(key, label, count, cog, nav)
 		local row = Section(key, label, count)
 		SectionCog(row, cog)
+		GUIDE.Nav(row, nav)
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 		row:SetWidth(width)
@@ -4353,7 +4428,7 @@ local function Rebuild()
 	end
 	-- a guide's steps on top (GUIDE, above)
 	if guide then
-		Head("guide", guide.section or "Guide", #(guide.lines or {}), guide.cog)
+		Head("guide", guide.section or "Guide", #(guide.lines or {}), guide.cog, guide.nav)
 		if guideOpen then
 			Put("guide", FillGuideBlock, guide, width)
 		end

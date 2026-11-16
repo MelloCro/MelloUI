@@ -2461,6 +2461,7 @@ Lang:Add("ruRU", {
 	["Its map and minimap icons: hidden where MelloUI draws the same thing, the rest in MelloUI's pictures."] = "Его значки на карте и мини-карте: скрыты там, где MelloUI рисует то же самое, остальные — в картинках MelloUI.", -- draft
 	["Leveling guide steps dock under its tracker."] = "Шаги гайдов прокачки крепятся под его трекером.", -- draft
 	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)."] = "Маршрут следует шагам гайда, а шаги показываются в отслеживании заданий MelloUI (собственная рамка шагов скрыта).", -- draft
+	["Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."] = "Стрелки «Назад» и «Пропустить» в его заголовке в списке заданий вызывают собственный шаг назад и пропуск шага руководства.", -- draft
 	["The jobs it does while its own switches are on go before MelloUI's (Who does what lists them)."] = "Задачи, которые он выполняет при включённых собственных переключателях, идут раньше задач MelloUI (их перечисляет «Кто что делает»).", -- draft
 	["Route follows its guide's steps."] = "Маршрут следует шагам его гайда.", -- draft
 	["Route follows its waypoint arrow."] = "Маршрут следует его стрелке путевой точки.", -- draft
@@ -2477,8 +2478,6 @@ Lang:Add("ruRU", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "Показывать и его собственную стрелку", -- draft
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Его стрелка остаётся на экране рядом с мировым маркером MelloUI, пока Route следует за ним. Выкл.: путь указывает только мировой маркер.", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)."] = "Route следует шагам гайда, а его шаги показываются в отслеживании заданий MelloUI с флажком пропуска шага (его собственное окно шагов скрыто).", -- draft
-	["Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)."] = "Route следует шагам гайда, а его шаги показываются в отслеживании заданий MelloUI с флажком пропуска шага (его собственная панель шагов скрыта).", -- draft
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "Если включена его собственная настройка стрелки TomTom, Route следует его шагам через стрелку TomTom (карточка TomTom показывает эту стрелку или нет).", -- draft
 	["Route follows its steps through TomTom"] = "Route следует его шагам через TomTom", -- draft
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "Отслеживается через TomTom: карточка TomTom включает его и показывает его стрелку или нет.", -- draft

@@ -81,6 +81,9 @@ I.GROUPS = {
 local BAG_DOES = { "Its bag window shows your bags: MelloUI's bag window and its bank by kind step aside while it runs, so B opens one bag window." }
 local BAG_SHORT = "Its bags in place of MelloUI's bag window"
 local BAG_LINKS = { { "MelloUI Bag Window", id = "BagWindow.columns" } }
+-- (2.1.54; the user: "leveling addons have buttons to go back to certain stepps and skip some") every guide whose
+-- steps show on the Quest Tracker: its own step back and skip on two arrows in its heading (MelloUI_Route/Guides.lua)
+local STEP_BUTTONS = "Back and Skip arrows in its heading on the Quest Tracker run the guide's own step back and skip."
 
 -- (2.1.52) needed (what is missing without it: its card shown on the Installed tab even while it is not installed),
 -- use (its switch's own name, in place of Use with MelloUI), offPill / offLine (its state with the switch off)
@@ -161,7 +164,7 @@ I.LIST = {
 	},
 	{ key = "RestedXP", name = "RestedXP Guide", folders = { "RXPGuides" }, group = "quests", arrow = "rxp",
 	  url = "https://www.curseforge.com/wow/addons/restedxp-guide",
-	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)." },
+	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden).", STEP_BUTTONS },
 	  short = "Its steps on the tracker; Route follows them",
 	  links = { { "Quest Tracker", id = "QuestTracker.showXP" } },
 	  parts = { { "its guide", function()
@@ -169,7 +172,7 @@ I.LIST = {
 	  end } } },
 	{ key = "Zygor", name = "Zygor Guides", folders = { "ZygorGuidesViewerForever", "ZygorGuidesViewer" }, group = "quests",
 	  arrow = "zygor", url = "https://zygorguides.com",
-	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden)." },
+	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden).", STEP_BUTTONS },
 	  short = "Its steps on the tracker; Route follows them",
 	  links = { { "Quest Tracker", id = "QuestTracker.showXP" } },
 	  parts = { { "its guide", function()
@@ -178,7 +181,7 @@ I.LIST = {
 	{ key = "Polestar", name = "Polestar", folders = { "Polestar" }, group = "quests", arrow = "polestar",
 	  url = "https://github.com/fitzforge/polestar",
 	  does = { "The jobs it does while its own switches are on go before MelloUI's (Who does what lists them).",
-		"Route follows its guide's steps." },
+		"Route follows its guide's steps.", STEP_BUTTONS },
 	  short = "Its jobs go before MelloUI's; Route follows its guide",
 	  links = {},
 	  parts = { { "its settings", function()
@@ -198,7 +201,7 @@ I.LIST = {
 	-- Compatibility with") the guides Route follows since 1.2.0 (MelloUI_Route/Guides.lua), links from CurseForge
 	{ key = "FollowTheArrow", name = "Follow The Arrow", folders = { "FollowTheArrow" }, group = "quests", arrow = "fta",
 	  url = "https://www.curseforge.com/wow/addons/follow-the-arrow",
-	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step frame hidden)." },
+	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden).", STEP_BUTTONS },
 	  short = "Its steps on the tracker; Route follows them",
 	  links = { { "Quest Tracker", id = "QuestTracker.showXP" } },
 	  parts = { { "its guide", function()
@@ -207,7 +210,7 @@ I.LIST = {
 	  end } } },
 	{ key = "APR", name = "Azeroth Pilot Reloaded", folders = { "APR" }, group = "quests", arrow = "apr",
 	  url = "https://www.curseforge.com/wow/addons/azeroth-pilot-reloaded",
-	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker with a Skip this step box (its own step panel hidden)." },
+	  does = { "Route follows the guide's steps, and its steps show on MelloUI's Quest Tracker (its own step frame hidden).", STEP_BUTTONS },
 	  short = "Its steps on the tracker; Route follows them",
 	  links = { { "Quest Tracker", id = "QuestTracker.showXP" } },
 	  parts = { { "its guide", function()
