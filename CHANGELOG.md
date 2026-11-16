@@ -9,6 +9,10 @@
 - Role Picker: tick Remember for future dungeons and the next ones set that role by themselves, with no picker. Role On Entering changes or forgets it, and its motion has a switch on the Animations page.
 - Quest Tracker: with a controller, a new Quest Tracker action steps into the tracker. The D-pad walks its quests and a leveling guide's heading, A does what a click on the part does, X uses the quest's item, Y opens its menu, and left and right on a guide's heading are its Back and Skip arrows. B leaves. It is in the game's Key Bindings, and /mellotracker does the same from a macro.
 - Quest Tracker: a new Next Quest action (/mellonext, also in Key Bindings) marks the next quest in the tracker and clicks it, without taking the controller from you.
+- Map: the Layers page has a new Levels group with three switches. All three start off.
+- Map: Zone levels puts each zone's level range under its name, in the game's difficulty colours for your level. It needs Questie: the ranges are worked out from its creatures.
+- Map: Creature levels shows a pill with the levels of the creatures living there when you zoom into a zone, coloured by how hard they are for you. Point at one for the creatures in it. It needs Questie too.
+- Map: Fishing levels puts a badge on each zone's coast, lakes and rivers with the fishing skill the water needs, coloured by your own skill. The minimap shows the creature and fishing badges near you as well.
 - Whispers: with a controller, the whisper window takes the D-pad. Walk the people, the header's buttons and the reply box, A picks, LB and RB turn the conversation back and on, B closes. Typing a reply still needs a keyboard.
 
 ## 2.1.54

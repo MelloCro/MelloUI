@@ -88,6 +88,8 @@ local T = {
 	NAMES_TO = 6.5,          -- ... to a zone's (closer, the zone's own art names its places)
 	NAME_SHADE = 0.6,        -- the soft shade under a name
 	NAME_GAP = 6,            -- px kept free round a name
+	LEVEL_GAP = 0,           -- (2.1.55) px between a zone's name and its level line under it
+	LEVEL_H = 13,            -- ... the line's height in the names' room
 	PLACES_FROM = 1.15,      -- the flight masters (2.1.0: and the towns) from a continent's zoom on (the world's: too many)
 	PIN_SIZE = 18,
 	-- (2.1.0, qu-01: the user's pick W1, "every kind at 16 px") the docks and the doors from the world's zoom on; pins of
@@ -1004,6 +1006,9 @@ end
 -- zone's; laid with every view, one anchor each, never scaled. The biggest
 -- zones first: a name that would cover one already laid is left out at that
 -- zoom. Made the first time each shows.
+-- (2.1.55, the map's level labels: the user's pick A) with Zone levels on, a
+-- smaller line under the name, the zone's level range in the game's difficulty
+-- colour for you (MapLevels' Levels.Line), the name's room taller by it
 --------------------------------------------------------------------------------
 
 local NAMES = { list = {}, boxes = {} }
@@ -1033,6 +1038,54 @@ local function NameOf(p)
 	return label
 end
 
+-- (2.1.55) the level line under a name: made the first time a zone shows one, in the names' face, smaller
+local function LevelLine(label)
+	local lv = label.lv
+	if not lv then
+		lv = NAMES.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		local Kit = MelloUI.Kit
+		if Kit and Kit.TitleFont then
+			Kit:TitleFont(lv, true)
+		end
+		lv:SetPoint("TOP", label.fs, "BOTTOM", 0, -T.LEVEL_GAP)
+		lv:Hide()
+		label.lv = lv
+		-- (the names' soft shade under it too: seen in the real client, the red line was hard to read on the painting)
+		local band = MelloUI.Shade and MelloUI.Shade:Band(NAMES.frame, { colour = "innerPanel", alpha = T.NAME_SHADE,
+			feather = 14 })
+		if band then
+			band:Anchor(lv, 2, 1)
+			band:SetShown(false)
+		end
+		label.lvBand = band
+	end
+	return lv
+end
+
+-- the line's text and colour for this view (nil: none), shown or hidden with the name
+local function SetLevel(label, text, r, g, b)
+	if text then
+		local lv = LevelLine(label)
+		if label.lvText ~= text then
+			label.lvText = text
+			lv:SetText(text)
+		end
+		lv:SetTextColor(r, g, b)
+		if label.shown then
+			lv:Show()
+			if label.lvBand then
+				label.lvBand:SetShown(true)
+			end
+		end
+	elseif label.lv then
+		label.lvText = nil
+		label.lv:Hide()
+		if label.lvBand then
+			label.lvBand:SetShown(false)
+		end
+	end
+end
+
 local function HideName(label)
 	if label.shown then
 		label.shown = false
@@ -1040,6 +1093,12 @@ local function HideName(label)
 		label.fs:ClearAllPoints()
 		if label.band then
 			label.band:SetShown(false)
+		end
+		if label.lv then
+			label.lv:Hide()
+		end
+		if label.lvBand then
+			label.lvBand:SetShown(false)
 		end
 	end
 end
@@ -1057,6 +1116,7 @@ function Layers.Labels()
 	end
 	local to = c.z <= T.NAMES_TO
 	local on = c.z >= T.NAMES_FROM and to
+	local Levels = ns.Levels   -- (2.1.55: MapLevels.lua, loaded after this file)
 	local k = c.k1 * c.z
 	local x0, y0 = c.cx - c.cw / (2 * k), c.cy - c.ch / (2 * k)
 	local boxes, n = NAMES.boxes, 0
@@ -1084,10 +1144,16 @@ function Layers.Labels()
 			local fits = (on or (to and p.isle)) and x > -40 and x < c.cw + 40 and y > -20 and y < c.ch + 20
 			if fits then
 				label = label or NameOf(p)
+				-- (2.1.55) the zone's level line under it: the name's room reaches down over it
+				local lvText, lr, lg, lb = nil, nil, nil, nil
+				if Levels then
+					lvText, lr, lg, lb = Levels.Line(p.id)
+				end
+				local down = lvText and T.LEVEL_H or 0
 				local hw, hh = label.w / 2 + T.NAME_GAP, label.h / 2 + 2
 				for i = 1, n do
 					local b = boxes[i]
-					if not (x + hw < b[1] or x - hw > b[3] or y + hh < b[2] or y - hh > b[4]) then
+					if not (x + hw < b[1] or x - hw > b[3] or y + hh + down < b[2] or y - hh > b[4]) then
 						fits = false
 						break
 					end
@@ -1099,7 +1165,7 @@ function Layers.Labels()
 						b = {}
 						boxes[n] = b
 					end
-					b[1], b[2], b[3], b[4] = x - hw, y - hh, x + hw, y + hh
+					b[1], b[2], b[3], b[4] = x - hw, y - hh, x + hw, y + hh + down
 					label.fs:SetPoint("CENTER", frame, "TOPLEFT", x, -y)
 					if not label.shown then
 						label.shown = true
@@ -1108,6 +1174,7 @@ function Layers.Labels()
 							label.band:SetShown(true)
 						end
 					end
+					SetLevel(label, lvText, lr, lg, lb)
 				end
 			end
 			if label and not fits then

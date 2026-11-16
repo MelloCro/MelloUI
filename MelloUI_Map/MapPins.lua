@@ -83,6 +83,16 @@
 --   spec.label = true                the pin's name (pin.name) beside it where it covers no pin and no other name,
 --                                    else left out at that zoom (its hover still names it); pins.labelBoxes the boxes
 --                                    of the names shown now (the zone names keep clear of them)
+-- (2.1.55, the map's level labels: MapLevels.lua's pills and fishing badges)
+--   spec.wide = px                   an oblong pin: this wide, spec.size high (a pill: its picture drawn at that width)
+--   spec.discIcon = name             the disc under the picture in this shape (default the round badge disc)
+--   spec.coreIcon = name             the core over the picture in this shape (default the round badge disc)
+--   spec.numberRGB = { r, g, b }     the number in this colour (a game colour: a level's difficulty) for numberKey's
+--   spec.lead = icon                 a small picture at the pin's left inside it (spec.leadSize px), the number moved
+--                                    right of it
+--   opts.cull = true                 (a layer's) a pin of it that would cover one laid before it is not shown at that
+--                                    zoom; its pins laid the heaviest first (spec.weight), as the zone names the
+--                                    biggest first -- worked out with the pins kept apart (Apart)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -159,7 +169,7 @@ function Pins:Layer(name, order, opts)
 	f:SetFrameLevel(self.frame:GetFrameLevel() + (order or 1))
 	f:EnableMouse(false)
 	layer = { name = name, frame = f, pins = {}, pool = {}, on = true, minZ = opts.minZ or 0, maxZ = opts.maxZ or math.huge,
-		order = order or 1, merge = opts.merge, nudge = opts.nudge and true or nil,
+		order = order or 1, merge = opts.merge, nudge = opts.nudge and true or nil, cull = opts.cull and true or nil,
 		priority = opts.priority or order or 1 }
 	self.layers[name] = layer
 	if not self.buckets[layer.priority] then
@@ -168,7 +178,7 @@ function Pins:Layer(name, order, opts)
 		list[#list + 1] = layer.priority
 		table.sort(list, function(a, b) return a > b end)
 	end
-	if layer.merge or layer.nudge then
+	if layer.merge or layer.nudge or layer.cull then
 		local list = self.apartLayers
 		list[#list + 1] = layer
 		table.sort(list, function(a, b) return a.order > b.order end)
@@ -255,6 +265,9 @@ local function HideTex(pin)
 		if tex.number then
 			tex.number:Hide()
 		end
+		if tex.lead then
+			tex.lead:Hide()
+		end
 		if tex.badge then
 			tex.badge:Hide()
 		end
@@ -299,6 +312,12 @@ local function PinPx(spec)
 	return s
 end
 
+-- (2.1.55) a pin's width on the screen: an oblong one's own (spec.wide, by the map's icon scale), else its size
+local function PinW(spec, s)
+	return spec.wide and floor(spec.wide * Pins.scale + 0.5) or s
+end
+Pins.PinW = PinW
+
 -- the pin's look on its texture (made from its layer's pool the first time it shows)
 function Pins.Lift(tex, name, size)
 	local Shade = LiftAPI()
@@ -322,6 +341,7 @@ local function Dress(pin)
 		return
 	end
 	local s = PinPx(spec)
+	local pw = PinW(spec, s)   -- (2.1.55: an oblong pin's width)
 	-- (2.1.0, qu-04) a look with a picture of its own for the pin (spec.own: the game's, a look's set's) shows that
 	-- alone, without the palette's pieces (the seal's tint and discs: MelloUI's look)
 	local Icons = MelloUI.Icons
@@ -352,7 +372,7 @@ local function Dress(pin)
 	if spec.atlas then
 		tex:SetAtlas(spec.atlas, false, nil, true)   -- (2.1.4: a pooled texture's earlier crop not kept)
 	elseif spec.icon then
-		Icons.Set(tex, own or spec.icon, s)   -- (2026-10-21: the copy for its size; a game icon as it is)
+		Icons.Set(tex, own or spec.icon, pw)   -- (2026-10-21: the copy for its size; a game icon as it is)
 		-- (qu-04) a game picture with a wide clear margin without it (Skin.InsetPicture: Default's doors); the icon system lets
 		-- go of the texture then, and the next look switch dresses it again here (Restyle)
 		local pic = Skin and Skin.InsetPicture and Skin.Icon(own or spec.icon)
@@ -360,7 +380,7 @@ local function Dress(pin)
 			Skin.InsetPicture(tex, pic)
 		end
 	end
-	tex:SetSize(s, s)
+	tex:SetSize(pw, s)
 	tex:SetAlpha(spec.alpha or 1)
 	tex:SetRotation(pin.rotation or spec.rotation or 0)
 	tex:SetDrawLayer("ARTWORK", spec.sub or 0)
@@ -384,7 +404,7 @@ local function Dress(pin)
 		disc:ClearAllPoints()
 		disc:SetPoint("TOPLEFT", tex, "TOPLEFT", -e, e)
 		disc:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", e, -e)
-		MelloUI.Icons.Set(disc, "badge_disc", s + 2 * e)
+		MelloUI.Icons.Set(disc, spec.discIcon or "badge_disc", pw + 2 * e)
 		disc:SetDrawLayer("ARTWORK", (spec.sub or 0) - 1)
 		W.Paint(disc, spec.disc, "vertex")
 		if pin.shown then
@@ -404,7 +424,7 @@ local function Dress(pin)
 		core:ClearAllPoints()
 		core:SetPoint("TOPLEFT", tex, "TOPLEFT", r, -r)
 		core:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", -r, r)
-		MelloUI.Icons.Set(core, "badge_disc", s - 2 * r)
+		MelloUI.Icons.Set(core, spec.coreIcon or "badge_disc", pw - 2 * r)
 		core:SetDrawLayer("ARTWORK", (spec.sub or 0) + 1)
 		W.Paint(core, spec.core, "vertex")
 		if pin.shown then
@@ -446,14 +466,49 @@ local function Dress(pin)
 			tex.number = number
 		end
 		number:ClearAllPoints()
-		number:SetPoint("CENTER", tex, "CENTER", 0, 0)
+		number:SetPoint("CENTER", tex, "CENTER", spec.lead and floor(((spec.leadSize or s) + 2) / 2 + 0.5) or 0, 0)
 		number:SetText(spec.number)
-		W.Paint(number, spec.numberKey or "text", "text")
+		-- (2.1.55) a game colour of its own (a level's difficulty), the palette's let go first; else the palette's
+		local rgb = spec.numberRGB
+		if rgb then
+			if tex.numberPainted then
+				local P = rawget(MelloUI, "Painter")
+				if P and P.Unpaint then
+					P.Unpaint(number, "text")
+				end
+				tex.numberPainted = nil
+			end
+			number:SetTextColor(rgb[1], rgb[2], rgb[3])
+		else
+			W.Paint(number, spec.numberKey or "text", "text")
+			tex.numberPainted = true
+		end
 		if pin.shown then
 			number:Show()
 		end
 	elseif number then
 		number:Hide()
+	end
+	-- (2.1.55) a small picture leading the number inside the pin (the fishing badge's hook)
+	local lead = tex.lead
+	tex.leadOn = spec.lead and true or nil
+	if tex.leadOn then
+		if not lead then
+			lead = pin.layer.frame:CreateTexture(nil, "ARTWORK")
+			lead:Hide()
+			tex.lead = lead
+		end
+		local ls = spec.leadSize or (s - 4)
+		lead:ClearAllPoints()
+		lead:SetPoint("LEFT", tex, "LEFT", spec.leadX or 2, 0)
+		lead:SetSize(ls, ls)
+		Icons.Set(lead, spec.lead, ls)
+		lead:SetDrawLayer("ARTWORK", (spec.sub or 0) + 2)
+		if pin.shown then
+			lead:Show()
+		end
+	elseif lead then
+		lead:Hide()
 	end
 	pin.dressed = true
 	pin.apartAt = nil   -- (its count and its name shown again on the lay)
@@ -591,6 +646,9 @@ local function Extras(self, pin, tex)
 	if tex.number and tex.numberOn then
 		tex.number:Show()
 	end
+	if tex.lead and tex.leadOn then
+		tex.lead:Show()
+	end
 	local n = pin.members and #pin.members or 0
 	if n > 1 then
 		local b = Badge(pin, tex)
@@ -649,7 +707,7 @@ function Pins:Set(name, key, wx, wy, spec)
 		pin.spec = spec
 		pin.dressed = false
 	end
-	if (layer.merge or layer.nudge) and (pin.wx ~= wx or pin.wy ~= wy) then
+	if (layer.merge or layer.nudge or layer.cull) and (pin.wx ~= wx or pin.wy ~= wy) then
 		self.apart.dirty = true   -- (2.1.0: a pin kept apart came or moved: worked out again on the lay)
 	end
 	pin.wx, pin.wy = wx, wy
@@ -804,6 +862,15 @@ local function ByPlace(a, b)
 	return tostring(a.key) < tostring(b.key)   -- (two on one spot: the same one first every time)
 end
 
+-- (2.1.55) a culled layer's pins: the heaviest first, then by place
+local function ByWeight(a, b)
+	local wa, wb = a.spec.weight or 0, b.spec.weight or 0
+	if wa ~= wb then
+		return wa > wb
+	end
+	return ByPlace(a, b)
+end
+
 local RING = {}
 for i = 0, 7 do
 	RING[#RING + 1] = { math.cos(math.pi * i / 4), math.sin(math.pi * i / 4) }
@@ -844,7 +911,7 @@ local function Apart(self, k)
 	a.named = wipe(named)
 	for _, layer in ipairs(self.apartLayers) do
 		local list = layer.cand
-		table.sort(list, ByPlace)
+		table.sort(list, layer.cull and ByWeight or ByPlace)
 		-- merged: a pin within `merge` px of a first one (by place) is held by it
 		if layer.merge then
 			local r = layer.merge * Pins.scale / k   -- (2.1.39: bigger icons touch sooner)
@@ -875,30 +942,35 @@ local function Apart(self, k)
 		-- laid: where it stands, or (nudge) the nearest free place on a ring round it
 		for _, pin in ipairs(list) do
 			local s = PinPx(pin.spec) / 2
+			local sw = PinW(pin.spec, 2 * s) / 2   -- (2.1.55: an oblong pin's half width)
 			local x, y = pin.wx * k + (pin.dx or 0), pin.wy * k
 			local ox, oy = 0, 0
-			if layer.nudge and Overlaps(boxes, n, x - s, y - s, x + s, y + s, T.GAP) then
-				local found = false
-				for ring = 1, 2 do
-					local d = 2 * s * T.RING_STEP * ring
-					for _, u in ipairs(RING) do
-						local tx, ty = x + u[1] * d, y + u[2] * d
-						if not Overlaps(boxes, n, tx - s, ty - s, tx + s, ty + s, T.GAP) then
-							ox, oy, found = u[1] * d, u[2] * d, true
+			if layer.cull and Overlaps(boxes, n, x - sw, y - s, x + sw, y + s, T.GAP) then
+				pin.under = true   -- (2.1.55: covered: not shown at this zoom)
+			else
+				if layer.nudge and Overlaps(boxes, n, x - s, y - s, x + s, y + s, T.GAP) then
+					local found = false
+					for ring = 1, 2 do
+						local d = 2 * s * T.RING_STEP * ring
+						for _, u in ipairs(RING) do
+							local tx, ty = x + u[1] * d, y + u[2] * d
+							if not Overlaps(boxes, n, tx - s, ty - s, tx + s, ty + s, T.GAP) then
+								ox, oy, found = u[1] * d, u[2] * d, true
+								break
+							end
+						end
+						if found then
 							break
 						end
 					end
-					if found then
-						break
-					end
 				end
-			end
-			if ox ~= 0 or oy ~= 0 then
-				pin.nx, pin.ny = ox, oy
-			end
-			n = PutBox(boxes, n, x + ox - s, y + oy - s, x + ox + s, y + oy + s)
-			if pin.spec.label and pin.name then
-				named[#named + 1] = pin
+				if ox ~= 0 or oy ~= 0 then
+					pin.nx, pin.ny = ox, oy
+				end
+				n = PutBox(boxes, n, x + ox - sw, y + oy - s, x + ox + sw, y + oy + s)
+				if pin.spec.label and pin.name then
+					named[#named + 1] = pin
+				end
 			end
 		end
 	end
@@ -1052,9 +1124,17 @@ function Pins:At(x, y)
 	for _, pin in ipairs(self.shownList) do
 		local spec = pin.spec
 		if pin.shown and (spec.tip or spec.fillTip or spec.click) then
-			local r = PinPx(spec) / 2 + T.HIT
+			local s = PinPx(spec)
+			local r = s / 2 + T.HIT
 			local dx, dy = pin.x - x, pin.y - y
-			if dx * dx + dy * dy <= r * r and (not bestOrder or pin.layer.order >= bestOrder) then
+			local hit
+			if spec.wide then
+				-- (2.1.55: an oblong pin by its box)
+				hit = math.abs(dx) <= PinW(spec, s) / 2 + T.HIT and math.abs(dy) <= r
+			else
+				hit = dx * dx + dy * dy <= r * r
+			end
+			if hit and (not bestOrder or pin.layer.order >= bestOrder) then
 				best, bestOrder = pin, pin.layer.order
 			end
 		end
@@ -1071,8 +1151,8 @@ end
 local function Size(pin, k)
 	local tex = pin.tex
 	if tex and pin.shown and not pin.spec.frame then
-		local s = PinPx(pin.spec) * k
-		tex:SetSize(s, s)
+		local s = PinPx(pin.spec)
+		tex:SetSize(PinW(pin.spec, s) * k, s * k)
 	end
 end
 

@@ -183,6 +183,7 @@ local CHANGELOG = {
 		"Quest Tracker: with a controller, a Quest Tracker action (Key Bindings or /mellotracker) steps into the tracker: D-pad, A, X its item, Y its menu, B leaves. /mellonext marks the next quest.",
 		"Whispers: with a controller, the whisper window takes the D-pad: people and buttons, A picks, LB and RB turn the conversation, B closes.",
 		"Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones.",
+		"Map: a Levels group on its Layers page, off at first: zone level ranges under the names and creature levels (both with Questie), and the fishing skill each water needs.",
 	} },
 	{ version = "2.1.54", lines = {
 		"Profiles: a profile carries your real Edit Mode layout now, and each character keeps it in a layout of its own. Alts and a loaded profile no longer end up on the preset Modern.",

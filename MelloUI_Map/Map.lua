@@ -50,6 +50,7 @@ local Kit = MelloUI.Kit
 local Canvas, Pins, Layers, Log, Search = ns.Canvas, ns.Pins, ns.Layers, ns.QuestLog, ns.Search
 local AddonPins, Objectives = ns.AddonPins, ns.Objectives
 local Town = ns.TownMarks   -- (2.1.53: the town marks, MapTownMarks.lua)
+local Levels = ns.Levels    -- (2.1.55: the level labels, MapLevels.lua)
 local Trails = ns.Trails  -- (2.1.0: the boats' and the zeppelins' trails, MapTrails.lua)
 local Dungeon = ns.Dungeon -- (2.1.0: a dungeon's own plan inside one, MapDungeon.lua)
 local floor, max, min = math.floor, math.max, math.min
@@ -102,7 +103,9 @@ local TEXT = {
 -- Directly, under the HandyNotes Category") the fourth group: a row a kind of town place (MapTownMarks' KINDS, added
 -- below), `town`: its marks are the plugin's places -- not a pins' layer shown or hidden but which kinds a zone's
 -- marks are built of; some start off (Town.Starts), kept in db.layers as true once switched on
-local GROUPS = { "Quests", "Travel", "People and more", "HandyNotes" }
+-- (2.1.55; the user's answer, 2026-11-16: "New group after Travel") the level labels' group, Levels (MapLevels.lua):
+-- its three rows start off (`off`: the user's "off" of the sketch's picks), the zones' and the creatures' are Questie's
+local GROUPS = { "Quests", "Travel", "Levels", "People and more", "HandyNotes" }
 local SWITCHES = {
 	-- (2.1.51) Questie's givers too while they are the givers (MapAddonPins' LAYER.questGivers)
 	-- (2.1.52, stage 2) `questie`: a row whose marks are Questie's quest data -- without Questie it stands dimmed and
@@ -119,14 +122,32 @@ local SWITCHES = {
 	{ key = "entrances", label = "Dungeons and raids", layers = { "entrances" }, group = 2, icon = "pin_dungeon" },
 	-- (2.1.0, qu-01) the capitals and the towns the world map names
 	{ key = "places", label = "Cities and towns", layers = { "places", "towns" }, group = 2, icon = "svc_inn" },
-	{ key = "group", label = "Your party and raid", layers = { "group" }, group = 3, icon = "chan_party" },
-	{ key = "names", label = "Zone names", layers = { "names" }, group = 3, icon = "page_screentext" },
-	{ key = "addons", label = "Other addons' pins", layers = { "addons", "addons_continent", "addons_world" }, group = 3,
+	-- (2.1.55) the zones' level line goes with their names (MapLayers' names ask Levels.Line): no pins' layer of its own
+	{ key = "zonelevels", label = "Zone levels", layers = {}, group = 3, icon = "page_map", questie = true, off = true },
+	{ key = "creatures", label = "Creature levels", layers = { "creatures" }, group = 3, icon = "kill", questie = true,
+	  off = true },
+	{ key = "fishing", label = "Fishing levels", layers = { "fishing" }, group = 3, icon = Levels.T.HOOK_ART, off = true },
+	{ key = "group", label = "Your party and raid", layers = { "group" }, group = 4, icon = "chan_party" },
+	{ key = "names", label = "Zone names", layers = { "names" }, group = 4, icon = "page_screentext" },
+	{ key = "addons", label = "Other addons' pins", layers = { "addons", "addons_continent", "addons_world" }, group = 4,
 	  icon = "svc_addons" },
-	{ key = "caves", label = "Caves (zoomed in close)", layers = {}, canvas = true, group = 3, icon = "obj_explore" },
+	{ key = "caves", label = "Caves (zoomed in close)", layers = {}, canvas = true, group = 4, icon = "obj_explore" },
 }
 for _, k in ipairs(Town.KINDS) do
-	SWITCHES[#SWITCHES + 1] = { key = k.layer, label = k.label, layers = {}, group = 4, town = k }
+	SWITCHES[#SWITCHES + 1] = { key = k.layer, label = k.label, layers = {}, group = 5, town = k }
+end
+-- (2.1.55) the switches that start off: the town kinds that do (Town.Starts) and the rows marked `off`
+local START_OFF = {}
+for _, s in ipairs(SWITCHES) do
+	if s.off then
+		START_OFF[s.key] = true
+	end
+end
+local function Starts(key)
+	if START_OFF[key] then
+		return false
+	end
+	return Town.Starts(key) ~= false
 end
 
 local M   -- (the module: its button opens it)
@@ -475,13 +496,17 @@ end
 -- The layers' switches (the layers' page beside the map)
 --------------------------------------------------------------------------------
 
--- (2.1.53) a layer never switched is as it starts: on, but for the town kinds that start off (Town.Starts)
+-- (2.1.53) a layer never switched is as it starts: on, but for the town kinds that start off (Town.Starts) and
+-- (2.1.55) the level labels' (Starts)
 local function LayerOn(key)
 	local l = M.db and M.db.layers
 	if type(l) == "table" and (l[key] == true or l[key] == false) then
 		return l[key]
 	end
-	return Town.Starts(key) ~= false
+	return Starts(key)
+end
+Levels.on = function(key)
+	return LayerOn(key)
 end
 
 local function ApplyLayers()
@@ -507,7 +532,7 @@ local function SetLayer(key, on)
 	db.layers = type(db.layers) == "table" and db.layers or {}
 	-- (kept only where it differs from how the layer starts: on -- off for the town kinds that start off)
 	on = on and true or false
-	if on == (Town.Starts(key) ~= false) then
+	if on == Starts(key) then
 		db.layers[key] = nil
 	else
 		db.layers[key] = on
@@ -551,6 +576,8 @@ local function SetLayer(key, on)
 	if key == "flights" then
 		Layers.MiniFlights(on and M.isEnabled)
 	end
+	-- (2.1.55) the level labels' switches: their pills, badges and lines laid again, the minimap's too
+	Levels.Changed(key)
 	if built then
 		win.pins:Lay()
 	end
@@ -922,6 +949,7 @@ local function Shown()
 		Trails.Open()   -- (2.1.0: the trails worked out at the first open, laid at the view)
 	end
 	AddonPins.Open()   -- (nothing while its switch is off: other addons' icons left to the game's map)
+	Levels.Open()      -- (2.1.55: the level labels; Questie's pass started if a layer of it is on)
 	Objectives.Open()
 	Log.Shown()
 	c.stats.openMs = debugprofilestop() - t0
@@ -946,6 +974,7 @@ local function Hidden()
 		Trails.Close()
 	end
 	AddonPins.Close()
+	Levels.Close()
 	Objectives.Close()
 	Log.Hidden()
 	Search.Hidden()
@@ -973,6 +1002,7 @@ local function Frame_OnUpdate(_, elapsed)
 	Layers.Tick(elapsed)
 	Dungeon.Tick(elapsed)
 	AddonPins.Tick()
+	Levels.Tick()
 	Objectives.Tick(elapsed)
 	Log.Tick()
 	-- (2.1.41) your coordinates as you walk (T.HOVER apart; the mouse's with the name, Hover)
@@ -1067,6 +1097,8 @@ local function Build()
 		Trails.Init(canvas)
 	end
 	AddonPins.Init(canvas, pins)
+	Levels.Init(canvas, pins)
+	Levels.relabel = Layers.Labels   -- (2.1.55: the zones' level lines laid again once Questie's pass is done)
 	Objectives.Init(canvas, pins)
 	pins:Layer("names", Layers.T.ORDER.names)   -- (made here: its switch applies before the first names are laid)
 	-- the quest log's column beside the map, the rail between them (2.1.0): out or folded as it was left
@@ -1669,6 +1701,7 @@ function M:OnEnable(db)
 	Fog()   -- (a profile's)
 	Layers.MiniFlights(LayerOn("flights"))   -- (2.1.50: the flight masters on the minimap)
 	Town.Mini(true)   -- (2.1.53: the town marks there, by the same switches)
+	Levels.Mini(true)   -- (2.1.55: the pills and fishing badges there, by the same switches)
 end
 
 function M:OnSettingChanged(key, _, db)
@@ -1699,6 +1732,7 @@ function M:OnDisable()
 	Dungeon.Listen(false)
 	Layers.MiniFlights(false)   -- (2.1.50)
 	Town.Mini(false)   -- (2.1.53)
+	Levels.Mini(false)   -- (2.1.55)
 	if win.frame then
 		Dungeon.Hide()
 	end

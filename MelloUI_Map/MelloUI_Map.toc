@@ -17,6 +17,8 @@ MapLayers.lua
 MapTrails.lua
 MapAddonPins.lua
 MapTownMarks.lua
+MapWaters.lua
+MapLevels.lua
 MapObjectives.lua
 MapQuestLog.lua
 MapSearch.lua
