@@ -304,14 +304,14 @@ I.LIST = {
 	{ key = "ControllerForever", name = "Controller Forever", folders = { "ControllerForever" }, group = "frames",
 	  url = "https://www.curseforge.com/wow/addons/controllerforever",
 	  does = { "The controller's buttons and binds are its own: MelloUI's gamepad bars are not shown while it runs.",
-		"While a MelloUI window holds the controller, its buttons step aside, so the D-pad, A and B walk MelloUI's window.",
+		"While a MelloUI window holds the controller, its bind manager gives MelloUI the buttons, so the D-pad, A and B walk MelloUI's window.",
 		"Where MelloUI has the part (unit frames, party frames, minimap, chat, damage meter, bags, automatic quests) its own version steps back, and its menu says so." },
 	  short = "Its buttons and binds, MelloUI's windows and frames",
 	  links = {},
 	  parts = {
-		{ "its list of windows the controller belongs to", function()
+		{ "its bind manager", function()
 			local C = rawget(MelloUI, "ControllerForever")
-			return C ~= nil and C.Holds() ~= nil
+			return C ~= nil and C.Claims() ~= false
 		end },
 		{ "its list of parts another addon has", function()
 			local C = rawget(MelloUI, "ControllerForever")

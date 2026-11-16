@@ -5,7 +5,7 @@
 -- all of them) have the full MelloUI Compatibility, that means navigation trough our menus, map, quest tracker etc").
 --
 -- Controller Forever is the controller's engine. It is All Rights Reserved: met at run time only, nothing of it
--- copied, nothing of it called. Stage 1 is the two addons stepping aside for each other, each way on ONE name of its
+-- copied, and nothing of it called but its bind manager's claimant (C.Claim, below). Stage 1 is the two addons stepping aside for each other, each way on ONE name of its
 -- own that is looked at before it is used (it updates every other day; with a name gone that way steps back to what
 -- MelloUI did without it, and the Addons page says which):
 --
@@ -26,7 +26,12 @@
 -- one of them; C.Sync at the login takes out what MelloUI does not have on, or all of them with its switch on the
 -- Addons page off.
 --
+--   MelloUI's navigation tells its bind manager every key it binds (C.Claim, below): the one place something of
+--   its is called.
+--
 --   C.Used() -> bool        it is loaded and its switch on the Addons page is on
+--   C.Claim(key, action)    a key MelloUI's navigation binds, told to its bind manager; C.Claim(): all let go
+--   C.Claims() -> bool|nil  its bind manager takes them (nil: not asked yet)
 --   C.Holds() -> bool|nil   its buttons step aside for MelloUI's windows (HOLD is on its list); nil: no such list
 --   C.Parts() -> list|nil   { part, label, taken }: its parts MelloUI may have, and whether MelloUI's row is in;
 --                           nil: no such table
@@ -136,6 +141,93 @@ MelloUI:On("gamepad:nav", function(on)
 end, "Controller Forever: a MelloUI window holds the pad")
 
 --------------------------------------------------------------------------------
+-- MelloUI's keys through its one bind manager
+--
+-- (the user's PS5 pad, 2026-11-16, his dump with the configurator open: the D-pad and B were MelloUI's, A, X and Y
+-- still its own slots -- with only the name on its window list its face buttons do not step aside) Its bind manager
+-- (ControllerForever.Binds) takes what each part wants on a key through a claimant and sets one winner a key on one
+-- frame; a claimant made `exclusive`, as its own windows', stands every lower one down while it holds a key. So
+-- MelloUI's navigation tells it each key it binds: C.Claim(key, action) ("CLICK Button:MouseButton"; false: the key
+-- let go), C.Claim() with nothing: every key let go. One commit a frame. The ONE place MelloUI calls something of
+-- its: claimant, then the handle's set / unset / clear / commit, each looked at first and run protected; without
+-- them the navigation's own override bindings and the name on its list are all there is, as before.
+--------------------------------------------------------------------------------
+
+local claim, committing = nil, false
+
+local function Handle()
+	if claim ~= nil then
+		return claim or nil
+	end
+	claim = false
+	local addon = rawget(_G, "ControllerForever")
+	local binds = type(addon) == "table" and rawget(addon, "Binds") or nil
+	if type(binds) ~= "table" or type(binds.claimant) ~= "function" then
+		return nil
+	end
+	local levels = rawget(binds, "PRIORITY") or binds.PRIORITY
+	local level = type(levels) == "table" and tonumber(levels.ourwindow) or 100
+	local ok, handle = pcall(binds.claimant, binds, "melloui", level, { exclusive = true, overGame = true, outOfFight = true })
+	if ok and type(handle) == "table" and type(handle.set) == "function" and type(handle.unset) == "function"
+		and type(handle.clear) == "function" and type(handle.commit) == "function" then
+		claim = handle
+	end
+	return claim or nil
+end
+
+-- (never inside a fight: the game locks the bindings then -- its manager's attempt would be a blocked action, and its
+-- keys stay as they were)
+local function Commit()
+	committing = false
+	if InCombatLockdown() then
+		return
+	end
+	local handle = Handle()
+	if handle then
+		pcall(handle.commit)
+	end
+end
+
+-- true: its bind manager takes MelloUI's keys; false: it has none MelloUI can use; nil: not asked yet
+function C.Claims()
+	if claim == nil then
+		return nil
+	end
+	return claim ~= false
+end
+
+-- -> true when its bind manager took it
+function C.Claim(key, action)
+	if not C.Used() then
+		return false
+	end
+	local handle = Handle()
+	if not handle or InCombatLockdown() then
+		return false
+	end
+	if key == nil then
+		-- (the user with his pad, 2026-11-16: "looking at the map with the controller, then got aggroed ... got the
+		-- error and couldnt use any spells while using the controller" -- the keys were let go a frame after the fight
+		-- had started: the game had locked the bindings by then, its manager's commit was a blocked action, and its
+		-- frame kept MelloUI's keys on the buttons for the whole fight) every key let go NOW, in this same call: the
+		-- navigation lets go as a fight starts (PLAYER_REGEN_DISABLED), the last moment a binding may still be set
+		pcall(handle.clear)
+		committing = false
+		pcall(handle.commit)
+		return true
+	elseif action then
+		pcall(handle.set, key, action)
+	else
+		pcall(handle.unset, key)
+	end
+	if not committing then
+		committing = true
+		C_Timer.After(0, Commit)
+	end
+	return true
+end
+
+--------------------------------------------------------------------------------
 -- Its parts step back where MelloUI has the part
 --------------------------------------------------------------------------------
 
@@ -182,7 +274,11 @@ end
 -- `all`: every row, whatever MelloUI's modules say (while this file loads: the settings are not read yet)
 local function Lay(all)
 	local used = all or C.Used()
-	PutHold(used)
+	-- (2.1.55, the user's PS5 pad and the test VM, 2026-11-16: MelloUI's name on its window list made it treat a
+	-- MelloUI window as one of the game's -- its D-pad and B let go, its A, X and Y slots stayed bound, and it set them
+	-- again over the keys its own bind manager had just given MelloUI. The claim there (C.Claim) is the one hand-over;
+	-- the name is taken off the list wherever an earlier build of this file left it)
+	PutHold(false)
 	for _, p in ipairs(PARTS) do
 		PutPart(p[1], used and (all or MelloUI:IsModuleEnabled(p[2])) and true or false)
 	end

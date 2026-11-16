@@ -112,6 +112,88 @@ local S = {
 }
 local LayLook, HideLook   -- (the look: below)
 
+-- (2.1.55; the user's PS5 pad beside Controller Forever, 2026-11-16, his dump: with the configurator open the D-pad
+-- and B were MelloUI's, but A, X and Y were still Controller Forever's own slots -- its face buttons do not step
+-- aside for a window that is not the game's) every key the navigation binds goes through these three: the override
+-- binding on MelloUI's own owner, as before, and the same key told to the controller's engine while one is in use
+-- (Core/ControllerForever.lua's Claim: its one bind manager then sets the key itself and stands its own buttons down)
+G.IDLE = { PAD3 = "IDLE", PAD4 = "IDLE" }
+local function Engine()
+	local C = rawget(MelloUI, "ControllerForever")
+	return C and C.Claim and C or nil
+end
+-- (the user's fourth dump, 2026-11-16: X and Y, asked for in its bind manager only, were MelloUI's; A, bound here
+-- too, was its own slot again -- its manager leaves alone a key that already clicks the same thing, so its own slot
+-- stayed on its frame under MelloUI's binding) a key the engine takes is NOT bound on MelloUI's owner as well: its
+-- manager then sets it on its own frame, over its own slot. S.want: what each key should click, for Keep below
+local function BindClick(key, name, button)
+	local action = "CLICK " .. name .. ":" .. button
+	S.want = S.want or {}
+	S.want[key], S.wantAt = action, GetTime()
+	local C = Engine()
+	if C and C.Claim(key, action) then
+		SetOverrideBinding(S.owner, true, key, nil)
+		return
+	end
+	SetOverrideBindingClick(S.owner, true, key, name, button)
+end
+local function BindNone(key)
+	if S.want then
+		S.want[key] = nil
+	end
+	SetOverrideBinding(S.owner, true, key, nil)
+	local C = Engine()
+	if C then
+		C.Claim(key, false)
+	end
+end
+local function BindClear()
+	S.want, S.kept = nil, nil
+	pcall(ClearOverrideBindings, S.owner)
+	local C = Engine()
+	if C then
+		C.Claim()
+	end
+end
+
+-- beside the controller's engine, every look while a window holds the pad: a key that no longer clicks what the
+-- navigation asked for (half a second after the last asking: its manager sets the keys on the next frame) is bound
+-- on MelloUI's own owner, the last word; KEEP_MOST times a hold, never an endless tug, and the dump tells of it
+local KEEP_MOST = 30
+local Trail   -- (the navigation's trail: below)
+local function Keep()
+	local read, want = rawget(_G, "GetBindingAction"), S.want
+	if not (read and want and Engine()) or InCombatLockdown() or GetTime() - (S.wantAt or 0) < 0.5 then
+		return
+	end
+	for key, action in pairs(want) do
+		local ok, now = pcall(read, key, true)
+		if ok and now ~= action and (S.kept or 0) < KEEP_MOST then
+			S.kept = (S.kept or 0) + 1
+			local name, button = action:match("^CLICK ([^:]+):(.+)$")
+			if name then
+				SetOverrideBindingClick(S.owner, true, key, name, button)
+			end
+			if S.kept <= 3 or S.kept == KEEP_MOST then
+				Trail(("key %s clicked '%s': bound again here (%d)"):format(key, tostring(now), S.kept))
+			end
+		end
+	end
+end
+
+
+-- (2.1.55; the user's first test with a real pad beside Controller Forever, 2026-11-16: the configurator open, the
+-- navigation holding nothing, no window on its list) the last things the navigation did, for the dump: a window
+-- taken on or off its list, the pad taken, refused or given back, the mode switched
+local trail = {}
+Trail = function(what, frame)
+	local name = frame and (frame.GetName and frame:GetName() or tostring(frame)) or ""
+	trail[#trail + 1] = ("%.1f %s %s"):format(GetTime(), what, name)
+	if #trail > 24 then
+		table.remove(trail, 1)
+	end
+end
+
 -- a window's own pad (G.Own's spec), or nil
 local function OwnOf(scope)
 	local opts = scope and windows[scope]
@@ -542,12 +624,12 @@ local function BindA()
 				return
 			end
 			S.waitA = nil
-			SetOverrideBindingClick(S.owner, true, "PAD1", name, "LeftButton")
+			BindClick("PAD1", name, "LeftButton")
 			S.bound = c
 			NoteSeen("PAD1")
 		end
 	elseif S.bound then
-		SetOverrideBindingClick(S.owner, true, "PAD1", "MelloUIGamepadKey", "A")
+		BindClick("PAD1", "MelloUIGamepadKey", "A")
 		S.bound = nil
 		NoteSeen("PAD1")
 	end
@@ -568,12 +650,12 @@ local function BindX()
 				return
 			end
 			S.waitX = nil
-			SetOverrideBindingClick(S.owner, true, "PAD3", name, "RightButton")
+			BindClick("PAD3", name, "RightButton")
 			S.boundX = c
 			NoteSeen("PAD3")
 		end
 	elseif S.boundX then
-		SetOverrideBindingClick(S.owner, true, "PAD3", "MelloUIGamepadKey", "X")
+		BindClick("PAD3", "MelloUIGamepadKey", "X")
 		S.boundX = nil
 		NoteSeen("PAD3")
 	end
@@ -584,9 +666,9 @@ end
 local function BindOwn(key, what)
 	local button = what:match("^click:(.+)$")
 	if button then
-		SetOverrideBindingClick(S.owner, true, key, button, "LeftButton")
+		BindClick(key, button, "LeftButton")
 	else
-		SetOverrideBindingClick(S.owner, true, key, "MelloUIGamepadKey", what)
+		BindClick(key, "MelloUIGamepadKey", what)
 	end
 	local read = rawget(_G, "GetBindingAction")
 	local ok, action = false, nil
@@ -685,14 +767,30 @@ local function Take()
 	end
 	local own = OwnOf(Top())
 	if not (own and own.over) and G.GameHasPad() then
+		if S.refused ~= Top() then
+			S.refused = Top()
+			Trail("pad not taken: the game's own pad UI is in use", Top())
+		end
 		return false
 	end
+	S.refused = nil
+	Trail("pad taken for", Top())
 	Make()
 	if own then
 		TakeOwn(own)
 	else
 		for key, what in pairs(G.KEYS) do
-			SetOverrideBindingClick(S.owner, true, key, "MelloUIGamepadKey", what)
+			BindClick(key, "MelloUIGamepadKey", what)
+		end
+	end
+	-- (2.1.55) beside the controller's engine its X and Y slots would still fire while a MelloUI window is walked: the
+	-- keys this window does not use are asked for there too, on MelloUI's key, which does nothing with them
+	local C = Engine()
+	if C then
+		for key, what in pairs(G.IDLE) do
+			if not (own and own.keys and own.keys[key]) then
+				BindClick(key, "MelloUIGamepadKey", what)
+			end
 		end
 	end
 	S.holding, S.bound, S.own = true, nil, own
@@ -724,7 +822,8 @@ local function Release(starting)
 	if InCombatLockdown() and not starting then
 		return
 	end
-	pcall(ClearOverrideBindings, S.owner)
+	BindClear()
+	Trail(starting and "pad given back (a fight)" or "pad given back")
 	S.holding, S.bound, S.boundX, S.tabsBound, S.own, S.ownSeen = false, nil, nil, nil, nil, nil
 	S.waitA, S.waitX = nil, nil
 	HideLook()
@@ -737,6 +836,10 @@ G.Release = Release
 --------------------------------------------------------------------------------
 
 local function RunScript(c, which)
+	-- (no control: a window with nothing to focus, 2.1.55)
+	if not c then
+		return
+	end
 	-- (a protected control's scripts are the game's template's: never run from here)
 	if c.IsProtected and c:IsProtected() then
 		return
@@ -1048,8 +1151,8 @@ local function BindTabs(on)
 	end
 	S.tabsBound = on
 	if on then
-		SetOverrideBindingClick(S.owner, true, "PADLSHOULDER", "MelloUIGamepadKey", "LB")
-		SetOverrideBindingClick(S.owner, true, "PADRSHOULDER", "MelloUIGamepadKey", "RB")
+		BindClick("PADLSHOULDER", "MelloUIGamepadKey", "LB")
+		BindClick("PADRSHOULDER", "MelloUIGamepadKey", "RB")
 	else
 		-- (a window reading the pad itself gets its own shoulders back)
 		local keys = S.own and S.own.keys
@@ -1057,7 +1160,7 @@ local function BindTabs(on)
 			if keys and keys[key] then
 				BindOwn(key, keys[key])
 			else
-				SetOverrideBinding(S.owner, true, key, nil)
+				BindNone(key)
 			end
 		end
 	end
@@ -1377,6 +1480,10 @@ end
 local NAV_NAMES = { UP = true, DOWN = true, LEFT = true, RIGHT = true, A = true, LB = true, RB = true }
 
 Key_OnClick = Shared("OnClick on the gamepad's key button", function(_, what, down)
+	-- (the press kept for G.DumpSoon: whether a press reached MelloUI's key at all)
+	if down then
+		S.pressed, S.lastKey, S.lastKeyAt = (S.pressed or 0) + 1, what, GetTime()
+	end
 	local own = S.own
 	if own and not (own.nav and NAV_NAMES[what]) then
 		-- (a window reading the pad itself: its own press)
@@ -1510,6 +1617,9 @@ local Driver_OnUpdate = Shared("OnUpdate on the gamepad's driver (only while a M
 				Valid(Top())
 			elseif S.holding and S.own then
 				Reassert()
+				Keep()
+			elseif S.holding then
+				Keep()
 			end
 		end
 		if not S.holding then
@@ -1579,10 +1689,12 @@ local function Retake()
 	end
 end
 
-local function Push(frame)
-	if not G.On() then
+local function Push(frame, force)
+	if not (force or G.On()) then
+		Trail("shown with the Gamepad UI off: not listed", frame)
 		return
 	end
+	Trail("listed", frame)
 	local at = Index(frame)
 	if at then
 		table.remove(stack, at)
@@ -1609,6 +1721,7 @@ local function Pop(frame)
 	if not at then
 		return
 	end
+	Trail("hidden: off the list", frame)
 	table.remove(stack, at)
 	local c = S.focus
 	if c and Inside(c, frame) then
@@ -1671,7 +1784,7 @@ function G.Own(frame, spec)
 	if spec and was and S.holding and S.own == was and Top() == frame and not InCombatLockdown() then
 		-- (the same window in another mode -- the map's crosshair or its quest column: its keys bound again at once,
 		-- the pad never given back between; the focus on the part it now lets walk, or none)
-		pcall(ClearOverrideBindings, S.owner)
+		BindClear()
 		S.bound, S.boundX, S.tabsBound, S.held, S.own = nil, nil, nil, nil, spec
 		TakeOwn(spec)
 		Valid(frame)
@@ -1713,14 +1826,23 @@ end
 -- The mode and the fights
 --------------------------------------------------------------------------------
 
-local function OnEvent(_, event)
+local function OnEvent(_, event, new, old)
 	if event == "INPUT_DEVICE_INTERFACE_TRANSITION" then
-		local on = G.On()
+		-- (2.1.55) the mode the event names (its payload: newMode, oldMode), not a second question to the game: asked
+		-- while the event runs, the game may still answer the mode it is leaving -- a switch to the Gamepad UI then
+		-- emptied the list with a window open, and nothing put it back
+		local pad = Enum and Enum.InputDeviceInterfaceType and Enum.InputDeviceInterfaceType.Gamepad
+		local asked = G.On()
+		local on = asked
+		if new ~= nil and pad ~= nil then
+			on = new == pad
+		end
+		Trail(("mode event: new %s, old %s, the game answers %s"):format(tostring(new), tostring(old), tostring(asked)))
 		if on then
 			-- (the windows already open: the pad drives the last one)
 			for frame, opts in pairs(windows) do
 				if frame:IsVisible() and not opts.popup then
-					Push(frame)
+					Push(frame, true)
 				end
 			end
 		else
@@ -1774,8 +1896,62 @@ function G.Dump(out)
 		.. "MelloUI.Gamepad.Dump() end) reads it after it closes)")
 	out("  focus " .. Name(S.focus) .. (S.bound and " (A bound to it)" or "") .. ", the pad's faces " .. G.Style()
 		.. (S.tabsBound and ", LB / RB on a tab row" or ""))
+	-- (2.1.55; the user with a PS5 pad beside Controller Forever, 2026-11-16: the D-pad walked the configurator, the
+	-- confirm button did nothing) who holds each button now, and the last press MelloUI's own key got
+	local read = rawget(_G, "GetBindingAction")
+	if read then
+		local t = {}
+		for _, key in ipairs({ "PAD1", "PAD2", "PAD3", "PAD4", "PADDUP", "PADDDOWN" }) do
+			local ok, action = pcall(read, key, true)
+			t[#t + 1] = key .. " = " .. ((ok and action ~= nil and action ~= "") and tostring(action) or "(nothing)")
+		end
+		out("  bound now: " .. table.concat(t, "; "))
+	end
+	out(("  presses MelloUI's key got: %d, the last one %s%s"):format(S.pressed or 0, tostring(S.lastKey or "none"),
+		S.lastKeyAt and (" %.1f s ago"):format(GetTime() - S.lastKeyAt) or ""))
+	local style = rawget(_G, "C_InputInterfaceStyle")
+	local okS, now = pcall(function()
+		return style.GetCurrentStyle()
+	end)
+	out(("  the game's style now %s, its setting %s"):format(okS and tostring(now) or "?",
+		tostring(GetCVar and GetCVar("InputDeviceInterfaceStyle"))))
+	local open = {}
+	for frame, opts in pairs(windows) do
+		if frame:IsVisible() and not opts.popup and not Index(frame) then
+			open[#open + 1] = Name(frame)
+		end
+	end
+	out("  open but NOT on the list: " .. (#open > 0 and table.concat(open, ", ") or "none"))
+	out("  the last steps (seconds since the game started):")
+	for i = 1, #trail do
+		out("    " .. trail[i])
+	end
+	local C = rawget(MelloUI, "ControllerForever")
+	if C then
+		local hold = rawget(_G, "MelloUIPadHold")
+		out(("  Controller Forever: in use %s, MelloUI's name on its list %s, the hold frame shown %s"):format(
+			tostring(C.Used()), tostring(C.Holds()), tostring(hold ~= nil and hold:IsShown())))
+	end
 	local f = S.catcher
 	out(("  the sticks held %s (the catcher %s), last read %.2f %.2f / %.2f %.2f"):format(
 		tostring(f and f:IsShown() or false), S.catching and "enabled" or "not enabled", caught[1], caught[2],
 		caught[3], caught[4]))
+end
+
+--------------------------------------------------------------------------------
+-- MelloUI.Gamepad.DumpSoon(): the dump above eight seconds on, in the copy window -- open the MelloUI window that misbehaves, type
+-- it, then press the pad's buttons that do not answer
+--------------------------------------------------------------------------------
+
+-- (no slash command of its own: /run MelloUI.Gamepad.DumpSoon())
+function G.DumpSoon()
+	S.pressed, S.lastKey, S.lastKeyAt = 0, nil, nil
+	MelloUI:Print("Press the controller's buttons now: the dump opens in 8 seconds.")
+	Perf.C_Timer.After(8, function()
+		local lines = {}
+		G.Dump(function(line)
+			lines[#lines + 1] = tostring(line)
+		end)
+		MelloUI:ShowText("Gamepad", table.concat(lines, "\n"))
+	end)
 end
