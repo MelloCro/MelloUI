@@ -2818,7 +2818,8 @@ function Motion.FiveCast(spell)
 	if S.powerToken ~= "MANA" or not Motion.On("fiveSecond") then
 		return
 	end
-	local get = (C_Spell and C_Spell.GetSpellPowerCost) or rawget(_G, "GetSpellPowerCost")
+	local spellApi = rawget(_G, "C_Spell")
+	local get = (type(spellApi) == "table" and spellApi.GetSpellPowerCost) or rawget(_G, "GetSpellPowerCost")
 	if type(get) ~= "function" then
 		return
 	end
