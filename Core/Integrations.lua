@@ -299,6 +299,25 @@ I.LIST = {
 		local handler = hn and type(hn.plugins) == "table" and hn.plugins.HandyNotes_NPCs_Forever
 		return type(handler) == "table" and type(handler.GetNodes2) == "function"
 	  end } } },
+	-- (2.1.55, docs/plans/controller-forever.md stage 1; the user, 2026-11-16) Controller Forever is the controller's
+	-- engine: the two step aside for each other, each way on one of its tables (Core/ControllerForever.lua)
+	{ key = "ControllerForever", name = "Controller Forever", folders = { "ControllerForever" }, group = "frames",
+	  url = "https://www.curseforge.com/wow/addons/controllerforever",
+	  does = { "The controller's buttons and binds are its own: MelloUI's gamepad bars are not shown while it runs.",
+		"While a MelloUI window holds the controller, its buttons step aside, so the D-pad, A and B walk MelloUI's window.",
+		"Where MelloUI has the part (unit frames, party frames, minimap, chat, damage meter, bags, automatic quests) its own version steps back, and its menu says so." },
+	  short = "Its buttons and binds, MelloUI's windows and frames",
+	  links = {},
+	  parts = {
+		{ "its list of windows the controller belongs to", function()
+			local C = rawget(MelloUI, "ControllerForever")
+			return C ~= nil and C.Holds() ~= nil
+		end },
+		{ "its list of parts another addon has", function()
+			local C = rawget(MelloUI, "ControllerForever")
+			return C ~= nil and C.Parts() ~= nil
+		end },
+	  } },
 	-- (2.1.51; Shumi's report) Offhand keeps the game on one screen and panels on another: what centres on the character
 	-- centres on its main screen (I.PlayArea); (2.1.53) THE RULE for every animation and every place by the screen's
 	-- middle (I.PlayPoint, below)
@@ -675,6 +694,15 @@ function I.Jobs()
 			rows[#rows + 1] = { j[1], "Polestar", "MelloUI's own steps aside while Polestar's switch is on" }
 		else
 			rows[#rows + 1] = { j[1], "MelloUI", polestar and "Polestar's switch for it is off" or nil }
+		end
+	end
+	-- (2.1.55) the controller's buttons, only where the controller's engine is installed
+	local C = rawget(MelloUI, "ControllerForever")
+	if C and I.Installed(I.ByKey.ControllerForever) then
+		if C.Used() then
+			rows[#rows + 1] = { "The controller's buttons and binds", "Controller Forever", "MelloUI's gamepad bars step aside" }
+		else
+			rows[#rows + 1] = { "The controller's buttons and binds", "MelloUI's gamepad bars and Controller Forever's, both" }
 		end
 	end
 	return rows

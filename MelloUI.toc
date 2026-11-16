@@ -19,6 +19,7 @@ Core\Schedule.lua
 Core\SharedMedia.lua
 Core\Companions.lua
 Core\Overlaps.lua
+Core\ControllerForever.lua
 Core\QuestObjectives.lua
 Core\QuestSource.lua
 Core\QuestieLook.lua
@@ -143,6 +144,7 @@ Modules\HealProbe.lua
 Modules\BagWindow.lua
 Modules\MinimapPanel.lua
 Modules\QuestTracker.lua
+Modules\QuestTrackerPad.lua
 Modules\ErrorFilter.lua
 Modules\Auras.lua
 

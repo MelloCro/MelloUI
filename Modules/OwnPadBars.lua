@@ -542,11 +542,11 @@ end
 --------------------------------------------------------------------------------
 
 function P.Holds(n)
-	return P.on and type(n) == "number" and n >= 1 and n <= 4
+	return (P.on or P.aside) and type(n) == "number" and n >= 1 and n <= 4 or false
 end
 
 function P.LayBar(bar)
-	if not (P.on and bar) or InCombatLockdown() then
+	if not ((P.on or P.aside) and bar) or InCombatLockdown() then
 		return
 	end
 	RegisterStateDriver(bar, "visibility", "hide")
@@ -854,26 +854,48 @@ local function Off()
 	end
 end
 
-local function Want()
+-- (2.1.55, docs/plans/controller-forever.md stage 1) Controller Forever in use: the pad's buttons on screen are its
+-- own, drawn over the game's crossbar the way these are, so these are not built and the game's crossbar is left to
+-- it. Bars 1-4 still stand aside in the Gamepad UI, as they do under these bars (P.aside)
+local function Engine()
+	local C = MelloUI.ControllerForever
+	return C ~= nil and C.Used()
+end
+
+local function Bars()
 	local G = MelloUI.Gamepad
 	local A = OB.Actions
 	return G ~= nil and G.On() and OB.On(PART) and A ~= nil and A.bars[4] ~= nil and A.ShowButton ~= nil
-		and PageUnit() ~= nil
+end
+
+local function Want()
+	return Bars() and PageUnit() ~= nil and not Engine()
 end
 
 function P.Sync()
 	local want = Want() and true or false
-	if want == P.on then
+	local aside = (not want) and Bars() and Engine() or false
+	if want == P.on and aside == (P.aside or false) then
 		return
 	end
 	if InCombatLockdown() then
 		MelloUI.Schedule.WhenOutOfCombat(P.Sync, "Own Bars: the gamepad bars")
 		return
 	end
-	if want then
-		On()
-	else
-		Off()
+	local was = P.aside or false
+	P.aside = aside or nil
+	if want ~= P.on then
+		-- (both lay Bars 1-4: On by P.LayBar, Off by their own A.Lay, which asks P.Holds and so P.aside)
+		if want then
+			On()
+		else
+			Off()
+		end
+	elseif aside ~= was and OB.On(PART) then
+		local A = OB.Actions
+		for n = 1, 4 do
+			A.Lay(n)
+		end
 	end
 end
 

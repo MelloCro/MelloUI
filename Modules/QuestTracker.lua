@@ -4203,6 +4203,25 @@ end
 local SECTION_H = 24
 local sections = {}
 
+-- (2.1.55, Modules/QuestTrackerPad.lua: the pad's stops on the tracker) the tracker's shown parts: its section
+-- headings (a guide's with its Back and Skip arrows) and its blocks (a quest's, a recipe's, a guide's step)
+function M.PadParts()
+	local out = {}
+	for key, row in pairs(sections) do
+		if row:IsVisible() then
+			out[#out + 1] = { kind = "section", key = key, top = row, bottom = row, click = row.toggle or row,
+				back = row.navBack and row.navBack:IsShown() and row.navBack or nil,
+				skip = row.navSkip and row.navSkip:IsShown() and row.navSkip or nil }
+		end
+	end
+	for key, block in pairs(blocks) do
+		if block:IsVisible() then
+			out[#out + 1] = { kind = "block", key = key, top = block, bottom = block, click = block, questID = block.questID }
+		end
+	end
+	return out
+end
+
 -- A collapse toggle: the Configurator's flat plus / minus (Art.Flat):
 -- `IsCollapsed()` picks the glyph, `OnClick` flips the state
 local ToggleLit = Perf.Shared("OnEnter / OnLeave on the Quest Tracker's toggles", function(toggle)

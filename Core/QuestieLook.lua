@@ -1069,6 +1069,43 @@ function QL.ObjectiveLine(questID, index)
 	return found
 end
 
+-- (2.1.55, Modules/QuestTrackerPad.lua: the pad's stops on the tracker) Questie's shown quests, top to bottom:
+-- { line (its name's line), bottom (its lowest shown line: the last objective), questID, item (its item button, shown) }.
+-- Read only: the lines' own fields as Questie sets them (mode "quest" / "objective", Quest.Id)
+function QL.TrackerQuests()
+	local out, at = {}, nil
+	Lines(function(line)
+		if not line:IsVisible() then
+			return
+		end
+		local mode, quest = rawget(line, "mode"), rawget(line, "Quest")
+		local id = type(quest) == "table" and rawget(quest, "Id") or nil
+		if mode == "quest" and id then
+			at = { line = line, bottom = line, questID = id }
+			out[#out + 1] = at
+		elseif mode == "objective" and at and id == at.questID then
+			at.bottom = line
+		else
+			at = nil
+		end
+	end)
+	for i = 1, 50 do
+		local btn = rawget(_G, "Questie_ItemButton" .. i)
+		if not btn then
+			break
+		end
+		if btn:IsShown() then
+			local parent = btn:GetParent()
+			for _, q in ipairs(out) do
+				if q.line == parent then
+					q.item = btn
+				end
+			end
+		end
+	end
+	return out
+end
+
 -- (2.1.39; the user, 2026-11-10: "questie quest tracker does not load inside the dungeon" -- Questie folds its tracker
 -- to its heading there, its Minimize In Instances, on by default -- then "Yes, switch it off once") while Questie's
 -- tracker stands in MelloUI's place, its quests show in a dungeon as MelloUI's own tracker's did: that setting of

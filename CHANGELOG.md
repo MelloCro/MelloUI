@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.55
+
+- Controller Forever: MelloUI now works beside it. With it running, the controller's buttons and binds are its own, and MelloUI's own gamepad bars are no longer shown on top of them.
+- Controller Forever: while a MelloUI window is open its buttons step aside, so the D-pad, A and B walk MelloUI's window. Before, it took the A button back after a few seconds.
+- Controller Forever: where MelloUI has the part (unit frames, party frames, minimap, chat, damage meter, bags, automatic quests) its own version steps back, and its menu says Off (MelloUI). It has a card on the Addons page with a switch.
+- Quest Tracker: with a controller, a new Quest Tracker action steps into the tracker. The D-pad walks its quests and a leveling guide's heading, A does what a click on the part does, X uses the quest's item, Y opens its menu, and left and right on a guide's heading are its Back and Skip arrows. B leaves. It is in the game's Key Bindings, and /mellotracker does the same from a macro.
+- Quest Tracker: a new Next Quest action (/mellonext, also in Key Bindings) marks the next quest in the tracker and clicks it, without taking the controller from you.
+
 ## 2.1.54
 
 - Profiles: a profile now carries the Edit Mode layout you really use. Since 2.1.46 a logout or /reload wrote the game's preset Modern into it instead, so a new character got the preset, and loading a profile could put the preset over your own layout.

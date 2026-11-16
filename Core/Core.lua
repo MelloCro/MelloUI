@@ -7027,6 +7027,12 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		self:AfterLogin(function()
 			self:ProfileEditModeAtLogin()
 		end)
+		-- (2.1.55) Controller Forever: MelloUI's rows in its two tables as this character's settings say, now that they
+		-- are read (Core/ControllerForever.lua put every row in while its file loaded)
+		local controller = rawget(self, "ControllerForever")
+		if controller then
+			controller.Sync()
+		end
 		-- the palette the settings name, before any module draws (only the
 		-- table: nothing is on the screen to repaint yet)
 		ApplyStoredPalette(self, false)

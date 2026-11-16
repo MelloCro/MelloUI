@@ -177,6 +177,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.55", lines = {
+		"Controller Forever: MelloUI works beside it now. Its buttons and binds are the controller's, MelloUI's gamepad bars step aside, and its buttons step aside while a MelloUI window is open.",
+		"Controller Forever: its frames, minimap, chat, damage meter, bags and automatic quests step back where MelloUI has that part. A card on the Addons page has its switch.",
+		"Quest Tracker: with a controller, a Quest Tracker action (Key Bindings or /mellotracker) steps into the tracker: D-pad, A, X its item, Y its menu, B leaves. /mellonext marks the next quest.",
+	} },
 	{ version = "2.1.54", lines = {
 		"Profiles: a profile carries your real Edit Mode layout now, and each character keeps it in a layout of its own. Alts and a loaded profile no longer end up on the preset Modern.",
 		"Custom Sounds: the Spellbook and Talents window, the profession windows and other newer windows are no longer silent, and a window opens with one sound, not a click on top of it.",
@@ -229,20 +234,6 @@ local CHANGELOG = {
 		"Action Bars: the pet, stance and possess bars follow a smaller Icon Size from Edit Mode, so their icons no longer lie over each other.",
 		"Addons page: Follow The Arrow, Azeroth Pilot Reloaded, Guidelime and FlowUp are listed now, and the guides' cards have Show its own arrow too, beside the World Marker.",
 		"Route: with Offhand on two screens, the World Marker's arrow and wisp and the Level Up card's wisp center on your character's screen, not between the screens.",
-	} },
-	{ version = "2.1.50", lines = {
-		"Map: the world map stays smooth however many quests you carry: no pause on open and no grey map at the middle zooms. The quest areas look exactly as before.",
-		"Restock: untick a row of the shopping list to skip that item at every shop, and food, drink and ammo below the best you carry are no longer offered.",
-		"Discard: a new Consumables Too switch beside Discard Button lets food, drink, potions and other consumables go too, never what your Restock list keeps.",
-		"Discard: right-click the Discard button to always keep the item it would throw away. The Restock List's new Never Discard page lets one go again.",
-		"Discard: with AHledger, an item is worth its auction price when higher, and at a vendor Sell skips what sells for clearly more at auction. AHledger has its switch on the Addons page.",
-		"Minimap: shows quest marks, RareScanner's rares and flight masters exactly as MelloUI's map does, without Questie's own icons beside them.",
-		"Widgets: Ctrl+Click the item on the Loot Rolls card to try it on in the dressing room, and Shift+Click to link it in chat. Dungeon Info's loot works the same way.",
-		"Widgets: the Crafting card's time now counts down the whole stack you asked for, not only the item being made.",
-		"Quest Tracker: a new Nearest Turn In check mark beside the Nearest Quest First arrow follows the nearest quest ready to hand in, then the next one. Needs Route.",
-		"Services: hunters get a Stable Master button that leads to the nearest stable master. With Round Icons off, the buttons now keep a small gap instead of touching.",
-		"Chat: a new Fake Link Warning catches links dressed up as something else, like a Community invite written as an item: grey words, a red FAKE LINK, and a click opens nothing.",
-		"Languages: more of the bag window, the profiles, Restock, Discard, Services and the copy window is translated (French so far), and switching language no longer doubles a page's heading.",
 	} },
 }
 local LINKS = {

@@ -1,0 +1,16 @@
+<Bindings>
+	<!-- The Quest Tracker with a controller (Modules/QuestTrackerPad.lua, 2.1.55): two actions a controller addon or
+	     the game's Key Bindings can put on a button -->
+	<Binding name="MELLOUI_TRACKER_PAD" category="ADDONS">
+		local pad = MelloUI and MelloUI.QuestTrackerPad
+		if pad then
+			pad.Enter()
+		end
+	</Binding>
+	<Binding name="MELLOUI_TRACKER_NEXT" category="ADDONS">
+		local pad = MelloUI and MelloUI.QuestTrackerPad
+		if pad then
+			pad.Next()
+		end
+	</Binding>
+</Bindings>
