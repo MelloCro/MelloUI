@@ -615,7 +615,7 @@ local function BossLine(inst)
 	if n == 0 then
 		return nil
 	end
-	local J = MelloUI.DungeonInfo
+	local J = rawget(MelloUI, "DungeonInfo")
 	local names = {}
 	for i, b in ipairs(inst.bosses) do
 		names[i] = (J and J.BossShown) and J.BossShown(b) or b.name   -- (2.1.56: in the client's language)
