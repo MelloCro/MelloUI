@@ -615,9 +615,10 @@ local function BossLine(inst)
 	if n == 0 then
 		return nil
 	end
+	local J = MelloUI.DungeonInfo
 	local names = {}
 	for i, b in ipairs(inst.bosses) do
-		names[i] = b.name
+		names[i] = (J and J.BossShown) and J.BossShown(b) or b.name   -- (2.1.56: in the client's language)
 	end
 	return W.Tr(TEXT.bosses):format(n, table.concat(names, ", "))
 end
@@ -678,10 +679,11 @@ local function EntranceTip(pin)
 	local d = pin.data
 	local word = d.kind == 2 and TEXT.raid or TEXT.dungeon
 	local line = d.levels and W.Tr(TEXT.levels):format(word, LevelText(d.levels)) or W.Tr(word)
-	local _, inst = DungeonInfoOf(pin)
+	local J, inst = DungeonInfoOf(pin)
 	if inst then
 		local bosses = BossLine(inst)
-		return d.name, line .. (bosses and ("\n" .. bosses) or "") .. "\n" .. ClickLine(inst)
+		local name = (J and J.Shown) and J.Shown(inst) or d.name   -- (2.1.56: in the client's language)
+		return name, line .. (bosses and ("\n" .. bosses) or "") .. "\n" .. ClickLine(inst)
 	end
 	return d.name, line
 end

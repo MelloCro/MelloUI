@@ -171,14 +171,23 @@ end
 -- the game names it in the client's language (GetRealZoneText of its map: "Hügel von Razorfen"), while MelloUI speaks
 -- that language too; else, or when the game has none, the data's English. Only for showing: matching, the bridge and
 -- the doors keep `inst.name`
+-- MelloUI's language while the client speaks it too, and it is not English; else nil
+local function Speaks()
+	local Lang = MelloUI.Lang
+	local code = Lang and Lang.code
+	local ok, locale = pcall(GetLocale)
+	if not code or code == "enUS" or not ok or code ~= locale then
+		return nil
+	end
+	return code
+end
+
 function J.Shown(inst)
 	if type(inst) ~= "table" then
 		return ""
 	end
-	local Lang = MelloUI.Lang
-	local code = Lang and Lang.code
-	local ok, locale = pcall(GetLocale)
-	if not code or code == "enUS" or not ok or code ~= locale or not inst.map then
+	local code = Speaks()
+	if not code or not inst.map then
 		return inst.name
 	end
 	if inst.shownFor ~= code then
@@ -187,6 +196,78 @@ function J.Shown(inst)
 		inst.shown, inst.shownFor = (zone and zone ~= "") and zone or inst.name, code
 	end
 	return inst.shown
+end
+
+-- (2.1.56; the German player: OneForAll shows the bosses in German, from QuestieDB's names) a boss's name in the
+-- client's language: Questie's database names every creature in it (LibQuestieDB's Npc.Get, its l10n), by its id, and
+-- the data here has the English name only -- so the English names (Npc.GetRaw, its base rows) are made into ids once,
+-- a few thousand a frame, the first time a boss is shown in another language; until then, and without Questie, the
+-- English. Then "dungeonInfo:names" lays the page again
+local npcByEnglish, npcBuilding = nil, false
+
+local function NpcLib()
+	local QS = MelloUI.QuestSource
+	local L = QS and QS.Lib and QS.Lib()
+	local Npc = L and L.Npc
+	if type(Npc) == "table" and type(Npc.GetRaw) == "function" and type(Npc.Get) == "function"
+		and type(Npc.GetAllIds) == "function" then
+		return Npc
+	end
+	return nil
+end
+
+local function BuildNpcNames(Npc)
+	npcBuilding = true
+	local ok, ids = pcall(Npc.GetAllIds)
+	ids = ok and type(ids) == "table" and ids or {}
+	local index, i, STEP = {}, 1, 3000
+	local function Slice()
+		local last = math.min(i + STEP - 1, #ids)
+		pcall(function()
+			for k = i, last do
+				local id = ids[k]
+				local name = Npc.GetRaw(id, "name")
+				if type(name) == "string" and index[name] == nil then
+					index[name] = id
+				end
+			end
+		end)
+		i = last + 1
+		if i <= #ids then
+			C_Timer.After(0, Slice)
+		else
+			npcByEnglish, npcBuilding = index, false
+			MelloUI:Fire("dungeonInfo:names")
+		end
+	end
+	Slice()
+end
+
+function J.BossShown(boss)
+	if type(boss) ~= "table" then
+		return ""
+	end
+	local code = Speaks()
+	if boss.trash or not code then
+		return boss.name
+	end
+	if boss.shownFor ~= code then
+		local Npc = NpcLib()
+		if not Npc then
+			return boss.name
+		end
+		if not npcByEnglish then
+			if not npcBuilding then
+				BuildNpcNames(Npc)
+			end
+			return boss.name
+		end
+		local id = npcByEnglish[boss.name]
+		local ok, name = id and pcall(Npc.Get, id, "name")
+		name = ok and Text(name) or nil
+		boss.shown, boss.shownFor = (name and name ~= "") and name or boss.name, code
+	end
+	return boss.shown
 end
 
 -- the instance by name (the slash command's): its own name or the start of it (the shown one too)

@@ -332,7 +332,7 @@ do
 			return name
 		end
 		if c.dungeon[id] == nil then
-			local J = MelloUI.DungeonInfo
+			local J = rawget(MelloUI, "DungeonInfo")
 			local inst = J and J.Get and J.Get(id)
 			c.dungeon[id] = (inst and J.Shown and J.Shown(inst)) or Area(id) or name
 		end
