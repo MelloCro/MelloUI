@@ -106,7 +106,7 @@ local T = {
 	sparkShare = 0.08, sparkW = 8, sparkH = 2.4, spark = 0.42,
 	-- (2.1.56, Five-Second Rule) the rule's span after mana spent, the light's width and how far it stands past the
 	-- fill over and under, the veil it leaves behind it, the fade once the span is over
-	five = 5, fiveW = 6, fiveOver = 2, fiveVeil = 0.18, fiveFade = 0.6,
+	five = 5, fiveW = 12, fiveOver = 5, fiveCore = 4, fiveVeil = 0.35, fiveFade = 0.6,
 	fiveFlash = 0.55,   -- (the regeneration back: the whole bar lit this strong, then faded -- the player: "that I see when my mana regen starts again")
 	rimFeather = 12, rimFeatherY = 9, rimTuck = 3,
 	wordX = 4, wordY = 2, wordDX = 22, wordDY = 8, word = 0.85,
@@ -2745,12 +2745,17 @@ function Motion.FiveMake(ui, level)
 	head:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", T.fiveW / 2, -T.fiveOver)
 	head.tex = Spark(head, "OVERLAY", 6, "glow_white.tga")
 	head.tex:SetAllPoints(head)
+	-- (a bright core in the glow: the power fill is a few pixels tall at the default height -- the player's screenshots)
+	head.core = Spark(head, "OVERLAY", 7, "glow_white.tga")
+	head.core:SetPoint("TOP", head, "TOP", 0, 0)
+	head.core:SetPoint("BOTTOM", head, "BOTTOM", 0, 0)
+	head.core:SetWidth(T.fiveCore)
 	five.head = head
 	ui.five = five
 	Motion.FivePaint(ui)
 end
 
--- its colours: the light the text's warm white, the veil the same, faint
+-- its colours: the light's glow the gold (against the mana's blue), its core and the veil the text's warm white
 function Motion.FivePaint(ui)
 	local five = ui and ui.five
 	if not five then
@@ -2758,7 +2763,8 @@ function Motion.FivePaint(ui)
 	end
 	local r, g, b = Motion.Look("text")
 	five:SetStatusBarColor(r, g, b, T.fiveVeil)
-	five.head.tex:SetVertexColor(r, g, b)
+	five.head.core:SetVertexColor(r, g, b)
+	five.head.tex:SetVertexColor(Motion.Look("selectedTrim"))
 end
 
 -- mana spent: the five seconds start over
@@ -2802,6 +2808,35 @@ function Motion.FiveOff(fade)
 	else
 		five:SetAlpha(0)
 		five:Hide()
+	end
+end
+
+-- (UNIT_SPELLCAST_SUCCEEDED, its spell ID plain) a cast of yours whose cost is mana starts it: the German player's
+-- probe, the mana itself is secret on this client (UnitPower: no plain amount to see it go down), the spell's cost is
+-- plain data (C_Spell.GetSpellPowerCost)
+function Motion.FiveCast(spell)
+	if S.powerToken ~= "MANA" or not Motion.On("fiveSecond") then
+		return
+	end
+	local get = (C_Spell and C_Spell.GetSpellPowerCost) or rawget(_G, "GetSpellPowerCost")
+	if type(get) ~= "function" then
+		return
+	end
+	local ok, costs = pcall(get, spell)
+	if not ok or Secret(costs) or type(costs) ~= "table" then
+		return
+	end
+	local mana = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
+	for _, c in ipairs(costs) do
+		local kind = type(c) == "table" and not Secret(c.type) and c.type
+		local name = type(c) == "table" and not Secret(c.name) and c.name
+		if kind == mana or name == "MANA" then
+			local n = (Num(c.cost) or 0) + (Num(c.minCost) or 0) + (Num(c.costPercent) or 0)
+			if n > 0 then
+				Motion.FiveStart()
+				return
+			end
+		end
 	end
 end
 
@@ -3899,6 +3934,7 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
 		-- (a cooldown of yours cast: its spell ID plain, as Frame Effects reads its own; a secret one plays nothing)
 		if not S.preview and not Secret(a3) and type(a3) == "number" then
+			Motion.FiveCast(a3)   -- (2.1.56, Five-Second Rule: a cast that costs mana)
 			Cds.Start(a3)
 			Track.Cast(a3)   -- (2.1.24: a cast that puts a tracked one on, waiting for an aura of yours)
 			Shield.Cast(a3)   -- (a shield's: the aura it puts on you known by it)
