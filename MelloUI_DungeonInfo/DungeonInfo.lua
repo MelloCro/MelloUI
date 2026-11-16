@@ -288,7 +288,11 @@ function J.BossShown(boss)
 			return boss.name
 		end
 		local id = npcByEnglish[boss.name]
-		local ok, name = id and pcall(Npc.Get, id, "name")
+		-- (asked apart: `id and pcall(...)` keeps pcall's first value only, the name was lost)
+		local ok, name = false, nil
+		if id then
+			ok, name = pcall(Npc.Get, id, "name")
+		end
 		name = ok and Text(name) or nil
 		boss.shown, boss.shownFor = (name and name ~= "") and name or boss.name, code
 	end
