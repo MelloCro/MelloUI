@@ -221,26 +221,33 @@ local function BuildNpcNames(Npc)
 	local ok, ids = pcall(Npc.GetAllIds)
 	ids = ok and type(ids) == "table" and ids or {}
 	local index, i, STEP = {}, 1, 3000
+	local GetRaw = Npc.GetRaw
 	local function Slice()
 		local last = math.min(i + STEP - 1, #ids)
-		pcall(function()
-			for k = i, last do
-				local id = ids[k]
-				local name = Npc.GetRaw(id, "name")
-				if type(name) == "string" and index[name] == nil then
-					index[name] = id
-				end
+		-- (each creature asked on its own: one QuestieDB cannot read must not cost the rest of the slice -- the
+		-- German player's Targorr the Dread stayed English while Questie named him)
+		for k = i, last do
+			local id = ids[k]
+			local okN, name = pcall(GetRaw, id, "name")
+			if okN and type(name) == "string" and index[name] == nil then
+				index[name] = id
 			end
-		end)
+		end
 		i = last + 1
 		if i <= #ids then
 			C_Timer.After(0, Slice)
 		else
 			npcByEnglish, npcBuilding = index, false
+			J.npcNamesRead = #ids   -- (for /run: how many creatures were read)
 			MelloUI:Fire("dungeonInfo:names")
 		end
 	end
 	Slice()
+end
+
+-- (for /run) the creature an English name was read as; nil while the names are not read yet, or none has it
+function J.NpcIdOf(name)
+	return npcByEnglish and npcByEnglish[name] or nil
 end
 
 function J.BossShown(boss)
