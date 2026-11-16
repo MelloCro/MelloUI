@@ -3754,7 +3754,7 @@ Lang:Add("deDE", {
 	-- the installer's layout check: why Mello's layout goes in or not (Core/LayoutFit.lua's verdicts, 2.1.56)
 	["Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."] = "Dein Bildschirm ist bei deiner UI-Skalierung zu klein für Mellos Layout; dein eigenes Bearbeitungsmodus-Layout bleibt.", -- draft
 	["Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."] = "Mellos Layout passt auf deinen Bildschirm, aber nicht mit einigen deiner Einstellungen; dein eigenes Bearbeitungsmodus-Layout bleibt.", -- draft
-	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "Mellos Layout ist so gut angepasst, wie dieser Bildschirm es zulässt; ein paar Teile überlappen oder sitzen nah am Rand, und mit Layout bearbeiten lassen sie sich verschieben.", -- draft
+	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "Mellos Layout ist so gut angepasst, wie dieser Bildschirm es zulässt; ein paar Teile überlappen oder sitzen nah am Rand, und mit Layout bearbeiten lassen sie sich verschieben.",
 	["Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."] = "Mellos Layout ist für diesen Bildschirm gezeichnet, also wird es übernommen; einige deiner Einstellungen überlappen es, und mit Layout bearbeiten lassen sie sich verschieben.", -- draft
 })
 
