@@ -3756,6 +3756,45 @@ Lang:Add("deDE", {
 	["Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."] = "Mellos Layout passt auf deinen Bildschirm, aber nicht mit einigen deiner Einstellungen; dein eigenes Bearbeitungsmodus-Layout bleibt.", -- draft
 	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "Mellos Layout ist so gut angepasst, wie dieser Bildschirm es zulässt; ein paar Teile überlappen oder sitzen nah am Rand, und mit Layout bearbeiten lassen sie sich verschieben.",
 	["Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."] = "Mellos Layout ist für diesen Bildschirm gezeichnet, also wird es übernommen; einige deiner Einstellungen überlappen es, und mit Layout bearbeiten lassen sie sich verschieben.", -- draft
+	-- the map's layers page (MelloUI_Map/Map.lua's layers, MapTownMarks.lua's HandyNotes places; 2.1.53 to 2.1.55)
+	["Quest givers"] = "Questgeber", -- draft
+	["Your quests' objectives"] = "Ziele deiner Quests", -- draft
+	["Flight masters"] = "Flugmeister", -- draft
+	["Boats, zeppelins and portals"] = "Schiffe, Zeppeline und Portale", -- draft
+	["Dungeons and raids"] = "Dungeons und Schlachtzüge", -- draft
+	["Cities and towns"] = "Städte und Dörfer", -- draft
+	["Levels"] = "Stufen", -- draft
+	["Zone levels"] = "Zonenstufen", -- draft
+	["Creature levels"] = "Kreaturenstufen", -- draft
+	["Fishing levels"] = "Angelstufen", -- draft
+	["People and more"] = "Personen und mehr", -- draft
+	["Your party and raid"] = "Deine Gruppe und dein Schlachtzug", -- draft
+	["Zone names"] = "Zonennamen", -- draft
+	["Other addons' pins"] = "Markierungen anderer Addons", -- draft
+	["Caves (zoomed in close)"] = "Höhlen (nah herangezoomt)", -- draft
+	["HandyNotes"] = "HandyNotes", -- draft
+	["Riding trainers"] = "Reitlehrer", -- draft
+	["Mount sellers"] = "Reittierhändler", -- draft
+	["Your professions' trainers"] = "Lehrer deiner Berufe", -- draft
+	["Your class's trainers"] = "Lehrer deiner Klasse", -- draft
+	["Innkeepers"] = "Gastwirte", -- draft
+	["Mailboxes"] = "Briefkästen", -- draft
+	["Stable masters"] = "Stallmeister", -- draft
+	["Vendors: reagents"] = "Händler: Reagenzien", -- draft
+	["Vendors: food and drink"] = "Händler: Speis und Trank", -- draft
+	["Vendors: general goods"] = "Händler: Gemischtwaren", -- draft
+	["Vendors: profession supplies"] = "Händler: Berufsbedarf", -- draft
+	["Vendors: weapons"] = "Händler: Waffen", -- draft
+	["Vendors: armor"] = "Händler: Rüstung", -- draft
+	["Vendors: bags"] = "Händler: Taschen", -- draft
+	["Vendors: pets"] = "Händler: Haustiere", -- draft
+	["Vendors: quartermasters"] = "Händler: Rüstmeister", -- draft
+	["Vendors: other"] = "Händler: Sonstiges", -- draft
+	["Battlemasters"] = "Kampfmeister", -- draft
+	["Weapon masters"] = "Waffenmeister", -- draft
+	["Guild masters and tabards"] = "Gildenmeister und Wappenröcke", -- draft
+	["Transmogrifiers"] = "Transmogrifizierer", -- draft
+	["Spirit healers"] = "Geistheiler", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

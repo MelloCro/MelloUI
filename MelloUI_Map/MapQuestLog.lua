@@ -1169,7 +1169,8 @@ function Log.Init(win)
 	-- (M4) the tabs: Quests (the log's count on it), the Quest List while it is there (the UI's own tabs, W.FlatTab)
 	local function Tab(text, key)
 		local tab = CreateFrame("Button", nil, col, "PanelTopTabButtonTemplate")
-		tab:SetText(text)
+		tab:SetText(W.Tr(text))   -- (2.1.56: the layers' tab read "Map layers" in German; the Quests tab is set again
+		                          -- with its count, translated, the other two kept this one)
 		PanelTemplates_TabResize(tab, 8)
 		tab.key = key
 		W.FlatTab(tab, (win.shell and win.shell.kit) and win.shell or nil)   -- (as the configurator's: the ring with the kit)

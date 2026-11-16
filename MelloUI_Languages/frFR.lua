@@ -4279,6 +4279,30 @@ Lang:Add("frFR", {
 	["Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."] = "La disposition de Mello tient sur votre écran, mais pas avec certains de vos réglages ; votre propre disposition du mode Édition est conservée.", -- draft
 	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "La disposition de Mello est ajustée au mieux de ce que permet cet écran ; quelques éléments se chevauchent ou sont près du bord, et Modifier la disposition les déplace.", -- draft
 	["Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."] = "La disposition de Mello est conçue pour cet écran, elle est donc appliquée ; certains de vos réglages la chevauchent, et Modifier la disposition les déplace.", -- draft
+	-- the map's layers page: HandyNotes' places (MelloUI_Map/MapTownMarks.lua, 2.1.53)
+	["HandyNotes"] = "HandyNotes", -- draft
+	["Riding trainers"] = "Maîtres d’équitation", -- draft
+	["Mount sellers"] = "Vendeurs de montures", -- draft
+	["Your professions' trainers"] = "Maîtres de vos métiers", -- draft
+	["Your class's trainers"] = "Maîtres de votre classe", -- draft
+	["Innkeepers"] = "Aubergistes", -- draft
+	["Mailboxes"] = "Boîtes aux lettres", -- draft
+	["Stable masters"] = "Maîtres des écuries", -- draft
+	["Vendors: reagents"] = "Marchands : composants", -- draft
+	["Vendors: food and drink"] = "Marchands : nourriture et boissons", -- draft
+	["Vendors: general goods"] = "Marchands : fournitures générales", -- draft
+	["Vendors: profession supplies"] = "Marchands : fournitures d’artisanat", -- draft
+	["Vendors: weapons"] = "Marchands : armes", -- draft
+	["Vendors: armor"] = "Marchands : armures", -- draft
+	["Vendors: bags"] = "Marchands : sacs", -- draft
+	["Vendors: pets"] = "Marchands : mascottes", -- draft
+	["Vendors: quartermasters"] = "Marchands : intendants", -- draft
+	["Vendors: other"] = "Marchands : autres", -- draft
+	["Battlemasters"] = "Maîtres de guerre", -- draft
+	["Weapon masters"] = "Maîtres d’armes", -- draft
+	["Guild masters and tabards"] = "Maîtres de guilde et tabards", -- draft
+	["Transmogrifiers"] = "Transmogrifieurs", -- draft
+	["Spirit healers"] = "Gardiens des âmes", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
