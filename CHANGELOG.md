@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.56
+
+- Map: with Questie, its quest ! and ? on MelloUI's map are bigger, the size of the map's other marks, and follow the Icon Size slider. They were Questie's own small size before.
+- Map: a click near a Questie ! or ? now starts the route there. Before, only a click on the small icon itself counted, and a near miss zoomed the map in.
+- Questie: every version of its database is read now. Before, an older or a newer one could leave MelloUI acting as if Questie was not installed.
+
 ## 2.1.55
 
 - Controller Forever: MelloUI now works beside it. With it running, the controller's buttons and binds are its own, and MelloUI's own gamepad bars are no longer shown on top of them.

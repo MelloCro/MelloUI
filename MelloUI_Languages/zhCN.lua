@@ -2973,6 +2973,8 @@ Lang:Add("zhCN", {
 	["Remember for future dungeons"] = "记住用于以后的地下城", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "职责选择已关闭：请在 便捷功能 > 职责选择 中开启。", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "插件页面：安装了 MaxDPS 时可以再次打开，之前会停留在配置文件页面。", -- draft
+	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "地图：使用 Questie 时，MelloUI 地图上的任务 ! 和 ? 更大，并随“图标大小”滑块变化，点击其附近即可开始前往该处的路线。", -- draft
+	["Questie: every version of its database is read now, older and newer ones too."] = "Questie：现在可读取其数据库的任何版本，包括更旧和更新的版本。", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

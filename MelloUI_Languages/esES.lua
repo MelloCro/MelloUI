@@ -2973,6 +2973,8 @@ Lang:Add("esES", {
 	["Remember for future dungeons"] = "Recordar para futuras mazmorras", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "El selector de rol está desactivado: actívalo en Comodidad > Selector de rol.", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Página Addons: vuelve a abrirse con MaxDPS instalado, donde se quedaba en Perfiles.", -- draft
+	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Mapa: con Questie, sus ! y ? de misión en el mapa de MelloUI son más grandes y siguen el deslizador Tamaño de icono, y un clic cerca de uno inicia la ruta hasta allí.", -- draft
+	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: ahora se lee cualquier versión de su base de datos, también las más antiguas y las más nuevas.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

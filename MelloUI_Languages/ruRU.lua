@@ -2973,6 +2973,8 @@ Lang:Add("ruRU", {
 	["Remember for future dungeons"] = "Запомнить для следующих подземелий", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Выбор роли выключен: включите его в «Удобство» > «Выбор роли».", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Страница «Аддоны»: снова открывается при установленном MaxDPS, а не остаётся на «Профилях».", -- draft
+	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Карта: с Questie его значки заданий ! и ? на карте MelloUI стали крупнее и следуют ползунку «Размер значков», а щелчок рядом со значком прокладывает маршрут к нему.", -- draft
+	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: теперь читается любая версия его базы данных, и более старые, и более новые.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

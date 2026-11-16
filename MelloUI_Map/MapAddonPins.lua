@@ -71,6 +71,7 @@ local T = {
 	KEEP = 12,               -- zones' nodes kept built: the ones in view, then the nearest seen last
 	BUILD_PER_FRAME = 2,     -- zones built in one frame (a zone of imported gathering data: hundreds of nodes)
 	SIZE = 16,               -- an API pin's size by default
+	QUESTIE = 18,            -- (2.1.56) a dressed Questie icon's picture: this map's own pin size (MapLayers' PIN_SIZE)
 	-- HereBeDragons' world map pins: the library's own name, and Questie's renamed copy
 	HBD = {
 		{ pins = "HereBeDragons-Pins-2.0", hbd = "HereBeDragons-2.0" },
@@ -225,12 +226,39 @@ local function PartsBack(icon)
 	end
 end
 
+-- (2.1.56; the user, 2026-11-16: "people have questie, but the quest icons on the map are kinda small and they cant
+-- click to navigate to them", a picture of a "!" a few pixels tall) a dressed icon's picture at this map's own pin
+-- size, by the icons' slider as every pin of this map's (MapPins' Pins.scale: its SetScale asks Recheck) -- it filled
+-- Questie's frame until now, which is Questie's size to set (16 px by its Icon Scale settings: 11.5 px a giver as it
+-- comes, less on a continent's map) and stays so: the picture is MelloUI's own and only stands on its middle. The
+-- frame's mouse area out to the picture's edge and the pins' own margin round it (MapPins' HIT), so its tooltip and
+-- its click (GiverClick) answer where this map's own marks do; given back with the picture (Unstyle). Questie in its
+-- own look (never dressed) keeps its own sizes
+local grown = setmetatable({}, { __mode = "k" })   -- [Questie's frame] = true: its mouse area grown to our picture's
+
+local function QuestiePx()
+	local P = ns.Pins
+	return floor(T.QUESTIE * (P and Finite(P.scale) or 1) + 0.5)
+end
+AddonPins.QuestiePx = QuestiePx
+
 local function Restyle(icon, look)
 	local tex = styled[icon]
 	if not tex then
 		tex = icon:CreateTexture(nil, "OVERLAY", nil, 7)
-		tex:SetAllPoints(icon)
 		styled[icon] = tex
+	end
+	local px = QuestiePx()
+	tex:ClearAllPoints()
+	tex:SetPoint("CENTER", icon, "CENTER")
+	tex:SetSize(px, px)
+	if icon.SetHitRectInsets then
+		local P = ns.Pins
+		local w, h = Finite(icon:GetWidth()) or 0, Finite(icon:GetHeight()) or 0
+		local hit = P and P.T and Finite(P.T.HIT) or 0
+		local dx, dy = max((px - w) / 2, 0) + hit, max((px - h) / 2, 0) + hit
+		icon:SetHitRectInsets(-dx, -dx, -dy, -dy)
+		grown[icon] = true
 	end
 	PartsOff(icon)
 	if look.atlas then
@@ -246,8 +274,7 @@ local function Restyle(icon, look)
 	-- (lifted as this map's own marks: the look's shade)
 	local P = ns.Pins
 	if P and P.Lift then
-		local w = Finite(icon:GetWidth())
-		P.Lift(tex, look.icon or false, w and w > 0 and w or 16)
+		P.Lift(tex, look.icon or false, px)
 	end
 end
 
@@ -262,6 +289,10 @@ local function Unstyle(icon, quiet)
 		return
 	end
 	tex:Hide()
+	if grown[icon] then
+		grown[icon] = nil
+		icon:SetHitRectInsets(0, 0, 0, 0)   -- (2.1.56: its mouse area its own frame's again)
+	end
 	local P = ns.Pins
 	if P and P.Lift then
 		P.Lift(tex, false)
@@ -519,7 +550,10 @@ local function Place(entry, icon, t, cover)
 	S.owner[icon], S.layerOf[icon] = entry, layer
 	if look and GIVER_MARK[look.cover] and not clickHooked[icon] and icon.HookScript then
 		clickHooked[icon] = true
-		Perf.HookScript(icon, "OnClick", GiverClick)   -- (2.1.52: a giver's or turn-in's click, Route's way there)
+		-- (2.1.52: a giver's or turn-in's click, Route's way there; 2.1.56: by the script the frame has, whatever
+		-- Questie's version made it -- a button's click, else a plain frame's mouse-up)
+		local script = (icon.HasScript and icon:HasScript("OnClick")) and "OnClick" or "OnMouseUp"
+		Perf.HookScript(icon, script, GiverClick)
 	end
 	if look and dressed then
 		Restyle(icon, look)
