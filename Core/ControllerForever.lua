@@ -32,6 +32,7 @@
 --   C.Used() -> bool        it is loaded and its switch on the Addons page is on
 --   C.Claim(key, action)    a key MelloUI's navigation binds, told to its bind manager; C.Claim(): all let go
 --   C.Claims() -> bool|nil  its bind manager takes them (nil: not asked yet)
+--   C.Frames() -> bool|nil  its healer mode's list of frames starts with MelloUI's group frames (nil: no such list)
 --   C.Holds() -> bool|nil   its buttons step aside for MelloUI's windows (HOLD is on its list); nil: no such list
 --   C.Parts() -> list|nil   { part, label, taken }: its parts MelloUI may have, and whether MelloUI's row is in;
 --                           nil: no such table
@@ -228,6 +229,86 @@ function C.Claim(key, action)
 end
 
 --------------------------------------------------------------------------------
+-- Its healer mode finds MelloUI's group frames
+--
+-- (the user, 2026-11-16: "Controller Forever has a healer function, where it can target Party members and cast heals
+-- on it ... did we make sure that our group frames are able to be targeted?") Its healer mode picks a member and
+-- casts by the party's slots through buttons of its own, whatever frames show. But the picked member's highlight, the
+-- arrows and its party frame glow go by the member's FRAME, looked up by name in a list of its own
+-- (ControllerForever.HealFocus.candidateFrames(): the game's party and raid frames, EllesmereUI's, PlayerFrame), the
+-- first one shown and seen whose unit is the member's. MelloUI's party and raid frames are named unit buttons of the
+-- same kind: while they are on, their names stand at the FRONT of that list (the game's own frames, faded by MelloUI,
+-- are passed over by its own "seen" test). Seen in a party of two (2026-11-16): its outline on MelloUI's frame of the
+-- picked member, the order from MelloUI's frames. Not reached by this, both its side:
+--   * what it reads from any SHOWN frame, seen or not (the order its D-pad walks the party in): the game's classic
+--     party frames (PartyFrame's members), shown at alpha 0 under MelloUI's, are asked BEFORE the list, so with those
+--     the order is the game's; with the game's raid-style party frames the list is asked, and the order is MelloUI's;
+--   * with ONE party member it reads row or column from the game's own compact party frame of the player, by name:
+--     MelloUI's column of two reads as a row (left / right pick, up / down its Focus and Self jumps).
+--------------------------------------------------------------------------------
+
+local groupNames = nil
+local function GroupNames()
+	if groupNames then
+		return groupNames
+	end
+	local t = { "MelloUIGroupSoloParty" }
+	for i = 1, 5 do
+		t[#t + 1] = "MelloUIGroupPartyHeaderUnitButton" .. i
+	end
+	for i = 1, 4 do
+		t[#t + 1] = "MelloUIGroupPartyMember" .. i
+	end
+	for i = 1, 40 do
+		t[#t + 1] = "MelloUIGroupRaidHeaderUnitButton" .. i
+	end
+	groupNames = t
+	return t
+end
+
+-- its list (the table its own lookup walks), or nil
+local function Candidates()
+	local addon = rawget(_G, "ControllerForever")
+	local heal = type(addon) == "table" and rawget(addon, "HealFocus") or nil
+	local fn = type(heal) == "table" and rawget(heal, "candidateFrames") or nil
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, list = pcall(fn)
+	return ok and type(list) == "table" and list or nil
+end
+
+local function PutFrames(on)
+	local list = Candidates()
+	if not list then
+		return
+	end
+	local names, mine = GroupNames(), {}
+	for i = 1, #names do
+		mine[names[i]] = true
+	end
+	for i = #list, 1, -1 do
+		if mine[list[i]] then
+			table.remove(list, i)
+		end
+	end
+	if on then
+		for i = #names, 1, -1 do
+			table.insert(list, 1, names[i])
+		end
+	end
+end
+
+-- true: its healer mode's list starts with MelloUI's group frames; false: they are not on it; nil: no such list
+function C.Frames()
+	local list = Candidates()
+	if not list then
+		return nil
+	end
+	return list[1] == GroupNames()[1]
+end
+
+--------------------------------------------------------------------------------
 -- Its parts step back where MelloUI has the part
 --------------------------------------------------------------------------------
 
@@ -279,6 +360,7 @@ local function Lay(all)
 	-- again over the keys its own bind manager had just given MelloUI. The claim there (C.Claim) is the one hand-over;
 	-- the name is taken off the list wherever an earlier build of this file left it)
 	PutHold(false)
+	PutFrames(used and (all or MelloUI:IsModuleEnabled("HealerFrames")) and true or false)
 	for _, p in ipairs(PARTS) do
 		PutPart(p[1], used and (all or MelloUI:IsModuleEnabled(p[2])) and true or false)
 	end

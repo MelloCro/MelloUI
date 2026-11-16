@@ -8,6 +8,7 @@
 - Role Picker: as you enter a dungeon or a raid in a group, the roles your class can take drop in above your character. Click one and it is yours. With Offhand it stands on the main game screen. Its switch is in Quality of Life > Role Picker.
 - Role Picker: tick Remember for future dungeons and the next ones set that role by themselves, with no picker. Role On Entering changes or forgets it, and its motion has a switch on the Animations page.
 - Addons page: it opens again with MaxDPS installed. Before, /mello addons and the Addons entry stayed on the Profiles page.
+- Controller Forever: its healer mode knows MelloUI's party and raid frames, so the member you pick is highlighted on them.
 - Quest Tracker: with a controller, a new Quest Tracker action steps into the tracker. The D-pad walks its quests and a leveling guide's heading, A does what a click on the part does, X uses the quest's item, Y opens its menu, and left and right on a guide's heading are its Back and Skip arrows. B leaves. It is in the game's Key Bindings, and /mellotracker does the same from a macro.
 - Quest Tracker: a new Next Quest action (/mellonext, also in Key Bindings) marks the next quest in the tracker and clicks it, without taking the controller from you.
 - Map: the Layers page has a new Levels group with three switches. All three start off.

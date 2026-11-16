@@ -317,6 +317,10 @@ I.LIST = {
 			local C = rawget(MelloUI, "ControllerForever")
 			return C ~= nil and C.Parts() ~= nil
 		end },
+		{ "its healer mode's list of party frames", function()
+			local C = rawget(MelloUI, "ControllerForever")
+			return C ~= nil and C.Frames() ~= nil
+		end },
 	  } },
 	-- (2.1.51; Shumi's report) Offhand keeps the game on one screen and panels on another: what centres on the character
 	-- centres on its main screen (I.PlayArea); (2.1.53) THE RULE for every animation and every place by the screen's
