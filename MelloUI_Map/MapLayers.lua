@@ -507,14 +507,18 @@ end
 local tipLines = {}
 local function DockTip(pin)
 	if not pin.members then
-		return pin.data.title, table.concat(pin.data.lines, "\n")
+		local lines = {}
+		for _, line in ipairs(pin.data.lines or EMPTY) do
+			lines[#lines + 1] = W.Tr(line)
+		end
+		return W.Tr(pin.data.title), table.concat(lines, "\n")
 	end
 	wipe(tipLines)
 	for _, m in ipairs(pin.members) do
 		local d = m.data
 		local other = type(d) == "table" and d.title ~= pin.data.title and d.title
 		for _, line in ipairs(type(d) == "table" and d.lines or EMPTY) do
-			line = other and (other .. ": " .. line) or line
+			line = other and W.Tr("%s: %s"):format(W.Tr(other), W.Tr(line)) or W.Tr(line)
 			local said = false
 			for _, l in ipairs(tipLines) do
 				if l == line then
@@ -528,7 +532,7 @@ local function DockTip(pin)
 		end
 	end
 	tipLines[#tipLines + 1] = W.Tr(TEXT.spread)   -- (its click glides in until they part, as a door's and a quest's)
-	return pin.data.title, table.concat(tipLines, "\n")
+	return W.Tr(pin.data.title), table.concat(tipLines, "\n")
 end
 local transportSpec = {}
 local function TransportSpec(kind)
