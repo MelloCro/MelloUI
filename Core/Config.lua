@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.59", lines = {
+		"Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker.",
+		"Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light.",
+	} },
 	{ version = "2.1.58", lines = {
 		"Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu.",
 		"Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too.",
@@ -202,20 +206,6 @@ local CHANGELOG = {
 		"Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones.",
 		"Addons page: it opens again with MaxDPS installed, where it stayed on Profiles.",
 		"Map: a Levels group on its Layers page, off at first: zone level ranges under the names and creature levels (both with Questie), and the fishing skill each water needs.",
-	} },
-	{ version = "2.1.54", lines = {
-		"Profiles: a profile carries your real Edit Mode layout now, and each character keeps it in a layout of its own. Alts and a loaded profile no longer end up on the preset Modern.",
-		"Custom Sounds: the Spellbook and Talents window, the profession windows and other newer windows are no longer silent, and a window opens with one sound, not a click on top of it.",
-		"Custom Sounds: Your Sounds has five new rows: Window Opened, Window Closed, Window Tab, Bags Opened and Bags Closed. Each starts on the sound it had.",
-		"Leveling guides: Back and Skip arrows in their Quest Tracker heading. RestedXP: Guide: Next Steps shows up to five next steps, its items are item links, Active Targets in MelloUI's look.",
-		"Quest List and map: in a group, a mark after a quest shows how many others have it, and its tooltip lists them and how far they are.",
-		"Bags: a stack dropped on a + slot now goes into a free slot, split or whole, and Discard counts the Reagent Bag's items too.",
-		"Edit Layout: hold Alt to reach an element under the dock. Cooldown numbers no longer keep an old time when a running cooldown changes.",
-		"Buffs & Debuffs: Timer Position puts the time above, under or on the icons, 60m in every language; type borders switch per place, with colour wheels.",
-		"German: the bag window, the map's quest log, the widgets, the reminders, the chat, Edit Layout and Route are translated now. Distances show in metres.",
-		"French: the on-screen lines, the tutorial tips, the reminders, the map's layers, Services and Route's distances and times are translated now. Route's distances show in metres.",
-		"Dungeon maps: Santiago Reyes' maps of five more dungeons and his sharper new ones of the other four. The new five have Dungeon Info pages, opened from their entrances on the map.",
-		"Level Up card: remade in the Quest Moments' look, your new level stamped on a gold seal. Quest Moments have a place and a Scale of their own in Edit Layout.",
 	} },
 }
 local LINKS = {

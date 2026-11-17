@@ -16,6 +16,9 @@
 --              Complete draws together, the title opens from its middle with one sheen, two rules draw out
 -- Each plays once (one Anim:Drive, a function of time as the sketch's scenes were) and settles; nothing repeats,
 -- nothing is drawn over the character. Reduce Motion: the settled moment, held and gone, nothing moving.
+-- (2.1.59) The progress moment stays two seconds in place before it flies (the user: "too short, sometime i cant eveb
+-- react to see it"), in every look; and a look may dress the moments itself -- the painted reskin does, in its frame
+-- set (Q.dress, MelloUI_Oldschool/Modules/QuestMomentsPainted.lua).
 --
 -- What it takes: the game's info event from its error frame (UnregisterEvent, nothing replaced -- ErrorFilter's way
 -- with the error event): a quest line that a moment plays is kept back (its sound played as the frame would), every
@@ -84,13 +87,17 @@ local Q = {
 	RING_FRAME = 64, RING_W = 4.2, RING_GAP = 1.6, RING_MAX = 20,
 	NAME = 14.5, COUNT = 16.5, WORD = 12.5, TITLE = 28, BROW = 12, SUB = 13.5,
 	GAP = 15,                   -- the medallion to its words
-	-- each moment's length and when it leaves (the sketch's, line for line)
-	DUR = { progress = 2.4, objective = 3.0, quest = 4.4 },
-	OUT = { progress = 2.2, objective = 2.45, quest = 3.7 },
+	-- each moment's length and when it leaves (the sketch's, line for line -- but the progress moment's since 2.1.59;
+	-- the user, 2026-11-17: "the quest progress animation overall is too short, sometime i cant eveb react to see it,
+	-- in all themes": its medallion and count stay two seconds before it leaves, 0.95 until then, and it flies a
+	-- little slower, 0.65 until then)
+	DUR = { progress = 3.4, objective = 3.0, quest = 4.4 },
+	OUT = { progress = 3.0, objective = 2.45, quest = 3.7 },
 	-- (Reduce Motion) the time each moment is shown at, settled: the count rolled, the ring closed, the crest landed
 	STILL = { progress = 0.9, objective = 1.6, quest = 2.4 },
-	-- (the progress moment) its flight: when it leaves for the tracker and how long it flies
-	FLY = 0.95, FLY_T = 0.65,
+	-- (the progress moment) its flight: when it leaves for the tracker and how long it flies; with no line to fly to
+	-- it fades in place and the moment ends there (NO_LINE before its OUT, the fade and a breath)
+	FLY = 2.0, FLY_T = 0.75, NO_LINE = 0.3,
 	SPARKS = 18, MOTES = 11, TRAIL = 6,
 	queue = {}, pool = {},      -- the moments waiting (records from the pool: nothing made per line)
 	complete = {}, seen = {},   -- [questID] = the quest log's IsComplete as last read; this scan's mark
@@ -331,6 +338,17 @@ local function Build()
 	W.Paint(B.streak, "selectedTrim", "vertex")
 end
 
+-- (2.1.59) the lights a look's dress puts its own pictures on (Q.dress, below): this file's again
+local function OwnLights()
+	B.rays:SetTexture(LIGHT .. "rays_gold")
+	B.halo:SetTexture(LIGHT .. "halo_white")
+	B.head:SetTexture(LIGHT .. "spark_gold")
+	B.star:SetTexture(LIGHT .. "star_gold")
+	for i = 1, Q.SPARKS do
+		B.sparks[i]:SetTexture(LIGHT .. "spark_gold")
+	end
+end
+
 --------------------------------------------------------------------------------
 -- A moment's layout: the ring's picture for its count, the words measured
 --------------------------------------------------------------------------------
@@ -344,6 +362,9 @@ local function LayRing(of)
 	B.ringTrack:SetTexture(file)
 	B.ringFull:SetTexture(file)
 	B.swipe:SetSwipeTexture(file)
+	-- (2.1.59, seen in the test client in every look: the counted arcs drew white, gold only right after a palette
+	-- change) a sweep's picture set takes its colour back to white: the palette's gold on it again
+	W.Paint(B.swipe, "selectedTrim", "swipe")
 	B.of = of
 	if of == 1 or of > Q.RING_MAX then
 		B.arcSpan, B.arcGap = 1 / of, 0
@@ -476,6 +497,9 @@ local function HideAll()
 	B.medal:Hide()
 	if B.band then
 		B.band:SetShown(false)
+	end
+	if Q.dress then
+		Q.dress.Hide()
 	end
 end
 
@@ -754,7 +778,7 @@ local function StepMedal(t, done)
 		PutLettersAt(tx, my - 11 - 4 * (1 - OutCubic(swap)), swap * A0)
 	else
 		-- the chip under the medallion: the count rolling up, gone as it leaves for the tracker
-		local chipA = Seg(t, 0.3, 0.5) * (1 - Seg(t, 0.9, 1.1)) * A0
+		local chipA = Seg(t, 0.3, 0.5) * (1 - Seg(t, Q.FLY - 0.05, Q.FLY + 0.15)) * A0
 		B.box:ClearAllPoints()
 		B.box:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(mx), SY(my - 42))
 		B.box:SetSize(60, 18)
@@ -779,6 +803,35 @@ local function StepMedal(t, done)
 			B.arrive:Hide()
 			B.streak:Hide()
 		end
+	end
+end
+
+-- the quest's title at (cx, y): it opens from its middle, one sheen crossing its letters
+local function PutTitle(t, cx, y, A0)
+	local rv = OutCubic(Seg(t, 0.6, 1.05))
+	B.titleClip:ClearAllPoints()
+	B.titleClip:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(y))
+	B.titleClip:SetSize(max(1, (B.titleW + 20) * rv), Q.TITLE * 1.6)
+	B.titleClip:SetAlpha(Seg(t, 0.6, 0.8) * A0)
+	B.titleClip:Show()
+	B.title:ClearAllPoints()
+	B.title:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(y))
+	B.title:SetAlpha(1)
+	B.title:Show()
+	local sp = Seg(t, 1.05, 1.65)
+	if sp > 0 and sp < 1 then
+		local sw = Q.TITLE * 1.4
+		B.sheenWin:ClearAllPoints()
+		B.sheenWin:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx - B.titleW / 2 - sw + (B.titleW + 2 * sw) * InOutCubic(sp)), SY(y))
+		B.sheenWin:SetSize(sw, Q.TITLE * 1.6)
+		B.sheenWin:SetAlpha(0.9 * Hump(sp))
+		B.sheenWin:Show()
+		B.sheen:ClearAllPoints()
+		B.sheen:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(y))
+		B.sheen:SetAlpha(1)
+		B.sheen:Show()
+	else
+		B.sheenWin:Hide()
 	end
 end
 
@@ -828,31 +881,7 @@ local function StepQuest(t)
 	local ep = OutCubic(Seg(t, 0.5, 1.05))
 	PutLetters(cx, cy - 58, 8.2 - 5.1 * ep, OutCubic(Seg(t, 0.5, 0.8)) * A0)
 	-- the title opens from its middle, one sheen crossing its letters
-	local rv = OutCubic(Seg(t, 0.6, 1.05))
-	B.titleClip:ClearAllPoints()
-	B.titleClip:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(cy - 87))
-	B.titleClip:SetSize(max(1, (B.titleW + 20) * rv), Q.TITLE * 1.6)
-	B.titleClip:SetAlpha(Seg(t, 0.6, 0.8) * A0)
-	B.titleClip:Show()
-	B.title:ClearAllPoints()
-	B.title:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(cy - 87))
-	B.title:SetAlpha(1)
-	B.title:Show()
-	local sp = Seg(t, 1.05, 1.65)
-	if sp > 0 and sp < 1 then
-		local sw = Q.TITLE * 1.4
-		B.sheenWin:ClearAllPoints()
-		B.sheenWin:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx - B.titleW / 2 - sw + (B.titleW + 2 * sw) * InOutCubic(sp)), SY(cy - 87))
-		B.sheenWin:SetSize(sw, Q.TITLE * 1.6)
-		B.sheenWin:SetAlpha(0.9 * Hump(sp))
-		B.sheenWin:Show()
-		B.sheen:ClearAllPoints()
-		B.sheen:SetPoint("CENTER", UIParent, "BOTTOMLEFT", SX(cx), SY(cy - 87))
-		B.sheen:SetAlpha(1)
-		B.sheen:Show()
-	else
-		B.sheenWin:Hide()
-	end
+	PutTitle(t, cx, cy - 87, A0)
 	-- two fine rules drawing outward under the title, a small star between them
 	local lp = OutCubic(Seg(t, 0.78, 1.25))
 	local lw = 172 * lp
@@ -865,16 +894,43 @@ local function StepQuest(t)
 end
 
 --------------------------------------------------------------------------------
+-- (2.1.59) A look's own dress of the moments (the user, 2026-11-17: "all of the animations that we added recently
+-- must have ther oldschool look aswell, like the new quest animations"): a provider, as the quest ink's plates are.
+-- MelloUI_Oldschool's Modules/QuestMomentsPainted.lua sets it; none set, or not on: the moments as this file draws them.
+--   Q.dress = { On() -> bool        asked at each moment's start: the dress plays this moment
+--               Start(rec)          after this file laid the moment out (B.kind, B.data, B.cx0, B.cy0, B.toX, B.toY)
+--               Medal(t, done)      the progress and the objective moment at their time, in StepMedal's place
+--               Quest(t)            the quest's, in StepQuest's place
+--               Hide()              its own pieces put away (with HideAll)
+--               Off() }             what it put on this file's pieces taken back (a moment it does not play)
+--   Q.__                            this file's pieces (B) and helpers, read only
+--------------------------------------------------------------------------------
+Q.__ = {
+	B = B, ICONS = ICONS, LIGHT = LIGHT, GLOW = GLOW,
+	Seg = Seg, OutCubic = OutCubic, InCubic = InCubic, InOutCubic = InOutCubic, OutBack = OutBack, Spring = Spring,
+	Hump = Hump, Tex = Tex, Face = Face, SX = SX, SY = SY, Put = Put, PutText = PutText, Measure = Measure,
+	Letters = Letters, PutLetters = PutLetters, PutLettersAt = PutLettersAt, Roll = Roll, DrawRing = DrawRing,
+	SeedSparks = SeedSparks, DrawSparks = DrawSparks, PutTitle = PutTitle, OwnLights = OwnLights,
+}
+
+--------------------------------------------------------------------------------
 -- Playing: one moment at a time; the rest wait (several pickups of one objective count up in one)
 --------------------------------------------------------------------------------
 
 local Next   -- (below)
 
 local function Step(_, share)
-	local t = share * Q.DUR[B.kind]
+	local t = share * (B.dur or Q.DUR[B.kind])
 	B.t = t
+	local dress = B.dress   -- (a look's own dress of this moment: Q.dress, below)
 	if B.kind == "quest" then
-		StepQuest(t)
+		if dress then
+			dress.Quest(t)
+		else
+			StepQuest(t)
+		end
+	elseif dress then
+		dress.Medal(t, B.kind == "objective")
 	else
 		StepMedal(t, B.kind == "objective")
 	end
@@ -930,6 +986,17 @@ local function Start(rec)
 	B.ox, B.oy = B.mx * (1 / k - 1), B.my * (1 / k - 1)
 	B.root:SetScale(k)
 	B.rollAt, B.toX, B.toY, B.t = nil, nil, nil, 0
+	B.dur = Q.DUR[rec.kind]
+	-- (2.1.59) a look's own dress, asked for each moment; not on: what it put on these pieces taken back
+	local dress = Q.dress
+	B.dress = nil
+	if dress then
+		if dress.On() then
+			B.dress = dress
+		else
+			dress.Off()
+		end
+	end
 	seed = (rec.questID or 7) * 31 + (rec.index or 1) * 7 + 1
 	if rec.kind == "quest" then
 		MelloUI.Icons.Set(B.mark, ICONS .. "turnin_mark", 47)
@@ -964,19 +1031,27 @@ local function Start(rec)
 					B.toX = B.cx0 + (B.toX - B.cx0) / B.k
 					B.toY = B.cy0 + (B.toY - B.cy0) / B.k
 				end
+				-- (2.1.59) no line to fly to: the moment ends once it has faded in place, no empty wait after it
+				if not (B.toX and B.toY) then
+					B.toX, B.toY = nil, nil
+					B.dur = Q.OUT.progress - Q.NO_LINE
+				end
 			end
 		end
+	end
+	if B.dress then
+		B.dress.Start(rec)
 	end
 	Q.playing = rec
 	B.root:SetAlpha(1)
 	B.root:Show()
 	if MelloUI.Anim.reduceMotion then
 		-- the settled moment, held and gone: nothing moving
-		Step(nil, Q.STILL[B.kind] / Q.DUR[B.kind])
+		Step(nil, Q.STILL[B.kind] / B.dur)
 		B.timer = C_Timer.NewTimer(Q.OUT[B.kind], Done)
 		return
 	end
-	MelloUI.Anim:Drive(B.root, Step, Q.DUR[B.kind], "linear", Done)
+	MelloUI.Anim:Drive(B.root, Step, B.dur, "linear", Done)
 end
 
 Next = function()

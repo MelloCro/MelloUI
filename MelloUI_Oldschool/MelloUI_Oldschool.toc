@@ -33,6 +33,8 @@ Modules\KitSets.lua
 Modules\UIModificationsPainted.lua
 Modules\DarkModePainted.lua
 Modules\QuestInkPainted.lua
+# (2.1.59) the quest moments in the frame set: its ring, its plaque and its plate (MelloUI.QuestMoments' provider)
+Modules\QuestMomentsPainted.lua
 Modules\CharacterPanel.lua
 Modules\DialogPanel.lua
 Modules\MacroPanel.lua
