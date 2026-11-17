@@ -2988,7 +2988,7 @@ Lang:Add("zhCN", {
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "手柄聊天：在游戏的环形菜单中选择“聊天”，然后用 LB / RB 切换标签页，用方向键或右摇杆滚动。", -- draft
 	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "丢弃：现在回答“丢弃”会丢掉白色物品。此前游戏每次都会拒绝，聊天中也会提示。游戏自己保留的物品会被跳过。", -- draft
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "鼠标提示：同时使用 Questie 和 Polestar 时，生物的任务目标不再显示两遍。以 Questie 的文字为准，MelloUI 自己的物品行也会让给 Questie。", -- draft
-	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name. Switch it on in Quality of Life > Mail."] = "邮件收件人：邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色，点击即可填入名字。在“便利功能 > 邮件”中开启。", -- draft
+	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name."] = "邮件收件人：邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色，点击即可填入名字。", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "邮件收件人", -- draft
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色：点击其中一个即可填入名字。", -- draft
@@ -2999,7 +2999,7 @@ Lang:Add("zhCN", {
 	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "选择你的一个角色或战网好友的角色作为这封信的收件人。", -- draft
 	["Your Characters"] = "你的角色", -- draft
 	["Battle.net Friends"] = "战网好友", -- draft
-	["None yet: each of your characters is noted as it logs in."] = "暂无：你的每个角色会在登录时被记录。", -- draft
+	["No other characters."] = "没有其他角色。", -- draft
 	["None yet: a friend's characters are noted while they play."] = "暂无：好友的角色会在他们游玩时被记录。", -- draft
 	["online"] = "在线", -- draft
 	["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "任务瞬间：拾取物品的动画停留更久。图标和计数会停留两秒，再飞向你的任务追踪。", -- draft

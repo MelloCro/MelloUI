@@ -2988,7 +2988,7 @@ Lang:Add("esES", {
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Chat con mando: elige Chat en el menú circular del juego; después LB / RB cambian de pestaña y la cruceta o el stick derecho desplazan el texto.", -- draft
 	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "Desechar: al responder Desechar, ahora se tira un objeto blanco. Antes el juego lo rechazaba siempre y el chat lo decía. Un objeto que el propio juego conserva se pasa por alto.", -- draft
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "Descripciones: con Questie y Polestar, los objetivos de misión de una criatura ya no salen dos veces. Valen las líneas de Questie, y la línea de objeto de MelloUI también cede ante Questie.", -- draft
-	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name. Switch it on in Quality of Life > Mail."] = "Destinatarios del correo: un botón junto al campo Para del buzón lista tus personajes y los de tus amigos de Battle.net; un clic escribe el nombre. Actívalo en Calidad de vida > Correo.", -- draft
+	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name."] = "Destinatarios del correo: un botón junto al campo Para del buzón lista tus personajes y los de tus amigos de Battle.net; un clic escribe el nombre.", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "Destinatarios del correo", -- draft
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Un botón junto al campo Para del buzón lista tus personajes y los de tus amigos de Battle.net: haz clic en uno y se escribe su nombre.", -- draft
@@ -2999,7 +2999,7 @@ Lang:Add("esES", {
 	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Elige uno de tus personajes o el de un amigo de Battle.net para enviarle esta carta.", -- draft
 	["Your Characters"] = "Tus personajes", -- draft
 	["Battle.net Friends"] = "Amigos de Battle.net", -- draft
-	["None yet: each of your characters is noted as it logs in."] = "Aún ninguno: cada uno de tus personajes se anota cuando entra en el juego.", -- draft
+	["No other characters."] = "No hay otros personajes.", -- draft
 	["None yet: a friend's characters are noted while they play."] = "Aún ninguno: los personajes de un amigo se anotan mientras juega.", -- draft
 	["online"] = "conectado", -- draft
 	["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "Momentos de misión: la animación de objeto recogido dura más. Su icono y su recuento se quedan dos segundos antes de volar a tu seguimiento.", -- draft

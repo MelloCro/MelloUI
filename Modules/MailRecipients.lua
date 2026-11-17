@@ -4,8 +4,10 @@
 -- its own: I can't remember my friends' characters")
 --
 -- A small button at the right of the mailbox's To field (Send Mail) opens a menu:
---   Your Characters      your other characters of your faction, each in its class colour with its level; a click puts
---                        the full name in the To field and moves on to Subject
+--   Your Characters      your other characters, each in its class colour with its level where that is known; a click
+--                        puts the full name in the To field and moves on to Subject. Every other character of the
+--                        account is there at once: the game's own name list is asked for them (FromGame), so an alt
+--                        need not have logged in with MelloUI first (the user: "i dont see my Alts on the list")
 --   Battle.net Friends   a friend a row (their BattleTag's name, "online" while they play), their characters under it
 --                        as a submenu; every character the game has shown of them while they played, so the ones you
 --                        cannot remember are there while they are offline too. One on ANOTHER realm shows its
@@ -20,7 +22,8 @@
 -- Nothing of the game's is replaced: the button is MelloUI's own frame on the Send Mail page, the menu the game's
 -- (MenuUtil), the click the To field's own SetText. Not with the Gamepad UI (the game's menu opened from MelloUI's
 -- code blocks its bindings: Services.lua's note), and nothing at all while the module is off.
--- Off until switched on (Quality of Life > Mail): a new feature puts nothing on the screen by itself.
+-- On by default (the user, 2026-11-17: "that should be enabled by default"); its switch is Quality of Life > Mail.
+-- All it puts on the screen is that one button, on the Send Mail page.
 -- A list of its own, not the Quest List's record of your characters: that one keeps the first name alone, and the
 -- Quest List is a feature addon that may not be loaded.
 -- With Battle.net Friends' Characters switched off, what was noted of friends is forgotten; a friend taken off your
@@ -39,7 +42,7 @@ local TEXT = {
 	tip = "Pick one of your characters or a Battle.net friend's character to send this letter to.",
 	alts = "Your Characters",
 	friends = "Battle.net Friends",
-	noAlts = "None yet: each of your characters is noted as it logs in.",
+	noAlts = "No other characters.",
 	noFriends = "None yet: a friend's characters are noted while they play.",
 	online = "online",
 }
@@ -50,7 +53,7 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 	desc = "A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in.",
 	icon = "Interface\\Icons\\INV_Letter_15",
 	flavour = "Who was that again? One click and the letter has its name.",
-	enabledByDefault = false,   -- (a new button shows only once asked for)
+	enabledByDefault = true,   -- (the user, 2026-11-17: "that should be enabled by default")
 	slash = "mail",   -- /mello mail names
 	keep ={ "alts", "bnetChars" },   -- your characters and your friends': never in a profile or a share string
 	defaults = {
@@ -67,6 +70,7 @@ local R = {
 	SIZE = 18,       -- the button
 	GAP = 4,         -- from the To field's right edge
 	SETTLE = 2,      -- seconds: the friend list read once its events have stopped coming
+	MAX = 100,       -- the most characters asked of the game's own name list (FromGame)
 	onList = {},     -- [BattleTag] = true: on the friend list at the last read (reused)
 }
 
@@ -279,6 +283,13 @@ end
 -- the characters of a list you can write to: your faction (or not known yet), you yourself left out, and only the ones
 -- noted with their full name (`full`: an early build of this module took the Quest List's record, first names alone
 -- -- "Sovari" where the letter needs "Sovari Mara" -- and those wait till that character logs in); highest level first
+local function ByLevel(a, b)
+	if (a.level or 0) ~= (b.level or 0) then
+		return (a.level or 0) > (b.level or 0)
+	end
+	return a.name < b.name
+end
+
 local function Writable(list, me, faction, needFull)
 	local out = {}
 	for key, c in pairs(type(list) == "table" and list or {}) do
@@ -287,12 +298,67 @@ local function Writable(list, me, faction, needFull)
 			out[#out + 1] = c
 		end
 	end
-	table.sort(out, function(a, b)
-		if (a.level or 0) ~= (b.level or 0) then
-			return (a.level or 0) > (b.level or 0)
+	table.sort(out, ByLevel)
+	return out
+end
+
+-- The account's other characters as the game itself names them: the To field's own name list (C_AutoComplete), asked
+-- for account characters alone and with no text typed. Seen in the test client (2026-11-17): it hands out every other
+-- character of the account by its full name ("Neuer Hund"), this one left out; the game's own windows never ask it
+-- with an empty text. So an alt is in the menu before it has ever logged in with MelloUI. nil where this client has
+-- no such list.
+local function FromGame()
+	local AC, E = rawget(_G, "C_AutoComplete"), rawget(_G, "Enum")
+	local flags = type(E) == "table" and E.AutoCompleteEntryFlag
+	local account = type(flags) == "table" and Num(flags.AccountCharacter)
+	if type(AC) ~= "table" or not account then
+		return nil
+	end
+	local results = Call(AC.GetAutoCompleteResults, "", R.MAX, 0, true, account, 0)
+	return type(results) == "table" and results or nil
+end
+
+-- what the Quest List has kept of a character of this realm (its record keys the first name, with the class and the
+-- level as it last logged out), for one the game names and this module has not noted yet; nil without that addon
+local function Met(name, realm)
+	local record = rawget(_G, "MelloUIQuestRecord")
+	local chars = type(record) == "table" and record.chars
+	local first = type(chars) == "table" and realm and name:match("^(%S+)")
+	local c = first and chars[first .. "-" .. realm]
+	return type(c) == "table" and c or nil
+end
+
+-- Your Characters as the menu lists them: the noted ones you can write to (Writable: their class and level known), and
+-- every other character the game names that is not noted -- by its name as the game gives it (the very text the To
+-- field would complete to; with a realm after it, another realm's address as it stands), in its class colour and with
+-- its level where the Quest List has met it. A noted character the menu leaves out (the other faction's) stays out.
+local function Alts(me, myName, faction)
+	local noted = Store("alts")
+	local out = Writable(noted, me, faction, true)
+	local realm = Text(Call(GetRealmName))
+	local here = RealmKey(realm)
+	local known = {}
+	if myName then
+		known[myName] = true
+	end
+	for _, c in pairs(noted) do
+		if type(c) == "table" and type(c.name) == "string" then
+			local theirs = RealmKey(c.realm)
+			known[c.name .. "-" .. (theirs or "")] = true
+			if theirs == nil or theirs == here then
+				known[c.name] = true
+			end
 		end
-		return a.name < b.name
-	end)
+	end
+	for _, r in ipairs(FromGame() or {}) do
+		local name = type(r) == "table" and Text(r.name) or nil
+		if name and name ~= "" and not known[name] then
+			known[name] = true
+			local met = Met(name, realm)
+			out[#out + 1] = { name = name, class = met and Text(met.class) or nil, level = met and Num(met.level) or nil }
+		end
+	end
+	table.sort(out, ByLevel)
 	return out
 end
 
@@ -303,6 +369,10 @@ local function Put(c)
 		return
 	end
 	to:SetText(R.Address(c))
+	-- (the field is narrow and a full name long: shown from its start, "Dritprufa Mell", not its end, "fa Melltest")
+	if to.SetCursorPosition then
+		to:SetCursorPosition(0)
+	end
 	if subject then
 		subject:SetFocus()
 	end
@@ -333,10 +403,10 @@ local function Menu(owner)
 	end
 	WriteMe()
 	ReadFriends()
-	local me, _, _, faction = Me()
+	local me, myName, _, faction = Me()
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(Tr(TEXT.alts))
-		local alts = Writable(Store("alts"), me, faction, true)
+		local alts = Alts(me, myName, faction)
 		for _, c in ipairs(alts) do
 			Entry(root, c, Put)
 		end
@@ -499,4 +569,4 @@ M.SlashWords = {
 -- for the test harness
 M.TEXT, M.R = TEXT, R
 M.Writable, M.Put, M.ClassToken = Writable, Put, ClassToken
-M.WriteMe, M.ReadFriends, M.Line = WriteMe, ReadFriends, Line
+M.WriteMe, M.ReadFriends, M.Line, M.Alts = WriteMe, ReadFriends, Line, Alts

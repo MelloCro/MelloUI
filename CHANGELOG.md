@@ -9,7 +9,7 @@
 - Oldschool: progress bars wear your Frame Set's own bar frame in place of the bracket with diamond caps: reputation, skills, professions, the experience bar, tooltips and the damage meter. It is the first choice of Borders > Progress Bar Border, named Frame Set, and the other looks there are as they were.
 - Oldschool: list rows are calm lines on a dark ground in place of thick gold bars: friend cards, guild and ignore rows, quest log, profession and collection lists. A picked row has a gold marker at its left.
 - Oldschool: the Reputation window no longer shows empty rows when it is the first window you open after logging in. Before, the names and the standing texts were missing until you opened it a second time.
-- Mail Recipients: a button beside the mailbox's To field lists your other characters and your Battle.net friends' characters, each in its class colour with its level. Click one and its name is filled in. It is off until you switch it on (Quality of Life > Mail).
+- Mail Recipients: a button beside the mailbox's To field lists every other character of your account and your Battle.net friends' characters, in their class colour with their level where MelloUI has met them. Click one and its name is filled in. Its switch is under Quality of Life > Mail.
 
 ## 2.1.58
 

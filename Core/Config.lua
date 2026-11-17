@@ -181,7 +181,7 @@ local CHANGELOG = {
 		"Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker.",
 		"Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light.",
 		"Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars.",
-		"Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name. Switch it on in Quality of Life > Mail.",
+		"Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name.",
 	} },
 	{ version = "2.1.58", lines = {
 		"Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu.",

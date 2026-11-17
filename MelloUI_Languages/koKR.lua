@@ -2988,7 +2988,7 @@ Lang:Add("koKR", {
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "컨트롤러로 채팅 사용: 게임의 원형 메뉴에서 채팅을 선택하면 LB / RB로 탭을 바꾸고 방향 패드나 오른쪽 스틱으로 스크롤합니다.", -- draft
 	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "버리기: 이제 버리기로 답하면 흰색 아이템이 버려집니다. 이전에는 게임이 매번 거부했고 채팅에 그렇게 표시되었습니다. 게임이 직접 남겨 두는 아이템은 건너뜁니다.", -- draft
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "툴팁: Questie와 Polestar를 함께 쓸 때 생물의 퀘스트 목표가 더 이상 두 번 표시되지 않습니다. Questie의 줄이 표시되며, MelloUI의 아이템 줄도 Questie에 자리를 내줍니다.", -- draft
-	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name. Switch it on in Quality of Life > Mail."] = "우편 받는 사람: 우체통의 받는 사람 칸 옆 버튼이 내 캐릭터와 Battle.net 친구의 캐릭터를 보여 주며, 클릭하면 이름이 입력됩니다. 편의 기능 > 우편에서 켜세요.", -- draft
+	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name."] = "우편 받는 사람: 우체통의 받는 사람 칸 옆 버튼이 내 캐릭터와 Battle.net 친구의 캐릭터를 보여 주며, 클릭하면 이름이 입력됩니다.", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "우편 받는 사람", -- draft
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "우체통의 받는 사람 칸 옆 버튼이 내 캐릭터와 Battle.net 친구의 캐릭터를 보여 줍니다. 하나를 클릭하면 이름이 입력됩니다.", -- draft
@@ -2999,7 +2999,7 @@ Lang:Add("koKR", {
 	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "이 편지를 보낼 내 캐릭터나 Battle.net 친구의 캐릭터를 고르세요.", -- draft
 	["Your Characters"] = "내 캐릭터", -- draft
 	["Battle.net Friends"] = "Battle.net 친구", -- draft
-	["None yet: each of your characters is noted as it logs in."] = "아직 없음: 내 캐릭터는 접속할 때 기록됩니다.", -- draft
+	["No other characters."] = "다른 캐릭터가 없습니다.", -- draft
 	["None yet: a friend's characters are noted while they play."] = "아직 없음: 친구의 캐릭터는 친구가 플레이하는 동안 기록됩니다.", -- draft
 	["online"] = "접속 중", -- draft
 	["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "퀘스트 순간: 아이템 집기 애니메이션이 더 오래 머뭅니다. 아이콘과 숫자가 2초 동안 머문 뒤 추적기로 날아갑니다.", -- draft
