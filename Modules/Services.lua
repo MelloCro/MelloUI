@@ -1118,7 +1118,7 @@ local function ProfessionMenu(owner, kind)
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(Tr("Profession Trainer"))
 		for _, prof in ipairs(available) do
-			local text = prof.label
+			local text = Tr(prof.label)
 			if known[prof.label:lower()] then
 				text = MelloUI.Lang.F("%s (yours)", Tr(prof.label))
 				text = "|cff40ff40" .. text .. "|r"
