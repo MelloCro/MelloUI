@@ -1105,8 +1105,11 @@ end
 Druid.POWERS = { "MANA", "ENERGY", "RAGE" }
 Druid.TYPE = { MANA = 0, RAGE = 1, ENERGY = 3 }   -- (Enum.PowerType's, its fallback)
 
--- a druid with the setting on
+-- a druid with the setting on (or /mello personal druid's look at them, any class)
 function Druid.Want()
+	if S.druidTest then
+		return true
+	end
 	if Db().druidForms == false then
 		return false
 	end
@@ -1126,10 +1129,23 @@ function Druid.Mark(ui)
 	end
 end
 
+-- a bar in a power's colour, its amount against its most (secret or plain)
+function Druid.Fill(bar, token, max, v)
+	local r, g, b = MelloUI.Colours.Power(token)
+	if r then
+		bar:SetStatusBarColor(r, g, b)
+	end
+	if not Secret(max) and max <= 0 then
+		max = 1
+	end
+	bar:SetMinMaxValues(0, max)
+	bar:SetValue(v, EASE)
+end
+
 -- the two the power bar does not show, read (Power: every power event of yours, a shift's too)
 function Druid.Update()
 	local ui = S.ui
-	if not (ui and ui.druid and Druid.Want()) then
+	if not (ui and ui.druid and Druid.Want()) or S.druidTest then
 		return
 	end
 	local E = Enum and Enum.PowerType
@@ -1137,20 +1153,11 @@ function Druid.Update()
 	for _, token in ipairs(Druid.POWERS) do
 		if token ~= S.powerToken and i < 2 then
 			i = i + 1
-			local bar = ui.druid[i].bar
 			local kind = E and E[token:sub(1, 1) .. token:sub(2):lower()] or Druid.TYPE[token]
-			local r, g, b = MelloUI.Colours.Power(token)
-			if r then
-				bar:SetStatusBarColor(r, g, b)
-			end
 			local okM, max = pcall(UnitPowerMax, "player", kind)
 			local okV, v = pcall(UnitPower, "player", kind)
 			if okM and okV and Usable(max) and Usable(v) then
-				if not Secret(max) and max <= 0 then
-					max = 1
-				end
-				bar:SetMinMaxValues(0, max)
-				bar:SetValue(v, EASE)
+				Druid.Fill(ui.druid[i].bar, token, max, v)
 			end
 		end
 	end
@@ -5653,7 +5660,59 @@ function Shield.Log()
 	end
 	MelloUI:ShowLog(TEXT.shieldLog)
 end
-M.SlashWords = { secrets = SecretsLog, shield = Shield.Log }
+
+-- (/mello personal druid; the German player: "my druid is not that far yet -- can we build in a test, so I see how
+-- it looks?") the form bars shown for any class: caster, cat and bear form in turn with made-up amounts (the power
+-- bar's own one, then the other two's), each this long, then your own again. The display's own preview flag holds
+-- the live reads off meanwhile
+Druid.SAMPLE = {
+	{ "MANA", 70, 100, 0 },     -- caster form: mana; energy and rage
+	{ "ENERGY", 60, 70, 0 },    -- cat form: energy; mana and rage
+	{ "RAGE", 45, 70, 100 },    -- bear form: rage; mana and energy
+}
+Druid.STEP = 2.5
+
+function Druid.Test()
+	local ui = S.ui
+	if not (On() and ui and ui.holder:IsVisible()) then
+		MelloUI:Announce(TEXT.momentNone, "info")
+		return
+	end
+	S.druidTest, S.preview, S.druidStep = true, true, 0
+	LayStack(ui)
+	Place()
+	Druid.TestStep()
+end
+
+function Druid.TestStep()
+	local ui = S.ui
+	if not (S.druidTest and ui) then
+		return
+	end
+	S.druidStep = S.druidStep + 1
+	local step = Druid.SAMPLE[S.druidStep]
+	if not step then
+		S.druidTest, S.preview, S.druidStep = false, false, nil
+		S.powerToken, S.powerLast = nil, nil
+		LayStack(ui)
+		Place()
+		Refresh()
+		return
+	end
+	local token = step[1]
+	Druid.Fill(ui.power.bar, token, 100, step[2])
+	ui.power.text:SetFormattedText("%.0f%%", step[2])
+	local i = 0
+	for _, other in ipairs(Druid.POWERS) do
+		if other ~= token and i < 2 then
+			i = i + 1
+			Druid.Fill(ui.druid[i].bar, other, 100, step[2 + i])
+		end
+	end
+	C_Timer.After(Druid.STEP, Druid.TestStep)
+end
+
+M.SlashWords = { secrets = SecretsLog, shield = Shield.Log, druid = Druid.Test }   -- (2.1.59: druid, Druid Forms' look)
 
 -- Edit Layout's plates: the display made when it opens (its movers with it), never at login
 local function MoverSource()
