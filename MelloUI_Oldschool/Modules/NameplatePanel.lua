@@ -407,8 +407,8 @@ local bracketRepOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = its 
 -- "Unitframe, Personal Resource, Nameplates, Chat Oldschool ... all generated as 1 texture, which are scalable
 -- horizontally and Vertically", "dont cut them off"): while a set's numbers are there the health bar wears its
 -- painting -- ONE texture round the bar (Sets.Strip, kind "np"), its ends whole at the bar's height, its plain middle
--- stretched, the level in its round socket at the end -- in the bracket's place (its three pieces at alpha 0; the
--- trough and the name stay the bracket's machinery). The bar keeps the game's own size, as in the modern look (the
+-- stretched, the level in its round socket at the end -- in the bracket's place (its three pieces and
+-- its trough at alpha 0; the name stays the bracket's machinery). The bar keeps the game's own size, as in the modern look (the
 -- user, 2026-11-17, Modern's plate beside Oldschool's: "the size does not match"): the painting stands round it, its
 -- socket over the level's room. Anchors only: every size under a plate reads secret, the depth is the plate's own
 -- height as the Nameplates module lays it (Own Plate Size's or the game's)
@@ -495,6 +495,13 @@ function NpSet.Pieces(rep, shown)
 		if strip.capR then
 			strip.capR:SetAlpha(a)
 		end
+	end
+	-- (the user's picture, 2026-11-17: "what are these lines inside of the nameplate, behind the HP bar?") the bracket's
+	-- trough with its pieces: its rim lines showed in the painting's see-through hole wherever health was missing; the
+	-- painting's own ground (Sets.Strip's Ground) is the bar's ground there
+	local trough = rep and rep.trough
+	if trough then
+		trough:SetAlpha(shown and 1 or 0)
 	end
 end
 
