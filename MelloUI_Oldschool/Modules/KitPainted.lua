@@ -4765,6 +4765,10 @@ end
 -- edge (a glow lying under the ring starts under the rim: no gap between the
 -- two -- HealerFrames' debuff glow; user, 2026-10-04)
 function Kit:RingRim(tex, tuck)
+	-- (2.1.58: a frame set's ring -- the ring's own square of its painting, edge to edge)
+	if tex and rawget(tex, "melloSetRing") then
+		return 1
+	end
 	local piece = PIECES[(tex and Kit.pieceNameOf[tex]) or "window/portrait_ring"]
 	local radius = ((piece and piece.radius) or 84) - (tuck or 0)
 	return 2 * radius / ((piece and piece.w) or 197)
@@ -5601,9 +5605,9 @@ do
 end
 
 local buttonRims = setmetatable({}, { __mode = "k" })   -- [button] = true: a skinned button whose rim is a thin look
-local borderBars = { bar = setmetatable({}, { __mode = "k" }), nameplate = setmetatable({}, { __mode = "k" }),
-	-- (0.19.8: the unit frames' bars and the cast bar, a border of their own each)
-	unitframe = setmetatable({}, { __mode = "k" }), castbar = setmetatable({}, { __mode = "k" }) }
+-- (2.1.0: the unit frames' bars and the cast bar wear their frame set's painting, Modules/KitSets.lua -- their own
+-- border kinds of 0.19.8 gone)
+local borderBars = { bar = setmetatable({}, { __mode = "k" }), nameplate = setmetatable({}, { __mode = "k" }) }
 
 function Kit:RegisterButtonRim(button)
 	if button then
@@ -5629,10 +5633,6 @@ function Kit.__.ApplyBorderKind(self, kind, value)
 		self:SetSideTabBorder()
 	elseif kind == "raid" then
 		self:ApplyRaidBorders()   -- (the border library's: Modules/KitBorders.lua)
-	elseif kind == "personal" then
-		self:ApplyPersonalBorder()   -- (the border library's: Modules/KitBorders.lua)
-	elseif kind == "portrait" then
-		self:ApplyPortraitRings()   -- (the border library's rings: Modules/KitBorders.lua)
 	elseif kind == "cooldown" then
 		self:ApplyCooldownBorders()   -- (the Cooldown Manager's icons: Modules/KitBorders.lua)
 	elseif kind == "orb" then

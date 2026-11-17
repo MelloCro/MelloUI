@@ -97,6 +97,11 @@ Lang:Add("esES", {
 	["Rounded"] = "Redondeado", -- draft
 	["Unit Frame Border"] = "Borde de los marcos de unidades", -- draft
 	["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "El marco de las barras de salud y poder de los marcos de jugador, objetivo, foco, mascota y grupo.", -- draft
+	["Frame Set"] = "Juego de marcos", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "Los marcos pintados de los marcos de unidad, las barras de hechizos, la Pantalla personal, las placas de nombre y el chat.", -- draft
+	["Gilded Stone"] = "Piedra dorada", -- draft
+	["Forged Iron"] = "Hierro forjado", -- draft
+	["Carved Wood"] = "Madera tallada", -- draft
 	["Nameplate Border"] = "Borde de las placas de nombre", -- draft
 	["The frame around the nameplates' health bars."] = "El marco de las barras de salud de las placas de nombre.", -- draft
 	["Cast Bar Border"] = "Borde de la barra de hechizos", -- draft
@@ -2981,6 +2986,7 @@ Lang:Add("esES", {
 	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "Mapa con mando: la cruceta llega a los botones junto a la lista de misiones, Marcador sobre tu chincheta la quita, la mira es más rápida, y cerrar el mapa con el ratón cierra también el mapa del juego.", -- draft
 	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Mando: el puntero amarillo del juego ya no aparece sobre las ventanas de MelloUI, y las indicaciones de botones están centradas y se leen mejor.", -- draft
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Chat con mando: elige Chat en el menú circular del juego; después LB / RB cambian de pestaña y la cruceta o el stick derecho desplazan el texto.", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: marcos nuevos para los marcos de unidad, la barra de hechizos, la Pantalla personal, las placas de nombre y el chat, en tres juegos a elegir en Bordes > Juego de marcos: Piedra dorada, Hierro forjado y Madera tallada.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

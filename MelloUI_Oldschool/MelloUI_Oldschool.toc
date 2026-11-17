@@ -27,6 +27,9 @@ Modules\KitShadePainted.lua
 Modules\KitMarks.lua
 Modules\KitBordersPainted.lua
 Modules\KitBackdrop.lua
+# (2.1.58) the three frame sets: their numbers (Tools/make_oldschool_sets.py), then what lays them
+Media\FrameSets.lua
+Modules\KitSets.lua
 Modules\UIModificationsPainted.lua
 Modules\DarkModePainted.lua
 Modules\QuestInkPainted.lua

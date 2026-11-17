@@ -97,6 +97,11 @@ Lang:Add("deDE", {
 	["Rounded"] = "Abgerundet", -- draft
 	["Unit Frame Border"] = "Einheitenfenster-Rand", -- draft
 	["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "Der Rahmen um die Gesundheits- und Kraftleisten von Spieler-, Ziel-, Fokus-, Begleiter- und Gruppenfenstern.", -- draft
+	["Frame Set"] = "Rahmen-Set", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "Die gemalten Rahmen der Einheitenfenster, der Zauberbalken, der Persönlichen Anzeige, der Namensplaketten und des Chats.", -- draft
+	["Gilded Stone"] = "Vergoldeter Stein", -- draft
+	["Forged Iron"] = "Geschmiedetes Eisen", -- draft
+	["Carved Wood"] = "Geschnitztes Holz", -- draft
 	["Nameplate Border"] = "Namensplaketten-Rand", -- draft
 	["The frame around the nameplates' health bars."] = "Der Rahmen um die Gesundheitsleisten der Namensplaketten.", -- draft
 	["Cast Bar Border"] = "Zauberbalken-Rand", -- draft
@@ -3759,6 +3764,7 @@ Lang:Add("deDE", {
 	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "Karte mit Controller: Das Steuerkreuz erreicht die Knöpfe neben der Questliste, Markierung auf deiner Stecknadel entfernt sie, das Fadenkreuz ist schneller, und das Schließen der Karte mit der Maus schließt auch die Karte des Spiels.", -- draft
 	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Controller: Der gelbe Zeiger des Spiels erscheint nicht mehr über MelloUIs Fenstern, und die Tastenhinweise sind mittig und besser lesbar.", -- draft
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Chat mit Controller: Wähle Chat im Ringmenü des Spiels, dann wechseln LB / RB die Reiter, und das Steuerkreuz oder der rechte Stick blättert.", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: Neue Rahmen für die Einheitenfenster, den Zauberbalken, die Persönliche Anzeige, die Namensplaketten und den Chat, in drei Sets zur Wahl unter Ränder > Rahmen-Set: Vergoldeter Stein, Geschmiedetes Eisen und Geschnitztes Holz.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

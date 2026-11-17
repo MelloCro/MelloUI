@@ -287,6 +287,12 @@ function Kit:ChoicePicture(tile, kind, choice)
 		return
 	end
 	local size = tonumber(tile.size) or TILE
+	if kind == "set" and self.Sets then
+		-- (2.1.58) a frame set (Modules/KitSets.lua): its small frame's painting on the stone
+		Stone(tile)
+		self.Sets.Picture(Layer(tile, LAYER_OWN, 1), pic, choice, size)
+		return
+	end
 	if kind == "rim" and choice.style and self.BorderPicture then
 		-- (0.19.8) a style of the border library's (Modules/KitBorders.lua):
 		-- drawn by it round the sample icon, at a button's weight

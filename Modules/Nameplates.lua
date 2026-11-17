@@ -545,6 +545,17 @@ local function LevelRoom(uf)
 	return ((ok and Num(w)) or 15) + 5
 end
 
+-- (2.1.58) the health bar's height as the plates lay it -- Own Plate Size's Plate Height while it is on, else the
+-- game's own (NamePlateSetupOptions.healthBarHeight): plain numbers, never a plate's size read back (those read
+-- secret). Oldschool's frame set sizes its nameplate painting by it (MelloUI_Oldschool/Modules/NameplatePanel.lua)
+function M.BarHeight()
+	local db = M.db or MelloUI:GetModuleDB("Nameplates")
+	if db and db.plateSize == true and Num(db.plateHeight) then
+		return db.plateHeight
+	end
+	return SetupOption("healthBarHeight", 20)
+end
+
 -- the bars: Own Plate Size's width (the whole plate: the bar and the level badge's room) and height, and the cast
 -- bar -- the health bar held on the frame where it stood (over the game's cast bar room), the game's cast bar itself
 -- laid as the preview lays its sample (M.LayCast: its place, else under the health bar; Cast Bar Height), its

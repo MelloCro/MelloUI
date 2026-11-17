@@ -97,6 +97,11 @@ Lang:Add("ptBR", {
 	["Rounded"] = "Arredondado", -- draft
 	["Unit Frame Border"] = "Borda dos quadros de unidade", -- draft
 	["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "A moldura das barras de vida e poder dos quadros de jogador, alvo, foco, ajudante e grupo.", -- draft
+	["Frame Set"] = "Conjunto de molduras", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "As molduras pintadas dos quadros de unidade, das barras de lançamento, da Exibição pessoal, das placas de identificação e do chat.", -- draft
+	["Gilded Stone"] = "Pedra dourada", -- draft
+	["Forged Iron"] = "Ferro forjado", -- draft
+	["Carved Wood"] = "Madeira entalhada", -- draft
 	["Nameplate Border"] = "Borda das placas de identificação", -- draft
 	["The frame around the nameplates' health bars."] = "A moldura das barras de vida das placas de identificação.", -- draft
 	["Cast Bar Border"] = "Borda da barra de lançamento", -- draft
@@ -2981,6 +2986,7 @@ Lang:Add("ptBR", {
 	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "Mapa com controle: o direcional alcança os botões ao lado da lista de missões, Marcador sobre o seu alfinete o remove, a mira está mais rápida, e fechar o mapa com o mouse fecha também o mapa do jogo.", -- draft
 	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Controle: o ponteiro amarelo do jogo não aparece mais sobre as janelas do MelloUI, e as indicações de botões estão centralizadas e mais legíveis.", -- draft
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Bate-papo com controle: escolha Bate-papo no menu circular do jogo; depois LB / RB trocam de aba e o direcional ou o analógico direito rolam o texto.", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: molduras novas para os quadros de unidade, a barra de lançamento, a Exibição pessoal, as placas de identificação e o chat, em três conjuntos para escolher em Bordas > Conjunto de molduras: Pedra dourada, Ferro forjado e Madeira entalhada.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

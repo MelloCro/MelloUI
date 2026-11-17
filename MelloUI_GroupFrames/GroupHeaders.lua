@@ -205,9 +205,17 @@ end
 -- spacing") the room under each portrait party frame, in the frames' units: Vertical Spacing (portraitSpacing: 2 by
 -- default, the tight room MelloUI kept before fr-16, where the game's own is 10), and under a member its pet's room
 -- while the game shows party pets (the game's 26 then is its 10 and that room)
+-- (2.1.0, lk-15) and while Oldschool's frame set dresses the party (MelloUI_Oldschool's Kit.Sets.PartyRoom), the least
+-- room its painting needs so one member's ornaments never reach the next's
+local function SetRoom()
+	local K = MelloUI.Kit
+	local Sets = type(K) == "table" and K.Sets
+	local room = Sets and Sets.PartyRoom and Sets.PartyRoom()
+	return Num(room) or 0
+end
 local function PortraitSpacing()
 	local sp = Num(DB().portraitSpacing)
-	return ((sp and sp >= 0) and sp or 2) + PetRoom()
+	return ((sp and sp >= 0) and sp or 2) + PetRoom() + SetRoom()
 end
 H.PortraitSpacing = PortraitSpacing
 
@@ -1086,6 +1094,12 @@ local function Listen()
 			H:Layout()
 		end
 	end, "GroupFrames.flip")
+	-- (2.1.0, lk-15) Oldschool's frame set changed or put on the party: the room its painting needs (SetRoom)
+	MelloUI:On("border", function(kind)
+		if kind == "frameset" then
+			H:Layout()
+		end
+	end, "GroupFrames.frameset")
 	-- the raid frames' border changed (Raid Frame Border, its placement): the
 	-- bars inside it again (Kit:RaidFrameInset; the kit lays borders out of a fight)
 	MelloUI:On("raidborder", function()

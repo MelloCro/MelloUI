@@ -11,6 +11,11 @@
 - Map: the crosshair moves faster with the stick.
 - Controller: the letters in the button prompts sit in the middle of their circles, and the L and R stick icons are easier to read.
 - Chat: with a controller, picking Chat on the game's ring menu gives MelloUI's chat the controller. LB / RB switch its tabs, the D-pad or the right stick scrolls, and B leaves. The game's yellow pointer no longer shows at its edge.
+- Oldschool: the unit frames, the cast bar, the Personal Display, the nameplates and the chat have new frames, in three sets to choose from: Gilded Stone, Forged Iron and Carved Wood (Oldschool > Borders > Frame Set). Each frame is one painting that stretches to any size with its ornaments whole, and the level sits in a badge of the set's own style.
+- Oldschool: your target's nameplate glows in the shape of its frame, and so do your unit, party and raid frames for your target and under the mouse. The old orange target tint is gone.
+- Oldschool: the nameplates keep the same size as in the Modern look, at any Plate Width and Plate Height.
+- Oldschool: Frame Set takes the place of the Unit Frame Border, Cast Bar Border, Personal Display Border and Portrait Ring choices.
+- Oldschool: elites, rare elites, rares and bosses wear their own ring on the target and focus frames, drawn in the frame set's style: a gold dragon, a silver dragon, a silver star with laurels and a horned skull. Their nameplate shows a small one on its level badge. Both follow the Elite and Rare Marks switches (Oldschool > Frame Art).
 
 ## 2.1.57
 

@@ -97,6 +97,11 @@ Lang:Add("koKR", {
 	["Rounded"] = "둥근", -- draft
 	["Unit Frame Border"] = "개체창 테두리", -- draft
 	["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "플레이어, 대상, 주시 대상, 소환수, 파티 개체창의 생명력 바와 자원 바 테두리.", -- draft
+	["Frame Set"] = "프레임 세트", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "유닛 프레임, 시전바, 개인 표시기, 이름표, 채팅의 그려진 테두리입니다.", -- draft
+	["Gilded Stone"] = "금박 석재", -- draft
+	["Forged Iron"] = "단조 철", -- draft
+	["Carved Wood"] = "조각 목재", -- draft
 	["Nameplate Border"] = "이름표 테두리", -- draft
 	["The frame around the nameplates' health bars."] = "이름표 생명력 바의 테두리.", -- draft
 	["Cast Bar Border"] = "시전바 테두리", -- draft
@@ -2981,6 +2986,7 @@ Lang:Add("koKR", {
 	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "컨트롤러로 지도 사용: 방향 패드로 퀘스트 목록 옆 버튼에 갈 수 있고, 내 핀 위에서 표시 버튼을 누르면 핀이 지워지며, 조준선이 더 빨라지고, 마우스로 지도를 닫으면 게임의 지도도 함께 닫힙니다.", -- draft
 	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "컨트롤러: 게임의 노란 포인터가 더 이상 MelloUI 창 위에 표시되지 않으며, 버튼 안내가 가운데 정렬되어 읽기 쉬워졌습니다.", -- draft
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "컨트롤러로 채팅 사용: 게임의 원형 메뉴에서 채팅을 선택하면 LB / RB로 탭을 바꾸고 방향 패드나 오른쪽 스틱으로 스크롤합니다.", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: 유닛 프레임, 시전바, 개인 표시기, 이름표, 채팅에 새 테두리가 생겼습니다. 테두리 > 프레임 세트에서 세 가지 중 고를 수 있습니다: 금박 석재, 단조 철, 조각 목재.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

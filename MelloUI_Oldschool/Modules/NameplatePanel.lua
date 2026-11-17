@@ -110,6 +110,7 @@ end
 -- (One table: the bars inset since the game's last layout, weak keys --
 -- nothing written onto the game's bar.)
 local Inset = { done = setmetatable({}, { __mode = "k" }) }
+local NpSet   -- (2.1.58) the frame set's nameplate: below, after the bracket's own tables
 
 -- the game's offsets of the bar on its container: TOPLEFT x, y, BOTTOMRIGHT x, y
 function Inset.GamePoints()
@@ -212,6 +213,10 @@ local function InsetHealthBar(hb, rep, container, refit)
 	end
 	local h = Option("healthBarHeight", 12)
 	local m = Inset.Margin(rep, h)
+	-- (2.1.58: the frame set's painting -- the bar at the game's own size, the painting round it: no arms, no set-in)
+	if NpSet.Worn(rep.melloPlate) then
+		armL, armR, m = 0, 0, 0
+	end
 	Inset.done[hb] = true
 	Inset.Lay(hb, container, armL, armR, m)
 	rep.thicken, rep.fitHeight = 2 * m, h - 2 * m
@@ -316,6 +321,28 @@ local function CentreName(uf, hb, rep)
 	if not styles or style == styles.InsideHealthBar then
 		return   -- the name inside the bar: the game's
 	end
+	-- (2.1.58, the test in a real client: at a taller plate the name sat on the frame set's top rail) the frame set's
+	-- painting: the name centred over the whole painting (socket and all), its foot a gap over the painting's top
+	local set = NpSet.of[uf]
+	if set and set.laid then
+		local span = nameSpanOf[uf]
+		if not span then
+			span = CreateFrame("Frame", nil, uf)
+			span:EnableMouse(false)
+			nameSpanOf[uf] = span
+		end
+		local lift = plates and plates.NameLift and plates:NameLift(uf) or 0
+		local y = Option("healthBarToNameAboveSpacing", 2) - 1 + lift
+		centredStyle[name] = style
+		span:ClearAllPoints()
+		span:SetPoint("TOPLEFT", set.strip.box, "TOPLEFT", 0, 0)
+		span:SetPoint("RIGHT", set.strip.box, "RIGHT", 0, 0)
+		name:ClearAllPoints()
+		name:SetPoint("BOTTOMLEFT", span, "TOPLEFT", 0, y)
+		name:SetPoint("BOTTOMRIGHT", span, "TOPRIGHT", 0, y)
+		name:SetJustifyH("CENTER")
+		return
+	end
 	-- the artwork's ends: the bracket's two caps (they stand outside the
 	-- bar); the name spans them, centred, so it sits on the painted
 	-- middle whatever the arms and the bar's own insets are
@@ -374,6 +401,158 @@ local function UncentreName(uf)
 end
 
 local bracketRepOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = its health bar's bracket rep
+
+--------------------------------------------------------------------------------
+-- (2.1.58) The frame set's nameplate (Oldschool > Borders' Frame Set: Modules/KitSets.lua; the user, 2026-11-17:
+-- "Unitframe, Personal Resource, Nameplates, Chat Oldschool ... all generated as 1 texture, which are scalable
+-- horizontally and Vertically", "dont cut them off"): while a set's numbers are there the health bar wears its
+-- painting -- ONE texture round the bar (Sets.Strip, kind "np"), its ends whole at the bar's height, its plain middle
+-- stretched, the level in its round socket at the end -- in the bracket's place (its three pieces at alpha 0; the
+-- trough and the name stay the bracket's machinery). The bar keeps the game's own size, as in the modern look (the
+-- user, 2026-11-17, Modern's plate beside Oldschool's: "the size does not match"): the painting stands round it, its
+-- socket over the level's room. Anchors only: every size under a plate reads secret, the depth is the plate's own
+-- height as the Nameplates module lays it (Own Plate Size's or the game's)
+--------------------------------------------------------------------------------
+NpSet = { of = setmetatable({}, { __mode = "k" }), LENGTH = 1000 }   -- [unit frame] = { strip, hb, rep, laid }
+local levelOrbOf   -- [unit frame] = its level orb's rep (made below, with the level circle)
+
+function NpSet.Data()
+	return active and Kit.Sets and Kit.Sets.Data() or nil
+end
+
+-- the bar's height as the plates lay it (the Nameplates module's: Own Plate Size's Plate Height, else the game's)
+function NpSet.Depth()
+	local np = MelloUI:GetModule("Nameplates")
+	local h = np and type(np.BarHeight) == "function" and np.BarHeight() or nil
+	return (type(h) == "number" and not Secret(h) and h > 0) and h or Option("healthBarHeight", 12)
+end
+
+function NpSet.Make(uf, hb, rep, layer, sublevel)
+	if not Kit.Sets or NpSet.of[uf] then
+		return
+	end
+	local strip = Kit.Sets.Strip(hb, layer, sublevel)
+	strip:Ground(true)
+	-- (the user, 2026-11-17: "the old targeting red borders highlight needs to be removed and a new one added, i want
+	-- outer glow on the nameplates of the targeted mob matching the shape of each nameplate type") the target's glow:
+	-- the painting's outline glowing, cut and scaled with it (Sets.Strip's Glow)
+	NpSet.of[uf] = { strip = strip, hb = hb, rep = rep, target = strip:Glow(hb, "BACKGROUND", -6) }
+	local hover = Kit.Sets and MelloUI.FrameHover and MelloUI.FrameHover.plates and MelloUI.FrameHover.plates.of[uf]
+	if hover then
+		NpSet.Hover(uf, hover)
+	end
+end
+
+-- (Mouseover Highlight, MelloUI.FrameHover: its frame on this plate, shown and hidden by it) the painting's glow in
+-- the hover colour in that frame, its pixel lines put out while the painting dresses the plate
+function NpSet.Hover(uf, o)
+	local e = NpSet.of[uf]
+	if not (e and o) then
+		return
+	end
+	if not e.hoverFrame then
+		e.hoverFrame = o
+		e.hover = e.strip:Glow(o, "BACKGROUND", 0)
+	end
+	NpSet.HoverLook(e)
+end
+
+-- the hover frame's own lines (every region of it but the glow's) seen or put out
+local function HoverLines(e, a, ...)
+	for i = 1, select("#", ...) do
+		local r = select(i, ...)
+		if r ~= e.hover.t and r ~= e.hover.box then
+			r:SetAlpha(a)
+		end
+	end
+end
+
+function NpSet.HoverLook(e)
+	if not e.hoverFrame then
+		return
+	end
+	e.strip:GlowState(e.hover, e.laid and "hover" or nil)
+	HoverLines(e, e.laid and 0 or 1, e.hoverFrame:GetRegions())
+end
+
+-- whether the painting dresses this plate now (the bar then keeps the game's own size: no bracket arms)
+function NpSet.Worn(uf)
+	local e, set = NpSet.of[uf], NpSet.Data()
+	return (e and set and set.np) and true or false
+end
+
+-- the bracket's own pieces shown (no set) or put out (the set's painting in their place)
+function NpSet.Pieces(rep, shown)
+	local strip = rep and rep.strip
+	if strip then
+		local a = shown and 1 or 0   -- (each piece by name: no list made per call)
+		if strip.capL then
+			strip.capL:SetAlpha(a)
+		end
+		if strip.mid then
+			strip.mid:SetAlpha(a)
+		end
+		if strip.capR then
+			strip.capR:SetAlpha(a)
+		end
+	end
+end
+
+function NpSet.Lay(uf)
+	local e = NpSet.of[uf]
+	if not e then
+		return false
+	end
+	local set = NpSet.Data()
+	e.laid = set ~= nil and e.strip:Lay(set, "np", e.hb, NpSet.Depth(), NpSet.LENGTH) or false
+	if not e.laid then
+		e.strip:Hide()
+	end
+	NpSet.Pieces(e.rep, not e.laid)
+	NpSet.HoverLook(e)
+	-- (the target's glow as the game's own highlight stands now: a plate laid after its Show)
+	local sel = e.hb.selectedBorder
+	local okS, shown = false, nil
+	if e.laid and sel then
+		okS, shown = pcall(sel.IsShown, sel)
+	end
+	e.strip:GlowState(e.target, (okS and not Secret(shown) and shown) and "target" or nil)
+	-- (the level into the painting's socket now: the level circle may have been hung before the painting was laid)
+	local lf = uf.PlayerLevelDiffFrame
+	if e.laid and lf and lf.playerLevelDiffIcon then
+		NpSet.Level(uf, lf.playerLevelDiffIcon, lf.playerLevelDiffText, lf.selectedBorder)
+	end
+	return e.laid
+end
+
+-- the level number in the painting's socket (the kit's orb put out there), true when laid so
+function NpSet.Level(uf, icon, text, ring)
+	local e = NpSet.of[uf]
+	local x0, y0, x1, y1, at
+	if e and e.laid then
+		x0, y0, x1, y1, at = e.strip:Badge()
+	end
+	local orb = levelOrbOf and levelOrbOf[uf]
+	if orb and orb.tex then
+		orb.tex:SetAlpha(x0 and 0 or 1)
+	end
+	if not x0 then
+		return false
+	end
+	icon:ClearAllPoints()
+	icon:SetPoint("TOPLEFT", e.hb, at, x0, -y0)
+	icon:SetPoint("BOTTOMRIGHT", e.hb, at, x1, -y1)
+	if text then
+		text:ClearAllPoints()
+		text:SetPoint("CENTER", icon, "CENTER", 0, 0)
+	end
+	if ring then
+		ring:ClearAllPoints()
+		ring:SetPoint("TOPLEFT", icon, "TOPLEFT", -2, 2)
+		ring:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
+	end
+	return true
+end
 -- A plate's name laid again where the kit lays it (CentreName, with the
 -- Nameplates module's lift): true while the kit holds the name, false when
 -- the game's own anchors do (the kit off, a plate it has not dressed, the
@@ -425,6 +604,9 @@ local function HangLevel(uf, on)
 		return
 	end
 	local text, ring = lf.playerLevelDiffText, lf.selectedBorder
+	if on and NpSet.Level(uf, icon, text, ring) then
+		return
+	end
 	local bracket = bracketRepOf[uf]
 	local strip = bracket and bracket.strip
 	local h = strip and strip.height
@@ -468,7 +650,7 @@ local function HangLevel(uf, on)
 end
 
 local orbScaleOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = its level orb's scale
-local levelOrbOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = its level orb's rep
+levelOrbOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = its level orb's rep (declared with NpSet, above)
 -- The level circle as tall as the bracket, gem to gem (user, 2026-09-23:
 -- "cap the level circle to the bar height"): the game grows its level frame
 -- faster than the bar with each nameplate size, so the orb dwarfed the bar
@@ -658,7 +840,19 @@ local function SyncTop(uf)
 		return
 	end
 	local np = MelloUI:GetModule("Nameplates")
-	local want = (MarksOn() and markOf[uf] ~= nil and top.pieces ~= nil and (np and np:NameShownOn(uf))) and true or false
+	local marked = MarksOn() and markOf[uf] ~= nil
+	-- (2.1.58: a frame set's plate shows the rank on its socket -- the top mark away, the game's own icon still faded)
+	local set = NpSet.of[uf]
+	if set and set.laid then
+		for _, key in ipairs(TOP_PARTS) do
+			if top.parts[key]:IsShown() then
+				top.parts[key]:Hide()
+			end
+		end
+		GameMark(uf, marked)
+		return
+	end
+	local want = (marked and top.pieces ~= nil and (np and np:NameShownOn(uf))) and true or false
 	local beads = want and top.pieces.bead ~= nil
 	for _, key in ipairs(TOP_PARTS) do
 		local tex = top.parts[key]
@@ -863,6 +1057,12 @@ local function MarkPlate(uf, unit)
 	end
 	local kind = MarksOn() and Kit:MarkOf(unit or PlateUnit(uf)) or nil
 	markOf[uf] = kind
+	-- (2.1.58) under a frame set the rank stands on the plate's level socket (the set's small rank socket); the top
+	-- mark below stays away there
+	local set = NpSet.of[uf]
+	if set then
+		set.strip:Rank(kind)
+	end
 	local strip = bracketRepOf[uf] and bracketRepOf[uf].strip
 	if strip then
 		Kit:WearMark(strip.capL, Kit:StripPieceName(strip.base, "cap_l", strip.state), nil)
@@ -1002,6 +1202,7 @@ local function SkinUnitFrame(uf)
 		if rep then
 			bracketRepOf[uf] = rep
 			rep.melloPlate, rep.onBarChanged = uf, OnBarChanged
+			NpSet.Make(uf, hb, rep, layer, sublevel)
 			-- the target / focus highlight: the game's white outline around the
 			-- bar (selectedBorder) is faded, and the bracket's own iron shines
 			-- gold instead while the game shows it (user, 2026-09-21)
@@ -1017,8 +1218,17 @@ local function SkinUnitFrame(uf)
 						return
 					end
 					local shown = sel:IsShown()
+					local on = active and not Secret(shown) and shown
+					-- (2.1.58: under a frame set the painting's outer glow is the target's mark -- the old tint gone)
+					local set = NpSet.of[uf]
+					if set and set.laid then
+						set.strip:GlowState(set.target, on and "target" or nil)
+						on = false
+					elseif set then
+						set.strip:GlowState(set.target, nil)
+					end
 					local r, g, b = 1, 1, 1
-					if active and not Secret(shown) and shown then
+					if on then
 						r, g, b = 1, 0.5, 0   -- the full orange-gold the iron can take (user, 2026-09-21: "increase it more", twice)
 					end
 					strip.capL:SetVertexColor(r, g, b)
@@ -1045,6 +1255,10 @@ local function SkinUnitFrame(uf)
 						strip.mid:SetVertexColor(1, 1, 1)
 						strip.capR:SetVertexColor(1, 1, 1)
 					end
+					local set = NpSet.of[uf]
+					if set then
+						set.strip:GlowState(set.target, nil)
+					end
 				end
 			end
 			hooksecurefunc(uf, "UpdateAnchors", function()
@@ -1054,6 +1268,7 @@ local function SkinUnitFrame(uf)
 				end
 				InsetHealthBar(hb, rep, container)
 				rep:Refit()
+				NpSet.Lay(uf)
 				CastFit.Lay(uf, hb, rep)
 				CentreName(uf, hb, rep)
 				FitLevelOrb(uf)
@@ -1071,6 +1286,7 @@ local function SkinUnitFrame(uf)
 					enable(...)
 				end
 				InsetHealthBar(hb, rep, container, true)
+				NpSet.Lay(uf)
 				CastFit.Lay(uf, hb, rep)
 				CentreName(uf, hb, rep)
 				FitShade(uf)
@@ -1086,6 +1302,7 @@ local function SkinUnitFrame(uf)
 					disable(...)
 				end
 				bracketLeftOf[uf] = nil
+				NpSet.Lay(uf)   -- (the kit off: the painting put away, the bracket's pieces back)
 				CastFit.Unlay(uf)
 				UncentreName(uf)
 				HangTop(uf)
@@ -1098,6 +1315,7 @@ local function SkinUnitFrame(uf)
 			end
 			if active then
 				InsetHealthBar(hb, rep, container, true)
+				NpSet.Lay(uf)
 				CastFit.Lay(uf, hb, rep)
 				CentreName(uf, hb, rep)
 				bracketLeftOf[uf] = rep.strip and rep.strip.capL or nil
@@ -1248,6 +1466,35 @@ end
 function M:OnEnable(db)
 	self.db = db
 	Activate()
+	-- (2.1.58) a new frame set, or the plates' size changed (Own Plate Size, its width and height): every dressed
+	-- plate in its painting again, at the bar's height now
+	if Kit.Sets and not NpSet.hooked then
+		NpSet.hooked = true
+		local function Again()
+			if not active then
+				return
+			end
+			for uf, e in pairs(NpSet.of) do
+				local container = uf.HealthBarsContainer
+				Inset.done[e.hb] = nil
+				InsetHealthBar(e.hb, e.rep, container, true)
+				NpSet.Lay(uf)
+				CastFit.Lay(uf, e.hb, e.rep)
+				CentreName(uf, e.hb, e.rep)
+				FitLevelOrb(uf)
+			end
+		end
+		Kit.Sets.OnChange(Again)
+		if MelloUI.FrameHover then
+			MelloUI.FrameHover.dressPlate = NpSet.Hover
+		end
+		local SIZE = { plateSize = true, plateWidth = true, plateHeight = true }
+		MelloUI:On("setting", function(module, key)
+			if module == "Nameplates" and SIZE[key] then
+				Again()
+			end
+		end, "Nameplate Panel: the frame set at the plates' size")
+	end
 end
 
 function M:OnDisable()

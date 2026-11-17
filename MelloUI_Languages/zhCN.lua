@@ -97,6 +97,11 @@ Lang:Add("zhCN", {
 	["Rounded"] = "圆润", -- draft
 	["Unit Frame Border"] = "单位框体边框", -- draft
 	["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "玩家、目标、焦点、宠物和小队框体的生命条和能量条的边框。", -- draft
+	["Frame Set"] = "框架套装", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "单位框体、施法条、个人显示、姓名板和聊天的手绘边框。", -- draft
+	["Gilded Stone"] = "镀金石", -- draft
+	["Forged Iron"] = "锻铁", -- draft
+	["Carved Wood"] = "雕木", -- draft
 	["Nameplate Border"] = "姓名板边框", -- draft
 	["The frame around the nameplates' health bars."] = "姓名板生命条的边框。", -- draft
 	["Cast Bar Border"] = "施法条边框", -- draft
@@ -2981,6 +2986,7 @@ Lang:Add("zhCN", {
 	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "手柄地图：方向键可到达任务列表旁的按钮，在你的标记上按“标记”会移除它，准星移动更快，用鼠标关闭地图时也会关闭游戏自带的地图。", -- draft
 	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "手柄：游戏的黄色指针不再显示在 MelloUI 窗口之上，按键提示已居中且更易辨认。", -- draft
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "手柄聊天：在游戏的环形菜单中选择“聊天”，然后用 LB / RB 切换标签页，用方向键或右摇杆滚动。", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool：单位框体、施法条、个人显示、姓名板和聊天换上了新边框，可在“边框 > 框架套装”中三选一：镀金石、锻铁和雕木。", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

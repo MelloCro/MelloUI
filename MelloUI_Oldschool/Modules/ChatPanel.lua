@@ -486,12 +486,59 @@ function Border.Alpha()
 	return math.max(0, math.min(1, a))
 end
 
+-- (2.1.58) The frame set's chat frame (Oldschool > Borders' Frame Set: Modules/KitSets.lua; the user, 2026-11-17:
+-- "Unitframe, Personal Resource, Nameplates, Chat Oldschool ... all generated as 1 texture, which are scalable
+-- horizontally and Vertically"): while a set's numbers are there the chat window wears its painting -- ONE texture
+-- round the window's grown backdrop, its corner ornaments whole, its sides stretched -- in the rail's place (its pieces
+-- put out, at Border Opacity's 0), at Border Opacity itself. Made with the rail, laid on the skin's Activate and at a
+-- new set
+local SetFrame = { list = setmetatable({}, { __mode = "k" }) }   -- [chat window] = { window, rect }
+SetFrame.RAIL = 9   -- (units: the painting's side, about the kit's window rail)
+
+function SetFrame.On()
+	return active and Kit.Sets ~= nil and Kit.Sets.Data() ~= nil
+end
+
+-- (2.1.58, the test in a real client: the chat players see is MelloUI's Chat View -- MelloUI_Chat's window,
+-- MelloUIChatView, over the game's chat -- so the set's frame stands round that window too: on a frame of its own over
+-- the window's parts, as MelloUI's rims stand (MelloUI.Rims), never written into the view's code. Made when the view is
+-- there, laid with the rails)
+function SetFrame.View()
+	local view = rawget(_G, "MelloUIChatView")
+	if not (view and Kit.Sets) or SetFrame.list[view] then
+		return view and SetFrame.list[view] ~= nil
+	end
+	local holder = CreateFrame("Frame", nil, view)
+	holder:SetAllPoints(view)
+	holder:EnableMouse(false)
+	holder:SetFrameLevel(view:GetFrameLevel() + 60)
+	SetFrame.list[view] = { window = Kit.Sets.Window(holder, "OVERLAY", 7), rect = view, view = true }
+	return true
+end
+
+function SetFrame.Lay(frame)
+	local e = SetFrame.list[frame]
+	if not e then
+		return false
+	end
+	if SetFrame.On() then
+		return e.window:Lay(Kit.Sets.Data(), e.rect, SetFrame.RAIL)
+	end
+	e.window:Hide()
+	return false
+end
+
 -- one rail (and its shade, once made)
 function Border.Lay(frame, rep, a)
 	a = a or Border.Alpha()
+	local set = SetFrame.Lay(frame)
 	local pieces = rep.skin and rep.skin.all
 	for i = 1, pieces and #pieces or 0 do
-		pieces[i]:SetAlpha(a)
+		pieces[i]:SetAlpha(set and 0 or a)
+	end
+	local e = SetFrame.list[frame]
+	if e then
+		e.window.t:SetAlpha(a)
 	end
 	local el = shade.made[frame]
 	local host = el and el.Host and el:Host()
@@ -510,6 +557,12 @@ function Border.LayAll()
 	for frame, rep in pairs(Border.rails) do
 		Border.Lay(frame, rep, a)
 	end
+	-- (2.1.58) the Chat View's window in the set's frame too, at Border Opacity
+	if SetFrame.View() then
+		local view = rawget(_G, "MelloUIChatView")
+		SetFrame.Lay(view)
+		SetFrame.list[view].window.t:SetAlpha(a)
+	end
 end
 
 -- A bordered frame: the single rail (CH1) on the background's rect in place
@@ -526,6 +579,9 @@ local function SkinBordered(frame, prefix, cf)
 	end
 	local rep = Replace(corner, { as = "ChatFrameBorder", rect = frame == cf and BackdropRect(cf, background) or background, parent = frame, alsoFade = others })
 	repOf[corner] = rep or false
+	if rep and frame == cf and Kit.Sets then
+		SetFrame.list[frame] = { window = Kit.Sets.Window(frame, "BORDER", 1), rect = BackdropRect(cf, background) }
+	end
 	if rep then
 		Border.Add(frame, rep)
 	end
@@ -990,6 +1046,14 @@ local function Activate()
 	end
 	-- (a shade that waited while the reskin was off)
 	ShadeSeen()
+	Border.LayAll()   -- (the frame set's frame, or the rails)
+	if not SetFrame.View() and C_Timer and C_Timer.After then
+		C_Timer.After(1, function()   -- (the Chat View built a moment after the panel: its window then)
+			if active then
+				Border.LayAll()
+			end
+		end)
+	end
 	Kit:Cover("chat")
 	InkFollows()
 end
@@ -1001,6 +1065,9 @@ local function Deactivate()
 	active = false
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	for _, e in pairs(SetFrame.list) do
+		e.window:Hide()
 	end
 	-- the tabs back on their window's strata, the dock's tab strip on the
 	-- dock's (TabInFront stays off while inactive)
@@ -1029,6 +1096,15 @@ function M:OnEnable(db)
 			Border.LayAll()
 		end
 	end, "ChatPanel border opacity")
+	-- (2.1.58) a new frame set: the chat windows in its painting
+	if Kit.Sets and not SetFrame.hooked then
+		SetFrame.hooked = true
+		Kit.Sets.OnChange(function()
+			if active then
+				Border.LayAll()
+			end
+		end)
+	end
 end
 
 function M:OnDisable()

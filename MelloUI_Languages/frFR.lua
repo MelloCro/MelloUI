@@ -97,6 +97,11 @@ Lang:Add("frFR", {
 	["Rounded"] = "Arrondi",
 	["Unit Frame Border"] = "Bordure des cadres d’unité",
 	["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "Le cadre autour des barres de vie et de ressource des cadres du joueur, de la cible, de focalisation, du familier et du groupe.",
+	["Frame Set"] = "Jeu de cadres", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "Les cadres peints des cadres d'unité, des barres de sorts, de l'Affichage personnel, des barres d'info et du chat.", -- draft
+	["Gilded Stone"] = "Pierre dorée", -- draft
+	["Forged Iron"] = "Fer forgé", -- draft
+	["Carved Wood"] = "Bois sculpté", -- draft
 	["Nameplate Border"] = "Bordure des barres d'info",
 	["The frame around the nameplates' health bars."] = "Le cadre autour des barres de vie des barres d’info.",
 	["Cast Bar Border"] = "Bordure de la barre de sorts",
@@ -4282,6 +4287,7 @@ Lang:Add("frFR", {
 	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "Carte à la manette : la croix directionnelle atteint les boutons à côté de la liste de quêtes, Marqueur sur votre repère le retire, le réticule est plus rapide, et fermer la carte à la souris ferme aussi la carte du jeu.", -- draft
 	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Manette : le pointeur jaune du jeu ne s'affiche plus par-dessus les fenêtres de MelloUI, et les indications de boutons sont centrées et plus lisibles.", -- draft
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Discussion à la manette : choisissez Discussion dans le menu circulaire du jeu, puis LB / RB changent d'onglet et la croix directionnelle ou le stick droit fait défiler.", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool : de nouveaux cadres pour les cadres d'unité, la barre de sorts, l'Affichage personnel, les barres d'info et le chat, en trois jeux au choix dans Bordures > Jeu de cadres : Pierre dorée, Fer forgé et Bois sculpté.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

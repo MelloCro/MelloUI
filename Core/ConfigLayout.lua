@@ -531,21 +531,15 @@ function L.Define(R, Link)
 	R("Oldschool", "Borders", "Look", "UIModifications.buttonBorder", { picture = true })
 	R("Oldschool", "Borders", "Look", "UIModifications.sideTabBorder", { picture = true })
 	R("Oldschool", "Borders", "Look", "UIModifications.barBorder", { picture = true })
-	-- (0.19.8, the border library's stage 2: the unit frames' bars a border of their own, worn under their skin)
-	R("Oldschool", "Borders", "Look", "UIModifications.unitFrameBorder", { picture = true,
-		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
+	-- (2.1.58; the user, 2026-11-17: "Why not just Make all 3, so that we have 3 Variations of the Unitframes,
+	-- Nameplate, Personal Resource and Chat looks") the frame sets, one painting each for the unit frames, the cast
+	-- bars, the Personal Display, the nameplates and the chat (MelloUI_Oldschool/Modules/KitSets.lua), in place of
+	-- Unit Frame Border, Cast Bar Border, Personal Display Border and Portrait Ring
+	R("Oldschool", "Borders", "Look", "UIModifications.frameSet", { picture = true })
 	-- (0.19.1, the user 2026-10-04: "all border customization into Borders tab": the borders each element's page
 	-- had, here with the kit's; each of those pages links its own)
 	R("Oldschool", "Borders", "Look", "UIModifications.nameplateBorder", { picture = true })
-	-- (0.19.8: the cast bar's and the personal resource display's, the border library's)
-	R("Oldschool", "Borders", "Look", "UIModifications.castBarBorder", { picture = true,
-		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
-	-- (0.21.0: the Personal Display's bars, a module of its own -- no skin gate)
-	R("Oldschool", "Borders", "Look", "UIModifications.personalBarBorder", { picture = true })
 	R("Oldschool", "Borders", "Look", "UIModifications.roundBorder", { picture = true })
-	-- (0.19.8, the border library's stage 4: the unit frames' portrait ring a choice of its own, decision 8)
-	R("Oldschool", "Borders", "Look", "UIModifications.portraitRing", { picture = true,
-		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
 	-- (0.20.1: the level orb's look, the RPG pack's stone badge a choice -- Modules/KitBorders.lua)
 	R("Oldschool", "Borders", "Look", "UIModifications.levelOrb", { picture = true })
 	R("Oldschool", "Borders", "Look", "UIModifications.auraBorder", { picture = true })

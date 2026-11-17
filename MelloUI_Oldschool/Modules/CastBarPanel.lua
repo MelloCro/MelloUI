@@ -186,6 +186,102 @@ end
 
 local stopHooked = setmetatable({}, { __mode = "k" })   -- [animation group] = true: Play hooked to stop it
 local refitting = setmetatable({}, { __mode = "k" })   -- [cast bar] = true while its bracket refits
+
+--------------------------------------------------------------------------------
+-- (2.1.58) The frame set's cast bar (Oldschool > Borders' Frame Set: Modules/KitSets.lua; the user, 2026-11-17: "all
+-- generated as 1 texture, which are scalable horizontally and Vertically"): while a set's numbers are there the bar
+-- wears its painting -- ONE texture round the fill as a region of the bar in the bracket's layer (over the fill, under
+-- the text), its ends whole at the bar's height, its plain middle stretched -- in place of the bracket (never made):
+-- the game's border and background faded, a dark
+-- ground in the painting's hole and its icon window, the spell's icon in that window. As the bracket did (C1), the bar
+-- narrowed by the painting's reach either side, so the whole reads the game's width; both put back when the skin goes.
+--------------------------------------------------------------------------------
+local SetBar = { list = {} }   -- [i] = { bar, strip, known }
+
+-- the painting laid round the bar at its game width (out of a fight: the player's bar is an Edit Mode system)
+function SetBar.Lay(entry)
+	local bar, strip, known = entry.bar, entry.strip, entry.known
+	if not active then
+		strip:Hide()
+		Widen(bar)
+		return
+	end
+	local set = Kit.Sets.Data()
+	local okH, h = pcall(bar.GetHeight, bar)
+	h = (okH and not Secret(h) and type(h) == "number" and h > 0) and h or (known and known.h)
+	local saved = narrowOf[bar]
+	local w = saved and saved.width
+	if not w then
+		local okW, gw = pcall(bar.GetWidth, bar)
+		w = (okW and not Secret(gw) and type(gw) == "number" and gw > 0) and gw or (known and known.w)
+	end
+	if not (set and h and w) then
+		return
+	end
+	-- (the reach for this height first: a piece's numbers at this scale)
+	local p = set.cast
+	local s = h / (p.hole[4] - p.hole[2])
+	local arms = (p.hole[1] + p.w - p.hole[3]) * s
+	local fill = math.max(w - arms, 20)
+	if narrowOf[bar] == nil then
+		narrowOf[bar] = { width = w }
+	end
+	narrowedBars[bar] = true
+	refitting[bar] = true
+	bar:SetWidth(fill)
+	refitting[bar] = nil
+	strip:Ground(true)
+	strip:Lay(set, "cast", bar, h, fill)
+	-- the spell's icon in the painting's window (its own anchors kept the first time, put back by Widen)
+	local icon = bar.Icon
+	local x0, y0, x1, y1 = strip:Icon()
+	if icon and x0 then
+		if not narrowOf[bar].icon then
+			local points = {}
+			for i = 1, icon:GetNumPoints() do
+				points[i] = { icon:GetPoint(i) }
+			end
+			narrowOf[bar].icon = points
+		end
+		icon:ClearAllPoints()
+		icon:SetPoint("TOPLEFT", bar, "TOPLEFT", x0, -y0)
+		icon:SetPoint("BOTTOMRIGHT", bar, "TOPLEFT", x1, -y1)
+	end
+end
+
+-- the bar dressed in the set: its border and background faded (one rep each), the pieces made (shown on the skin's
+-- Activate); laid again after the game's SetLook, on its first show and at a new set
+function SetBar.Make(bar, known)
+	Replace(bar.Border, { as = "CastBarFX" })
+	Replace(bar.Background, { as = "CastBarFX" })
+	local layer, sublevel = Kit:BracketLayers(bar)
+	local entry = { bar = bar, strip = Kit.Sets.Strip(bar, layer, sublevel), known = known }
+	SetBar.list[#SetBar.list + 1] = entry
+	local function Again()
+		if active then
+			Kit:WhenOutOfCombat(function()
+				narrowedBars[bar] = nil
+				SetBar.Lay(entry)
+			end, entry)
+		end
+	end
+	if bar.SetLook then
+		hooksecurefunc(bar, "SetLook", Again)
+	end
+	Perf.HookScript(bar, "OnShow", Again)
+	if active then
+		Kit:WhenOutOfCombat(function()
+			SetBar.Lay(entry)
+		end, entry)
+	end
+end
+
+function SetBar.All()
+	for _, entry in ipairs(SetBar.list) do
+		SetBar.Lay(entry)
+	end
+end
+
 local function SkinCastBar(bar, known)
 	if not bar or skin.bars[bar] then
 		return
@@ -195,12 +291,17 @@ local function SkinCastBar(bar, known)
 	end
 	skin.bars[bar] = true
 	local first = #skin.reps + 1
+	local setOn = Kit.Sets and Kit.Sets.Data()
+	if setOn then
+		SetBar.Make(bar, known)
+	end
 	local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(bar)
 	-- the bracket as regions of the bar on the bar's own rect (its opening),
-	-- the caps outside; the Border faded; Bar Textures drops its mask
-	local rep = Replace(bar.Border, { as = "ui-castingbar-frame", parent = bar, rect = bar,
+	-- the caps outside; the Border faded; Bar Textures drops its mask (none
+	-- under a frame set's painting, SetBar)
+	local rep = not setOn and Replace(bar.Border, { as = "ui-castingbar-frame", parent = bar, rect = bar,
 		layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub,
-		fitHeight = known and known.h, fitWidth = known and known.w })
+		fitHeight = known and known.h, fitWidth = known and known.w }) or nil
 	repOf[bar] = rep or false
 	local shade = {}   -- the outline's pieces (Shade: on the bar's first show)
 	skin.shade[bar] = shade
@@ -256,7 +357,9 @@ local function SkinCastBar(bar, known)
 			end
 		end)
 	end
-	Replace(bar.Background, { as = "ui-castingbar-background" })
+	if not setOn then
+		Replace(bar.Background, { as = "ui-castingbar-background" })
+	end
 	Replace(bar.Flash, { as = "ui-castingbar-full-glow-standard" })
 	Replace(bar.DropShadow, { as = "castbar_shadow_embedded" })
 	for _, key in ipairs(FX_KEYS) do
@@ -311,6 +414,14 @@ end
 local function Build()
 	if not skin then
 		skin = { reps = {}, followers = {}, bars = {}, shade = {} }
+		-- (2.1.0) a new frame set: the bars in its painting, narrowed again for its reach
+		if Kit.Sets then
+			Kit.Sets.OnChange(function()
+				if active then
+					Kit:WhenOutOfCombat(SetBar.All, "Cast bars: the frame set")
+				end
+			end)
+		end
 	end
 	for key, getter in pairs(BARS) do
 		SkinCastBar(getter(), KNOWN[key])
@@ -335,6 +446,7 @@ local function Activate()
 			Shade(bar)
 		end
 	end
+	SetBar.All()   -- (2.1.0: the frame set's pieces)
 	Kit:Cover("castbar")
 end
 
@@ -346,6 +458,7 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
+	SetBar.All()   -- (2.1.0: the frame set's pieces put away, the bars' widths back)
 	Kit:Uncover("castbar")
 end
 
@@ -394,4 +507,5 @@ end
 
 -- What this module keeps beside the game's frames (hard rule 1: weak-keyed
 -- tables, never keys on the frames), for the dumps and the tests: read only
-M.kept = { narrowOf = narrowOf, narrowedBars = narrowedBars, refitting = refitting, stopHooked = stopHooked }
+M.kept = { narrowOf = narrowOf, narrowedBars = narrowedBars, refitting = refitting, stopHooked = stopHooked,
+	setBars = SetBar.list }
