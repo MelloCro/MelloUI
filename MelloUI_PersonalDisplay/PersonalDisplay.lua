@@ -414,10 +414,10 @@ function Dress.Value()
 	return Kit:PersonalLook()
 end
 
--- a value's bracket look (its own bar pieces; an unknown one the Ornate), nil for a library style or none
+-- a value's bracket look (its own bar pieces; an unknown one the Ornate), nil for a library style, none or a frame set
 function Dress.Kind(value)
 	local Kit = MelloUI.Kit
-	if value == "none" or value == "gilded" or (Kit.BorderStyles and Kit.BorderStyles[value]) then
+	if value == "none" or value == "gilded" or (value == "set" and Kit.Sets) or (Kit.BorderStyles and Kit.BorderStyles[value]) then
 		return nil
 	end
 	return Kit:Piece("bars/" .. tostring(value) .. "_mid") and value or "frame"
@@ -478,12 +478,51 @@ function Dress.Trough(owner, strip)
 	end
 end
 
+-- (2.1.58) The painted reskin's frame set (MelloUI_Oldschool's Kit.Sets; the user, 2026-11-17: "Unitframe, Personal
+-- Resource, Nameplates, Chat ... all generated as 1 texture, which are scalable horizontally and Vertically"): each bar
+-- in its set's bar, the shield column in its upright one -- ONE texture round the fill as a region of the strip (over
+-- the fill), its ends whole at the fill's depth, its plain middle stretched; the bracket put out, the trough on the
+-- fill (the hole's ground). The shield's colours, icons and bands are the column's own, untouched
+function Dress.SetPiece(kind, depth)
+	local Sets = MelloUI.Kit.Sets
+	local set = Sets and Sets.Data()
+	return set and set[kind], set
+end
+
+-- a set's piece's reach past a fill `depth` deep: over, under, before, after (0s without one)
+function Dress.SetReach(kind, depth)
+	local p = Dress.SetPiece(kind, depth)
+	if not p then
+		return 0, 0, 0, 0
+	end
+	local hole = p.hole
+	local s = depth / (hole[4] - hole[2])
+	return hole[2] * s, (p.h - hole[4]) * s, hole[1] * s, (p.w - hole[3]) * s
+end
+
+-- an owner's (a bar's, the column's) pieces round its fill in the set, or put away
+function Dress.Set(owner, strip, vertical, depth, length)
+	local Sets = MelloUI.Kit.Sets
+	if not (owner.set and Sets) then
+		if owner.setStrip then
+			owner.setStrip:Hide()
+		end
+		return
+	end
+	if not owner.setStrip then
+		owner.setStrip = Sets.Strip(strip, "ARTWORK", 7)
+	end
+	local _, set = Dress.SetPiece("plate", depth)
+	owner.setStrip:Lay(set, vertical and "shield" or "plate", strip.fill, depth, length, vertical)
+end
+
 -- one bar in the look `value` (its fill b.h deep; b.kind the strip's bracket look)
 function Dress.Bar(b, value)
 	local kind = Dress.Kind(value)
 	b.gilded = value == "gilded"
-	b.style = (not kind and value ~= "none" and not b.gilded) and value or nil
-	b.bare = value == "none" or b.gilded
+	b.set = value == "set" and MelloUI.Kit.Sets ~= nil
+	b.style = (not kind and value ~= "none" and not b.gilded and not b.set) and value or nil
+	b.bare = value == "none" or b.gilded or b.set
 	-- (a library style or none: the Ornate strip, put out, keeps the fill where it was; the plain strip: no pieces)
 	b.kind = b.strip.plain and "plain" or kind or "frame"
 	Fit(b, b.h)
@@ -502,8 +541,9 @@ end
 function Dress.Column(col, value)
 	local kind = Dress.Kind(value)
 	col.gilded = value == "gilded"
-	col.style = (not kind and value ~= "none" and not col.gilded) and value or nil
-	col.bare = value == "none" or col.gilded
+	col.set = value == "set" and MelloUI.Kit.Sets ~= nil
+	col.style = (not kind and value ~= "none" and not col.gilded and not col.set) and value or nil
+	col.bare = value == "none" or col.gilded or col.set
 	col.kind = col.strip.plain and "plain" or kind or "frame"
 	local strip = col.strip
 	if not strip:SetBarLook(col.kind, Dress.Across(col.kind)) then
@@ -516,6 +556,7 @@ function Dress.Column(col, value)
 	Dress.Pieces(strip, kind ~= nil)
 	Dress.Round(col, strip.fill, col.style, T.colW)
 	Dress.Trough(col, strip)
+	Dress.Set(col, strip, true, T.colW, T.colH)
 end
 
 -- every part in the Personal Resource Border's look (laid again by the caller: LayStack, Place)
@@ -535,7 +576,10 @@ end
 
 -- a bar's painted reach past its fill, over and under
 function Dress.Reach(b)
-	if b.gilded then
+	if b.set then
+		local over, under = Dress.SetReach("plate", b.h)
+		return over, under
+	elseif b.gilded then
 		return Gilded.Reach(b)
 	elseif b.style and b.border then
 		local _, y = b.border:Inset()
@@ -553,7 +597,10 @@ end
 
 -- its painted width past the fill's, both sides together
 function Dress.Side(b)
-	if b.gilded then
+	if b.set then
+		local _, _, before, after = Dress.SetReach("plate", b.h)
+		return before + after
+	elseif b.gilded then
 		return 2 * T.rim
 	elseif b.style and b.border then
 		return 2 * b.border:Inset()
@@ -777,6 +824,10 @@ local function LayStack(ui)
 			b.text:ClearAllPoints()
 			b.text:SetPoint("LEFT", b.strip.fill, "CENTER", textX, 0)
 		end
+	end
+	-- (2.1.58) the frame set's texture round each fill at its width now
+	for _, b in ipairs(ui.stack) do
+		Dress.Set(b, b.strip, false, b.h, Width())
 	end
 	Gilded.Lay(ui)
 	if SwingOn() then
@@ -5549,9 +5600,11 @@ end
 
 -- Oldschool > Borders' Personal Resource Border changed, or the painted reskin switched (the kit's 'border' on the
 -- bus, Kit:PersonalLook's): every part in the new look
+-- (2.1.58) "frameset" too: a new Oldschool frame set is the display's new painting (MelloUI_Oldschool's Kit.Sets lays
+-- its pictures on the same notice, first: its listener is older than this one)
 local function OnBorder(kind)
 	local ui = S.ui
-	if kind == "personal" and ui then
+	if (kind == "personal" or kind == "frameset") and ui then
 		Dress.Apply(ui)
 		LayStack(ui)
 		Place()

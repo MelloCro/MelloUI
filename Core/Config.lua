@@ -177,6 +177,15 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.58", lines = {
+		"Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu.",
+		"Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too.",
+		"Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read.",
+		"Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls.",
+		"Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over.",
+		"Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too.",
+		"Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood.",
+	} },
 	{ version = "2.1.57", lines = {
 		"Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap.",
 		"Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap.",
@@ -207,20 +216,6 @@ local CHANGELOG = {
 		"French: the on-screen lines, the tutorial tips, the reminders, the map's layers, Services and Route's distances and times are translated now. Route's distances show in metres.",
 		"Dungeon maps: Santiago Reyes' maps of five more dungeons and his sharper new ones of the other four. The new five have Dungeon Info pages, opened from their entrances on the map.",
 		"Level Up card: remade in the Quest Moments' look, your new level stamped on a gold seal. Quest Moments have a place and a Scale of their own in Edit Layout.",
-	} },
-	{ version = "2.1.53", lines = {
-		"Map: with the addon HandyNotes: NPCs (Forever), the auction house, bank, trainers, mount sellers, inns and mailboxes show on the map and minimap in MelloUI's icons.",
-		"Map layers: a new HandyNotes group, a switch for each kind of place. Only your side's show; repair and vendors start off. Questie's inns and mailboxes are not shown a second time.",
-		"Nameplates: the cast bar in a fight now stands where the Nameplate Designer's preview shows it, and has a tab of its own with a new Height slider.",
-		"Nameplates: a new Threat Colours By Role switch colours an enemy's health bar in group fights by its threat on you. Each of the three colours has a colour wheel.",
-		"Party and raid frames: a group you join during a fight now shows its frames at once, not only when the fight is over.",
-		"Party and raid frames: the Lockouts group works now: it shows what your own spells left on a member, like Weakened Soul after your shield or Forbearance.",
-		"Party and raid frames: the starting indicators no longer lie on the name, the health text or the raid mark, and a new indicator's time and count no longer lie on each other.",
-		"Widgets: up to four loot rolls show at once, each its own row. Hovering one lists who has rolled so far: Need, Greed or Pass, and who is still deciding.",
-		"Questie's tracker: it now follows the Quest Tracker page's Width, Height, text sizes, Nearest Quest First and Reset Position. Dragging its corner sets Width and Height.",
-		"Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own until Questie's tracker shows again.",
-		"Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP. Its switch is on the Addons page.",
-		"Offhand: Quest Moments, the Level Up card, the on-screen line and Combat Text now go by your main game screen, not the gap between your two screens.",
 	} },
 }
 local LINKS = {
@@ -5916,6 +5911,7 @@ local HOME_TIPS = {
 	profile = "Choose a profile to load it: every setting of every module. It asks first. The Profiles page saves, shares and deletes them.",
 	palette = "The colours of MelloUI's own windows and, with the painted kit reskin, of all its art. Chosen on the Look page: Change… takes you there.",
 	change = "The colours of the painted art: frames, headers, rows, buttons, slots and bars. Chosen on the Look page: Change… takes you there.",
+	frameset = "The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat: Gilded Stone, Forged Iron or Carved Wood. Chosen on the Oldschool page: Change… takes you there.",
 	fit = "Mello's Edit Mode layout was fitted to another screen size or UI scale, or by an older MelloUI. The installer fits it to this one, and you can go back right after.",
 	install = "The installer: a setup for the whole interface in a few steps, fitted to this screen. Closes this window while it runs.",
 	revert = "Back to how MelloUI was before the installer ran (the 'Before install' profile): your settings, and Edit Mode's layouts if the installer changed them. Asks first.",
@@ -5980,6 +5976,22 @@ local function KitColoursLabel()
 		end
 	end
 	return look and (look.label or tostring(look.value)) or tostring(value)
+end
+
+-- (2.1.58) the Oldschool frame set in use, by its label (Gilded Stone ...); nil without MelloUI_Oldschool's sets
+function CONFIG.FrameSetName()
+	local K = MelloUI.Kit
+	local Sets = K and rawget(K, "Sets")
+	if not (type(Sets) == "table" and type(Sets.LOOKS) == "table" and K.BorderValue) then
+		return nil
+	end
+	local value = K:BorderValue("frameset")
+	for _, l in ipairs(Sets.LOOKS) do
+		if l.value == value then
+			return W.Tr(l.label)
+		end
+	end
+	return nil
 end
 
 -- "3440 × 1440 (21:9)": Core's one formatter (MelloUI:ScreenText, shared
@@ -6551,10 +6563,13 @@ end
 -- Your setup (right): a row each, shown in this order (a row not wanted
 -- now -- Fit to this screen while the layout fits, the installer's row
 -- without the installer -- leaves no gap)
-local SETUP_ROWS = { "profile", "palette", "colours", "screen", "fit", "mello", "voice", "installer" }
-local SETUP_LABELS = { profile = "Profile", palette = "Palette", colours = "Kit Colours", screen = "Screen", mello = "MelloUI",
-	voice = "Voice pack", installer = "Installer" }
-local SETUP_VALUES = { "palette", "colours", "screen", "mello", "voice" }
+-- (2.1.58; the user, 2026-11-17, a shortcut to the new frames "where it would be obvious", then "Build all four") Frame
+-- Set: the Oldschool frame set by name, with Change… to its row; only while the reskin dresses and MelloUI_Oldschool
+-- has its sets (CONFIG.FrameSetName)
+local SETUP_ROWS = { "profile", "palette", "colours", "frameset", "screen", "fit", "mello", "voice", "installer" }
+local SETUP_LABELS = { profile = "Profile", palette = "Palette", colours = "Kit Colours", frameset = "Frame Set",
+	screen = "Screen", mello = "MelloUI", voice = "Voice pack", installer = "Installer" }
+local SETUP_VALUES = { "palette", "colours", "frameset", "screen", "mello", "voice" }
 
 -- the rows laid top down, those wanted only; the card's height (true when
 -- it changed)
@@ -6640,6 +6655,14 @@ local function BuildSetup(page, sec, width, x)
 	revert:SetPoint("RIGHT", install, "LEFT", -8, 0)
 	HomeTip(revert, "Revert", HOME_TIPS.revert)
 	card.install, card.revert = install, revert
+	-- (2.1.58) the Oldschool frame set with Change… to its row, New-tagged (built last here: a tag counts for the
+	-- control built after it too, Tools/lint/check_new_tags.py)
+	local changeSet = W.Button(rows.frameset, "Change…", CHANGE_W, SKIN, { onClick = ChangeClick })
+	changeSet:SetPoint("RIGHT", -CARD_PAD, 0)
+	changeSet.melloJump = "UIModifications.frameSet"
+	rows.frameset.value:SetPoint("RIGHT", changeSet, "LEFT", -8, 0)
+	HomeTip(changeSet, "Frame Set", HOME_TIPS.frameset)
+	W.ButtonTag(changeSet, "2.1.58")
 	W.Dress(card, SKIN)   -- (the dropdown in the kit's look)
 	LaySetup(card)
 	page.setup = card   -- (the tour points at it)
@@ -6683,6 +6706,8 @@ local function RefreshSetup(page)
 	local painted = MelloUI:PaintedPalettes()
 	card.changePalette:SetShown(painted)
 	rows.colours.value:SetText(KitColoursLabel())
+	local frameSet = painted and CONFIG.FrameSetName() or nil
+	rows.frameset.value:SetText(frameSet or "")
 	rows.screen.value:SetText(ScreenText())
 	local on, total = ModulesOn()
 	rows.mello.value:SetText(MelloUI.Lang.F("%s, %d of %d modules on", tostring(MelloUI.version), on, total))
@@ -6693,10 +6718,13 @@ local function RefreshSetup(page)
 	card.install:SetShown(installer)
 	card.revert:SetShown(canRevert)
 	local fit, row = installer and FitDue() or false, installer or canRevert
-	if rows.fit.wanted == fit and rows.installer.wanted == row and rows.colours.wanted == painted then
+	local setRow = frameSet ~= nil
+	if rows.fit.wanted == fit and rows.installer.wanted == row and rows.colours.wanted == painted
+		and rows.frameset.wanted == setRow then
 		return false
 	end
 	rows.fit.wanted, rows.installer.wanted, rows.colours.wanted = fit, row, painted
+	rows.frameset.wanted = setRow
 	return LaySetup(card)
 end
 
@@ -9215,11 +9243,27 @@ do
 		FollowAlpha(menu, menu:GetAlpha())
 		pad.Place(menu)
 		menuButton:Show()
+		pad.Through()
 		C_Timer.After(0.1, function()
 			if menuButton:IsShown() and menu:IsShown() then
 				pad.Place(menu)
+				pad.Through()
 			end
 		end)
+	end
+	-- (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "Clicking the yellow MelloUI button at the bottom of the
+	-- Game Menu opens the MelloUI settings panel in the background, but the Game Menu remains open on top of it") the
+	-- MOUSE on the pill the same way as Triangle: the game's own close of the menu (its Circle button's click, through
+	-- MelloUI.Gamepad's click-through button over the pill), then the configurator
+	function pad.Mouse()
+		MelloUI:PlayUISound("menu_button")
+		MelloUI:OpenConfig()
+	end
+	function pad.Through(off)
+		local G = MelloUI.Gamepad
+		if G and G.ClickThrough and menuButton then
+			G.ClickThrough(menuButton, (not off) and rawget(_G, "InputFunctionBindingButton_PAD2") or nil, pad.Mouse)
+		end
 	end
 
 	local function MenuShown(menu)
@@ -9287,10 +9331,12 @@ do
 			C_Timer.After(0, function()
 				if not menuParts.open then
 					menuButton:Hide()
+					pad.Through(true)
 				end
 			end)
 		elseif menuButton then
 			menuButton:Hide()
+			pad.Through(true)
 		end
 		EntryAway()
 	end

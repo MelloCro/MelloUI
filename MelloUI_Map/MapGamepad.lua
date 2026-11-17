@@ -61,8 +61,11 @@ local T = {
 	PINS = 400,        -- (MapPins' layer over the canvas's root, when the pins are not made yet)
 	OVER_PINS = 60,    -- the crosshair over the pins
 	DEAD = 0.18,       -- the sticks' dead zone
-	CURVE = 1.6,       -- their answer past it: fine near the middle, fast at full tilt
-	SPEED = 0.6,       -- the crosshair at full tilt: canvas widths a second
+	-- (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "Moving the map crosshair with the analog stick feels
+	-- noticeably sluggish" -- it was 0.6 widths a second on a 1.6 curve: a half tilt gave a fifth of that) faster at
+	-- full tilt and much faster in between, still fine near the middle
+	CURVE = 1.25,      -- their answer past it: fine near the middle, fast at full tilt
+	SPEED = 1.0,       -- the crosshair at full tilt: canvas widths a second
 	EDGE = 0.08,       -- the share of the canvas at each edge where the crosshair pushes the map on
 	ZOOM = 3,          -- the right stick at full tilt: the wheel's notches a second
 	SETTLE = 0.2,      -- s: a column's page laid and faded in before the focus goes onto its first entry
@@ -410,8 +413,14 @@ Pad.Keys = Keys
 
 -- the map's pad in a view ("map": the crosshair, the sticks held; "quests": the column walked, `nav` its frame, the
 -- left stick the player's as in the game's quest view)
+-- (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "There is no way to navigate to or select the 3 vertical
+-- icon buttons in the middle column") the rail beside the column is walked with it (`also`): the D-pad off the
+-- column's left edge goes onto the rail's buttons, off the rail's the map
 local function Spec(mode, nav)
-	return { keys = Keys(mode), press = Press, sticks = Sticks, over = true, nav = nav, walk = mode == "quests" or nil }
+	local M = ns.Map
+	local rail = nav and M and M.PadRail and M.PadRail() or nil
+	return { keys = Keys(mode), press = Press, sticks = Sticks, over = true, nav = nav, also = rail and { rail } or nil,
+		walk = mode == "quests" or nil }
 end
 
 -- a view (and in the quests' one the column's page: "log", the default; "layers", the map's options)
@@ -540,6 +549,19 @@ local function Seen()
 	end
 end
 
+-- (2.1.58; the same feedback: after MelloUI's map over the game's was closed by its X with the MOUSE, "as soon as the
+-- character begins moving, the default Blizzard World Map / Quest Log window pops open" -- the game's map was still
+-- open under it, unseen) the mouse on MelloUI's close button while it covers is the game's own close button's click,
+-- as the pad's B is (MelloUI.Gamepad's click-through button over it): the game's map closes, the cover goes with it
+local function Through(on)
+	local M, G = ns.Map, MelloUI.Gamepad
+	local shell = M and M:Window().shell
+	local close = shell and shell.close
+	if close and G and G.ClickThrough then
+		G.ClickThrough(close, on and rawget(_G, "WorldMapFrameCloseButton") or nil)
+	end
+end
+
 local placeIn = 0
 local Back_OnUpdate = Shared("OnUpdate on MelloUI Map's cover of the game's map (only while it covers)",
 	function(_, elapsed)
@@ -564,6 +586,7 @@ local Back_OnUpdate = Shared("OnUpdate on MelloUI Map's cover of the game's map 
 				p.f = nil   -- (laid again even where the game's rects did not move)
 			end
 			Place(game, f)
+			Through(true)   -- (laid again where the close button now stands)
 		end
 	end, "script")
 
@@ -596,6 +619,7 @@ function Pad.On()
 	back:SetFrameStrata(strata)
 	back:SetFrameLevel(max(0, (Finite(f:GetFrameLevel()) or 2) - 1))
 	Place(game, f)
+	Through(true)
 	back:Show()
 	Unseen(game)
 	placeIn = T.PLACE
@@ -613,6 +637,7 @@ local function Uncover(f)
 	Pad.back:Hide()
 	Pad.cross:Hide()
 	Pad.strip:Hide()
+	Through(false)
 	Seen()
 	Pad.px, Pad.py, Pad.mode, Pad.nav, Pad.full = nil, nil, nil, nil, nil
 	local M = ns.Map

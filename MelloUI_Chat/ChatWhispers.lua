@@ -1241,6 +1241,10 @@ local function Build()
 			end })
 	end
 	WV.Restyle()
+	-- (2.1.58; the user's picture: "You forgot to skin the Whisper Window") built, once: told on the bus, so a look
+	-- that frames MelloUI's chat windows (Oldschool's frame set, MelloUI_Oldschool/Modules/ChatPanel.lua) frames this
+	-- one too, without reaching into this file
+	MelloUI:Fire("whisperwindow", f)
 end
 
 -- (lk-12, stage 6; the user's pick 3A of default_windows_sketch, 2026-10-29: "A: Communities") Under the Default skin

@@ -1602,27 +1602,40 @@ local function ReleaseEscape()
 	end
 end
 
--- the question answered: the dialog closed first, then the answer's own
--- function (a question it asks in turn is the one shown then)
+-- the question answered: the answer's own function FIRST, the dialog closed after it (a question the answer asks in
+-- turn is the one shown then: the dialog stays, with the new question).
+-- (2.1.58) Until then the dialog was hidden before the answer ran, and in this client hiding the clicked button's
+-- window ends that click's permission: what the game allows only from the player's own click (Discard's delete,
+-- DeleteCursorItem) was refused in onAccept. Seen in the test client, 2026-11-17, real clicks, MelloUI's code alone:
+-- the bin's own click threw a white item away, the same item through the question got "Interface action failed
+-- because of an AddOn" (ADDON_ACTION_BLOCKED); with the answer first it goes. The user's picture: a white scroll,
+-- "the game did not let MelloUI throw ... away" at every try -- no white item could ever go through the question.
+-- An answer that throws still closes the dialog: its error is handed to the game's handler after.
 local function Answer(accepted, index)   -- index: the choice picked (opts.choices)
 	local opts = confirm.opts
 	confirm.opts = nil
-	confirm.frame:Hide()
-	C_Timer.After(0, ReleaseEscape)
-	if not opts then
-		return
-	end
 	local fn
-	local choice = index and type(opts.choices) == "table" and opts.choices[index]
-	if type(choice) == "table" then
-		fn = choice.onClick
-	elseif accepted then
-		fn = opts.onAccept
-	else
-		fn = opts.onCancel
+	if opts then
+		local choice = index and type(opts.choices) == "table" and opts.choices[index]
+		if type(choice) == "table" then
+			fn = choice.onClick
+		elseif accepted then
+			fn = opts.onAccept
+		else
+			fn = opts.onCancel
+		end
 	end
+	local ok, err = true, nil
 	if type(fn) == "function" then
-		fn()
+		ok, err = pcall(fn)
+	end
+	-- (a question asked meanwhile holds the dialog and the escape)
+	if not confirm.opts then
+		confirm.frame:Hide()
+	end
+	C_Timer.After(0, ReleaseEscape)
+	if not ok then
+		geterrorhandler()(err)
 	end
 end
 

@@ -149,16 +149,27 @@ local TEXT = {
 -- Reading a unit's place
 --------------------------------------------------------------------------------
 
+-- (seen in the test client, 2026-11-17: Forever hands the game's waypoint's position as a plain { x, y } with no
+-- GetXY -- asked by the method alone it read as nothing, so the map never laid your pin's own mark and the pad's
+-- Marker button could not tell your pin under the crosshair) its fields first, the method where they are not there,
+-- as Route reads it (VectorXY)
 local function XY(pos)
 	if type(pos) ~= "table" then
 		return nil
 	end
-	local ok, x, y = pcall(pos.GetXY, pos)
-	if not ok then
+	local x, y = Finite(pos.x), Finite(pos.y)
+	if not (x and y) and type(pos.GetXY) == "function" then
+		local ok, gx, gy = pcall(pos.GetXY, pos)
+		if ok then
+			x, y = Finite(gx), Finite(gy)
+		end
+	end
+	if not (x and y) then
 		return nil
 	end
-	return Finite(x), Finite(y)
+	return x, y
 end
+Layers.XY = XY   -- (Map.lua's PadPin: the pad's Marker button on your pin)
 
 -- the player's map (the best the client has for them), or nil
 local function PlayerMap()

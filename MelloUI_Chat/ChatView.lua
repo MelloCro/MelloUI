@@ -1833,6 +1833,10 @@ function View.Rail()
 				t.gameTab = rawget(_G, "ChatFrame" .. i .. "Tab")
 				-- its font changed (its size in the game's tab menu, MelloUI's Chat Size, a Font Style): the rows
 				hooksecurefunc(f, "SetFont", View.FontChanged)
+				-- (2.1.58) the game's ring puts its pad navigation on a chat window: the view takes the controller (below)
+				if type(f.SetGamepadFocus) == "function" then
+					hooksecurefunc(f, "SetGamepadFocus", View.PadFocus)
+				end
 				if not View.bufs[f] then
 					Buffer(f)
 					if f ~= rawget(_G, "COMBATLOG") then
@@ -2997,6 +3001,180 @@ local function HideGame(on)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The controller in the view (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "Selecting Chat from the
+-- gamepad ring menu leaves the default yellow Blizzard UI selection chevron stuck on the chat border, and there is no
+-- controller navigation/support within the chat frame itself ... consider binding LB / RB to cycle through the
+-- vertical chat tab icons on the left side (and/or allowing D-pad scrolling)"; the user: "Yes, build it")
+--
+-- The game's ring puts the game's own pad navigation on the selected chat window (its SetGamepadFocus: the
+-- FrameControlsManager takes the frame, the pointer on its edit box) -- a window this view has replaced. While the
+-- game's focus stands on a chat window the view has the controller, through MelloUI's one pad system (a part of the
+-- view shown for exactly that long, MelloUI.Gamepad's G.Own over the game's):
+--   LB / RB        the tab before / after the open one, round the rail (the Whispers tab passed: it opens a window)
+--   D-pad up/down  the lines, a wheel step a press, again while held; the right stick scrolls them too
+--   A, B           the game's own, untouched: A on its edit box, B its step back out of the chat
+-- The game's pointer is unseen meanwhile (MelloUI.Gamepad, as over every MelloUI window holding the pad). The focus
+-- gone from the chat (the game's B, another window, the Gamepad UI off): the controller given back. Nothing of the
+-- game's is written or called; one post-hook a chat window (View.Rail), nothing made before the first time.
+--------------------------------------------------------------------------------
+do
+	local PT = {
+		FIRST = 0.35, AGAIN = 0.1,   -- s: a held D-pad arm scrolls again
+		STICK = 6,                    -- the right stick at full tilt: wheel steps a second
+		DEAD = 0.2,                   -- its dead zone
+	}
+	local pad = { frame = nil, held = nil, wait = 0, turn = 0, coins = nil }
+	View.pad = pad
+
+	local function OnChat()
+		local G = MelloUI.Gamepad
+		local f = G and G.GameFocus and G.GameFocus()
+		return f ~= nil and View.bufs[f] ~= nil
+	end
+
+	-- the tab before or after the open one (the Whispers tab passed), round the rail
+	local function Turn(step)
+		local order = View.order
+		local n, at = #order, nil
+		for i = 1, n do
+			if order[i].bufKey ~= nil and order[i].bufKey == View.tab then
+				at = i
+			end
+		end
+		local i = at or (step > 0 and 0 or n + 1)
+		for _ = 1, n do
+			i = i + step
+			if i < 1 then
+				i = n
+			elseif i > n then
+				i = 1
+			end
+			local t = order[i]
+			if t and t.kind ~= "whispers" and t.bufKey ~= nil and View.tabs[t.bufKey] then
+				if t.bufKey ~= View.tab then
+					MelloUI:PlayUISound("tab")
+					View.Select(t.bufKey)
+				end
+				return
+			end
+		end
+	end
+	pad.Turn = Turn
+
+	local function Press(name, down)
+		if name == "PREV" or name == "NEXT" then
+			if down then
+				Turn(name == "PREV" and -1 or 1)
+			end
+		elseif name == "UP" or name == "DOWN" then
+			if down then
+				pad.held, pad.wait = name, PT.FIRST
+				View.Scroll(name == "UP" and 1 or -1)
+			elseif pad.held == name then
+				pad.held = nil
+			end
+		end
+	end
+
+	-- each frame while the view has the controller: the game's focus still on a chat window (else given back), a
+	-- held arm's repeat, the right stick
+	local function Sticks(_, _, _, ry, dt)
+		if not (View.on and OnChat()) then
+			pad.Off()
+			return
+		end
+		dt = tonumber(dt) or 0
+		if pad.held then
+			pad.wait = pad.wait - dt
+			if pad.wait <= 0 then
+				pad.wait = PT.AGAIN
+				View.Scroll(pad.held == "UP" and 1 or -1)
+			end
+		end
+		ry = tonumber(ry) or 0
+		local a = math.abs(ry)
+		if a > PT.DEAD then
+			pad.turn = pad.turn + (ry < 0 and -1 or 1) * (a - PT.DEAD) / (1 - PT.DEAD) * PT.STICK * dt
+			while pad.turn >= 1 do
+				pad.turn = pad.turn - 1
+				View.Scroll(1)
+			end
+			while pad.turn <= -1 do
+				pad.turn = pad.turn + 1
+				View.Scroll(-1)
+			end
+		else
+			pad.turn = 0
+		end
+	end
+
+	local function Make()
+		local G = MelloUI.Gamepad
+		local f = CreateFrame("Frame", nil, View.frame)
+		f:SetSize(1, 1)
+		f:EnableMouse(false)
+		f:Hide()
+		-- the prompts over the rail's top: LB and RB (the tabs), the D-pad (the lines)
+		local coins, at = {}, nil
+		for _, key in ipairs({ "PADLSHOULDER", "PADRSHOULDER", "DIRPAD" }) do
+			local c = G.Coin()
+			c:SetParent(f)
+			if at then
+				c:SetPoint("LEFT", at, "RIGHT", 4, 0)
+			else
+				c:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
+			end
+			c:SetFrameLevel(f:GetFrameLevel() + 2)
+			coins[#coins + 1], at = { c, key }, c
+		end
+		pad.frame, pad.coins = f, coins
+		G.Own(f, {
+			over = true, walk = true, press = Press, sticks = Sticks,
+			keys = { PADLSHOULDER = "PREV", PADRSHOULDER = "NEXT", PADDUP = "UP", PADDDOWN = "DOWN" },
+		})
+	end
+
+	function pad.On()
+		local G = MelloUI.Gamepad
+		if not (View.on and View.frame and G and G.Own and G.On and G.On()) then
+			return false
+		end
+		if not pad.frame then
+			Make()
+		end
+		pad.held, pad.turn = nil, 0
+		-- over the view's top left; with the tabs along the view's top (the Default skin) over the tab row (seen in the
+		-- test client, 2026-11-17: laid on the frame's top there, the prompts stood on the first tabs)
+		pad.frame:ClearAllPoints()
+		if View.topLaid and View.rail then
+			pad.frame:SetPoint("BOTTOMLEFT", View.rail, "TOPLEFT", 0, 2)
+		else
+			pad.frame:SetPoint("BOTTOMLEFT", View.frame, "TOPLEFT", 4, 2)
+		end
+		for _, c in ipairs(pad.coins) do
+			G.SetCoin(c[1], c[2])   -- (the pad in use's faces)
+			c[1]:Show()
+		end
+		pad.frame:Show()
+		return true
+	end
+
+	function pad.Off()
+		pad.held = nil
+		if pad.frame and pad.frame:IsShown() then
+			pad.frame:Hide()
+		end
+	end
+
+	-- (a post-hook on each chat window's SetGamepadFocus, View.Rail) the game's focus put on a chat window
+	function View.PadFocus()
+		if View.on then
+			pad.On()
+		end
+	end
+end
+
 function View.Wanted()
 	return M.isEnabled and M.db ~= nil and M.db.view == "minimal"
 end
@@ -3054,6 +3232,7 @@ function View.Apply()
 		if M.WhisperModeAgain then
 			M.WhisperModeAgain()
 		end
+		View.pad.Off()   -- (2.1.58: the controller given back with the view)
 		HideGame(false)
 		PlaceEditBoxes(false)
 		Log.Keep(false)   -- (the game's own again: on while its window shows)

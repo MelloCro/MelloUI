@@ -191,7 +191,11 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              "GroupFrames.partyParts",
              # (2.1.52, the audit's area 5: MelloUI's own quest giver marks went, and with them Include Givers You Are
              # Done With and Hide Grey Quests; a saved value of either is simply not read)
-             "QuestList.pinCompleted", "QuestList.hideGrey"]
+             "QuestList.pinCompleted", "QuestList.hideGrey",
+             # (2.1.58: Oldschool's Frame Set took the place of Unit Frame Border, Cast Bar Border, Personal Display
+             # Border and Portrait Ring; a saved value of any is simply not read)
+             "UIModifications.unitFrameBorder", "UIModifications.castBarBorder", "UIModifications.personalBarBorder",
+             "UIModifications.portraitRing"]
 # The same for entries inside a table setting: {setting: the entry keys' pattern}, those entries taken out of the
 # bake's copy (a player's own saved copy keeps them). (1.2.4, fr-02: the party's own spell groups and their marks,
 # gparty@<spec>, are no longer read by the frames)

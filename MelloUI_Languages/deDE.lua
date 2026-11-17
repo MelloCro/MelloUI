@@ -215,6 +215,11 @@ Lang:Add("deDE", {
 	["The wardrobe in the kit."] = "Die Garderobe im Kit.",
 	["Social window"] = "Kontaktefenster",
 	["Contacts, raid and quick join in the kit."] = "Kontakte, Schlachtzug und Schnellbeitritt im Kit.",
+	["Frame Set"] = "Rahmen-Set", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "Die gemalten Rahmen der Einheitenfenster, der Zauberbalken, der Persönlichen Anzeige, der Namensplaketten und des Chats.", -- draft
+	["Gilded Stone"] = "Vergoldeter Stein", -- draft
+	["Forged Iron"] = "Geschmiedetes Eisen", -- draft
+	["Carved Wood"] = "Geschnitztes Holz", -- draft
 	["Select"] = "Auswählen",
 	["Use"] = "Benutzen",
 	["Equip"] = "Anlegen",
@@ -3845,6 +3850,13 @@ Lang:Add("deDE", {
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: Jede Version seiner Datenbank wird jetzt gelesen, auch ältere und neuere.", -- draft
 	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Karte: Mit RareScanner und einem HandyNotes-Plugin, das ebenfalls seltene Gegner markiert, wird ein seltener Gegner nicht mehr doppelt markiert. Es gilt die Markierung von RareScanner, auf MelloUIs Karte und der Minikarte.", -- draft
 	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "Karte: Ohne RareScanner tragen die seltenen Gegner eines HandyNotes-Plugins ebenfalls MelloUIs Siegel für seltene Gegner, auf der Karte und der Minikarte.", -- draft
+	["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "Controller: Das Steuerkreuz überspringt den Schließen-Knopf und die Reiter eines Fensters (B schließt, LB / RB wechseln die Reiter), und ein Mausklick auf den MelloUI-Knopf unter dem Spielmenü schließt das Menü.", -- draft
+	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "Karte mit Controller: Das Steuerkreuz erreicht die Knöpfe neben der Questliste, Markierung auf deiner Stecknadel entfernt sie, das Fadenkreuz ist schneller, und das Schließen der Karte mit der Maus schließt auch die Karte des Spiels.", -- draft
+	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Controller: Der gelbe Zeiger des Spiels erscheint nicht mehr über MelloUIs Fenstern, und die Tastenhinweise sind mittig und besser lesbar.", -- draft
+	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Chat mit Controller: Wähle Chat im Ringmenü des Spiels, dann wechseln LB / RB die Reiter, und das Steuerkreuz oder der rechte Stick blättert.", -- draft
+	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "Wegwerfen: Die Antwort Wegwerfen wirft einen weißen Gegenstand jetzt weg. Zuvor verweigerte das Spiel es jedes Mal, und der Chat meldete es. Was das Spiel selbst behält, wird übergangen.", -- draft
+	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "Tooltips: Mit Questie und Polestar stehen die Questziele einer Kreatur nicht mehr doppelt da. Questies Zeilen gelten, und MelloUIs eigene Gegenstandszeile tritt auch für Questie zurück.", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: Neue Rahmen für die Einheitenfenster, den Zauberbalken, die Persönliche Anzeige, die Namensplaketten und den Chat, in drei Sets zur Wahl unter Ränder > Rahmen-Set: Vergoldeter Stein, Geschmiedetes Eisen und Geschnitztes Holz.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

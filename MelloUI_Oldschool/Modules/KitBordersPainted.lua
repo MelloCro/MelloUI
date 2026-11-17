@@ -2,9 +2,10 @@
 -- MelloUI - Kit borders, the painted reskin's part (one look, stage I: KitBorders.lua's two OLDSCHOOL blocks)
 --
 -- (A) the configurator's pictures, the Button Border library, Raid Frame
--- Border and the bar library (Unit Frame, Cast Bar, Personal Display, Swing
--- Timer); (B) the bars' fit, the personal resource display's frame, the bar
--- pictures, the rings and the Portrait Ring / Level Orb. On the core's border
+-- Border and the bar library; (B) the bars' fit, the bar pictures, the rings
+-- and the Level Orb (2.1.0: the unit frames', cast bar's and Personal
+-- Display's borders and the Portrait Ring went for the Frame Set,
+-- Modules/KitSets.lua). On the core's border
 -- library (Modules/KitBorders.lua, loaded before this file): public tables
 -- only, its two constants from Kit.__. Their kinds register where they stand
 -- (Kit:AddBorderKind's `after`), so Kit.borderKinds keeps its order.
@@ -305,55 +306,23 @@ end
 -- narrowed), the fill has the whole rect (rep:GetOpening). The rows:
 --   Progress Bar Border   every window's progress bar (no longer the unit
 --                         frames': rule 9)
---   Unit Frame Border     (NEW) the unit frames' bars; a Progress Bar Border
---                         chosen before is its start (Core's MergeSettings)
 --   Nameplate Border      the nameplates' health bar
---   Cast Bar Border       (NEW) the cast bar: every bar look but Ornate,
---                         today's Cast bar first
---   Personal Resource     (0.21.0, the user: the Personal Display's borders
---   Border                "should reflect the changes made in the Look ->
---                         Borders") MelloUI's Personal Display: each of its bars
---                         and its shield column in any bar look (Ornate first,
---                         today's) or None; the game's own display, seen while
---                         MelloUI's is off, one frame round its bars in the
---                         library's styles alone (a bracket look: none)
+-- (2.1.0) Unit Frame Border, Cast Bar Border and Personal Display Border (0.19.8 / 0.21.0) went for the Frame Set
+-- (Modules/KitSets.lua: the user, 2026-11-01, "i want all 3 as choice"): the unit frames, the cast bar and the
+-- Personal Display wear their set's painting; nothing else read them (the game's own personal display, seen while
+-- MelloUI's is off, has no frame of the library's since)
 --------------------------------------------------------------------------------
-local function CastLooks()
-	local out = {}
-	for _, v in ipairs(Kit.buttonLooks.barBorders) do
-		if v.value ~= "frame" then
-			out[#out + 1] = v
-		end
-	end
-	return out
-end
-
-Kit:AddBorderKind({ kind = "unitframe", key = "unitFrameBorder", default = "frame", name = "Unit Frame Border",
-	values = Kit.buttonLooks.barBorders, preview = "bar",
-	desc = "The frame around the health and power bars of the player, target, focus, pet and party frames." }, "bar")
-Kit:AddBorderKind({ kind = "castbar", key = "castBarBorder", default = "castbar", name = "Cast Bar Border",
-	values = CastLooks(), preview = "bar",
-	desc = "The frame around your cast bar." }, "nameplate")
-
-local PERSONAL_LOOKS = {}
-for _, v in ipairs(Kit.buttonLooks.barBorders) do
-	PERSONAL_LOOKS[#PERSONAL_LOOKS + 1] = v
-end
-PERSONAL_LOOKS[#PERSONAL_LOOKS + 1] = { value = "none", label = "None" }
-Kit.personalLooks = PERSONAL_LOOKS
--- (0.21.0: a key of its own -- the old personalBorder's default "none" kept in every player's settings would have
--- left the Personal Display bare; Core's MergeSettings carries a pick made there)
-Kit:AddBorderKind({ kind = "personal", key = "personalBarBorder", default = "frame", name = "Personal Display Border",
-	values = PERSONAL_LOOKS, preview = "bar",
-	desc = "The frame around the Personal Display's bars and shield column." }, "castbar")
 -- (1.2.4, the configurator audit) Swing Timer Border (0.20.1) removed: the swing timers became the swing badge
 -- (1.2.0), which wears no frame -- nothing read it
 -- (the user's retail test, 2026-10-27: the Default skin "loaded from the Oldschool") the Personal Display's look as
--- the painted reskin answers it: the Personal Display Border's choice while the reskin is on, else MelloUI's own
--- gilded strip (its Dress.Value asks here: the reskin's say stays the reskin's); its 'border' told again at the
--- reskin's switch, so the display dresses anew
+-- the painted reskin answers it: (2.1.0) the frame set's while the reskin is on (Kit.Sets; the Ornate bracket where
+-- its numbers are missing), else MelloUI's own gilded strip (its Dress.Value asks here: the reskin's say stays the
+-- reskin's); its 'border' told again at the reskin's switch and at a new set, so the display dresses anew
 function Kit:PersonalLook()
-	return self:IsOn("copy") and self:BorderValue("personal") or "gilded"
+	if not self:IsOn("copy") then
+		return "gilded"
+	end
+	return (self.Sets and self.Sets.Data()) and "set" or "frame"
 end
 MelloUI:On("look:copy", function()
 	MelloUI:Fire("border", "personal", Kit:PersonalLook())
@@ -466,8 +435,8 @@ end
 end
 -- OLDSCHOOL END
 
--- OLDSCHOOL BEGIN (B): the bars' fit, the personal resource display's frame, the bar pictures, the rings, the Portrait
--- Ring and the Level Orb (moves to MelloUI_Oldschool at stage I; it uses only the header's locals and public tables)
+-- OLDSCHOOL BEGIN (B): the bars' fit, the bar pictures, the rings and the Level Orb (moves to MelloUI_Oldschool at
+-- stage I; it uses only the header's locals and public tables)
 do
 local Secret = MelloUI.Safe.IsSecret
 local Perf = MelloUI.Perf:Scope("KitBorders")
@@ -495,96 +464,6 @@ function Kit:BarLibraryFit(rep, h)
 	local trough = rep.trough
 	if trough and rep.libraryStyle then
 		Kit:TuckTrough(trough, rep.rect, b, rep:GetOpening())
-	end
-end
-
--- The personal resource display's frame: shown while Unit Frames Kit dresses
--- the unit frames (the display is the Unit Frames page's Personal pick; its
--- Activate / Deactivate: Kit:PersonalBordersShown) and a style is chosen;
--- made on the display's first show (never at login, and no listener of its
--- own: the skin's switch is the one), round its health bars and power bar
-local personal = { hooked = false, seen = false, on = false }
-
-local function PersonalLay()
-	local prd = rawget(_G, "PersonalResourceDisplayFrame")
-	if not (prd and personal.seen) then
-		return
-	end
-	-- (0.21.0: the row offers the bar looks -- a thin rim by its bar name, the library's own name for it found back;
-	-- a bracket look has no frame of the library's: none)
-	local value = Kit:BorderValue("personal")
-	if not Kit.BorderStyles[value] then
-		for style, bar in pairs(Kit.buttonLooks.rimKind or {}) do
-			if bar == value then
-				value = style
-			end
-		end
-	end
-	local on = personal.on and value ~= "none" and Kit.BorderStyles[value] ~= nil
-	if not on then
-		if personal.border then
-			personal.border:SetShown(false)
-		end
-		return
-	end
-	local top = prd.HealthBarsContainer
-	local bottom = prd.PowerBar or top
-	if not (top and bottom) then
-		return
-	end
-	if not personal.anchor then
-		local a = CreateFrame("Frame", nil, prd)
-		a:EnableMouse(false)
-		personal.anchor = a
-		-- (no piece of the game's under it to keep a shade: the UI shade's Personal
-		-- Display area round its own outline, 2.1.11)
-		personal.border = Kit:NewBorder({ rect = a, place = "round", layer = "OVERLAY", sub = 3, level = 2,
-			shade = { root = prd, area = "personal" } })
-	end
-	personal.anchor:ClearAllPoints()
-	personal.anchor:SetPoint("TOPLEFT", top, "TOPLEFT")
-	personal.anchor:SetPoint("BOTTOMRIGHT", bottom, "BOTTOMRIGHT")
-	personal.border:Lay(value, "light")
-	personal.border:SetShown(true)
-end
-
-local Personal_OnShow = Perf.Shared("OnShow on the personal resource display", function()
-	if not personal.seen then
-		personal.seen = true
-		PersonalLay()
-	end
-end, "script")
-
-local function PersonalHook()
-	local prd = rawget(_G, "PersonalResourceDisplayFrame")
-	if personal.hooked or not (prd and prd.HookScript) then
-		return
-	end
-	personal.hooked = true
-	Perf.HookScript(prd, "OnShow", Personal_OnShow)
-	if prd:IsShown() then
-		Personal_OnShow()
-	end
-end
-
-function Kit:ApplyPersonalBorder()
-	if personal.on then
-		PersonalHook()
-	end
-	if personal.seen then
-		self:WhenOutOfCombat(PersonalLay, "Personal Resource Border")
-	end
-end
-
--- Unit Frames Kit on or off: the display hooked (nothing made: its frame on
--- the first show), the frame shown or put away with the skin
-function Kit:PersonalBordersShown(on)
-	personal.on = on and true or false
-	if personal.on then
-		PersonalHook()
-	end
-	if personal.seen then
-		self:WhenOutOfCombat(PersonalLay, "Personal Resource Border")
 	end
 end
 
@@ -759,15 +638,8 @@ function Kit:RoundLibraryRing(rim, value)
 	return true
 end
 
--- The Portrait Ring's row: the gem ring, or a ring style (after Round Border)
-Kit.portraitLooks = { { value = "gem", label = "Gem ring", piece = "window/portrait_ring" } }
-for _, id in ipairs(Kit.RingStyleOrder) do
-	local st = Kit.RingStyles[id]
-	Kit.portraitLooks[#Kit.portraitLooks + 1] = { value = id, label = st.label, piece = st.piece }
-end
-Kit:AddBorderKind({ kind = "portrait", key = "portraitRing", default = "gem", name = "Portrait Ring",
-	values = Kit.portraitLooks, preview = "rim",
-	desc = "The ring around the unit frames' portraits. Elites, rares and bosses show it in their own metal, with a crest." }, "round")
+-- (2.1.0) The Portrait Ring's row (0.19.8) went for the Frame Set (Modules/KitSets.lua): a set's painting carries
+-- its own ring. The ring below stays the gem ring (Kit:PortraitRingPiece), where a frame set's numbers are missing
 
 -- (0.20.1, the user: "the around the skull border and its background for us to use for unitframes and nameplates, we
 -- dont need the skull we have our own" -- Tools/make_rpg_frames.py) Level Orb: the kit's orb, or the RPG pack's stone
@@ -781,7 +653,7 @@ Kit.orbLooks = {
 }
 Kit:AddBorderKind({ kind = "orb", key = "levelOrb", default = "kit", name = "Level Orb", values = Kit.orbLooks,
 	preview = "rim",
-	desc = "The badge around the level on unit frames and nameplates. Frames already shown change after a /reload." }, "portrait")
+	desc = "The badge around the level on unit frames and nameplates. Frames already shown change after a /reload." }, "round")
 
 function Kit:OrbLook()
 	local v = self:BorderValue("orb")

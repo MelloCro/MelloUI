@@ -1161,11 +1161,14 @@ end
 --                               its number
 --     DressStandIn(frame)    a party stand-in dressed as a member while the
 --                            skin is on
+--     PlateOf(frame)         (2.1.58) the frame's painting while a frame set
+--                            dresses it: the picture, its plate and edge
+--                            (shares of it), as M:PlateOf answers
 -- Each answers nil (or does nothing) while the skin is off; without the skin
 -- (the modern look) none is there.
 --------------------------------------------------------------------------------
 
-local Skin = { NAMES = { "RingOf", "OrbOf", "PlayerRing", "FarEnd", "PartyCircle", "DressStandIn" } }
+local Skin = { NAMES = { "RingOf", "OrbOf", "PlayerRing", "FarEnd", "PartyCircle", "DressStandIn", "PlateOf" } }
 
 function M:SetSkinHooks(hooks)
 	if type(hooks) ~= "table" then
@@ -3504,6 +3507,13 @@ end
 function M:PlateOf(frame)
 	if type(frame) ~= "table" then
 		return nil
+	end
+	-- (2.1.58: Oldschool's frame set's painting, where one dresses the frame -- the effects light its own rim)
+	if Skin.PlateOf then
+		local ok, pic, plate, edge = pcall(Skin.PlateOf, frame)
+		if ok and pic then
+			return pic, plate, edge
+		end
 	end
 	if not Frames.On() then
 		return Frames.GameOf(frame)

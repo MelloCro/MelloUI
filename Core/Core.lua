@@ -1263,6 +1263,11 @@ end
 --   "drawn"        what                    (1.2.0) what an element draws round its
 --                                          frame changed (a mover `box`): "chat",
 --                                          the chat's own view put on or taken off
+--   "partyroom"    -                       (2.1.58) Oldschool's frame set put on the
+--                                          party or taken off it: the room its painting
+--                                          needs changed (Group Frames lay the party again)
+--   "whisperwindow" window                 (2.1.58) MelloUI_Chat's whisper window
+--                                          built (once, at its first open)
 --   "where"        cont, x, y              the player's place for Route:WantWhere's
 --                                          owners, from Route's tick every 2 s while
 --                                          wanted, after 10 yd moved or a continent
@@ -5441,28 +5446,26 @@ do
 		-- border of their own, Unit Frame Border (unitFrameBorder), and left
 		-- Progress Bar Border (rule 9): the Progress Bar Border a player
 		-- chose is the unit frames' start, so they keep their look. Once
-		-- set, it is never carried again
+		-- set, it is never carried again. (2.1.58: Unit Frame Border is gone -- Oldschool's Frame Set took its place --
+		-- so nothing is carried into it any more and a key carried before is dropped. It had kept writing the key at
+		-- every login once the option's default no longer filled it, and the installer's new-player check
+		-- (I.FreshSettings) read that as a choice made: a new player's installer never opened -- inst/login I3)
 		function(self)
 			local ui = Raw(self, "UIModifications")
-			if ui and ui.unitFrameBorder == nil and type(ui.barBorder) == "string" then
-				ui.unitFrameBorder = ui.barBorder
+			if ui then
+				ui.unitFrameBorder = nil
 			end
 		end,
 		-- 0.21.0 (the user: the Personal Display's borders "should reflect the changes made in the Look -> Borders"):
 		-- Personal Resource Border moved to a key of its own with the bar looks (personalBarBorder, the Ornate bracket
 		-- first); a frame picked before for the game's display carried over (the thin rims by their bar names), the
 		-- old default "none" left behind. Once set, never carried again
+		-- (2.1.58: Personal Display Border is gone too, for the Frame Set: both keys dropped, nothing carried)
 		function(self)
 			local ui = Raw(self, "UIModifications")
-			local old = ui and ui.personalBorder
-			-- (a profile text from before: ApplyDefaults has written the new key's "frame" first)
-			if ui and (ui.personalBarBorder == nil or ui.personalBarBorder == "frame") and type(old) == "string"
-				and old ~= "none" then
-				local bar = { thin = "rim", hairline = "rimhair", rounded = "rimround", gold = "rimgold", sunk = "rimsunk" }
-				ui.personalBarBorder = bar[old] or old
-			end
 			if ui then
 				ui.personalBorder = nil
+				ui.personalBarBorder = nil
 			end
 		end,
 		-- one-look D5: Level Up and XP Gain moved from the Unit Frames Kit

@@ -124,10 +124,25 @@ local function CondenseEntry(entry, rep)
 	-- (the caps stand outside the bar, `capOut`): a StatusBar's fill cannot
 	-- be re-anchored, so the bar itself ends where the gems begin. Done once
 	-- per game layout (UpdateStyle re-anchors it, then this shifts it again).
-	local savedBar = {}
-	for i = 1, bar:GetNumPoints() do
-		savedBar[i] = { bar:GetPoint(i) }
+	-- the bar's anchors as plain values, or nil while any reads secret (2.1.58: the first read was the raw GetPoint's,
+	-- so a secret offset went back into SetPoint when the skin let go -- "Error in module 'DamageMeterPanel'
+	-- (OnDisable): StatusBar:SetPoint(): Usage", seen at a look switch away from Oldschool in the test VM)
+	local function ReadPoints()
+		local okN, n = pcall(bar.GetNumPoints, bar)
+		if not okN or Secret(n) or not n then
+			return nil
+		end
+		local read = {}
+		for i = 1, n do
+			local okP, point, rel, relPoint, x, y = pcall(bar.GetPoint, bar, i)
+			if not okP or Secret(point) or Secret(x) or Secret(y) or type(point) ~= "string" then
+				return nil
+			end
+			read[i] = { point, rel, relPoint, x or 0, y or 0 }
+		end
+		return read
 	end
+	local savedBar = ReadPoints()
 	barFresh[entry] = true
 	-- the game's own anchors for the current layout, read right after the game
 	-- set them (barFresh) and kept: every fit is computed from these, so it
@@ -136,17 +151,9 @@ local function CondenseEntry(entry, rep)
 	local basePoints
 	local function ShiftBar()
 		if barFresh[entry] or not basePoints then
-			local okN, n = pcall(bar.GetNumPoints, bar)
-			if not okN or Secret(n) or not n then
+			local read = ReadPoints()
+			if not read then
 				return
-			end
-			local read = {}
-			for i = 1, n do
-				local okP, point, rel, relPoint, x, y = pcall(bar.GetPoint, bar, i)
-				if not okP or Secret(point) or Secret(x) or Secret(y) or not point then
-					return
-				end
-				read[i] = { point, rel, relPoint, x or 0, y or 0 }
 			end
 			basePoints = read
 		end
@@ -224,9 +231,14 @@ local function CondenseEntry(entry, rep)
 		name:SetPoint("LEFT", 2, 0)
 		value:SetPoint("RIGHT", -3, 0)
 		icon:SetSize(savedIcon[1], savedIcon[2])
-		bar:ClearAllPoints()
-		for _, pt in ipairs(savedBar) do
-			bar:SetPoint(unpack(pt))
+		-- the game's latest anchors (read after its last re-anchor), else the first ones; neither readable: the bar is
+		-- left where it stands (the game re-anchors it at its next layout)
+		local back = basePoints or savedBar
+		if back and #back > 0 then
+			bar:ClearAllPoints()
+			for _, pt in ipairs(back) do
+				bar:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5])
+			end
 		end
 		barFresh[entry] = true
 	end

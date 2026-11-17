@@ -91,8 +91,21 @@ local function Light(frame, S)
 	A.back:SetShown(MelloUI.FrameHalo.Lay(A, frame, S))
 end
 
+-- (2.1.58) a look that lights the frame its own way (MelloUI_Oldschool's frame sets: a member in its painting's glow,
+-- a raid cell in a soft glow round its box): Hover.dressFrame(frame, on) -> true when it took the frame
+local claimed   -- the frame a look lights now
+
 local function Show(frame)
 	if not (On() and FX.Outline) then
+		return
+	end
+	if Hover.dressFrame and Hover.dressFrame(frame, true) then
+		if over and over ~= frame and board then
+			FX.Outline(board, nil)
+			Light(nil, nil)
+			board:Hide()
+		end
+		over, claimed = frame, frame
 		return
 	end
 	if not board then
@@ -112,6 +125,13 @@ local function Show(frame)
 end
 
 local function Gone(frame)
+	if claimed == frame then
+		claimed, over = nil, nil
+		if Hover.dressFrame then
+			Hover.dressFrame(frame, false)
+		end
+		return
+	end
 	if over == frame and board then
 		over = nil
 		FX.Outline(board, nil)
@@ -222,6 +242,11 @@ local function PlateOutline(uf)
 	end
 	PaintPlate(o)
 	P.of[uf] = o
+	-- (2.1.58) a look that draws the plate's mouseover its own way (MelloUI_Oldschool's frame sets: the painting's glow
+	-- in this frame, the lines put out): Hover.dressPlate(uf, o)
+	if Hover.dressPlate then
+		Hover.dressPlate(uf, o)
+	end
 	return o
 end
 

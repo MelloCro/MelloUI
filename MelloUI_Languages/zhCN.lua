@@ -97,6 +97,11 @@ Lang:Add("zhCN", {
 	["Rounded"] = "圆润", -- draft
 	["Unit Frame Border"] = "单位框体边框", -- draft
 	["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "玩家、目标、焦点、宠物和小队框体的生命条和能量条的边框。", -- draft
+	["Frame Set"] = "框架套装", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "单位框体、施法条、个人显示、姓名板和聊天的手绘边框。", -- draft
+	["Gilded Stone"] = "镀金石", -- draft
+	["Forged Iron"] = "锻铁", -- draft
+	["Carved Wood"] = "雕木", -- draft
 	["Nameplate Border"] = "姓名板边框", -- draft
 	["The frame around the nameplates' health bars."] = "姓名板生命条的边框。", -- draft
 	["Cast Bar Border"] = "施法条边框", -- draft
@@ -2977,6 +2982,13 @@ Lang:Add("zhCN", {
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie：现在可读取其数据库的任何版本，包括更旧和更新的版本。", -- draft
 	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "地图：同时使用 RareScanner 和也会标记稀有怪的 HandyNotes 插件时，稀有怪不再被标记两次。MelloUI 地图和小地图上只保留 RareScanner 的标记。", -- draft
 	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "地图：没有 RareScanner 时，HandyNotes 插件的稀有怪在地图和小地图上也使用 MelloUI 的稀有怪印章。", -- draft
+	["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "手柄：方向键会跳过窗口的关闭按钮和标签页（B 关闭，LB / RB 切换标签页），用鼠标点击游戏菜单下方的 MelloUI 按钮会关闭菜单。", -- draft
+	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "手柄地图：方向键可到达任务列表旁的按钮，在你的标记上按“标记”会移除它，准星移动更快，用鼠标关闭地图时也会关闭游戏自带的地图。", -- draft
+	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "手柄：游戏的黄色指针不再显示在 MelloUI 窗口之上，按键提示已居中且更易辨认。", -- draft
+	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "手柄聊天：在游戏的环形菜单中选择“聊天”，然后用 LB / RB 切换标签页，用方向键或右摇杆滚动。", -- draft
+	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "丢弃：现在回答“丢弃”会丢掉白色物品。此前游戏每次都会拒绝，聊天中也会提示。游戏自己保留的物品会被跳过。", -- draft
+	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "鼠标提示：同时使用 Questie 和 Polestar 时，生物的任务目标不再显示两遍。以 Questie 的文字为准，MelloUI 自己的物品行也会让给 Questie。", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool：单位框体、施法条、个人显示、姓名板和聊天换上了新边框，可在“边框 > 框架套装”中三选一：镀金石、锻铁和雕木。", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

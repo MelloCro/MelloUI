@@ -68,6 +68,7 @@ local T = {
 	                                      -- 16 in the corner), the name this far left of them
 	CLICK = 4,         -- a press that moved less than this is a click
 	PIN_ZOOM = 6,      -- a shared pin opened: the map at least this close
+	PIN_REACH = 24, PIN_MARGIN = 6,   -- (2.1.58) the pad's Marker on your pin: its size where its spec has none, the room round it
 	FLING_SMOOTH = 0.05,   -- (2026-10-21) the drag's speed smoothed over about this many seconds ...
 	FLING_MIN = 150,       -- ... and a let-go at least this fast (canvas px a second) runs on
 }
@@ -1212,8 +1213,39 @@ function M.PadMe()
 	return true
 end
 
+-- (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "You can place a waypoint pin using the gamepad (L
+-- Marker), but there is no way to remove it afterward") the Marker button on your pin takes it away, as the game's
+-- own map does with the pad (its waypoint near the cursor is cleared, else set there): your pin within a pin's reach
+-- of the crosshair, by the game's waypoint itself laid on the canvas (seen in the test client, 2026-11-17: a second
+-- press set the pin again -- the waypoint's position was read by a method this client's does not have; MapLayers' XY)
 function M.PadPin(x, y)
+	local c = win.canvas
+	local has = C_Map.HasUserWaypoint and select(2, pcall(C_Map.HasUserWaypoint))
+	local point = has == true and C_Map.GetUserWaypoint and select(2, pcall(C_Map.GetUserWaypoint))
+	local mapID = type(point) == "table" and Finite(point.uiMapID) or nil
+	local nx, ny
+	if mapID then
+		nx, ny = Layers.XY(point.position)   -- (the one reader: a plain { x, y } in this client, a vector elsewhere)
+	end
+	if nx and ny and c and c.k1 and x and y then
+		local wx, wy = c:ToWorld(mapID, nx, ny)
+		local cx, cy = c:Point(x, y)
+		if wx and wy and cx and cy then
+			local k = c.k1 * c.z
+			local dx, dy = (wx - cx) * k, (wy - cy) * k
+			local r = T.PIN_REACH / 2 + T.PIN_MARGIN
+			if dx * dx + dy * dy <= r * r then
+				ClearPin()
+				return false
+			end
+		end
+	end
 	return SetPin(x, y)
+end
+
+-- (2.1.58) the rail beside the quest column, for the pad (MapGamepad's spec.also)
+function M.PadRail()
+	return Log.Rail and Log.Rail() or nil
 end
 
 function M.PadQuests(page)

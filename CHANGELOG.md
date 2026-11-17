@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.1.58
+
+- Controller: a mouse click on the MelloUI button under the Game Menu now closes the menu, as its Y / Triangle button does. Before, the menu stayed open over the configurator.
+- Controller: the D-pad no longer stops on a window's close button or its tabs. B closes and LB / RB switch tabs, so the focus starts on the first real option or button.
+- Controller: the game's yellow pointer no longer shows over a MelloUI window that has the controller, MelloUI's map over the game's among them.
+- Map: with a controller, the D-pad reaches the three buttons between the map and the quest list. Left from the list goes onto them, left again onto the map.
+- Map: with a controller, closing MelloUI's map with the mouse on its X also closes the game's map under it. Before, the game's map came back as soon as you moved.
+- Map: the controller's Marker button on your pin now removes it.
+- Map: the crosshair moves faster with the stick.
+- Controller: the letters in the button prompts sit in the middle of their circles, and the L and R stick icons are easier to read.
+- Chat: with a controller, picking Chat on the game's ring menu gives MelloUI's chat the controller. LB / RB switch its tabs, the D-pad or the right stick scrolls, and B leaves. The game's yellow pointer no longer shows at its edge.
+- Discard: answering Discard on its question now throws a white item away. Before, the game refused it every time and the chat said the game did not let MelloUI throw it away, so no white item could go.
+- Discard: an item the game itself keeps no longer blocks the button. Discard passes over it until you log in again and takes the next cheapest, and its chat line shows the game's reason when the game gives one.
+- Tooltips: with Questie and Polestar, a creature's or an object's quest objectives were listed twice. Questie's lines are the ones now, and Polestar's of the same kind are left out while Questie writes them. Who does what on the Addons page says so.
+- Tooltips: with Questie, MelloUI's own Quest line on an item one of your quests asks for steps aside, as Questie already lists it.
+- Oldschool: the unit frames, the cast bar, the Personal Display, the nameplates and the chat have new frames, in three sets to choose from: Gilded Stone, Forged Iron and Carved Wood (Oldschool > Borders > Frame Set). Each frame is one painting that stretches to any size with its ornaments whole, and the level sits in a badge of the set's own style.
+- Oldschool: your target's nameplate glows in the shape of its frame, and so do your unit, party and raid frames for your target and under the mouse. The old orange target tint is gone.
+- Oldschool: the nameplates keep the same size as in the Modern look, at any Plate Width and Plate Height.
+- Oldschool: Frame Set takes the place of the Unit Frame Border, Cast Bar Border, Personal Display Border and Portrait Ring choices.
+- Oldschool: elites, rare elites, rares and bosses wear their own ring on the target and focus frames, drawn in the frame set's style: a gold dragon, a silver dragon, a silver star with laurels and a horned skull. Their nameplate shows a small one on its level badge. Both follow the Elite and Rare Marks switches (Oldschool > Frame Art).
+- Oldschool: Frame Set is easier to find. It is first on Oldschool > Borders, each frame it dresses links to it (Unit & Group Frames' Player, Target, Focus, Pet, Party and Personal, Nameplates' Enemies), Home's Your setup shows it with a Change… button, and /mello frameset opens it.
+- Oldschool: switching from the Oldschool look to another no longer prints an error about the damage meter in the chat.
+
 ## 2.1.57
 
 - Map: with RareScanner and a HandyNotes plugin that also marks rares (HandyNotes: WoW Forever), a rare was marked twice. Now one addon draws the rares: while RareScanner shows them, the plugin's rare marks are left out on MelloUI's map and on the minimap. Its treasures stay.

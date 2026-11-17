@@ -97,6 +97,11 @@ Lang:Add("esES", {
 	["Rounded"] = "Redondeado", -- draft
 	["Unit Frame Border"] = "Borde de los marcos de unidades", -- draft
 	["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "El marco de las barras de salud y poder de los marcos de jugador, objetivo, foco, mascota y grupo.", -- draft
+	["Frame Set"] = "Juego de marcos", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "Los marcos pintados de los marcos de unidad, las barras de hechizos, la Pantalla personal, las placas de nombre y el chat.", -- draft
+	["Gilded Stone"] = "Piedra dorada", -- draft
+	["Forged Iron"] = "Hierro forjado", -- draft
+	["Carved Wood"] = "Madera tallada", -- draft
 	["Nameplate Border"] = "Borde de las placas de nombre", -- draft
 	["The frame around the nameplates' health bars."] = "El marco de las barras de salud de las placas de nombre.", -- draft
 	["Cast Bar Border"] = "Borde de la barra de hechizos", -- draft
@@ -2977,6 +2982,13 @@ Lang:Add("esES", {
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: ahora se lee cualquier versión de su base de datos, también las más antiguas y las más nuevas.", -- draft
 	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Mapa: con RareScanner y un plugin de HandyNotes que también marca raros, un raro ya no se marca dos veces. Queda la marca de RareScanner, en el mapa de MelloUI y en el minimapa.", -- draft
 	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "Mapa: sin RareScanner, los raros de un plugin de HandyNotes llevan también el sello de raros de MelloUI, en el mapa y en el minimapa.", -- draft
+	["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "Mando: la cruceta se salta el botón de cerrar y las pestañas de una ventana (B cierra, LB / RB cambian de pestaña), y un clic de ratón en el botón de MelloUI bajo el menú del juego cierra el menú.", -- draft
+	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "Mapa con mando: la cruceta llega a los botones junto a la lista de misiones, Marcador sobre tu chincheta la quita, la mira es más rápida, y cerrar el mapa con el ratón cierra también el mapa del juego.", -- draft
+	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Mando: el puntero amarillo del juego ya no aparece sobre las ventanas de MelloUI, y las indicaciones de botones están centradas y se leen mejor.", -- draft
+	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Chat con mando: elige Chat en el menú circular del juego; después LB / RB cambian de pestaña y la cruceta o el stick derecho desplazan el texto.", -- draft
+	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "Desechar: al responder Desechar, ahora se tira un objeto blanco. Antes el juego lo rechazaba siempre y el chat lo decía. Un objeto que el propio juego conserva se pasa por alto.", -- draft
+	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "Descripciones: con Questie y Polestar, los objetivos de misión de una criatura ya no salen dos veces. Valen las líneas de Questie, y la línea de objeto de MelloUI también cede ante Questie.", -- draft
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: marcos nuevos para los marcos de unidad, la barra de hechizos, la Pantalla personal, las placas de nombre y el chat, en tres juegos a elegir en Bordes > Juego de marcos: Piedra dorada, Hierro forjado y Madera tallada.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

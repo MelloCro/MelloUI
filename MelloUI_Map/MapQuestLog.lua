@@ -1876,6 +1876,11 @@ function Log.Column()
 	return S.col
 end
 
+-- (2.1.58: the pad walks the rail beside the column -- MapGamepad's spec.also)
+function Log.Rail()
+	return S.rail
+end
+
 -- (the pad in the column, as the game's quest view: B steps back, Y "More") a page over the quest list showing: a
 -- quest's, or the layers' (the map's options, Y on the map)
 function Log.PadOnPage()

@@ -95,6 +95,8 @@ local function PetPart(key)
 	return rawget(_G, PET_GLOBALS[key])
 end
 local Kit = MelloUI.Kit
+-- (2.1.0) the ornate frame sets (Modules/KitSets.lua; nil in a test world without it): a frame's one picture
+local Sets = Kit.Sets
 -- (one-look D5) the core's Unit Frames module (loaded before this file; nil
 -- in a test world without it): this skin's pieces handed to it, below
 local UF = MelloUI:GetModule("UnitFrames")
@@ -498,6 +500,9 @@ end
 local function OnBarSetting(module, key)
 	if module == "BarTextures" and (key == "texture" or key == "unitframes") and M.db and M.db.barBackground == "texture" then
 		DressTroughs()
+		if Sets then
+			Sets.LayUnits()   -- (2.1.0: the set pictures' holes)
+		end
 	end
 end
 
@@ -566,6 +571,99 @@ local function SkinBar(bar, rect, picture, mirrored, health)
 	return rep
 end
 
+--------------------------------------------------------------------------------
+-- (2.1.0) The frame sets (Oldschool > Borders' Frame Set: Modules/KitSets.lua; the user, 2026-11-01: "Our oldschool
+-- unitframes do not have 1 texture borders like we did on default and modern ... more detail, more ornate, like
+-- beutifull oldschool unitframes", "i want all 3 as choice"). While a set's numbers are there every frame wears ONE
+-- picture -- its shape's painting (the player's, the target's and focus's mirrored, the small one on the targets of
+-- target, the pet and the party), laid by Kit.Sets over its bars and under its texts -- in place of the ring, the
+-- bars' brackets, the ring's cover over their ends and the tucks, none of which is made; the name centred on the
+-- painting's plaque (no name shade: the plaque is dark), the level orb kept (its own badge on the ring's lower edge),
+-- the marks a crest over the ring, the combo points round the ring's painted edge, Bar Background the holes' ground.
+-- The frame's backdrop (Frame Backdrop) is not laid round a painting.
+--------------------------------------------------------------------------------
+local SetSkin = { entries = {} }
+
+-- the paintings wanted: the sets' numbers loaded
+function SetSkin.On()
+	return Sets ~= nil and Sets.Data() ~= nil
+end
+
+-- a frame of MelloUI's own (its bars, masks and texts ours to lay): Units' frames, a party stand-in
+function SetSkin.Own(frame, standIn)
+	local U = MelloUI.Units
+	return (standIn or (U and type(U.mine) == "table" and U.mine[frame])) and true or false
+end
+
+-- a hole's ground in Bar Background's look (as a bracket's trough was: DressTrough)
+function SetSkin.Ground(tex)
+	local db = M.db or {}
+	local look = db.barBackground
+	local key = BACKGROUND_KEY[look]
+	if key then
+		Kit:Apply(tex, nil)
+		tex:SetTexture(TroughFile(look))
+		tex:SetTexCoord(0, 1, 0, 1)
+		Kit:Paint(tex, key, "vertex")
+	elseif pieceNameOf[tex] ~= "bars/trough" then
+		Kit:Unpaint(tex, "vertex")
+		tex:SetVertexColor(1, 1, 1)
+		Kit:Apply(tex, "bars/trough")
+	end
+	local alpha = Num(db.barBackgroundAlpha) or 100
+	tex:SetAlpha(look == "none" and 0 or math.max(0, math.min(1, alpha / 100)))
+end
+
+-- Bar Textures told a fill lies in a hole now, or no longer (its own shape mask off or back, as under a bracket)
+function SetSkin.Bracket(bar)
+	local textures = MelloUI:GetModule("BarTextures")
+	if textures and textures.RefreshMask then
+		textures:RefreshMask(bar)
+	end
+end
+
+-- a frame's picture: registered once (Kit.Sets keeps one per game picture), laid now while the skin is on
+function SetSkin.Lay(args)
+	local e = Sets and Sets.Unit(args)
+	if not e then
+		return nil
+	end
+	if not e.paintGround then
+		e.paintGround, e.bracket = SetSkin.Ground, SetSkin.Bracket
+		SetSkin.entries[#SetSkin.entries + 1] = e
+	end
+	if active then
+		Sets.UnitShown(e, true)
+	end
+	return e
+end
+
+-- every picture with the skin (on) or put away and its frame's own given back (off)
+function SetSkin.Shown(on)
+	for _, e in ipairs(SetSkin.entries) do
+		Sets.UnitShown(e, on)
+	end
+	if Sets and Sets.LevelsShown then
+		Sets.LevelsShown(on)   -- (2.1.58: the level badges with the skin)
+	end
+	if Sets then
+		Sets.PartyWorn(on and SetSkin.On())   -- (the portrait party's room: Group Frames' Vertical Spacing)
+	end
+	for portrait in pairs(SetSkin.round) do
+		SetSkin.Round(portrait, on)   -- (2.1.58: the round portrait with the skin)
+	end
+end
+SetSkin.round = setmetatable({}, { __mode = "k" })   -- [portrait] = { mask, on } (SetSkin.Round, below)
+
+-- a picture laid again out of a fight (its game picture re-atlased: a target's classification, a party member's art)
+function SetSkin.Relay(e)
+	if e and active then
+		Kit:WhenOutOfCombat(function()
+			Sets.LayUnit(e)
+		end, e)
+	end
+end
+
 -- The ring's width and the portrait's size, as the client reads them back;
 -- nothing where one is secret on this client
 local function ReadFit(ring, portrait)
@@ -582,6 +680,28 @@ end
 local refits = setmetatable({}, { __mode = "k" })
 -- (0.20.4) the round mask a ringed portrait gets besides the game's (SkinRing's RoundMask)
 local ROUND_PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+-- (2.1.58) the same under a frame set (v204/roundfade: "round whatever the game's mask"): the player's portrait keeps a
+-- round mask of ours beside the game's while the set's painting dresses it -- a set's ring may not cover the corner the
+-- game's mask leaves square -- one mask a portrait, made once, put on and taken off with the skin (SetSkin.Shown)
+function SetSkin.Round(portrait, on)
+	if not (portrait and portrait.AddMaskTexture and portrait.RemoveMaskTexture) then
+		return
+	end
+	on = on and true or false
+	local r = SetSkin.round[portrait]
+	if on and not r then
+		local mask = portrait:GetParent():CreateMaskTexture()
+		mask:SetTexture(ROUND_PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetAllPoints(portrait)
+		r = { mask = mask, on = false }
+		SetSkin.round[portrait] = r
+	end
+	if r and r.on ~= on then
+		r.on = on
+		pcall(on and portrait.AddMaskTexture or portrait.RemoveMaskTexture, portrait, r.mask)
+	end
+end
 -- (0.19.0) [portrait] = the rep of the ring round it, for M:RingOf
 local ringOf = setmetatable({}, { __mode = "k" })
 -- (0.20.0) [level circle] = the kit's orb on it, for M:CoverOf
@@ -1172,6 +1292,10 @@ local function SkinCircle(circle, number)
 	local rep = Replace(circle, { as = "UI-HUD-UnitFrame-SmallCircle" })
 	orbOf[circle] = rep   -- (M:CoverOf)
 	Follow(rep, circle)
+	-- (2.1.58: under a frame set, its own level badge over the circle in the orb's place)
+	if rep and Sets and Sets.Data() then
+		Sets.Level(rep, circle, active)
+	end
 	if rep and number and Kit.OrbDisc then
 		local okP, host = pcall(circle.GetParent, circle)
 		Kit:OrbDisc(rep, okP and host or nil, number)
@@ -1348,6 +1472,10 @@ local function MarkUnit(entry)
 	if orb and orb.tex then
 		Kit:WearMark(orb.tex, orb.rule.piece, kind)
 	end
+	-- (2.1.58) a set's painting: its rank ring (elite, rare elite, rare, boss) over the ring
+	if entry.set and Sets then
+		Sets.Crest(entry.set, kind and Kit.MarkCrest and Kit:MarkCrest(kind) or nil, kind)
+	end
 end
 
 -- every marked frame as its unit is now
@@ -1518,6 +1646,52 @@ end
 -- The frames
 --------------------------------------------------------------------------------
 
+-- (2.1.0) a target-style frame in the set's painting (the target's shape: the player's painting mirrored), its level
+-- orb marked, the crest over its ring, the combo points round the ring's edge; its target of target in the small one
+function SetSkin.TargetLike(frame, container, main, contextual, picture)
+	local hc, mana = main.HealthBarsContainer, main.ManaBar
+	local e = SetSkin.Lay({ frame = frame, region = picture, shape = "target", own = SetSkin.Own(frame),
+		bars = { { hc and hc.HealthBar, hc and hc.HealthBarMask, "health" }, { mana, mana and mana.ManaBarMask, "power" } },
+		texts = { main.Name, main.LevelText } })
+	CenterName(main.Name, e and e.plaque)
+	local level = SkinCircle(main.LevelBackgroundCircle, main.LevelText)
+	PvPOnLevel(contextual and contextual.PvpBackgroundCircle, contextual and contextual.PvpBackgroundIcon,
+		main.LevelBackgroundCircle)
+	SkullOnOrb(contextual and contextual.HighLevelTexture, main.LevelBackgroundCircle)
+	-- (Combo.Lay hangs the points round entry.ring.tex: the painting's ring edge, a frame of Kit.Sets')
+	skin.targets[frame] = { ring = e and { tex = e.ring } or nil, set = e }
+	local unit = MarkUnitOf(frame)
+	skin.marks[unit] = { unit = unit, orb = level, set = e }
+	-- the game re-atlases its picture on every target change (CheckClassification: the minus mob's), and lays the
+	-- combo points again as it shows (made once each: nothing per target change)
+	if frame.CheckClassification then
+		hooksecurefunc(frame, "CheckClassification", function()
+			SetSkin.Relay(e)
+		end)
+	end
+	if frame == ScreenTarget() then
+		Perf.HookScript(frame, "OnShow", function()
+			if active then
+				Kit:WhenOutOfCombat(Combo.Lay)
+			end
+		end)
+	end
+	local tot = frame.totFrame
+	if tot and tot.FrameTexture and not skin.targets[tot] then
+		skin.targets[tot] = true
+		FadeArt({ { tot.FrameTexture, "UI-HUD-UnitFrame-TargetofTarget-PortraitOn" } })
+		local health, totMana = tot.HealthBar, tot.ManaBar
+		local te = SetSkin.Lay({ frame = tot, region = tot.FrameTexture, shape = "small", own = SetSkin.Own(tot),
+			bars = { { health, health and health.HealthBarMask, "health" }, { totMana, totMana and totMana.ManaBarMask, "power" } },
+			texts = { tot.Name } })
+		CenterName(tot.Name, te and te.plaque)
+		local totUnit = TOT_UNIT[unit]
+		if totUnit then
+			skin.marks[totUnit] = { unit = totUnit, set = te }
+		end
+	end
+end
+
 local function SkinPlayer()
 	-- (fr-17: the player frame on the screen -- MelloUI's own while it stands in, else the game's; `skin.player` the
 	-- frame dressed, so the other one, come later, is dressed too)
@@ -1541,11 +1715,24 @@ local function SkinPlayer()
 		{ main.StatusTexture, "UI-HUD-UnitFrame-Player-PortraitOn-Status" },
 		{ contextual and contextual.PlayerPortraitCornerIcon, "UI-HUD-UnitFrame-Player-PortraitOn-CornerEmbellishment" },
 	})
+	local playerName = ScreenPlayerName()
+	if SetSkin.On() then
+		-- (the frame set's painting: the name on its plaque, the level orb on the ring's edge)
+		local hc, area = main.HealthBarsContainer, main.ManaBarArea
+		local mana = area and area.ManaBar
+		local e = SetSkin.Lay({ frame = pf, region = picture, shape = "player", own = SetSkin.Own(pf),
+			bars = { { hc and hc.HealthBar, hc and hc.HealthBarMask, "health" }, { mana, mana and mana.ManaBarMask, "power" } },
+			texts = { playerName, ScreenPlayerLevel() } })
+		CenterName(playerName, e and e.plaque)
+		SkinCircle(main.LevelBackgroundCircle, ScreenPlayerLevel())
+		PvPOnLevel(main.PvpBackgroundCircle, main.PvpBackgroundIcon, main.LevelBackgroundCircle)
+		SetSkin.Round(container.PlayerPortrait, active)
+		return
+	end
 	-- (its shade: the outline's parts, under the whole frame)
 	local u = Unit(pf, container)
 	-- the name centred on the band's rect, its shade behind it
 	local band = PlayerBandRect(container)
-	local playerName = ScreenPlayerName()
 	CenterName(playerName, band, main.HealthBarsContainer and main.HealthBarsContainer.HealthBar)
 	NameShade(playerName, container)
 	skin.playerRing = SkinRing(picture, container.PlayerPortrait, container.PlayerPortraitMask)
@@ -1580,6 +1767,10 @@ local function SkinTargetLike(frame)
 		{ container.Flash, "UI-HUD-UnitFrame-Target-PortraitOn-InCombat" },
 		{ container.BossPortraitFrameTexture, "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Gold" },
 	})
+	if SetSkin.On() then
+		SetSkin.TargetLike(frame, container, main, contextual, picture)
+		return
+	end
 	-- (its shade: the outline's parts, under the whole frame; the brackets'
 	-- soft ends on the right, the ring's side)
 	local u = Unit(frame, container)
@@ -1679,6 +1870,15 @@ local function SkinPet()
 		{ PetPart("flash"), "UI-HUD-UnitFrame-TargetofTarget-PortraitOn-InCombat" },
 		{ PetPart("attack"), "UI-HUD-UnitFrame-TargetofTarget-PortraitOn-Status" },
 	})
+	if SetSkin.On() then
+		-- (2.1.0) the set's small painting
+		local name = PetPart("name") or pf.name
+		local e = SetSkin.Lay({ frame = pf, region = art, shape = "small", own = SetSkin.Own(pf),
+			bars = { { health, PetPart("healthMask"), "health" }, { mana, mana and mana.ManaBarMask, "power" } },
+			texts = { name } })
+		CenterName(name, e and e.plaque)
+		return
+	end
 	-- (its shade: a shade frame of its own, anchored on its picture)
 	local u = Unit(pf, pf)
 	u.picture = art
@@ -1884,13 +2084,63 @@ function PartyLevel.Watch()
 	PartyLevel.events = f
 end
 
-local function SkinPartyMember(frame)
+-- (2.1.0) a party member (and its pet) in the set's small painting, mirrored with the party (Flip Horizontally); its
+-- level circle as before. `standIn`: one of Group Frames' (MelloUI's own)
+function SetSkin.Member(frame, picture, standIn)
+	local hc, mana = frame.HealthBarContainer, frame.ManaBar
+	local function Flipped()
+		return UF and UF.PartyFlipped and UF:PartyFlipped() or false
+	end
+	local e = SetSkin.Lay({ frame = frame, region = picture, shape = "small", own = SetSkin.Own(frame, standIn),
+		flip = Flipped, bars = { { hc.HealthBar, hc.HealthBarMask, "health" }, { mana, mana.ManaBarMask, "power" } },
+		texts = { frame.Name } })
+	CenterName(frame.Name, e and e.plaque)
+	Shade(skin.party[frame], SkinCircle(PartyLevel.Make(frame, frame.Portrait)), true)
+	local pet = frame.PetFrame
+	if pet and pet.Texture and pet.Portrait and pet.HealthBar then
+		FadeArt({
+			{ pet.Texture, "UI-HUD-UnitFrame-Party-PortraitOn" },
+			{ pet.Flash, "UI-HUD-UnitFrame-Party-PortraitOn-InCombat" },
+		})
+		SetSkin.Lay({ frame = pet, region = pet.Texture, shape = "small", own = SetSkin.Own(pet, standIn), flip = Flipped,
+			bars = { { pet.HealthBar, pet.HealthBar.HealthBarMask, "health" } } })
+	end
+	-- the game swaps the member's art (player / vehicle) and lays its name again: laid again (each hook once)
+	local function Again()
+		SetSkin.Relay(e)
+		if active then
+			Kit:WhenOutOfCombat(RelayParty)
+		end
+	end
+	if frame.UpdateNameTextAnchors then
+		hooksecurefunc(frame, "UpdateNameTextAnchors", Again)
+	end
+	if frame.UpdateArt then
+		hooksecurefunc(frame, "UpdateArt", Again)
+	end
+end
+
+local function SkinPartyMember(frame, standIn)
 	if not frame or skin.party[frame] then
 		return
 	end
 	local picture = frame.Texture
 	local portrait = frame.Portrait
 	if not (picture and portrait and frame.HealthBarContainer and frame.ManaBar) then
+		return
+	end
+	if SetSkin.On() then
+		local overlay = frame.PartyMemberOverlay
+		skin.party[frame] = Unit(frame, frame)
+		skin.party[frame].party = true
+		FadeArt({
+			{ picture, "UI-HUD-UnitFrame-Party-PortraitOn" },
+			{ frame.VehicleTexture, "UI-HUD-UnitFrame-Party-PortraitOn-Vehicle" },
+			{ frame.Flash, "UI-HUD-UnitFrame-Party-PortraitOn-InCombat" },
+			{ overlay and overlay.Status, "UI-HUD-UnitFrame-Party-PortraitOn-Status" },
+		})
+		SetSkin.Member(frame, picture, standIn)
+		Watch(skin.party[frame])
 		return
 	end
 	-- (its shade: the member and its pet one element, under the member's
@@ -2161,10 +2411,9 @@ local function Activate()
 	for _, cover in ipairs(skin.covers) do
 		cover.Refit()
 	end
+	-- (2.1.0) the frame sets' pictures with the skin
+	SetSkin.Shown(true)
 	Combo.Lay()
-	-- (0.19.8) the personal resource display's border (the border library's
-	-- Personal Resource Border: Modules/KitBorders.lua) with the skin
-	Kit:PersonalBordersShown(true)
 	Kit:Cover("unitframes")
 	Kit:Cover("partyframes")
 	PartyLevel.All()   -- (0.21.3: the party members' level circles back)
@@ -2191,7 +2440,7 @@ local function Deactivate()
 	-- (the plain pieces back, the marks' events off)
 	MarksSync()
 	Combo.Restore()
-	Kit:PersonalBordersShown(false)
+	SetSkin.Shown(false)
 	Kit:Uncover("unitframes")
 	Kit:Uncover("partyframes")
 	PartyLevel.All()   -- (0.21.3: the party members' level circles away: the game's frame has none)
@@ -2239,6 +2488,23 @@ local function Hook()
 	for _, fname in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt", "PlayerFrame_UpdateArt", "PlayerFrame_UpdatePlayerNameTextAnchor" }) do
 		UnitsHook(fname, ArtSwapped)
 	end
+	-- (2.1.0) a new frame set: the names on the new plaques, the combo points round the new ring; the party mirrored
+	-- or back (Flip Horizontally): its pictures with it
+	if Sets then
+		Sets.OnChange(function()
+			if active and skin then
+				for _, entry in ipairs(skin.names) do
+					entry.place()
+				end
+				Kit:WhenOutOfCombat(Combo.Lay)
+			end
+		end)
+		MelloUI:On("setting", function(module, key)
+			if module == "UnitFrames" and key == "partyFlip" and active then
+				Kit:WhenOutOfCombat(Sets.LayUnits, "Unit Frames Kit: the set pictures flipped")
+			end
+		end, "Unit Frames Kit: the set pictures flipped")
+	end
 	-- (fr-17) the player frame of ours come or gone later (a fight held it, Unit Frames switched): the skin laid on
 	-- the frame that stands now
 	MelloUI:On("units", function()
@@ -2277,7 +2543,8 @@ if UF and UF.SetSkinHooks then
 			local rep = active and portrait and ringOf[portrait]
 			local tex = rep and rep.tex
 			if not (tex and pieceOf[tex]) then
-				return nil
+				-- (2.1.58: a frame set's ring, where its painting dresses the frame)
+				return active and Sets and portrait and Sets.RingOf(portrait) or nil
 			end
 			-- (a secret or refused answer counts as shown)
 			local ok, shown = pcall(tex.IsShown, tex)
@@ -2296,7 +2563,14 @@ if UF and UF.SetSkinHooks then
 				local okP, host = pcall(circle.GetParent, circle)
 				disc = Kit:OrbDisc(rep, okP and host or nil, number)
 			end
-			return rep.tex, disc
+			-- (2.1.58: a frame set's level badge in the orb's place)
+			return (Sets and Sets.LevelOf(rep)) or rep.tex, disc
+		end,
+		PlateOf = function(frame)
+			if active and Sets then
+				return Sets.PlateOf(frame)
+			end
+			return nil
 		end,
 		PlayerRing = function()
 			local ring = active and skin and skin.playerRing
@@ -2323,7 +2597,7 @@ if UF and UF.SetSkinHooks then
 		end,
 		DressStandIn = function(frame)
 			if active and skin then
-				SkinPartyMember(frame)
+				SkinPartyMember(frame, true)
 			end
 		end,
 	})
@@ -2395,6 +2669,9 @@ function M:OnSettingChanged(key)
 		MarksSync()
 	elseif key == "barBackground" or key == "barBackgroundAlpha" then
 		DressTroughs()
+		if Sets then
+			Sets.LayUnits()   -- (2.1.0: the set pictures' holes)
+		end
 	elseif key == "backdrop" or key == "backdropBackground" then
 		LayoutFrameBackdrops()
 	end

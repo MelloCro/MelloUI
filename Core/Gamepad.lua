@@ -265,6 +265,19 @@ function G.GameHasPad()
 	return false
 end
 
+-- (2.1.58) the frame the game's own pad navigation stands in now (its FrameControlsManager's focusedFrame while its
+-- UI focus is on; read only), or nil: MelloUI's Chat View asks whether the game's focus is on a chat window it has
+-- replaced
+function G.GameFocus()
+	local mode = rawget(_G, "GamepadMode")
+	local fcm = type(mode) == "table" and rawget(mode, "FrameControlsManager") or nil
+	if type(fcm) == "table" and rawget(fcm, "isUIFocused") == true then
+		local f = rawget(fcm, "focusedFrame")
+		return Shown(f) and f or nil
+	end
+	return nil
+end
+
 --------------------------------------------------------------------------------
 -- The controls in a window: what can take the focus, where it stands
 --------------------------------------------------------------------------------
@@ -338,6 +351,40 @@ local function Walk(cl, cb, cr, ct, ...)
 	end
 end
 
+-- (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "the gamepad A selection cursor defaults to or navigates
+-- onto UI elements like the top-right close (X) button, even though closing is already bound directly to B ...
+-- Elements that already have a dedicated gamepad shortcut (like B to close or LB/RB for tabs) should be excluded")
+-- a control with a pad button of its own is no stop: the window's close (B: its topmost W.CloseButton, where the B
+-- coin stands) and, while the shoulders switch them, its tab row's tabs (LB / RB: two tabs or more, LayLook's rule).
+-- Both stay known (S.close, tabs) for their coins
+local function Shortcuts()
+	local close, byShoulder = S.close, #tabs >= 2
+	local any = close and inView[close]
+	if close then
+		inView[close] = nil
+	end
+	if byShoulder then
+		for i = 1, #tabs do
+			any = any or inView[tabs[i]]
+			inView[tabs[i]] = nil
+		end
+	end
+	if not any then
+		return
+	end
+	local n = 0
+	for i = 1, #found do
+		local f = found[i]
+		if inView[f] then
+			n = n + 1
+			found[n] = f
+		end
+	end
+	for i = #found, n + 1, -1 do
+		found[i] = nil
+	end
+end
+
 local HUGE = math.huge
 local function Controls(scope)
 	wipe(found)
@@ -346,7 +393,14 @@ local function Controls(scope)
 	S.close = nil
 	if scope and scope:IsVisible() then
 		Walk(-HUGE, -HUGE, HUGE, HUGE, scope:GetChildren())
+		-- (2.1.58) the frames a window reading the pad itself lets walk beside its part (spec.also: MelloUI Map's rail
+		-- beside its quest column -- the same feedback: "no way to navigate to or select the 3 vertical icon buttons")
+		local own = S.own
+		if own and own.nav == scope and type(own.also) == "table" then
+			Walk(-HUGE, -HUGE, HUGE, HUGE, unpack(own.also))
+		end
 	end
+	Shortcuts()
 	return found
 end
 G.Controls = Controls
@@ -364,13 +418,14 @@ end
 
 -- the control nearest the scope's top left corner (the way across plus the way down: a window's rail or first row,
 -- not a button alone at its top right)
-local function TopLeft(list, scope)
+-- (`within`: only a control inside that frame counts)
+local function TopLeft(list, scope, within)
 	local sl, _, _, st = ScreenRect(scope)
 	local best, bestD
 	for i = 1, #list do
 		local c = list[i]
 		local d = (c.melloPadL - (sl or 0)) + ((st or c.melloPadT) - c.melloPadT)
-		if not bestD or d < bestD then
+		if (not bestD or d < bestD) and (not within or Inside(c, within)) then
 			best, bestD = c, d
 		end
 	end
@@ -761,6 +816,35 @@ local function TakeOwn(own)
 	Catch(own.sticks and true or false)
 end
 
+-- (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "the default yellow Blizzard UI selection chevron remains
+-- stuck on screen" over MelloUI's map opened from the game's ring menu) the game's own pad pointer -- its
+-- SmartNavigation's Pointer, the yellow chevron at the control the game's navigation stands on -- unseen while a
+-- MelloUI window holds the pad: the game's control is under MelloUI's window then (the game's map under MelloUI's),
+-- its pointer drawn over it. Its alpha only, the cover's way (as the game's map under MelloUI's): kept as the pad is
+-- taken, given back as the pad is; the game sets its pointer's place and colour, never this alpha
+local function Pointer()
+	local nav = rawget(_G, "SmartNavigation")
+	local p = type(nav) == "table" and rawget(nav, "Pointer")
+	return type(p) == "table" and p.SetAlpha and p.GetAlpha and p or nil
+end
+
+local function PointerUnseen(on)
+	local p = Pointer()
+	if not p or (InCombatLockdown() and p.IsProtected and p:IsProtected()) then
+		return
+	end
+	if on then
+		local a = Num(p:GetAlpha())
+		if a and a > 0 then
+			S.pointer = a
+			p:SetAlpha(0)
+		end
+	elseif S.pointer then
+		p:SetAlpha(S.pointer)
+		S.pointer = nil
+	end
+end
+
 local function Take()
 	if S.holding or #stack == 0 or InCombatLockdown() or not G.On() then
 		return false
@@ -794,6 +878,7 @@ local function Take()
 		end
 	end
 	S.holding, S.bound, S.own = true, nil, own
+	PointerUnseen(true)
 	if not own then
 		BindA()
 	end
@@ -826,10 +911,127 @@ local function Release(starting)
 	Trail(starting and "pad given back (a fight)" or "pad given back")
 	S.holding, S.bound, S.boundX, S.tabsBound, S.own, S.ownSeen = false, nil, nil, nil, nil, nil
 	S.waitA, S.waitX = nil, nil
+	PointerUnseen(false)
 	HideLook()
 	MelloUI:Fire("gamepad:nav", false, starting and true or false)
 end
 G.Release = Release
+
+--------------------------------------------------------------------------------
+-- A mouse click that must end in the game's own secure click
+--------------------------------------------------------------------------------
+
+-- (2.1.58; the same feedback: the Game Menu stayed open over the configurator after a MOUSE click on MelloUI's button
+-- under it; the game's map came back after MelloUI's map over it was closed by its X with the mouse) In the Gamepad UI
+-- a window of the game's is closed by the game's own button only: from MelloUI's code the close would run the game's
+-- pad code tainted. A pad key gets there by a click binding; the mouse on a button of ours gets there by a secure
+-- button of ours laid over it, whose click is the game's button's own:
+--   G.ClickThrough(frame, target, after)   over `frame` (its screen rect, on UIParent -- never anchored to it: a frame
+--                                          a protected one hangs on is held in a fight), its click `target`'s (a button
+--                                          of the game's), then after(); called again: laid where `frame` now stands
+--   G.ClickThrough(frame, nil)             let go
+-- Made, laid and let go out of a fight only (let go in one: as the fight ends). The covered button's own light under
+-- the pointer is passed on.
+local through = setmetatable({}, { __mode = "k" })   -- [frame] = its secure button
+local throughEvents
+
+local function Through_Pass(b, script)
+	local f = b.covers
+	local fn = f and f.GetScript and f:GetScript(script)
+	if fn then
+		fn(f)
+	end
+end
+
+local Through_OnEnter = Shared("OnEnter on a click-through button (the covered button's own light)", function(b)
+	Through_Pass(b, "OnEnter")
+end, "script")
+
+local Through_OnLeave = Shared("OnLeave on a click-through button", function(b)
+	Through_Pass(b, "OnLeave")
+end, "script")
+
+local Through_PostClick = Shared("PostClick on a click-through button", function(b, _, down)
+	if down and b.after and not b.gone then
+		b.after()
+	end
+end, "script")
+
+-- (laid the one way a secure overlay is laid over a button of ours: MelloUI.Reminders.OverlayPlace, by measure on
+-- UIParent)
+local function ThroughLay(frame, b)
+	local place = MelloUI.Reminders and MelloUI.Reminders.OverlayPlace
+	if not (place and place(b, frame)) then
+		return false
+	end
+	-- (seen in the test client, 2026-11-17: over the close button of MelloUI's map -- a toplevel window -- a button of
+	-- the same strata lay UNDER the mouse's reach at any level: the game puts a raised toplevel window's frames over
+	-- every other frame of its strata) one strata over the covered button's, so the mouse meets it first
+	local strata, level = frame:GetFrameStrata(), Num(frame:GetFrameLevel())
+	strata = MelloUI.STRATA_UP and MelloUI.STRATA_UP[strata] or strata
+	if b.atStrata ~= strata or b.atLevel ~= level then
+		b.atStrata, b.atLevel = strata, level
+		b:SetFrameStrata(strata)
+		b:SetFrameLevel(math.min((level or 1) + 20, 10000))
+	end
+	return true
+end
+
+function G.ClickThrough(frame, target, after)
+	if not frame then
+		return false
+	end
+	local b = through[frame]
+	if InCombatLockdown() then
+		if b and not target then
+			-- (a protected frame cannot be hidden in a fight: it does nothing more, and goes as the fight ends)
+			b.gone = true
+			if not throughEvents then
+				throughEvents = CreateFrame("Frame")
+				Perf.SetScript(throughEvents, "OnEvent", function(self)
+					self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+					for _, tb in pairs(through) do
+						if tb.gone then
+							tb.gone = nil
+							tb:Hide()
+						end
+					end
+				end)
+			end
+			throughEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+		end
+		return false
+	end
+	if not target then
+		if b then
+			b.gone, b.after = nil, nil
+			b:Hide()
+		end
+		return true
+	end
+	if not b then
+		b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+		b:RegisterForClicks("AnyDown")
+		b:SetAttribute("useOnKeyDown", true)
+		b:SetAttribute("type", "click")
+		b.covers = frame
+		Perf.SetScript(b, "PostClick", Through_PostClick)
+		Perf.SetScript(b, "OnEnter", Through_OnEnter)
+		Perf.SetScript(b, "OnLeave", Through_OnLeave)
+		through[frame] = b
+	end
+	if b.target ~= target then
+		b.target = target
+		b:SetAttribute("clickbutton", target)
+	end
+	b.gone, b.after = nil, after
+	if not ThroughLay(frame, b) then
+		b:Hide()
+		return false
+	end
+	b:Show()
+	return true
+end
 
 --------------------------------------------------------------------------------
 -- The focus
@@ -903,7 +1105,20 @@ local function First(scope)
 			pick = nil
 		end
 	end
-	return pick or TopLeft(list, scope)
+	if pick then
+		return pick
+	end
+	-- (2.1.58, seen in the test client: with MelloUI Map's rail walked beside its quest column the focus started on the
+	-- rail's first button, the top left of the two) a window reading the pad itself that lets frames be walked beside
+	-- its part (spec.also): the focus starts in the part itself, beside it only when the part holds no stop
+	local own = S.own
+	if own and own.nav == scope and own.also then
+		local inside = TopLeft(list, scope, scope)
+		if inside then
+			return inside
+		end
+	end
+	return TopLeft(list, scope)
 end
 
 -- the focus still valid (showing in the scope on top: in its controls just scanned), else the scope's first
@@ -978,7 +1193,14 @@ local FACES = {
 		PADLTRIGGER = "ZL", PADRTRIGGER = "ZR" },
 }
 local PILLS = { PADLSHOULDER = true, PADRSHOULDER = true, PADLTRIGGER = true, PADRTRIGGER = true }
-local STICKS = { PADLSTICK = "L", PADRSTICK = "R" }
+-- (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "button letters/icons are slightly off-center inside
+-- their circular outlines ... the L and R thumbstick icons have their letters drawn directly over the inner stick
+-- ring") a coin's one-letter face and a stick are drawn glyphs (Tools/make_icons.py's pad shapes): a font string
+-- stands by its line, which the engine lays its own way for each font -- the capitals stood above the coin's middle
+-- -- a drawn letter stands by its ink; a stick's ring lies just inside the coin's edge, its letter clear inside it.
+-- A bumper's or a trigger's words on their pill stay a font string
+local STICKS = { PADLSTICK = "pad_stick_l", PADRSTICK = "pad_stick_r" }
+local LETTERS = { A = "pad_a", B = "pad_b", X = "pad_x", Y = "pad_y" }
 local ARMS = { PADDUP = 0, PADDLEFT = math.pi / 2, PADDDOWN = math.pi, PADDRIGHT = -math.pi / 2 }
 G.FACES = FACES
 
@@ -1070,13 +1292,15 @@ function G.SetCoin(c, key)
 	local face = FACES[style][key]
 	local shape, words
 	if STICKS[key] then
-		shape, words = "pad_stick", STICKS[key]
+		shape = STICKS[key]
 	elseif ARMS[key] then
 		shape = "pad_arrow"
 	elseif key == "DIRPAD" then
 		shape = "pad_dpad"   -- (the whole D-pad: its up and down, MelloUI Map's quest column)
 	elseif face and face:sub(1, 1) == "@" then
 		shape = "pad_" .. face:sub(2)
+	elseif face and not pill and LETTERS[face] then
+		shape = LETTERS[face]
 	else
 		words = face or key
 	end

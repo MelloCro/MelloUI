@@ -284,8 +284,26 @@ def disc(size, inner=None, edge=1.0):
 # letter is a font string), so a shape lies on the coin as it is laid: the PlayStation faces (cross, circle, square,
 # triangle), a D-pad arm (an arrow up: turned for the others), the D-pad, a stick's ring; and the bumpers' and
 # triggers' pill (64 x 32: its fill and its edge, as the badge's).
-PAD_SHAPES = ("cross", "circle", "square", "triangle", "arrow", "dpad", "stick")
+# (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "button letters/icons are slightly off-center inside their
+# circular outlines ... the L and R thumbstick icons have their letters drawn directly over the inner stick ring, making
+# them hard to read") the letter faces A, B, X and Y are drawn too -- a font string stands by its line, and the UI
+# font's capitals stand an eighth of its size above the line's middle; a drawn letter stands by its ink, on the coin's
+# middle (Fredoka Medium, the Modern look's text face, in every look: a coin is its own art, as the PlayStation
+# shapes are) -- and each stick is one glyph: its ring just inside the coin's edge, its letter small enough to stand clear
+# inside it ("stick", the bare ring a font string lay on, is gone).
+PAD_SHAPES = ("cross", "circle", "square", "triangle", "arrow", "dpad", "a", "b", "x", "y", "stick_l", "stick_r")
 PAD_SS = 4
+PAD_FONT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Media", "Fonts", "Fredoka", "Fredoka-Medium.ttf")
+
+
+def pad_letter(d, n, letter, cap):
+    """a capital in the UI's own font, its ink's box on the middle of an n x n square, `cap` its height in px"""
+    from PIL import ImageFont
+    probe = ImageFont.truetype(PAD_FONT, 400)
+    l, t, r, b = probe.getbbox("X")
+    font = ImageFont.truetype(PAD_FONT, max(4, round(400 * cap / (b - t))))
+    l, t, r, b = font.getbbox(letter)
+    d.text((n / 2 - (l + r) / 2, n / 2 - (t + b) / 2), letter, font=font, fill=(255, 255, 255, 255))
 
 
 def pad_shape(name, size):
@@ -316,9 +334,13 @@ def pad_shape(name, size):
         a, b = n * 0.30, n * 0.10
         d.rectangle((c - b, c - a, c + b, c + a), fill=ink)
         d.rectangle((c - a, c - b, c + a, c + b), fill=ink)
-    elif name == "stick":
-        k = n * 0.31
-        d.ellipse((c - k, c - k, c + k, c + k), outline=ink, width=max(1, round(n * 0.055)))
+    elif name in ("a", "b", "x", "y"):
+        pad_letter(d, n, name.upper(), n * 0.47)
+    elif name in ("stick_l", "stick_r"):
+        # the ring just inside the coin's edge (badge_edge: 0.425 n to 0.484 n), the letter clear inside it
+        k = n * 0.365
+        d.ellipse((c - k, c - k, c + k, c + k), outline=ink, width=max(1, round(n * 0.04)))
+        pad_letter(d, n, name[-1].upper(), n * 0.36)
     return scaled(img, size)
 
 
