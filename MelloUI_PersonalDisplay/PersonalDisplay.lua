@@ -132,7 +132,7 @@ local T = {
 	spendShare = 0.15, spendDrop = 6, spendTime = 0.45,
 	-- into a fight: the gold line (grown, held, faded), the bars opening from their middle; out of it the slim rest
 	-- (the fills' depths) and its percents out
-	openLine = 0.2, openHold = 0.25, openFade = 0.3, open = 0.25, openFrom = 0.02, restHealth = 3, restPower = 2,
+	openLine = 0.2, openHold = 0.25, openFade = 0.3, open = 0.25, openFrom = 0.02, restHealth = 3, restPower = 2, restDruid = 1.5,
 	-- death: the fills drained, greyed, folded (to this deep); back: unfolded, filled with the sweep
 	deathDrain = 0.4, deathGrey = 0.5, deathFold = 0.35, deathAt = 0.8, deathTo = 1.5, back = 0.3, backFill = 0.6,
 	-- (the shield crack) its shards: how many, how long, how far out
@@ -3027,7 +3027,7 @@ function Motion.LayLine()
 	if not line then
 		return
 	end
-	local b = S.casting and ui.cast or ui.power
+	local b = S.casting and ui.cast or (ui.druid and not ui.druid[2].off and ui.druid[2]) or ui.power   -- (2.1.59: under a druid's form bars)
 	local _, below = Dress.Reach(b)
 	local fill = b.strip.fill
 	local y = -(below + T.gap + 1)
@@ -3655,9 +3655,12 @@ function Motion.FormApply()
 			b.text:SetAlpha(1 - math.max(rest, dead))
 		end
 	end
-	-- (2.1.59) a druid's form bars open from the middle with them
+	-- (2.1.59) a druid's form bars slim at rest, fold and open from the middle with them (the German player's
+	-- screenshots: out of a fight they stood thicker than the slimmed health and power)
 	for _, b in ipairs(ui.druid) do
 		if b.strip.plain then
+			local h = Lerp(Lerp(b.h, T.restDruid, rest), 0.5, dead)
+			b.strip:SetHeight(h + 2)
 			b.strip:SetWidth(Lerp(T.unfoldFrom, w, S.openK or 1) + b.arms)
 		end
 	end
@@ -5701,6 +5704,7 @@ function Druid.TestStep()
 	end
 	local token = step[1]
 	Druid.Fill(ui.power.bar, token, 100, step[2])
+	Motion.Value(ui.power, 100, step[2], true)   -- (its pale layers with it, not the last real amount)
 	ui.power.text:SetFormattedText("%.0f%%", step[2])
 	local i = 0
 	for _, other in ipairs(Druid.POWERS) do
