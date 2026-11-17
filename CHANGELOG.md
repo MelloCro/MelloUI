@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.58
+
+- Controller: a mouse click on the MelloUI button under the Game Menu now closes the menu, as its Y / Triangle button does. Before, the menu stayed open over the configurator.
+- Controller: the D-pad no longer stops on a window's close button or its tabs. B closes and LB / RB switch tabs, so the focus starts on the first real option or button.
+- Controller: the game's yellow pointer no longer shows over a MelloUI window that has the controller, MelloUI's map over the game's among them.
+- Map: with a controller, the D-pad reaches the three buttons between the map and the quest list. Left from the list goes onto them, left again onto the map.
+- Map: with a controller, closing MelloUI's map with the mouse on its X also closes the game's map under it. Before, the game's map came back as soon as you moved.
+- Map: the controller's Marker button on your pin now removes it.
+- Map: the crosshair moves faster with the stick.
+- Controller: the letters in the button prompts sit in the middle of their circles, and the L and R stick icons are easier to read.
+- Chat: with a controller, picking Chat on the game's ring menu gives MelloUI's chat the controller. LB / RB switch its tabs, the D-pad or the right stick scrolls, and B leaves. The game's yellow pointer no longer shows at its edge.
+
 ## 2.1.57
 
 - Map: with RareScanner and a HandyNotes plugin that also marks rares (HandyNotes: WoW Forever), a rare was marked twice. Now one addon draws the rares: while RareScanner shows them, the plugin's rare marks are left out on MelloUI's map and on the minimap. Its treasures stay.

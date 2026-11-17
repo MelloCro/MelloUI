@@ -68,6 +68,7 @@ local T = {
 	                                      -- 16 in the corner), the name this far left of them
 	CLICK = 4,         -- a press that moved less than this is a click
 	PIN_ZOOM = 6,      -- a shared pin opened: the map at least this close
+	PIN_REACH = 24, PIN_MARGIN = 6,   -- (2.1.58) the pad's Marker on your pin: its size where its spec has none, the room round it
 	FLING_SMOOTH = 0.05,   -- (2026-10-21) the drag's speed smoothed over about this many seconds ...
 	FLING_MIN = 150,       -- ... and a let-go at least this fast (canvas px a second) runs on
 }
@@ -1212,8 +1213,27 @@ function M.PadMe()
 	return true
 end
 
+-- (2.1.58; a player's feedback, TheLastAlliance, 2026-11-17: "You can place a waypoint pin using the gamepad (L
+-- Marker), but there is no way to remove it afterward") the Marker button on your pin takes it away, as the game's
+-- own map does with the pad (its waypoint near the cursor is cleared, else set there): your pin under the crosshair
+-- by the pins' own reach (its picture's half and the pins' margin)
 function M.PadPin(x, y)
+	local layer = win.pins and win.pins.layers and win.pins.layers.waypoint
+	local pin = layer and layer.pins and layer.pins.pin
+	if pin and pin.shown and pin.x and x then
+		local r = (Finite(pin.spec and pin.spec.size) or T.PIN_REACH) / 2 + T.PIN_MARGIN
+		local dx, dy = pin.x - x, pin.y - y
+		if dx * dx + dy * dy <= r * r then
+			ClearPin()
+			return false
+		end
+	end
 	return SetPin(x, y)
+end
+
+-- (2.1.58) the rail beside the quest column, for the pad (MapGamepad's spec.also)
+function M.PadRail()
+	return Log.Rail and Log.Rail() or nil
 end
 
 function M.PadQuests(page)

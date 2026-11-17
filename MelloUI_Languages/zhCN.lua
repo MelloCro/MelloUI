@@ -2977,6 +2977,10 @@ Lang:Add("zhCN", {
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie：现在可读取其数据库的任何版本，包括更旧和更新的版本。", -- draft
 	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "地图：同时使用 RareScanner 和也会标记稀有怪的 HandyNotes 插件时，稀有怪不再被标记两次。MelloUI 地图和小地图上只保留 RareScanner 的标记。", -- draft
 	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "地图：没有 RareScanner 时，HandyNotes 插件的稀有怪在地图和小地图上也使用 MelloUI 的稀有怪印章。", -- draft
+	["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "手柄：方向键会跳过窗口的关闭按钮和标签页（B 关闭，LB / RB 切换标签页），用鼠标点击游戏菜单下方的 MelloUI 按钮会关闭菜单。", -- draft
+	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "手柄地图：方向键可到达任务列表旁的按钮，在你的标记上按“标记”会移除它，准星移动更快，用鼠标关闭地图时也会关闭游戏自带的地图。", -- draft
+	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "手柄：游戏的黄色指针不再显示在 MelloUI 窗口之上，按键提示已居中且更易辨认。", -- draft
+	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "手柄聊天：在游戏的环形菜单中选择“聊天”，然后用 LB / RB 切换标签页，用方向键或右摇杆滚动。", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

@@ -2977,6 +2977,10 @@ Lang:Add("koKR", {
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: 이제 데이터베이스의 모든 버전을 읽습니다. 이전 버전과 최신 버전도 포함됩니다.", -- draft
 	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "지도: RareScanner와 희귀 몹도 표시하는 HandyNotes 플러그인을 함께 쓸 때 희귀 몹이 더 이상 두 번 표시되지 않습니다. MelloUI 지도와 미니맵에는 RareScanner의 표시만 남습니다.", -- draft
 	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "지도: RareScanner가 없을 때 HandyNotes 플러그인의 희귀 몹도 지도와 미니맵에서 MelloUI의 희귀 몹 인장으로 표시됩니다.", -- draft
+	["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "컨트롤러: 방향 패드가 창의 닫기 버튼과 탭을 건너뜁니다(B는 닫기, LB / RB는 탭 전환). 게임 메뉴 아래 MelloUI 버튼을 마우스로 클릭하면 메뉴가 닫힙니다.", -- draft
+	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "컨트롤러로 지도 사용: 방향 패드로 퀘스트 목록 옆 버튼에 갈 수 있고, 내 핀 위에서 표시 버튼을 누르면 핀이 지워지며, 조준선이 더 빨라지고, 마우스로 지도를 닫으면 게임의 지도도 함께 닫힙니다.", -- draft
+	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "컨트롤러: 게임의 노란 포인터가 더 이상 MelloUI 창 위에 표시되지 않으며, 버튼 안내가 가운데 정렬되어 읽기 쉬워졌습니다.", -- draft
+	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "컨트롤러로 채팅 사용: 게임의 원형 메뉴에서 채팅을 선택하면 LB / RB로 탭을 바꾸고 방향 패드나 오른쪽 스틱으로 스크롤합니다.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

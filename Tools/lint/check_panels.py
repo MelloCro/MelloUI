@@ -323,7 +323,12 @@ CHECKS = {
                                 # (2.1.49) the Gamepad UI's Game Menu shortcut: one hidden button made out of a fight
                                 # on UIParent, one click phase (AnyDown), whose click is the game's own close of the
                                 # menu (Core/Config.lua's pad.Arm)
-                                "Core/Config.lua"]},
+                                "Core/Config.lua",
+                                # (2.1.58) the Gamepad UI's click-through: the MOUSE on a button of ours that must end
+                                # in the game's own secure click (the Game Menu's close under MelloUI's pill, the
+                                # game's map's close under MelloUI's map's X) -- one helper, G.ClickThrough, made
+                                # lazily out of a fight, laid by Reminders.OverlayPlace, one click phase (AnyDown)
+                                "Core/Gamepad.lua"]},
                       "a secure button: made lazily out of combat, laid by rect on UIParent, one click phase "
                       "(Core/Reminders.lua's Attach / OverlayPlace, Core/EditLayoutBridge.lua)"),
     # (0.17.0) a column of lines made by hand: a new line put first in a list
