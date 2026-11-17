@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.57
+
+- Map: with RareScanner and a HandyNotes plugin that also marks rares (HandyNotes: WoW Forever), a rare was marked twice. Now one addon draws the rares: while RareScanner shows them, the plugin's rare marks are left out on MelloUI's map and on the minimap. Its treasures stay.
+- Map: without RareScanner, or with its rare icons switched off in its own options, the plugin's rares now wear MelloUI's rare seal, the same look as RareScanner's rares, on MelloUI's map and on the minimap. The plugin's own tooltip and clicks stay.
+
 ## 2.1.56
 
 - Map: with Questie, its quest ! and ? on MelloUI's map are bigger, the size of the map's other marks, and follow the Icon Size slider. They were Questie's own small size before.

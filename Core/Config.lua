@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.57", lines = {
+		"Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap.",
+		"Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap.",
+	} },
 	{ version = "2.1.56", lines = {
 		"Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there.",
 		"Questie: every version of its database is read now, older and newer ones too.",
@@ -217,20 +221,6 @@ local CHANGELOG = {
 		"Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own until Questie's tracker shows again.",
 		"Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP. Its switch is on the Addons page.",
 		"Offhand: Quest Moments, the Level Up card, the on-screen line and Combat Text now go by your main game screen, not the gap between your two screens.",
-	} },
-	{ version = "2.1.52", lines = {
-		"Quest Moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest. Switches on the Animations page.",
-		"Quests: MelloUI's quests now come from Questie: the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI ships no quest data of its own any more.",
-		"Quests: without Questie, no quests are shown. The map's layers page and the Quest List say so, with a Get Questie button that opens Questie's card on the Addons page.",
-		"Addons page: Questie's switch is now named MelloUI's look. Off, Questie shows its own icons and tracker, on MelloUI's map too; the Quest List and Route to a quest keep working.",
-		"Quest List: quests Questie does not know are no longer listed. The Attunements view and the options Include Givers You Are Done With and Hide Grey Quests are gone.",
-		"Map: with Questie, every quest ! and ? is Questie's, in MelloUI's look, so Questie's quest level options decide which quests show. Point at one for its quests, click it for the route there.",
-		"Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.",
-		"Addons page: on a new install, a Use with MelloUI switch turned off before the first /reload or logout is kept now. It was lost before.",
-		"Bags: with the Collapse Arrow on, the backpack stays still when the bag bar folds or opens, and the key ring fits a vertical bag bar.",
-		"Restock: a new Fill All Ammo Bags switch on the Ammo page keeps your quivers and ammo pouches full. A single arrow or bullet now goes up to 2000, the best ammunition listed first.",
-		"Game Menu: with Polestar, its button and the MelloUI button no longer share a row, so both can be clicked.",
-		"French: the map, Dungeon Info, the quest tooltips, Services, Restock and Discard are translated now.",
 	} },
 }
 local LINKS = {

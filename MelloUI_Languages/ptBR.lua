@@ -2975,6 +2975,8 @@ Lang:Add("ptBR", {
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Página Addons: abre de novo com o MaxDPS instalado, onde ficava em Perfis.", -- draft
 	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Mapa: com o Questie, seus ! e ? de missão no mapa do MelloUI estão maiores e seguem o controle Tamanho do ícone, e um clique perto de um deles inicia a rota até lá.", -- draft
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: agora qualquer versão do banco de dados dele é lida, também as mais antigas e as mais novas.", -- draft
+	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Mapa: com o RareScanner e um plugin do HandyNotes que também marca raros, um raro não é mais marcado duas vezes. Fica a marca do RareScanner, no mapa do MelloUI e no minimapa.", -- draft
+	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "Mapa: sem o RareScanner, os raros de um plugin do HandyNotes também usam o selo de raros do MelloUI, no mapa e no minimapa.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

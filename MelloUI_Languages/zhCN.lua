@@ -2975,6 +2975,8 @@ Lang:Add("zhCN", {
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "插件页面：安装了 MaxDPS 时可以再次打开，之前会停留在配置文件页面。", -- draft
 	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "地图：使用 Questie 时，MelloUI 地图上的任务 ! 和 ? 更大，并随“图标大小”滑块变化，点击其附近即可开始前往该处的路线。", -- draft
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie：现在可读取其数据库的任何版本，包括更旧和更新的版本。", -- draft
+	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "地图：同时使用 RareScanner 和也会标记稀有怪的 HandyNotes 插件时，稀有怪不再被标记两次。MelloUI 地图和小地图上只保留 RareScanner 的标记。", -- draft
+	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "地图：没有 RareScanner 时，HandyNotes 插件的稀有怪在地图和小地图上也使用 MelloUI 的稀有怪印章。", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

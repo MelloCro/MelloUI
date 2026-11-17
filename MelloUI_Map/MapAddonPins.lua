@@ -730,6 +730,36 @@ end
 
 local Sources = {}
 
+-- (2.1.57; the user, 2026-11-17: "Conflict between RareScanner and Handy Notes, Both show rare locations") ONE owner a
+-- kind of place across the addons (MapTownMarks' rule): a rare creature's place is RareScanner's while it shows them
+-- (Core/RareScannerLook.lua's RL.Rares), and another addon's mark of one is not drawn too. A HandyNotes node is known
+-- for a rare by what its own plugin keeps of it: the zone's node table its GetNodes2 hands out as the iterator's
+-- state ([coord] = the node), the node naming its creature (RARE_FIELDS: `npc`, the treasures-and-rares plugins'
+-- field for a creature to find -- HandyNotes: WoW Forever is one). Never by the plugin's name, and never by its
+-- picture (an item's icon with the plugin's own option on). A plugin that keeps no such table, a node without the
+-- field (its treasures): drawn as before
+local RARE_FIELDS = { "npc" }
+local function Field(t, key)
+	return t[key]
+end
+local function RareNode(state, coord)
+	if type(state) ~= "table" or coord == nil then
+		return false
+	end
+	local ok, node = pcall(Field, state, coord)
+	if not (ok and type(node) == "table") then
+		return false
+	end
+	for _, field in ipairs(RARE_FIELDS) do
+		local okF, v = pcall(Field, node, field)
+		if okF and type(v) == "number" then
+			return true
+		end
+	end
+	return false
+end
+AddonPins.RareNode = RareNode
+
 -- HandyNotes: every enabled plugin's nodes of the zone (GetNodes2: their own map, 0..1 there)
 -- (2.1.44) an addon's nodes only while its switch on the Addons page, Use with MelloUI, is on (Core/Integrations.lua)
 local function Used(key)
@@ -753,6 +783,12 @@ Sources[1] = function(id, add)
 	-- never drawn here too; and another plugin's node of a town kind an owner before it has: not twice (Town.Held)
 	local Town = ns.TownMarks
 	local mine = Town and Town.Used() and Town.T.PLUGIN or nil
+	-- (2.1.57) the rares RareScanner's while it shows them: a plugin's rare nodes not drawn too (RareNode); while it
+	-- does not, a plugin's rare wears MelloUI's rare seal, RareScanner's look (RL.PlainSeal) -- the plugin's own
+	-- tooltip, clicks and fade kept, its picture and size not: one kind, one look
+	local RL = MelloUI.RareScannerLook
+	local rares = RL and RL.Rares and RL.Rares() or false
+	local seal = RL and not rares and RL.PlainSeal or nil
 	for name, handler in pairs(hn.plugins) do
 		if name ~= mine and enabled[name] and type(handler) == "table" and type(handler.GetNodes2) == "function" then
 			local ok, iter, state, value = pcall(handler.GetNodes2, handler, id, false)
@@ -765,26 +801,32 @@ Sources[1] = function(id, add)
 					end
 					value, guard = coord, guard + 1
 					coord = Finite(coord)
-					if coord then
+					local rare = coord and RareNode(state, value)
+					if coord and not (rare and rares) then
 						local x, y = floor(coord / 10000) / 10000, (coord % 10000) / 10000
-						local spec = {
-							size = T.NODE * scale * (Finite(s) or 1), alpha = min(max(alpha * (Finite(a) or 1), 0), 1),
-							enter = NodeEnter, leave = NodeLeave, click = NodeClick, right = true,
-							data = { name, map2 or id, coord },
-						}
-						if type(icon) == "table" then
-							spec.icon = icon.icon
-							if icon.tCoordLeft then
-								spec.tc = { icon.tCoordLeft, icon.tCoordRight, icon.tCoordTop, icon.tCoordBottom }
-								spec.look = CutLook
-							end
-							if icon.r then
-								spec.rgb = { icon.r, icon.g, icon.b }
-							end
+						local fade = min(max(alpha * (Finite(a) or 1), 0), 1)
+						local spec
+						if rare and seal then
+							spec = seal("rare")
+							spec.alpha = fade < 1 and fade or spec.alpha
 						else
-							spec.icon = icon
+							spec = { size = T.NODE * scale * (Finite(s) or 1), alpha = fade }
+							if type(icon) == "table" then
+								spec.icon = icon.icon
+								if icon.tCoordLeft then
+									spec.tc = { icon.tCoordLeft, icon.tCoordRight, icon.tCoordTop, icon.tCoordBottom }
+									spec.look = CutLook
+								end
+								if icon.r then
+									spec.rgb = { icon.r, icon.g, icon.b }
+								end
+							else
+								spec.icon = icon
+							end
 						end
-						if not (Town and Town.Held(Town.KindOfPicture(spec.icon), "other")) then
+						spec.enter, spec.leave, spec.click, spec.right = NodeEnter, NodeLeave, NodeClick, true
+						spec.data = { name, map2 or id, coord }
+						if (rare and seal) or not (Town and Town.Held(Town.KindOfPicture(spec.icon), "other")) then
 							add("hn:" .. name .. ":" .. (map2 or id) .. ":" .. coord, map2 or id, x, y, spec)
 						end
 					end
@@ -1000,6 +1042,234 @@ local function HookSources()
 		hookedSources[display] = true
 		hooksecurefunc(display, "UpdateWorldMap", Redrawn)
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The minimap: another addon's rares there -- off while RareScanner's stand, in MelloUI's seal otherwise
+--------------------------------------------------------------------------------
+
+-- (2.1.57) the minimap wears what the map wears. HandyNotes lays a plugin's minimap icons itself (its
+-- UpdateMinimapPlugin: frames of its own on HereBeDragons, each keeping its coord, from the plugin's nodes of your
+-- zone). Right after it has, the icons of rare nodes (RareNode, by the same node table) are taken off HereBeDragons
+-- again -- HandyNotes keeps the frames and takes them back at its next update, as with the town marks' plugin
+-- (MapTownMarks' OwnOff) -- and what stands there instead goes by who draws the rares (Mode):
+--   "owned"    RareScanner shows its own rares on the minimap (RL.MiniRares): nothing of the plugin's
+--   "dressed"  it does not: a mark of MelloUI's own in the rare seal (RL.MiniSeal) at the plugin's place, on Route's
+--              minimap layer (as the town marks), the plugin's own tooltip on it; the minimap keeps its clicks
+--   nil        the map off, HandyNotes not used with MelloUI, or no Route: HandyNotes' own stand as it lays them
+-- Nothing of HandyNotes' or the plugin's is written. A plugin's minimap icons are its own option (HandyNotes: WoW
+-- Forever's is off as it comes), so most players see none of this
+do
+	local OWNER = "Map rares of other addons"   -- on Route's minimap layer
+	local mini = { want = false, hooked = false, drawn = false, by = {}, marks = {}, n = 0 }
+
+	local function Lib(name, method)
+		local LibStub = rawget(_G, "LibStub")
+		local ok, lib = pcall(LibStub, name, true)
+		return ok and type(lib) == "table" and type(lib[method]) == "function" and lib or nil
+	end
+
+	local function RouteLayer()
+		local R = MelloUI.Route
+		return type(R) == "table" and type(R.WantMinimap) == "function" and type(R.ToYards) == "function"
+			and type(R.MinimapFrame) == "function" and type(R.MinimapOffset) == "function"
+			and type(R.MarkPlace) == "function" and R or nil
+	end
+
+	local function Mode()
+		local RL = MelloUI.RareScannerLook
+		if not (mini.want and RL and Used("HandyNotes")) then
+			return nil
+		end
+		if RL.MiniRares and RL.MiniRares() then
+			return "owned"
+		end
+		return RL.MiniSeal and RouteLayer() and "dressed" or nil
+	end
+
+	-- a mark's tooltip: its plugin's own, as on the map
+	local function Handler(f)
+		local hn = Ace("HandyNotes")
+		local handler = hn and type(hn.plugins) == "table" and hn.plugins[f.plugin]
+		return type(handler) == "table" and handler or nil
+	end
+
+	local function Enter(f)
+		local handler = Handler(f)
+		if handler and type(handler.OnEnter) == "function" then
+			f.over = true
+			pcall(handler.OnEnter, f, f.mapID, f.coord)
+		end
+	end
+
+	local function Leave(f)
+		if not f.over then
+			return
+		end
+		f.over = nil
+		local handler = Handler(f)
+		if handler and type(handler.OnLeave) == "function" then
+			pcall(handler.OnLeave, f, f.mapID, f.coord)
+		end
+		if GameTooltip:GetOwner() == f then
+			GameTooltip:Hide()
+		end
+	end
+
+	-- a mark (made the first time it is needed): the seal, the mouse's motion only
+	local function Mark(i, frame)
+		local f = mini.marks[i]
+		if not f then
+			f = CreateFrame("Frame", nil, frame)
+			f:SetFrameLevel(frame:GetFrameLevel() + 1)   -- (under the quest marks, as the town marks)
+			MelloUI.RareScannerLook.MiniSeal(f, "rare")
+			if f.SetMouseClickEnabled then
+				f:EnableMouse(true)
+				f:SetMouseClickEnabled(false)
+				f:SetScript("OnEnter", Enter)
+				f:SetScript("OnLeave", Leave)
+				f:SetScript("OnHide", Leave)
+			end
+			mini.marks[i] = f
+		end
+		return f
+	end
+
+	-- Route's minimap layer's tick (cont nil: hidden)
+	local function Draw(cont, round, R, RX, RY)
+		local Route = MelloUI.Route
+		local frame = Route.MinimapFrame()
+		local n = 0
+		if cont and frame then
+			local Offset, size = Route.MinimapOffset, MelloUI.RareScannerLook.T.MINI
+			local m = size / 2
+			for _, list in pairs(mini.by) do
+				for _, p in ipairs(list) do
+					if p.cont == cont then
+						local gx, gy = Offset(p.x, p.y)
+						local on
+						if round then
+							on = gx * gx + gy * gy <= (R - m) * (R - m)
+						else
+							on = math.abs(gx) <= RX - m and math.abs(gy) <= RY - m
+						end
+						if on then
+							n = n + 1
+							local f = Mark(n, frame)
+							f.plugin, f.mapID, f.coord = p.plugin, p.mapID, p.coord
+							Route.MarkPlace(f, size, frame, "CENTER", gx, gy)
+						end
+					end
+				end
+			end
+		end
+		for i = n + 1, mini.n do
+			mini.marks[i]:Hide()
+		end
+		mini.n = n
+	end
+
+	-- the layer asked for exactly while a plugin has rares to show
+	local function Want()
+		local any = next(mini.by) ~= nil
+		if any == mini.drawn then
+			return
+		end
+		mini.drawn = any
+		local R = RouteLayer()
+		if R then
+			R.WantMinimap(OWNER, any and Draw or nil)
+		end
+		if not any then
+			for i = 1, mini.n do
+				mini.marks[i]:Hide()
+			end
+			mini.n = 0
+		end
+	end
+
+	-- a plugin's rare icons HandyNotes just laid: off HereBeDragons, and (dressed) their places for MelloUI's marks
+	local function Take(name, mode)
+		local hn = Ace("HandyNotes")
+		local handler = hn and type(hn.plugins) == "table" and hn.plugins[name]
+		local pins = Lib("HereBeDragons-Pins-2.0", "RemoveMinimapIcon")
+		local hbd = Lib("HereBeDragons-2.0", "GetPlayerZone")
+		local ref = "HandyNotes" .. tostring(name)
+		local laid = pins and type(pins.minimapPinRegistry) == "table" and pins.minimapPinRegistry[ref]
+		if not (mode and hbd and type(laid) == "table" and next(laid) ~= nil and type(handler) == "table"
+			and type(handler.GetNodes2) == "function") then
+			return nil
+		end
+		-- the node table HandyNotes itself just went through: the plugin's, of your zone, for the minimap
+		local okZ, zone = pcall(hbd.GetPlayerZone, hbd)
+		zone = okZ and Finite(zone) or nil
+		if not zone then
+			return nil
+		end
+		local okN, _, state = pcall(handler.GetNodes2, handler, zone, true)
+		if not (okN and type(state) == "table") then
+			return nil
+		end
+		local gone
+		for icon in pairs(laid) do
+			if type(icon) == "table" and RareNode(state, icon.coord) then
+				gone = gone or {}
+				gone[#gone + 1] = icon
+			end
+		end
+		local R = mode == "dressed" and RouteLayer() or nil
+		local list
+		for _, icon in ipairs(gone or {}) do
+			pcall(pins.RemoveMinimapIcon, pins, ref, icon)
+			local c = R and Finite(icon.coord)
+			if c then
+				local okY, cont, x, y = pcall(R.ToYards, zone, floor(c / 10000) / 10000, (c % 10000) / 10000)
+				if okY and cont and x and y then
+					list = list or {}
+					list[#list + 1] = { cont = cont, x = x, y = y, mapID = zone, coord = c, plugin = name }
+				end
+			end
+		end
+		return list
+	end
+
+	local function Sort(name)
+		mini.by[name] = Take(name, Mode())
+		Want()
+	end
+
+	local Laid = Perf.Shared("HandyNotes' UpdateMinimapPlugin, for the rares", function(_, name)
+		Sort(name)
+	end, "hook")
+
+	-- (Map.lua: its OnEnable and OnDisable) the map on or off: on, the hook (once) and the icons laid before it;
+	-- off, MelloUI's marks gone and HandyNotes lays its own again
+	function AddonPins.MiniRares(enabled)
+		local was = mini.want
+		mini.want = enabled and true or false
+		local hn = Ace("HandyNotes")
+		if not hn then
+			return
+		end
+		if mini.want then
+			if not mini.hooked and type(hn.UpdateMinimapPlugin) == "function" then
+				mini.hooked = true
+				hooksecurefunc(hn, "UpdateMinimapPlugin", Laid)
+			end
+			if type(hn.plugins) == "table" then
+				for name in pairs(hn.plugins) do
+					Sort(name)
+				end
+			end
+		else
+			wipe(mini.by)
+			Want()
+			if was and type(hn.UpdateMinimap) == "function" then
+				pcall(hn.UpdateMinimap, hn)
+			end
+		end
+	end
+	AddonPins.mini = mini   -- (the tests)
 end
 
 --------------------------------------------------------------------------------

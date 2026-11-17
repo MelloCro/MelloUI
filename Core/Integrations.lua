@@ -234,7 +234,8 @@ I.LIST = {
 	{ key = "RareScanner", name = "RareScanner", folders = { "RareScanner" }, group = "map",
 	  url = "https://www.curseforge.com/wow/addons/rarescanner",
 	  does = { "Its rares, treasures and events on MelloUI's map and minimap, as MelloUI's icons on a plate.",
-		"The rares it finds come up on Rare Alert, with where they are." },
+		"The rares it finds come up on Rare Alert, with where they are.",
+		"One addon draws the rares: while it shows them, other addons' rare marks are not drawn too, on MelloUI's map and the minimap." },
 	  short = "Its finds in MelloUI's look, and on Rare Alert",
 	  links = { { "Quality of Life > Widgets", id = "Widgets.rare" }, { "Map layers", map = true } },
 	  parts = {
@@ -271,7 +272,8 @@ I.LIST = {
 	  end } } },
 	{ key = "HandyNotes", name = "HandyNotes", folders = { "HandyNotes" }, group = "map",
 	  url = "https://www.curseforge.com/wow/addons/handynotes",
-	  does = { "Its notes on MelloUI's map." },
+	  does = { "Its notes on MelloUI's map.",
+		"A plugin's rares wear MelloUI's rare seal, on the map and the minimap. While RareScanner shows its rares, they step aside." },
 	  short = "Its notes on MelloUI's map",
 	  links = { { "Map layers", map = true } },
 	  parts = { { "its notes", function()
@@ -690,8 +692,13 @@ function I.Jobs()
 	-- (2.1.49) the bag window
 	local bags = By("bags")
 	rows[#rows + 1] = { "Bag window", bags or "MelloUI's Bag Window", bags and "MelloUI's bag window steps aside" or nil }
+	-- (2.1.57) one owner a kind: the rares RareScanner's while it shows them (RL.Rares), a HandyNotes plugin's aside
+	local RL = rawget(MelloUI, "RareScannerLook")
+	local rares = Used("RareScanner")
 	rows[#rows + 1] = { "Rares, treasures and events on the map",
-		Used("RareScanner") and "RareScanner's finds, in MelloUI's look" or "Not shown (RareScanner adds them)" }
+		rares and "RareScanner's finds, in MelloUI's look" or "Not shown (RareScanner adds them)",
+		(rares and Used("HandyNotes") and RL and RL.Rares and RL.Rares())
+			and "Other addons' rare marks hidden on MelloUI's map and the minimap" or nil }
 	local polestar = Used("Polestar")
 	for _, j in ipairs(POLESTAR_JOBS) do
 		if By(j[2]) == "Polestar" then

@@ -30,6 +30,7 @@ local Perf = MelloUI.Perf:Scope("RareScannerLook")
 local Finite = MelloUI.Safe.Finite
 local Text = MelloUI.Safe.Text
 local Secret = MelloUI.Safe.IsSecret
+local Plain = MelloUI.Safe.Value
 
 local RL = {}
 MelloUI.RareScannerLook = RL
@@ -261,6 +262,27 @@ function RL.MapLook()
 	return ok and on and true or false
 end
 
+-- (2.1.57; the user, 2026-11-17: "Conflict between RareScanner and Handy Notes, Both show rare locations") ONE owner a
+-- kind of place across the addons (MapTownMarks' rule, the user's of 2026-11-15): the rares on MelloUI's map are
+-- RareScanner's while it is used with MelloUI and its own setting shows rare NPCs on the map -- another addon's marks
+-- of rares give way then (MapAddonPins' HandyNotes source); the minimap's by the same answer while the big map wears
+-- the seals and its own setting shows its minimap icons (MapAddonPins' MiniRares). Its settings are read, never
+-- written; one that cannot be read counts as it comes (shown)
+local function MapSetting(key)
+	local addon = Addon()
+	local db = addon and addon.db
+	local map = type(db) == "table" and type(db.profile) == "table" and db.profile.map
+	return not (type(map) == "table" and Plain(map[key]) == false)
+end
+
+function RL.Rares()
+	return RL.On() and MapSetting("displayNpcIcons")
+end
+
+function RL.MiniRares()
+	return RL.MapLook() and MapSetting("displayNpcIcons") and MapSetting("displayMinimapIcons")
+end
+
 local function Ours(icon)
 	local POI = type(icon) == "table" and rawget(icon, "POI")
 	local tex = POI and Text(POI.Texture)
@@ -342,6 +364,24 @@ local function Undress(icon)
 			p:SetAlpha(1)
 		end
 	end
+end
+
+-- (2.1.57; the user, 2026-11-17: "we have reskined Rare Scanner right? but when Enabling another addon without the
+-- rarescanner, you choose not to reskin their rare icons, why is that?") a rare wears this seal whoever knows its
+-- place: another addon's mark of one (a HandyNotes plugin's, MapAddonPins) wears it while RareScanner does not show
+-- its own. Such a source keeps no state of RareScanner's kind, so the seal is the plain one, of a rare found before:
+--   RL.PlainSeal(kind, size) -> spec   the map's pin (RL.Seal's)
+--   RL.MiniSeal(frame, kind)           the same on a minimap mark of MelloUI's own (the plate, core and icon, T.MINI)
+local function Stateless(kind)
+	return { isContainer = kind == "treasure" or nil, isEvent = kind == "event" or nil }
+end
+
+function RL.PlainSeal(kind, size)
+	return RL.Seal(Stateless(kind), size)
+end
+
+function RL.MiniSeal(frame, kind)
+	Dress(frame, Stateless(kind))
 end
 
 local function Lay(icon, POI, look)
