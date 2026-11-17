@@ -182,6 +182,7 @@ local CHANGELOG = {
 		"Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too.",
 		"Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read.",
 		"Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls.",
+		"Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over.",
 		"Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood.",
 	} },
 	{ version = "2.1.57", lines = {

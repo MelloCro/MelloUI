@@ -2986,6 +2986,7 @@ Lang:Add("zhCN", {
 	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "手柄地图：方向键可到达任务列表旁的按钮，在你的标记上按“标记”会移除它，准星移动更快，用鼠标关闭地图时也会关闭游戏自带的地图。", -- draft
 	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "手柄：游戏的黄色指针不再显示在 MelloUI 窗口之上，按键提示已居中且更易辨认。", -- draft
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "手柄聊天：在游戏的环形菜单中选择“聊天”，然后用 LB / RB 切换标签页，用方向键或右摇杆滚动。", -- draft
+	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "丢弃：现在回答“丢弃”会丢掉白色物品。此前游戏每次都会拒绝，聊天中也会提示。游戏自己保留的物品会被跳过。", -- draft
 	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool：单位框体、施法条、个人显示、姓名板和聊天换上了新边框，可在“边框 > 框架套装”中三选一：镀金石、锻铁和雕木。", -- draft
 })
 

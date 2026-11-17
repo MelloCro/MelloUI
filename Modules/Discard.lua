@@ -54,7 +54,8 @@
 -- event (DeleteCursorItem: HasRestrictions), so it happens in the button's
 -- own click or the question's Discard click. The item is checked again
 -- right before (still in its slot, the same stack); a cursor already
--- holding something stops it; an item the game would not let go is put back.
+-- holding something stops it; an item the game would not let go is put back
+-- and (2.1.58) passed over until the next login: the next cheapest goes.
 -- Nothing at login: the buttons are made with their window's first show.
 --------------------------------------------------------------------------------
 
@@ -334,15 +335,29 @@ local function Better(a, b)
 	return a.slot < b.slot
 end
 
+-- (2.1.58; the user's picture, 2026-11-17: three clicks, three times "the game did not let MelloUI throw [Scroll:
+-- TOPAZ YORAK] away". Its cause was the question, not the item: MelloUI:Confirm hid its dialog before the answer ran,
+-- and the game then blocks the delete -- fixed in Modules/KitWindow.lua's Answer, seen in the test client. What it
+-- showed besides: whatever the game does not let go stays the cheapest, so every click offered it again and nothing
+-- else could go.) What the game itself did not let go, by item, for this login (never saved: a refusal may be the
+-- moment's): passed over when throwing away, still sold at a vendor. A delete the game BLOCKS (the call, not the
+-- item: "Interface action failed because of an AddOn") passes nothing over and says so
+M.refused = {}
+
 -- the cheapest candidate; selling: whatever its value, else under the limit
 -- (a valuable stack is never thrown away). Also how many were kept for
 -- their value, for the message; (2.1.50) selling: the cheapest of those
--- held back for the auction's price and how many (AHledger); ordinary: the ordinary bags only (EachSlot)
+-- held back for the auction's price and how many (AHledger); ordinary: the ordinary bags only (EachSlot);
+-- (2.1.58) last: how many were passed over because the game did not let them go (M.refused)
 function M.Cheapest(selling, ordinary)
 	local limit = ((Num(M.db and M.db.keepWorth) or 100) * 100)
-	local best, valuable, held, nheld = nil, 0, nil, 0
+	local best, valuable, held, nheld, nrefused = nil, 0, nil, 0, 0
 	EachSlot(function(bag, slot)
 		local c = M.Candidate(bag, slot)
+		if c and not selling and M.refused[c.itemID] then
+			nrefused = nrefused + 1
+			c = nil
+		end
 		if c then
 			if selling and c.auction and c.auction * AUCTION_CUT >= SELL_MARGIN * c.price then
 				nheld = nheld + 1
@@ -356,7 +371,7 @@ function M.Cheapest(selling, ordinary)
 			end
 		end
 	end, ordinary)
-	return best, valuable, held, nheld
+	return best, valuable, held, nheld, nrefused
 end
 
 -- (2.1.54) the loot window's button throwing away (not selling): the ordinary bags only -- its tooltip, its click and
@@ -417,6 +432,55 @@ local function Still(c)
 	return now and now.itemID == c.itemID and now.count == c.count
 end
 
+-- (2.1.58) the game's own word on a refusal, heard only round the delete (its events registered for that, never
+-- idle): its block of an addon's call comes inside the call (ADDON_ACTION_BLOCKED and _FORBIDDEN are synchronous),
+-- its red error line a moment after (UI_ERROR_MESSAGE is not), so the refusal's chat line waits EAR_WAIT for it
+local ear = { frame = nil, blocked = false, text = nil, name = nil }
+local EAR_WAIT = 0.3
+local EAR_EVENTS = { "UI_ERROR_MESSAGE", "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
+
+local function Ear_OnEvent(_, event, _, message)
+	if event == "UI_ERROR_MESSAGE" then
+		ear.text = ear.text or MelloUI.Safe.Text(message)
+	else
+		ear.blocked = true
+	end
+end
+
+local function Listen(on)
+	if not ear.frame then
+		ear.frame = CreateFrame("Frame")
+		Perf.SetScript(ear.frame, "OnEvent", Ear_OnEvent)
+	end
+	for _, event in ipairs(EAR_EVENTS) do
+		if on then
+			ear.frame:RegisterEvent(event)
+		else
+			ear.frame:UnregisterEvent(event)
+		end
+	end
+	if on then
+		ear.blocked, ear.text = false, nil
+	end
+end
+
+-- the refusal's chat line, once the game's own words had their moment
+local function Told()
+	local name = ear.name
+	if not name then
+		return
+	end
+	ear.name = nil
+	Listen(false)
+	if ear.text then
+		Say("Discard: the game did not let MelloUI throw %s away (\"%s\"); it is back in your bags. Discard passes over it until you log in again.",
+			name, ear.text)
+	else
+		Say("Discard: the game did not let MelloUI throw %s away; it is back in your bags. Discard passes over it until you log in again.",
+			name)
+	end
+end
+
 -- sells or throws away the candidate; from a click (hardware event) only
 function M.Act(c, selling)
 	if not Still(c) then
@@ -441,24 +505,40 @@ function M.Act(c, selling)
 		Say("Discard: the item could not be picked up; nothing was thrown away.")
 		return false
 	end
+	Told()   -- (a refusal's line still waiting for the game's words: said first)
+	Listen(true)
 	Ask(DeleteCursorItem)
 	if Ask(GetCursorInfo) ~= nil then
 		-- (the game would not let it go: back to its slot)
 		Ask(ClearCursor)
-		Say("Discard: the game did not let MelloUI throw %s away; it is back in your bags.", name)
+		if ear.blocked then
+			-- (the call itself was blocked, whatever the item: nothing is passed over for it)
+			Listen(false)
+			Say("Discard: the game blocked the delete itself; %s stays in your bags.", name)
+			return false
+		end
+		-- (2.1.58) passed over from now on: the next click takes the next cheapest
+		M.refused[c.itemID] = true
+		ear.name = name
+		Perf.C_Timer.After(EAR_WAIT, Told)
 		return false
 	end
+	Listen(false)
 	Say("Threw away %s%s (worth %s).", name, c.count > 1 and (" x" .. c.count) or "", Money(c.vendor or c.value))
 	return true
 end
 
 -- the button's click: from the bags ("bags") or the loot window ("loot")
 function M.Click(source)
+	Told()   -- (a refusal's line still waiting: said before this click's own)
 	local selling = AtVendor()
-	local c, valuable, _, nheld = M.Cheapest(selling, Ordinary(source, selling))
+	local c, valuable, _, nheld, nrefused = M.Cheapest(selling, Ordinary(source, selling))
 	if not c then
 		if selling and nheld > 0 then
 			Say("Discard: nothing to sell -- what is left sells for more at the auction house (AHledger's prices).")
+		elseif nrefused > 0 then
+			-- (2.1.58) only what the game did not let go is left
+			Say("Discard: nothing else to throw away -- the game did not let the rest go (passed over until you log in again).")
 		elseif valuable > 0 then
 			Say("Discard: nothing cheap enough to throw away -- your junk is worth %s or more a stack (Never Throw Away Items Worth).",
 				Money((Num(M.db and M.db.keepWorth) or 100) * 100))
