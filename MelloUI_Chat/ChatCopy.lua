@@ -138,7 +138,7 @@ local function WindowName(frame)
 			return name
 		end
 	end
-	return TEXT.title
+	return W.Tr(TEXT.title)
 end
 
 function Copy.Lines(src)
@@ -148,7 +148,7 @@ function Copy.Lines(src)
 	end
 	local view = M.View
 	if not (view and view.Records) then
-		return out, TEXT.title
+		return out, W.Tr(TEXT.title)
 	end
 	local recs, name = view.Records(view.tab)
 	for _, rec in ipairs(recs) do
@@ -157,17 +157,17 @@ function Copy.Lines(src)
 			out[#out + 1] = line
 		end
 	end
-	return out, name or TEXT.title
+	return out, name or W.Tr(TEXT.title)
 end
 
 local function CopyNow()
 	local lines, name = Copy.Lines(S.over ~= "view" and S.over or nil)
 	if #lines == 0 then
-		MelloUI:Print(TEXT.none)
+		MelloUI:Print(W.Tr(TEXT.none))
 		return
 	end
 	MelloUI:PlayUISound("click")
-	MelloUI:ShowText(string.format("%s  (%d lines)", name, #lines), table.concat(lines, "\n"))
+	MelloUI:ShowText(W.Tr("%s  (%d lines)"):format(name, #lines), table.concat(lines, "\n"))
 end
 
 --------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ local function Button()
 	b:Hide()
 	b:SetScript("OnClick", CopyNow)
 	b:HookScript("OnEnter", function(self)
-		W.ShowTooltip(self, TEXT.tip, TEXT.tipLine)
+		W.ShowTooltip(self, W.Tr(TEXT.tip), W.Tr(TEXT.tipLine))
 	end)
 	b:HookScript("OnLeave", function()
 		if GameTooltip then
