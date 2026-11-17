@@ -1625,7 +1625,7 @@ local SUMMARY = {
 	check = SummaryUp,
 	title = function()
 		local fight = S.summary
-		return fight and (fight.won and TEXT.won or TEXT.lost) or TEXT.summaryLabel
+		return W.Tr(fight and (fight.won and TEXT.won or TEXT.lost) or TEXT.summaryLabel)
 	end,
 	text = function()
 		local fight = S.summary
@@ -1635,11 +1635,11 @@ local SUMMARY = {
 		end
 		local amount, rate = healing and s.h or s.d, healing and s.hps or s.dps
 		if healing then
-			return TEXT.summaryHeal:format(Meter.Big(amount), Meter.Plain(rate), rank, of)
+			return W.Tr(TEXT.summaryHeal):format(Meter.Big(amount), Meter.Plain(rate), rank, of)
 		elseif of <= 1 then
-			return TEXT.summarySolo:format(Meter.Big(amount), Meter.Plain(rate))
+			return W.Tr(TEXT.summarySolo):format(Meter.Big(amount), Meter.Plain(rate))
 		end
-		return TEXT.summaryText:format(Meter.Big(amount), Meter.Plain(rate), rank, of)
+		return W.Tr(TEXT.summaryText):format(Meter.Big(amount), Meter.Plain(rate), rank, of)
 	end,
 	time = function()
 		local fight = S.summary
@@ -1662,7 +1662,7 @@ local SUMMARY = {
 			rows[i] = r
 			r.glyph, r.onClick = nil, nil
 			r.icon = Meter.ClassIcon(s.c)
-			r.text = Meter.Ordinal(i) .. "  " .. (s.me and TEXT.you or s.n)
+			r.text = Meter.Ordinal(i) .. "  " .. (s.me and W.Tr(TEXT.you) or s.n)
 			r.right = Meter.Big(s.d) .. "  " .. Meter.Plain(s.dps) .. "/s"
 		end
 		rows.n = #list
@@ -1680,7 +1680,7 @@ local SUMMARY = {
 			if cr then
 				r, g, b = cr, cg, cb
 			end
-			tip:AddDoubleLine(Meter.Ordinal(i) .. " " .. (s.me and TEXT.you or s.n),
+			tip:AddDoubleLine(Meter.Ordinal(i) .. " " .. (s.me and W.Tr(TEXT.you) or s.n),
 				Meter.Big(s.d) .. "  " .. Meter.Plain(s.dps) .. "/s", r, g, b, tr, tg, tb)
 		end
 	end,
@@ -1990,7 +1990,7 @@ local function PvShow(mode, place)
 		for i, s in ipairs(f.src) do
 			local e = list[i] or {}
 			list[i] = e
-			e.name, e.classFilename = s.me and TEXT.you or s.n, s.c
+			e.name, e.classFilename = s.me and W.Tr(TEXT.you) or s.n, s.c
 			e.totalAmount, e.amountPerSecond, e.isLocalPlayer = s.d, s.dps, s.me or nil
 		end
 		for i = #f.src + 1, #list do

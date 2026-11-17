@@ -27,6 +27,7 @@
 
 local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
+local W = MelloUI.Widgets
 local Perf = MelloUI.Perf:Scope("MelloUI_QuestList (QuestListTips)")
 local QL = ns.QuestList
 local M = QL.M
@@ -144,7 +145,7 @@ local function IndexTurnIns()
 		local name = row and row[QL.F_ENDER]
 		if name and name ~= "" then
 			local ready = QL.IsReadyForTurnIn(id)
-			local entry = { (ready and "Turn in here: " or "Quest ends here: ") .. TitleOf(id, row), ready }
+			local entry = { ready and "Turn in here: %s" or "Quest ends here: %s", TitleOf(id, row), ready }
 			local npc = row[QL.F_ENDERNPC]
 			if npc and npc ~= 0 then
 				Add(Tips.byNPC, npc, entry)
@@ -326,8 +327,8 @@ local function AddTurnIns(tip, list, ready, added)
 	end
 	for i = 1, #list do
 		local entry = list[i]
-		if entry[2] == ready and added < MAX_TURN_INS then
-			AddLine(tip, entry[1], ready and "selectedTrim" or "mutedText")
+		if entry[3] == ready and added < MAX_TURN_INS then
+			AddLine(tip, W.Tr(entry[1]):format(entry[2]), ready and "selectedTrim" or "mutedText")
 			added = added + 1
 		end
 	end
