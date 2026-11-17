@@ -40,7 +40,7 @@ local TEXT = {
 
 local M = MelloUI:RegisterModule("MailRecipients", {
 	title = "Mail Recipients",
-	new = "2.1.56",
+	new = "2.1.59",
 	desc = "A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in.",
 	icon = "Interface\\Icons\\INV_Letter_15",
 	flavour = "Who was that again? One click and the letter has its name.",
@@ -51,7 +51,7 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 		bnet = true,
 	},
 	options = {
-		{ type = "toggle", key = "bnet", name = "Battle.net Friends' Characters", new = "2.1.56",
+		{ type = "toggle", key = "bnet", name = "Battle.net Friends' Characters", new = "2.1.59",
 		  desc = "The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted." },
 	},
 })
