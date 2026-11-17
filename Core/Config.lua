@@ -6654,7 +6654,7 @@ local function BuildSetup(page, sec, width, x)
 	changeSet.melloJump = "UIModifications.frameSet"
 	rows.frameset.value:SetPoint("RIGHT", changeSet, "LEFT", -8, 0)
 	HomeTip(changeSet, "Frame Set", HOME_TIPS.frameset)
-	W.ButtonTag(changeSet, "2.1.58")
+	W.ButtonTag(changeSet)
 	W.Dress(card, SKIN)   -- (the dropdown in the kit's look)
 	LaySetup(card)
 	page.setup = card   -- (the tour points at it)

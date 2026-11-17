@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Companion
 ## Notes: Route's road network for MelloUI, loaded when Route needs it. Keep it enabled together with MelloUI.
 ## Author: Mello
-## Version: 2.1.58
+## Version: 2.1.59
 ## X-License: MIT; RoadData.lua All Rights Reserved (MelloUI's LICENSE-DATA)
 ## Dependencies: MelloUI
 ## LoadOnDemand: 1

@@ -71,7 +71,7 @@ for _, id in ipairs(DATA.order) do
 	Sets.LOOKS[#Sets.LOOKS + 1] = { value = id, label = d.label, set = id }
 end
 Kit:AddBorderKind({ kind = "frameset", key = "frameSet", default = DATA.order[1] or "stone", name = "Frame Set",
-	values = Sets.LOOKS, preview = "set", new = "2.1.58",
+	values = Sets.LOOKS, preview = "set",
 	desc = "The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat." },
 	"bar")
 

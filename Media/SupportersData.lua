@@ -3,7 +3,7 @@
 -- hand: a name to leave out goes in the bot's supporters-exclude.txt.
 MelloUI_Supporters = {
 	updated = "2026-11-17",
-	legend = { "Poko", "Slayristo" },
+	legend = { "Poko", "Slayristo", "Wolvegrimm" },
 	champion = { "AntoineS", "Belgian Butcher" },
 	supporter = { "NiceGuyBadGamer", "TribalInstincts" },
 }
