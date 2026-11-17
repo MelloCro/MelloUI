@@ -2483,6 +2483,8 @@ Lang:Add("deDE", {
 	["Health and power percent, spell names and times."] = "Gesundheit und Kraft in Prozent, Zaubernamen und Zeiten.", -- draft
 	["Text Font"] = "Textschrift", -- draft
 	["The font of the display's text. Shared: the interface font."] = "Die Schrift des Texts der Anzeige. Gemeinsam: die Oberflächenschrift.", -- draft
+	["Druid Forms"] = "Druidengestalten", -- draft
+	["For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "Für Druiden: Zwei schmale Leisten unter der Ressourcenleiste zeigen die Ressourcen, die sie gerade nicht zeigt. Energie und Wut in Normalgestalt, Mana und Wut in Katzengestalt, Mana und Energie in Bärengestalt.", -- draft
 	["Class Colours"] = "Klassenfarben", -- draft
 	["The health bar in your class colour instead of green."] = "Die Gesundheitsleiste in deiner Klassenfarbe statt grün.", -- draft
 	["How wide the bars are."] = "Wie breit die Leisten sind.", -- draft

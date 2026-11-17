@@ -49,6 +49,7 @@ local PREVIEW_PART = "personal"
 -- sizes in UI units (the sketch's, at the game's scale) and the timings
 local T = {
 	power = 0.7, cast = 0.9,             -- the power and cast fills' heights, shares of the health fill's (Height)
+	druid = 0.4,                         -- (2.1.59, Druid Forms) the other forms' two slim bars, the same share
 	gap = 1,                             -- between two brackets' painted edges
 	colW = 7, colH = 70,                 -- the shield column's fill
 	text = 11,                           -- the percents' and the spell's size
@@ -232,6 +233,7 @@ local Motion = {}   -- (0.25.0: the bars answering the fight; its section after 
 local Gilded = {}   -- (1.2.0: the modern look's gold rims; its section after the bars' look)
 local CastFX = {}   -- (1.2.0, Cast Motion: the cast bar's moments; in the cast bar's section)
 local Click = {}    -- (2.1.21, click-casting on the display; its section after the placing)
+local Druid = {}    -- (2.1.59, Druid Forms: the other forms' powers; its section after the power bar)
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -250,7 +252,8 @@ end
 local function Heights()
 	local h = Num(Db().height) or 10
 	h = math.floor(h + 0.5)
-	return h, math.max(3, math.floor(h * T.power + 0.5)), math.max(3, math.floor(h * T.cast + 0.5))
+	return h, math.max(3, math.floor(h * T.power + 0.5)), math.max(3, math.floor(h * T.cast + 0.5)),
+		math.max(2, math.floor(h * T.druid + 0.5))
 end
 
 local function Paint(bar, key)
@@ -666,7 +669,7 @@ function Gilded.Shade(ui)
 	local set = Kit.shadeSettings
 	local base = type(set) == "table" and tonumber(set.default) or Kit:ShadeStrength()
 	local alpha = math.min(1, T.shade * Kit:ShadeStrength() / base)
-	for _, f in ipairs({ g.block, g.cast, g.column }) do
+	for _, f in ipairs({ g.block, g.cast, g.column, g.druid[1], g.druid[2] }) do
 		if f.shade then
 			f.shade:SetStrength(alpha)
 			f.shade:SetShown(on)
@@ -698,6 +701,11 @@ function Gilded.Make(ui)
 	g.icon = icon
 	local col = ui.column
 	g.column = Gilded.Rim(col.strip, col.bar:GetFrameLevel() + 3, col.strip)
+	-- (2.1.59) a druid's form bars each their own rim, as the cast bar (on its strip: hidden with it)
+	g.druid = {}
+	for i, b in ipairs(ui.druid) do
+		g.druid[i] = Gilded.Rim(b.strip, b.bar:GetFrameLevel() + 2, b.strip)
+	end
 	ui.gild = g
 	Gilded.Shade(ui)
 end
@@ -709,11 +717,14 @@ function Gilded.Lay(ui)
 		return
 	end
 	local on = ui.look == "gilded"
-	for _, f in ipairs({ g.back, g.block, g.cast, g.icon, g.column }) do
+	for _, f in ipairs({ g.back, g.block, g.cast, g.icon, g.column, g.druid[1], g.druid[2] }) do
 		f:SetShown(on)
 	end
 	if not on then
 		return
+	end
+	for i, b in ipairs(ui.druid) do
+		Gilded.Round(g.druid[i], b.strip.fill, b.strip.fill)
 	end
 	local hf, pf = ui.health.strip.fill, ui.power.strip.fill
 	g.back:ClearAllPoints()
@@ -758,8 +769,11 @@ end
 
 -- the Height changed: each bar at its new depth, in its look (no frame made again)
 local function Refit(ui)
-	local hh, hp, hc = Heights()
+	local hh, hp, hc, hd = Heights()
 	ui.health.h, ui.power.h, ui.cast.h = hh, hp, hc
+	for _, b in ipairs(ui.druid) do
+		b.h = hd
+	end
 	Dress.Apply(ui)
 end
 
@@ -798,7 +812,15 @@ local function LayStack(ui)
 	local widest = LayWidth(ui)
 	local float = ui.float
 	local y, prev, prevBelow = 0, nil, 0
-	for i, b in ipairs(ui.stack) do
+	-- (2.1.59) the bars laid: a druid's form bars only for a druid with Druid Forms on (Druid.Mark), no room kept else
+	Druid.Mark(ui)
+	local laid = {}
+	for _, b in ipairs(ui.stack) do
+		if not b.off then
+			laid[#laid + 1] = b
+		end
+	end
+	for i, b in ipairs(laid) do
 		local above, below = Dress.Reach(b)
 		local _, _, top = b.strip:GetInsets()   -- (the strip's top to its opening: the fill's)
 		b.strip:ClearAllPoints()
@@ -810,7 +832,7 @@ local function LayStack(ui)
 			b.anchorTo, b.anchorY = prev.strip.fill, top - (prevBelow + T.gap + above)
 			b.strip:SetPoint("TOP", b.anchorTo, "BOTTOM", 0, b.anchorY)
 		end
-		if i < #ui.stack then
+		if i < #laid then
 			y = y + above + b.h + below + T.gap
 		end
 		prev, prevBelow = b, below
@@ -880,12 +902,14 @@ local function Build()
 	local float = CreateFrame("Frame", nil, holder)
 	float:SetAllPoints(holder)
 	ui.float = float
-	local hh, hp, hc = Heights()
+	local hh, hp, hc, hd = Heights()
 	ui.health = NewBar(float, hh, "personal", true)
 	MelloUI.Shields.Attach(ui.health.bar)   -- (2.1.0: your shield on it, Core/Shields.lua)
 	ui.power = NewBar(float, hp, "personal", true)
+	-- (2.1.59, Druid Forms) the two powers the power bar does not show, under it; laid only for a druid (Druid.Mark)
+	ui.druid = { NewBar(float, hd, "personal"), NewBar(float, hd, "personal") }
 	ui.cast = NewBar(float, hc, "castbars")
-	ui.stack = { ui.health, ui.power, ui.cast }
+	ui.stack = { ui.health, ui.power, ui.druid[1], ui.druid[2], ui.cast }
 	PaintHealth(ui.health.bar)
 	Paint(ui.cast.bar, "personalCast")
 	Motion.Make(ui)
@@ -1066,6 +1090,70 @@ local function Power()
 		Motion.Gain(Num(max), Num(v), plain)
 	end
 	Percent(ui.power.text, Share(rawget(_G, "UnitPowerPercent")), "player", nil, false, Curve())
+	Druid.Update()
+end
+
+--------------------------------------------------------------------------------
+-- Druid Forms (2.1.59; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you
+-- shift ... especially mana, while shifted"; the German player's pick: always the other two): under the power bar
+-- two slim bars, the two of mana, energy and rage the power bar does not show -- energy and rage in caster form,
+-- mana and rage in cat form, mana and energy in bear form. Their amounts handed to the bars as the client gives them
+-- (secret or plain: the bars take them), each in its power's colour. Only for a druid with Druid Forms on; for
+-- anyone else no room is kept (LayStack)
+--------------------------------------------------------------------------------
+
+Druid.POWERS = { "MANA", "ENERGY", "RAGE" }
+Druid.TYPE = { MANA = 0, RAGE = 1, ENERGY = 3 }   -- (Enum.PowerType's, its fallback)
+
+-- a druid with the setting on
+function Druid.Want()
+	if Db().druidForms == false then
+		return false
+	end
+	if S.druidClass == nil then
+		local ok, _, class = pcall(UnitClass, "player")
+		S.druidClass = ok and not Secret(class) and class == "DRUID" or false
+	end
+	return S.druidClass
+end
+
+-- (LayStack) the form bars laid or put away
+function Druid.Mark(ui)
+	local want = Druid.Want()
+	for _, b in ipairs(ui.druid) do
+		b.off = not want
+		b.strip:SetShown(want)
+	end
+end
+
+-- the two the power bar does not show, read (Power: every power event of yours, a shift's too)
+function Druid.Update()
+	local ui = S.ui
+	if not (ui and ui.druid and Druid.Want()) then
+		return
+	end
+	local E = Enum and Enum.PowerType
+	local i = 0
+	for _, token in ipairs(Druid.POWERS) do
+		if token ~= S.powerToken and i < 2 then
+			i = i + 1
+			local bar = ui.druid[i].bar
+			local kind = E and E[token:sub(1, 1) .. token:sub(2):lower()] or Druid.TYPE[token]
+			local r, g, b = MelloUI.Colours.Power(token)
+			if r then
+				bar:SetStatusBarColor(r, g, b)
+			end
+			local okM, max = pcall(UnitPowerMax, "player", kind)
+			local okV, v = pcall(UnitPower, "player", kind)
+			if okM and okV and Usable(max) and Usable(v) then
+				if not Secret(max) and max <= 0 then
+					max = 1
+				end
+				bar:SetMinMaxValues(0, max)
+				bar:SetValue(v, EASE)
+			end
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -3560,6 +3648,12 @@ function Motion.FormApply()
 			b.text:SetAlpha(1 - math.max(rest, dead))
 		end
 	end
+	-- (2.1.59) a druid's form bars open from the middle with them
+	for _, b in ipairs(ui.druid) do
+		if b.strip.plain then
+			b.strip:SetWidth(Lerp(T.unfoldFrom, w, S.openK or 1) + b.arms)
+		end
+	end
 end
 
 -- into a fight: the gold line grown from the middle, held, faded; the bars opening from it and filling out to their
@@ -5278,7 +5372,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	defaults = { width = 160, height = 10, shield = true, text = true, zoom = true, hideCastBar = true,
 		healFrom = true, swing = true, swingOver = false, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
-		stun = true, settle = true, classColour = false, castMotion = true },
+		stun = true, settle = true, classColour = false, castMotion = true, druidForms = true },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "A bar beside your character for all your shields, each in its school's colour. It drains as they take hits." },
@@ -5320,6 +5414,10 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "Health and power percent, spell names and times." },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces,
 		  desc = "The font of the display's text. Shared: the interface font." },
+		-- (2.1.59; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
+		{ type = "toggle", key = "druidForms", name = "Druid Forms", new = "2.1.59",
+		  search = "druid form forms shapeshift cat bear mana energy rage",
+		  desc = "For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form." },
 		{ type = "toggle", key = "classColour", name = "Class Colours",
 		  desc = "The health bar in your class colour instead of green." },
 		{ type = "slider", key = "width", name = "Width", min = 100, max = 260, step = 5,
@@ -5692,12 +5790,15 @@ function M:OnSettingChanged(key, _, db)
 	if not ui then
 		return
 	end
-	if key == "width" or key == "height" then
+	if key == "width" or key == "height" or key == "druidForms" then
 		if key == "height" then
 			Refit(ui)
 		end
-		LayStack(ui)
+		LayStack(ui)   -- (2.1.59: Druid Forms' bars laid or put away there, Druid.Mark)
 		Place()
+		if key == "druidForms" then
+			Druid.Update()
+		end
 	elseif key == "zoom" then
 		Place()
 	elseif key == "hideCastBar" then
