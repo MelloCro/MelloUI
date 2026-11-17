@@ -1505,8 +1505,10 @@ end
 -- stands locked in its own slot; ClearCursor only put it back there, and a split stack's part then joined its stack
 -- again -- dropped on a + slot it went nowhere (the + slot's place was kept, the stack stayed whole). A free slot
 -- takes it whole or split alike: the window lays the bags by kind, not by slot, so a whole stack moving loses nothing.
--- One held from elsewhere (worn gear, the bank in the bags' window) goes back as before (ClearCursor). (2.1.54:
--- without the post-hook on C_Container.SplitContainerItem #23 had -- no hook on the game's bag calls.)
+-- Worn gear taken off onto a + slot goes into a free slot too (2.1.56, a German player: "in the grouped bags I can't
+-- drag a weapon or armour I wear into a free slot"); one held from another view (the bank in the bags' window) goes
+-- back as before (ClearCursor). (2.1.54: without the post-hook on C_Container.SplitContainerItem #23 had -- no hook
+-- on the game's bag calls.)
 -- (On M, not in new file locals: the file's main chunk is close to Lua's 200 locals.)
 M.Plus = {}
 
@@ -1517,6 +1519,24 @@ function M.Plus.FromView(view, id)
 		for slot = 1, Num(C.GetContainerNumSlots(bag)) or 0 do
 			local info = C.GetContainerItemInfo(bag, slot)
 			if info and info.isLocked == true and Num(info.itemID) == id then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- the item held (`id`) is worn gear taken off: an equipment slot holds it, locked while it is held
+function M.Plus.FromBody(id)
+	local locked = rawget(_G, "IsInventoryItemLocked")
+	if type(locked) ~= "function" then
+		return false
+	end
+	for slot = 1, 19 do
+		local ok, worn = pcall(GetInventoryItemID, "player", slot)
+		if ok and Num(worn) == id then
+			local okL, isLocked = pcall(locked, slot)
+			if okL and isLocked == true then
 				return true
 			end
 		end
@@ -1559,8 +1579,8 @@ local PlusDrop = Shared("OnReceiveDrag / OnClick on a bag window + slot", functi
 		placed[k] = v
 	end
 	placed[id] = (kind ~= NaturalKind(id)) and kind or nil
-	-- (from the bags: into a free slot, not back where it stood -- M.Plus)
-	if not (M.Plus.FromView(self.view, id) and M.Plus.Put(self.view)) then
+	-- (from the bags or taken off: into a free slot, not back where it stood -- M.Plus)
+	if not ((M.Plus.FromView(self.view, id) or M.Plus.FromBody(id)) and M.Plus.Put(self.view)) then
 		ClearCursor()
 	end
 	MelloUI:PlayUISound("check_on")
