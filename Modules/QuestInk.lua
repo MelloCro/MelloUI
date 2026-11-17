@@ -949,6 +949,68 @@ local Secret = MelloUI.Safe.IsSecret
 -- holds it). The addon's one reader (MelloUI.Safe.ScreenRect, Core.lua)
 local ScreenRect = MelloUI.Safe.ScreenRect
 
+-- (2.1.59; seen in the test client: Reputation opened by its key as the first window after a login showed its rows
+-- without names and bar texts, in released 2.1.58 too) On this client a STRING or a TEXTURE asked for its place
+-- while what it is anchored to has none yet -- a list's new row, filled before the list has placed it -- stays
+-- unplaced and is not drawn until that row is filled again; asking it later does not help. Proven without the ink:
+-- one GetCenter on a new row's name and bar text as the list filled it left both blank in the Modern look; the same
+-- asked of the row's bar, a frame, harmed nothing. So a region's place is asked only once it can have one (Placed):
+-- its frame has a place -- a frame is asked, never the region, kept for the stamp -- or, on a frame with none (a
+-- holder), every anchor of its own hangs on a frame that has (its anchors read, not its place). What cannot be
+-- asked counts as placed, as before
+local KindOf   -- (below)
+local REGION = { FontString = true, Texture = true, MaskTexture = true, Line = true }
+local placedAt = setmetatable({}, WEAK)   -- [frame] = the stamp it was last found placed at
+local function FramePlaced(f)
+	if not f or placedAt[f] == S.stamp then
+		return true
+	end
+	local get = f.GetRect
+	if type(get) ~= "function" then
+		return true
+	end
+	local ok, l = pcall(get, f)
+	if not ok then
+		return true
+	end
+	if Secret(l) or l ~= nil then
+		placedAt[f] = S.stamp
+		return true
+	end
+	return false
+end
+
+local function Placed(obj)
+	if not REGION[KindOf(obj)] then
+		return FramePlaced(obj)
+	end
+	local parent = obj:GetParent()
+	if FramePlaced(parent) then
+		return true
+	end
+	local count, point = obj.GetNumPoints, obj.GetPoint
+	if type(count) ~= "function" or type(point) ~= "function" then
+		return true
+	end
+	local okN, n = pcall(count, obj)
+	if not okN or Secret(n) or type(n) ~= "number" then
+		return true   -- (its anchors cannot be read: as before)
+	end
+	if n < 1 then
+		return false
+	end
+	for i = 1, n do
+		local ok, _, rel = pcall(point, obj, i)
+		if not ok or Secret(rel) or type(rel) ~= "table" or rel == parent then
+			return false
+		end
+		if not FramePlaced(REGION[KindOf(rel)] and rel:GetParent() or rel) then
+			return false
+		end
+	end
+	return true
+end
+
 -- a string's centre in screen space (nil while it is not laid out), the
 -- last string's kept for its stamp (the skip and the sheet ask alike)
 local centreOf, centreStamp, centreX, centreY = nil, nil, nil, nil
@@ -956,7 +1018,10 @@ local function Centre(fs)
 	if fs == centreOf and centreStamp == S.stamp then
 		return centreX, centreY
 	end
-	local ok, x, y = pcall(fs.GetCenter, fs)
+	local ok, x, y = false, nil, nil
+	if Placed(fs) then
+		ok, x, y = pcall(fs.GetCenter, fs)
+	end
 	if ok and x and y and not (Secret(x) or Secret(y)) then
 		local s = fs:GetEffectiveScale()
 		x, y = x * s, y * s
@@ -980,14 +1045,17 @@ end
 -- obj's rect into list[n + 1 .. n + 4] (false first while it is not laid
 -- out); returns n + 4
 local function AddRect(list, n, obj)
-	local l, b, r, t = ScreenRect(obj)
+	local l, b, r, t
+	if Placed(obj) then   -- (2.1.59: a texture in a row not placed yet is not asked)
+		l, b, r, t = ScreenRect(obj)
+	end
 	list[n + 1], list[n + 2], list[n + 3], list[n + 4] = l or false, b, r, t
 	return n + 4
 end
 
 -- a widget's type, asked once (it never changes)
 local kindOf = setmetatable({}, WEAK)
-local function KindOf(obj)
+function KindOf(obj)
 	local kind = kindOf[obj]
 	if kind == nil then
 		kind = obj.GetObjectType and obj:GetObjectType() or false
@@ -1023,10 +1091,13 @@ local Plates = {
 	Own = function(_, _, n) return n end,
 }
 QI.plates = Plates
-QI.__ = { S = S, Batch = Batch, Centre = Centre, Pack = Pack, KindOf = KindOf, AddRect = AddRect }
+QI.__ = { S = S, Batch = Batch, Centre = Centre, Pack = Pack, KindOf = KindOf, AddRect = AddRect, Placed = Placed }
 
 -- Whether fs's centre lies in frame f (their scales apart; /inkwhy's)
 local function Inside(fs, f)
+	if not Placed(fs) then
+		return false
+	end
 	local okF, fx, fy = pcall(fs.GetCenter, fs)
 	local okB, l, b, w, h = pcall(f.GetRect, f)
 	if not (okF and okB and fx and l and w) or (issecretvalue and (issecretvalue(fx) or issecretvalue(l))) then

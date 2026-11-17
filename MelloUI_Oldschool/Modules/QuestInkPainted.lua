@@ -16,6 +16,7 @@ local Ink = MelloUI.QuestInk
 local P, H = Ink.plates, Ink.__
 local St = H.S   -- (St.stamp, St.noForce: the core's)
 local HBatch, HCentre, HPack, HKindOf, HAddRect = H.Batch, H.Centre, H.Pack, H.KindOf, H.AddRect
+local HPlaced = H.Placed or function() return true end   -- (a MelloUI before 2.1.59: as it asked then)
 local RectOf = MelloUI.Safe.ScreenRect   -- (the addon's one reader of a screen rect, Core.lua)
 local WEAK_K = { __mode = "k" }
 
@@ -208,7 +209,7 @@ local function BuildPlates(deadline, since, after)
 			end
 		end
 		local l, b, r, t
-		if obj then
+		if obj and HPlaced(obj) then   -- (2.1.59: never asked before its frame has a place, Modules/QuestInk.lua)
 			l, b, r, t = RectOf(obj)
 		end
 		if l then
@@ -298,7 +299,7 @@ local function OverPlate(fs)
 					if plateSeen[i] ~= stamp then
 						plateSeen[i] = stamp
 						local obj, l, b, r, t = plateObj[i], nil, nil, nil, nil
-						if obj:IsVisible() then
+						if obj:IsVisible() and HPlaced(obj) then
 							l, b, r, t = RectOf(obj)
 						end
 						nowL[i], nowB[i], nowR[i], nowT[i] = l or false, b, r, t
