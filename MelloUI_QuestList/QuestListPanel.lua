@@ -147,13 +147,13 @@ local function BeginsAt(row)
 	end
 	local instance = QL.InstanceStart(row)
 	if instance then
-		local name = QL.Data().dungeons[instance]
+		local name = QL.DungeonShown(instance)
 		if QL.IsItemStart(row) then
 			return string.format("Item: %s, drops in %s", giver, name)
 		end
 		return string.format("From %s, inside %s", giver, name)
 	end
-	local zone = QL.Data().zones[QL.ZoneOf(row)]
+	local zone = QL.ZoneShown(QL.ZoneOf(row))
 	if QL.IsItemStart(row) then
 		local how = row[QL.F_KIND] == QL.KIND_PICKUP and "picked up in " or "drops in "
 		return "Item: " .. giver .. (zone and (", " .. how .. zone) or "")
@@ -592,7 +592,7 @@ local function InitRow(button, entry)
 		-- the tooltip has them
 		where = W.Tr("Turn in: %s"):format(row[QL.F_ENDER])
 		if entry.showZone then
-			local endZone = QL.EnderZoneName(row) or QL.Data().zones[QL.ZoneOf(row)]
+			local endZone = QL.EnderZoneName(row) or QL.ZoneShown(QL.ZoneOf(row))
 			if endZone then
 				where = endZone .. "  -  " .. where
 			end
@@ -603,13 +603,13 @@ local function InitRow(button, entry)
 			where = where .. " - " .. W.Tr("found inside")
 		end
 		if entry.showZone then
-			local giverZone = QL.Data().zones[QL.ZoneOf(row)]
+			local giverZone = QL.ZoneShown(QL.ZoneOf(row))
 			if giverZone then
 				where = giverZone .. "  -  " .. where
 			end
 		end
 	else
-		where = entry.showZone and (QL.Data().zones[row[QL.F_ZONE]] or "") or W.Tr("quest giver unknown")
+		where = entry.showZone and (QL.ZoneShown(row[QL.F_ZONE]) or "") or W.Tr("quest giver unknown")
 	end
 	-- as a quest log objective line: its small round bullet (QI.RowBullet),
 	-- in the text colour; a step down once done
@@ -1555,7 +1555,7 @@ function QL.Panel:Update(quiet)
 
 	local function ByZoneGroup(row)
 		local zone = QL.ZoneOf(row)
-		return "zone" .. zone, data.zones[zone] or "Unknown zone"
+		return "zone" .. zone, QL.ZoneShown(zone) or "Unknown zone"
 	end
 	local function DungeonLevel(id)
 		-- Instances Wowhead has no level for (Forever's new ones) sort by
@@ -1564,7 +1564,7 @@ function QL.Panel:Update(quiet)
 		return (lv and lv[1] > 0) and lv[1] or nil
 	end
 	local function DungeonName(id)
-		local name = data.dungeons[id] or "Dungeon"
+		local name = QL.DungeonShown(id) or "Dungeon"
 		local lv = data.dungeonLevel and data.dungeonLevel[id]
 		if lv and lv[1] > 0 then
 			-- the level range in the header's own colour (a grey code of its
@@ -1666,7 +1666,7 @@ function QL.Panel:Update(quiet)
 	if frame.group.OverrideText then
 		frame.group:OverrideText(title)
 	end
-	frame.count:SetText(string.format("%d of %d done", done, total))
+	frame.count:SetText(MelloUI.Widgets.Tr("%d of %d done"):format(done, total))   -- (2.1.56: in German too)
 	artLaid = artLaid + 1   -- (each row's art set again as it is laid: NewArt)
 	frame.scrollBox:SetDataProvider(CreateDataProvider(entries), ScrollBoxConstants.RetainScrollPosition)
 	if #entries == 0 then

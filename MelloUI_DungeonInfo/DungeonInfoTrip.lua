@@ -115,7 +115,7 @@ local DOOR = {
 		return D.inst ~= nil
 	end,
 	title = function()
-		return D.inst and D.inst.name or TEXT.dungeonInfo
+		return D.inst and J.Shown(D.inst) or TEXT.dungeonInfo
 	end,
 	text = function()
 		local inst = D.inst
@@ -389,8 +389,8 @@ local function Stops(inst)
 	local door = J.Door(inst)
 	local doorStop
 	if door and #stops > 0 then
-		doorStop = { wcont = door.cont, wx = door.wx, wy = door.wy, label = inst.name, hold = false, door = true,
-			notice = mark .. W.Tr(TT.notice):format(inst.name) }
+		doorStop = { wcont = door.cont, wx = door.wx, wy = door.wy, label = J.Shown(inst), hold = false, door = true,
+			notice = mark .. W.Tr(TT.notice):format(J.Shown(inst)) }
 	end
 	return stops, doorStop
 end
@@ -711,7 +711,7 @@ function Trip.LayPage()
 	if not G.built then
 		Build(page, T)
 	end
-	G.back.text:SetText(cur.inst.name)
+	G.back.text:SetText(J.Shown(cur.inst))
 	local y = T.FOLD + 10
 	G.title:ClearAllPoints()
 	G.title:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -y)

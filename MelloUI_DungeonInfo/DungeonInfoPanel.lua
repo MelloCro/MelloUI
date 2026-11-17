@@ -216,7 +216,7 @@ local RowEnter = Perf.Shared("OnEnter on Dungeon Info's list rows", function(sel
 	if self.inst then
 		local map = MelloUI:GetModule("Map")
 		local plan = map and map.HasDungeonMap and map:HasDungeonMap(self.inst.map)
-		W.ShowTooltip(self, self.inst.name, plan and TEXT.rowTipMap or TEXT.rowTip)
+		W.ShowTooltip(self, J.Shown(self.inst), plan and TEXT.rowTipMap or TEXT.rowTip)
 	end
 end, "script")
 
@@ -313,7 +313,7 @@ local function FillDungeonRow(r, inst, width, near)
 	for _, e in ipairs(r.edges) do
 		e:SetShown(near)
 	end
-	r.title:SetText(inst.name)
+	r.title:SetText(J.Shown(inst))
 	r.line:SetText(Where(inst))
 	local q, s = Takeable(inst), J.TrackedIn(inst)
 	r.qn:SetText(q > 0 and q or "")
@@ -537,6 +537,15 @@ local BossClick = Perf.Shared("OnClick on Dungeon Info's boss rows", function(se
 	end
 end, "script")
 
+-- a boss row's drop picture: Shift- / Ctrl-click links or tries it on (ItemClick), a plain click the boss's page
+local DropClick = Perf.Shared("OnClick on Dungeon Info's boss row drops", function(self)
+	if IsModifiedClick and (IsModifiedClick("CHATLINK") or IsModifiedClick("DRESSUP")) then
+		ItemClick(self)
+	else
+		BossClick(self:GetParent())
+	end
+end, "script")
+
 local function BossRow(i)
 	local r = S.brows[i]
 	if r then
@@ -572,7 +581,15 @@ local function BossRow(i)
 		star:SetPoint("CENTER", frame, "TOPRIGHT", -2, -2)
 		Star(star, true)
 		W.Paint(star, "selectedTrim", "vertex")
-		r.drops[k] = { frame = frame, icon = icon, star = star }
+		-- (2.1.56; the German player: "the tooltip should show the item, as OneForAll's does") the picture's own
+		-- button: the game's item tooltip on hover, Shift- / Ctrl-click as an item row's, a plain click the boss's page
+		local hit = CreateFrame("Button", nil, r)
+		hit:SetAllPoints(frame)
+		hit:RegisterForClicks("LeftButtonUp")
+		Perf.SetScript(hit, "OnEnter", ItemEnter)
+		Perf.SetScript(hit, "OnLeave", W.TipLeave)
+		Perf.SetScript(hit, "OnClick", DropClick)
+		r.drops[k] = { frame = frame, icon = icon, star = star, hit = hit }
 	end
 	r.name:SetPoint("RIGHT", r.drops[1].frame, "LEFT", -6, 0)
 	Perf.SetScript(r, "OnClick", BossClick)
@@ -589,7 +606,7 @@ local function FillBossRow(r, boss, i, n)
 	r.num:SetShown(not last)
 	r.skull:SetShown(last)
 	r.num:SetText(i)
-	r.name:SetText(boss.name)
+	r.name:SetText(J.BossShown(boss))
 	-- (his three best drops, your starred ones first)
 	local shown, drops = {}, J.Drops(boss)
 	for _, d in ipairs(drops) do
@@ -608,6 +625,8 @@ local function FillBossRow(r, boss, i, n)
 		slot.frame:SetShown(d ~= nil)
 		slot.icon:SetShown(d ~= nil)
 		slot.star:SetShown(d ~= nil and J.IsTracked(d.item))
+		slot.hit:SetShown(d ~= nil)
+		slot.hit.item, slot.hit.d = d and d.item or nil, d
 		if d then
 			SetItemPicture(slot.frame, slot.icon, d.item, J.Quality(d))
 		end
@@ -691,7 +710,7 @@ local function QuestLine(q)
 		return W.Tr(TEXT.after)
 	end
 	local data = rawget(_G, "MelloUI_QuestListData")
-	local zone = data and data.zones and data.zones[row[8]]
+	local zone = J.ZoneShown(row[8], data and data.zones and data.zones[row[8]])   -- (2.1.56: in the client's language)
 	return zone and (row[F.GIVER] .. ", " .. zone) or row[F.GIVER] or ""
 end
 
@@ -729,7 +748,7 @@ local ButtonClick = Perf.Shared("OnClick on Dungeon Info's page buttons", functi
 	elseif self == B.route then
 		local R = rawget(MelloUI, "Route")
 		if R and R.SetDestinationTo then
-			R:SetDestinationTo({ cont = door.cont, wx = door.wx, wy = door.wy }, inst.name, true)
+			R:SetDestinationTo({ cont = door.cont, wx = door.wx, wy = door.wy }, J.Shown(inst), true)
 		end
 	elseif self == B.quests then
 		if J.Trip and J.Trip.Start then
@@ -799,7 +818,7 @@ function P.LayInst()
 	H.picture:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
 	H.picture:SetSize(width, picH)
 	H.emblem:SetIcon(EMBLEM .. inst.emblem)
-	H.title:SetText(inst.name)
+	H.title:SetText(J.Shown(inst))
 	local sub = Where(inst)
 	if inst.kind == 2 and inst.players and inst.players >= 10 then
 		sub = sub .. ", " .. W.Tr(TEXT.raidOf):format(inst.players)
@@ -895,9 +914,9 @@ function P.LayBoss()
 		return
 	end
 	local H = S.bossHead
-	H.back.text:SetText(inst.name)
+	H.back.text:SetText(J.Shown(inst))
 	local y = T.FOLD + 10
-	H.title:SetText(boss.trash and W.Tr(TEXT.trashDrops) or boss.name)
+	H.title:SetText(boss.trash and W.Tr(TEXT.trashDrops) or J.BossShown(boss))
 	local n = #inst.bosses
 	H.sub:SetText(boss.trash and W.Tr(TEXT.trashSub) or W.Tr(boss.index == n and TEXT.lastBoss or TEXT.bossOf):format(boss.index, n))
 	-- (1.2.2) his dungeon's picture with his name inside at its top, tall enough for the name and its line; none: the
@@ -990,7 +1009,7 @@ function P.LayMine()
 		for _, e in ipairs(mineBy[key]) do
 			ni = ni + 1
 			local r = ItemRow(page, ni)
-			FillItemRow(r, e.id, e.d, e.boss and e.boss.name or nil)
+			FillItemRow(r, e.id, e.d, e.boss and J.BossShown(e.boss) or nil)
 			r.inst, r.boss, r.mine = e.inst, e.boss, true
 			r:ClearAllPoints()
 			r:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
@@ -1307,6 +1326,7 @@ local function Build(pane)
 	S.events = f
 	MelloUI:On("dungeonInfo:tracked", Queue, "Dungeon Info panel")
 	MelloUI:On("questsource", Queue, "Dungeon Info panel")   -- (2.1.52: the quests' rows are there, J.Quests)
+	MelloUI:On("dungeonInfo:names", Queue, "Dungeon Info panel")   -- (2.1.56: the bosses' names in the client's language, once known)
 	for k, tab in pairs(S.tabs) do
 		tab:SetSelected(k == S.tab)
 	end

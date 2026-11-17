@@ -289,6 +289,57 @@ function QL.Data()
 	return MelloUI_QuestListData
 end
 
+-- (2.1.56; a German player: "The Barrens", "Razorfen Downs" in English on a German client) a zone's or a dungeon's name
+-- as the game names it in the client's language, while MelloUI speaks that language too: a zone by its AreaTable id
+-- (C_Map.GetAreaInfo), a dungeon as Dungeon Info shows it (GetRealZoneText of its map: "Hügel von Razorfen"), else its
+-- area's; the data's English otherwise or when the game has none. Only for showing: matching keeps the data's names
+do
+	local cache = {}
+	local function Local()
+		local Lang = MelloUI.Lang
+		local code = Lang and Lang.code
+		local ok, locale = pcall(GetLocale)
+		if not code or code == "enUS" or not ok or code ~= locale then
+			return nil
+		end
+		if cache.code ~= code then
+			cache = { code = code, zone = {}, dungeon = {} }
+		end
+		return cache
+	end
+	local function Area(id)
+		local ok, name = pcall(C_Map.GetAreaInfo, id)
+		name = ok and MelloUI.Safe.Text(name) or nil
+		return (name and name ~= "") and name or nil
+	end
+
+	function QL.ZoneShown(id)
+		local name = id and QL.Data().zones[id]
+		local c = name and Local()
+		if not c then
+			return name
+		end
+		if c.zone[id] == nil then
+			c.zone[id] = Area(id) or name
+		end
+		return c.zone[id]
+	end
+
+	function QL.DungeonShown(id)
+		local name = id and QL.Data().dungeons[id]
+		local c = name and Local()
+		if not c then
+			return name
+		end
+		if c.dungeon[id] == nil then
+			local J = rawget(MelloUI, "DungeonInfo")
+			local inst = J and J.Get and J.Get(id)
+			c.dungeon[id] = (inst and J.Shown and J.Shown(inst)) or Area(id) or name
+		end
+		return c.dungeon[id]
+	end
+end
+
 function QL.ZoneOf(row)
 	local override = zoneOverride and zoneOverride[row]
 	if override then
@@ -631,7 +682,7 @@ function QL.EnderZoneName(row)
 			return name
 		end
 	end
-	return (row[QL.F_ENDERZONE] or 0) ~= 0 and QL.Data().zones[row[QL.F_ENDERZONE]] or nil
+	return (row[QL.F_ENDERZONE] or 0) ~= 0 and QL.ZoneShown(row[QL.F_ENDERZONE]) or nil
 end
 
 function QL.ByLevel(a, b)
@@ -655,7 +706,7 @@ function searchTextMeta.__index(t, row)
 	end
 	local zones = data.zones or {}
 	for _, r in ipairs(data.quests or {}) do
-		t[r] = (r[QL.F_TITLE] .. " " .. r[QL.F_GIVER] .. " " .. (zones[QL.ZoneOf(r)] or "")):lower()
+		t[r] = (r[QL.F_TITLE] .. " " .. r[QL.F_GIVER] .. " " .. (zones[QL.ZoneOf(r)] or "") .. " " .. (QL.ZoneShown(QL.ZoneOf(r)) or "")):lower()   -- (2.1.56: the zone in the client's language found too)
 	end
 	-- made while the map is closed (the panel lays itself out on a setting
 	-- change even then): no OnHide is coming, so the wait starts here
@@ -2065,9 +2116,9 @@ function QL.SetWaypoint(row, atEnder)
 		if instance then
 			local kind = QL.IsRaid(instance) and "raid" or "dungeon"
 			icon = W.IconMarkup(QL.IsRaid(instance) and "pin_raid" or "pin_dungeon", 16) .. " "
-			label = icon .. row[QL.F_TITLE] .. " - " .. QL.Data().dungeons[instance]
+			label = icon .. row[QL.F_TITLE] .. " - " .. QL.DungeonShown(instance)
 			text = icon .. string.format(MelloUI.Widgets.Tr("Tracking the %s entrance of %s for %s (%s is found inside), {dist} away"),
-				MelloUI.Widgets.Tr(kind == "dungeon" and "Dungeon" or "Raid"), QL.Data().dungeons[instance], row[QL.F_TITLE], who)
+				MelloUI.Widgets.Tr(kind == "dungeon" and "Dungeon" or "Raid"), QL.DungeonShown(instance), row[QL.F_TITLE], who)
 		end
 		if R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, text) then
 			QL.trackedQuestID = row[QL.F_ID]

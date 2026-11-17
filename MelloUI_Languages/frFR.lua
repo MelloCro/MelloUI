@@ -4387,6 +4387,37 @@ Lang:Add("frFR", {
 	["No other characters."] = "Aucun autre personnage.", -- draft
 	["None yet: a friend's characters are noted while they play."] = "Aucun pour l’instant : les personnages d’un ami sont retenus pendant qu’il joue.", -- draft
 	["online"] = "en ligne", -- draft
+	-- the installer's layout check: why Mello's layout goes in or not (Core/LayoutFit.lua's verdicts, 2.1.56)
+	["Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."] = "Votre écran est trop petit pour la disposition de Mello à votre échelle d’interface ; votre propre disposition du mode Édition est conservée.", -- draft
+	["Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."] = "La disposition de Mello tient sur votre écran, mais pas avec certains de vos réglages ; votre propre disposition du mode Édition est conservée.", -- draft
+	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "La disposition de Mello est ajustée au mieux de ce que permet cet écran ; quelques éléments se chevauchent ou sont près du bord, et Modifier la disposition les déplace.", -- draft
+	["Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."] = "La disposition de Mello est conçue pour cet écran, elle est donc appliquée ; certains de vos réglages la chevauchent, et Modifier la disposition les déplace.", -- draft
+	-- the map's layers page: HandyNotes' places (MelloUI_Map/MapTownMarks.lua, 2.1.53)
+	["HandyNotes"] = "HandyNotes", -- draft
+	["Riding trainers"] = "Maîtres d’équitation", -- draft
+	["Mount sellers"] = "Vendeurs de montures", -- draft
+	["Your professions' trainers"] = "Maîtres de vos métiers", -- draft
+	["Your class's trainers"] = "Maîtres de votre classe", -- draft
+	["Innkeepers"] = "Aubergistes", -- draft
+	["Mailboxes"] = "Boîtes aux lettres", -- draft
+	["Stable masters"] = "Maîtres des écuries", -- draft
+	["Vendors: reagents"] = "Marchands : composants", -- draft
+	["Vendors: food and drink"] = "Marchands : nourriture et boissons", -- draft
+	["Vendors: general goods"] = "Marchands : fournitures générales", -- draft
+	["Vendors: profession supplies"] = "Marchands : fournitures d’artisanat", -- draft
+	["Vendors: weapons"] = "Marchands : armes", -- draft
+	["Vendors: armor"] = "Marchands : armures", -- draft
+	["Vendors: bags"] = "Marchands : sacs", -- draft
+	["Vendors: pets"] = "Marchands : mascottes", -- draft
+	["Vendors: quartermasters"] = "Marchands : intendants", -- draft
+	["Vendors: other"] = "Marchands : autres", -- draft
+	["Battlemasters"] = "Maîtres de guerre", -- draft
+	["Weapon masters"] = "Maîtres d’armes", -- draft
+	["Guild masters and tabards"] = "Maîtres de guilde et tabards", -- draft
+	["Transmogrifiers"] = "Transmogrifieurs", -- draft
+	["Spirit healers"] = "Gardiens des âmes", -- draft
+	-- the Quest List's count (2.1.56)
+	["%d of %d done"] = "%d sur %d terminées", -- draft
 	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Carte : avec Questie, ses ! et ? de quête sur la carte de MelloUI sont plus grands et suivent le curseur Taille des icônes, et un clic à proximité lance l'itinéraire jusque-là.", -- draft
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie : toutes les versions de sa base de données sont lues désormais, les plus anciennes comme les plus récentes.", -- draft
 	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Carte : avec RareScanner et un plugin HandyNotes qui marque aussi les rares, un rare n'est plus marqué deux fois. C'est la marque de RareScanner qui reste, sur la carte de MelloUI et la minicarte.", -- draft
