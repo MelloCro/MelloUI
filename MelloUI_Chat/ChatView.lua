@@ -3112,7 +3112,6 @@ do
 	local function Make()
 		local G = MelloUI.Gamepad
 		local f = CreateFrame("Frame", nil, View.frame)
-		f:SetPoint("BOTTOMLEFT", View.frame, "TOPLEFT", 4, 2)
 		f:SetSize(1, 1)
 		f:EnableMouse(false)
 		f:Hide()
@@ -3145,6 +3144,14 @@ do
 			Make()
 		end
 		pad.held, pad.turn = nil, 0
+		-- over the view's top left; with the tabs along the view's top (the Default skin) over the tab row (seen in the
+		-- test client, 2026-11-17: laid on the frame's top there, the prompts stood on the first tabs)
+		pad.frame:ClearAllPoints()
+		if View.topLaid and View.rail then
+			pad.frame:SetPoint("BOTTOMLEFT", View.rail, "TOPLEFT", 0, 2)
+		else
+			pad.frame:SetPoint("BOTTOMLEFT", View.frame, "TOPLEFT", 4, 2)
+		end
 		for _, c in ipairs(pad.coins) do
 			G.SetCoin(c[1], c[2])   -- (the pad in use's faces)
 			c[1]:Show()

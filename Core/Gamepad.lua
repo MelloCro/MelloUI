@@ -418,13 +418,14 @@ end
 
 -- the control nearest the scope's top left corner (the way across plus the way down: a window's rail or first row,
 -- not a button alone at its top right)
-local function TopLeft(list, scope)
+-- (`within`: only a control inside that frame counts)
+local function TopLeft(list, scope, within)
 	local sl, _, _, st = ScreenRect(scope)
 	local best, bestD
 	for i = 1, #list do
 		local c = list[i]
 		local d = (c.melloPadL - (sl or 0)) + ((st or c.melloPadT) - c.melloPadT)
-		if not bestD or d < bestD then
+		if (not bestD or d < bestD) and (not within or Inside(c, within)) then
 			best, bestD = c, d
 		end
 	end
@@ -963,7 +964,11 @@ local function ThroughLay(frame, b)
 	if not (place and place(b, frame)) then
 		return false
 	end
+	-- (seen in the test client, 2026-11-17: over the close button of MelloUI's map -- a toplevel window -- a button of
+	-- the same strata lay UNDER the mouse's reach at any level: the game puts a raised toplevel window's frames over
+	-- every other frame of its strata) one strata over the covered button's, so the mouse meets it first
 	local strata, level = frame:GetFrameStrata(), Num(frame:GetFrameLevel())
+	strata = MelloUI.STRATA_UP and MelloUI.STRATA_UP[strata] or strata
 	if b.atStrata ~= strata or b.atLevel ~= level then
 		b.atStrata, b.atLevel = strata, level
 		b:SetFrameStrata(strata)
@@ -1100,7 +1105,20 @@ local function First(scope)
 			pick = nil
 		end
 	end
-	return pick or TopLeft(list, scope)
+	if pick then
+		return pick
+	end
+	-- (2.1.58, seen in the test client: with MelloUI Map's rail walked beside its quest column the focus started on the
+	-- rail's first button, the top left of the two) a window reading the pad itself that lets frames be walked beside
+	-- its part (spec.also): the focus starts in the part itself, beside it only when the part holds no stop
+	local own = S.own
+	if own and own.nav == scope and own.also then
+		local inside = TopLeft(list, scope, scope)
+		if inside then
+			return inside
+		end
+	end
+	return TopLeft(list, scope)
 end
 
 -- the focus still valid (showing in the scope on top: in its controls just scanned), else the scope's first
