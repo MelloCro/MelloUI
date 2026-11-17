@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- MelloUI - Mail Recipients (2.1.56; a player's wish: "a list of our alts at the mailbox, so you only click which one
+-- MelloUI - Mail Recipients (2.1.59; a player's wish: "a list of our alts at the mailbox, so you only click which one
 -- and the name is filled in", and "the same with Battle.net friends, a tab of its own: I can't remember my friends'
 -- characters")
 --

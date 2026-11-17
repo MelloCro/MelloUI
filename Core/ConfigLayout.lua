@@ -1445,7 +1445,7 @@ function L.Define(R, Link)
 	-- selection", "And a checkbox that asks if i want to save that role for future dungeons") its own tab
 	R("QualityOfLife", "Role Picker", "General", "RolePicker.!enabled", { name = "Role Picker" })
 	R("QualityOfLife", "Role Picker", "Behaviour", "RolePicker.remember")
-	-- (2.1.56; a player's wish: "a list of our alts at the mailbox, so you only click which one", "the same with
+	-- (2.1.59; a player's wish: "a list of our alts at the mailbox, so you only click which one", "the same with
 	-- Battle.net friends") its own tab
 	R("QualityOfLife", "Mail", "General", "MailRecipients.!enabled", { name = "Mail Recipients" })
 	R("QualityOfLife", "Mail", "General", "MailRecipients.bnet")

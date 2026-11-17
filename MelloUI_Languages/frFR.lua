@@ -4274,7 +4274,7 @@ Lang:Add("frFR", {
 	["Remember for future dungeons"] = "Retenir pour les prochains donjons", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Le choix du rôle est désactivé : activez-le dans Confort > Choix du rôle.", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Page Addons : elle s’ouvre de nouveau avec MaxDPS installé, alors qu’elle restait sur Profils.", -- draft
-	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.56)
+	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "Destinataires du courrier", -- draft
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Un bouton à côté du champ Destinataire de la boîte aux lettres liste vos personnages et ceux de vos amis Battle.net : cliquez sur l’un d’eux et son nom est saisi.", -- draft
 	["Who was that again? One click and the letter has its name."] = "C’était qui, déjà ? Un clic et la lettre a son destinataire.", -- draft
