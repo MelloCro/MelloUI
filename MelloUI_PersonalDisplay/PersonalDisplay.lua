@@ -104,6 +104,10 @@ local T = {
 	heavyRim = 0.38, dipDepth = 3, dip = 0.2,
 	lowHealth = 0.35, lowEdge = 0.001, beat = 0.6,
 	sparkShare = 0.08, sparkW = 8, sparkH = 2.4, spark = 0.42,
+	-- (2.1.59, Five-Second Rule) the rule's span after mana spent, the light's width and how far it stands past the
+	-- fill over and under, the veil it leaves behind it, the fade once the span is over
+	five = 5, fiveW = 12, fiveOver = 5, fiveCore = 4, fiveVeil = 0.35, fiveFade = 0.6,
+	fiveFlash = 0.55,   -- (the regeneration back: the whole bar lit this strong, then faded -- the player: "that I see when my mana regen starts again")
 	rimFeather = 12, rimFeatherY = 9, rimTuck = 3,
 	wordX = 4, wordY = 2, wordDX = 22, wordDY = 8, word = 0.85,
 	lineH = 3, locRim = 0.8, locFade = 0.15, locGrace = 0.2,
@@ -1064,6 +1068,7 @@ local function Power()
 			S.powerLast = nil
 		end
 		Motion.Gain(Num(max), Num(v), plain)
+		Motion.FiveRead(plain, Num(v), shifted)   -- (2.1.59, Five-Second Rule)
 	end
 	Percent(ui.power.text, Share(rawget(_G, "UnitPowerPercent")), "player", nil, false, Curve())
 end
@@ -2767,6 +2772,135 @@ function Motion.Make(ui)
 	S.settle = { 0, 0 }
 	S.settleY, S.dipY = 0, 0
 	Motion.MakeMoments(ui, level)
+	Motion.FiveMake(ui, level)
+end
+
+-- (2.1.59, Five-Second Rule; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the
+-- resource bar?") Spirit's mana regeneration pauses for five seconds after a spell costs mana. An unseen StatusBar over
+-- the power fill that the engine fills in those five seconds (Anim:Timer: no Lua a frame), a light on its edge running
+-- left to right and a faint veil behind it; then faded out. Told by the mana going down while it reads plain (a cost,
+-- or a drain on you), only while the power shown is mana; a secret amount shows nothing
+function Motion.FiveMake(ui, level)
+	local pb = ui.power
+	local five = CreateFrame("StatusBar", nil, pb.strip)
+	five:SetAllPoints(pb.strip.fill)
+	five:SetFrameLevel(level + 6)
+	five:SetStatusBarTexture(W.BarFill("personal"))
+	five:SetMinMaxValues(0, 1)
+	five:SetValue(0)
+	five:SetAlpha(0)
+	five:Hide()
+	local fill = five:GetStatusBarTexture()
+	local head = CreateFrame("Frame", nil, five)
+	head:SetPoint("TOPLEFT", fill, "TOPRIGHT", -T.fiveW / 2, T.fiveOver)
+	head:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", T.fiveW / 2, -T.fiveOver)
+	head.tex = Spark(head, "OVERLAY", 6, "glow_white.tga")
+	head.tex:SetAllPoints(head)
+	-- (a bright core in the glow: the power fill is a few pixels tall at the default height -- the player's screenshots)
+	head.core = Spark(head, "OVERLAY", 7, "glow_white.tga")
+	head.core:SetPoint("TOP", head, "TOP", 0, 0)
+	head.core:SetPoint("BOTTOM", head, "BOTTOM", 0, 0)
+	head.core:SetWidth(T.fiveCore)
+	five.head = head
+	ui.five = five
+	Motion.FivePaint(ui)
+end
+
+-- its colours: the light's glow the gold (against the mana's blue), its core and the veil the text's warm white
+function Motion.FivePaint(ui)
+	local five = ui and ui.five
+	if not five then
+		return
+	end
+	local r, g, b = Motion.Look("text")
+	five:SetStatusBarColor(r, g, b, T.fiveVeil)
+	five.head.core:SetVertexColor(r, g, b)
+	five.head.tex:SetVertexColor(Motion.Look("selectedTrim"))
+end
+
+-- mana spent: the five seconds start over
+function Motion.FiveStart()
+	local five = S.ui and S.ui.five
+	if not (five and Motion.On("fiveSecond")) then
+		return
+	end
+	-- (another client without the engine's timer bars: nothing drawn, no Lua loop stands in)
+	if not Anim:Timer(five, T.five, true) then
+		return
+	end
+	Anim:Stop(five, "alpha")
+	Motion.FivePaint(S.ui)   -- (the veil faint again after the last end's flash)
+	five:Show()
+	five:SetAlpha(1)
+	S.fiveEnds = GetTime() + T.five
+	C_Timer.After(T.five, Motion.FiveDue)
+end
+
+-- a five seconds' end: over unless mana was spent again since (a later end is its own)
+function Motion.FiveDue()
+	if S.fiveEnds and GetTime() >= S.fiveEnds - 0.05 then
+		Motion.FiveOff(true)
+	end
+end
+
+-- the five seconds over (faded) or cut off (the setting off, another power shown: at once)
+function Motion.FiveOff(fade)
+	S.fiveEnds = nil
+	local five = S.ui and S.ui.five
+	if not (five and five:IsShown()) then
+		return
+	end
+	Anim:Stop(five, "alpha")
+	if fade then
+		local r, g, b = Motion.Look("text")
+		Anim:StopTimer(five, true)   -- (full: the flash over the whole bar)
+		five:SetStatusBarColor(r, g, b, T.fiveFlash)
+		Anim:To(five, "alpha", 0, T.fiveFade, "outQuad", HideFrame)
+	else
+		five:SetAlpha(0)
+		five:Hide()
+	end
+end
+
+-- (UNIT_SPELLCAST_SUCCEEDED, its spell ID plain) a cast of yours whose cost is mana starts it: the German player's
+-- probe, the mana itself is secret on this client (UnitPower: no plain amount to see it go down), the spell's cost is
+-- plain data (C_Spell.GetSpellPowerCost)
+function Motion.FiveCast(spell)
+	if S.powerToken ~= "MANA" or not Motion.On("fiveSecond") then
+		return
+	end
+	local spellApi = rawget(_G, "C_Spell")
+	local get = (type(spellApi) == "table" and spellApi.GetSpellPowerCost) or rawget(_G, "GetSpellPowerCost")
+	if type(get) ~= "function" then
+		return
+	end
+	local ok, costs = pcall(get, spell)
+	if not ok or Secret(costs) or type(costs) ~= "table" then
+		return
+	end
+	local mana = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
+	for _, c in ipairs(costs) do
+		local kind = type(c) == "table" and not Secret(c.type) and c.type
+		local name = type(c) == "table" and not Secret(c.name) and c.name
+		if kind == mana or name == "MANA" then
+			local n = (Num(c.cost) or 0) + (Num(c.minCost) or 0) + (Num(c.costPercent) or 0)
+			if n > 0 then
+				Motion.FiveStart()
+				return
+			end
+		end
+	end
+end
+
+-- (Power) the mana read: lower than before, the rule starts; another power, it ends
+function Motion.FiveRead(token, v, shifted)
+	local last = S.manaLast
+	S.manaLast = token == "MANA" and v or nil
+	if token ~= "MANA" then
+		Motion.FiveOff(false)
+	elseif v and last and not shifted and v < last then
+		Motion.FiveStart()
+	end
 end
 
 -- (1.2.0, the ten motions) a frame between two anchors of the fills: from `a`'s right edge to `b`'s (the part a heal
@@ -2956,6 +3090,7 @@ function Motion.Paint()
 	ui.loc:SetStatusBarColor(Motion.Look("selectedTrim"))
 	ui.loc.name:SetTextColor(r, g, b)
 	CastFX.Paint(ui)
+	Motion.FivePaint(ui)
 	-- (1.2.0) the moments: the rush the health's lead lifted, the shards and the dropped block the ghosts' colour, the
 	-- line and the glints gold and warm white
 	if ui.rush then
@@ -3851,6 +3986,7 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
 		-- (a cooldown of yours cast: its spell ID plain, as Frame Effects reads its own; a secret one plays nothing)
 		if not S.preview and not Secret(a3) and type(a3) == "number" then
+			Motion.FiveCast(a3)   -- (2.1.59, Five-Second Rule: a cast that costs mana)
 			Cds.Start(a3)
 			Track.Cast(a3)   -- (2.1.24: a cast that puts a tracked one on, waiting for an aura of yours)
 			Shield.Cast(a3)   -- (a shield's: the aura it puts on you known by it)
@@ -5278,7 +5414,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	defaults = { width = 160, height = 10, shield = true, text = true, zoom = true, hideCastBar = true,
 		healFrom = true, swing = true, swingOver = false, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
-		stun = true, settle = true, classColour = false, castMotion = true },
+		stun = true, settle = true, classColour = false, castMotion = true, fiveSecond = true },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "A bar beside your character for all your shields, each in its school's colour. It drains as they take hits." },
@@ -5342,6 +5478,11 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "The power an ability costs stays lit for a moment, so you see the cost." },
 		{ type = "toggle", key = "gain", name = "Power Gained", play = "gain",
 		  desc = "New power lights up ahead of the bar before it fills." },
+		-- (2.1.59; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the resource
+		-- bar?"; its name theirs: "Mana Regen Pause" -- the five-second rule a players' word, kept for the search)
+		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause", new = "2.1.59",
+		  search = "five second rule 5sr fsr mana regeneration regen spirit pause",
+		  desc = "After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again." },
 		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block", play = "avoid",
 		  desc = "Your dodge, parry or block flicks its word off the health bar." },
 		{ type = "toggle", key = "lowHealth", name = "Low Health",
@@ -5742,6 +5883,10 @@ function M:OnSettingChanged(key, _, db)
 		PaintHealth(ui.health.bar)
 		S.lowWas = nil
 		Refresh()
+	elseif key == "fiveSecond" then
+		if not Motion.On("fiveSecond") then
+			Motion.FiveOff(false)
+		end
 	elseif key == "stun" then
 		if not Motion.On("stun") then
 			Motion.LocEnd()
