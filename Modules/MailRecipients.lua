@@ -1,15 +1,16 @@
 --------------------------------------------------------------------------------
--- MelloUI - Mail Recipients (2.1.59; a player's wish: "a list of our alts at the mailbox, so you only click which one
--- and the name is filled in", and "the same with Battle.net friends, a tab of its own: I can't remember my friends'
--- characters")
+-- MelloUI - Mail Recipients (2.1.59, pull request #41 by Glockta-code; a player's wish: "a list of our alts at the
+-- mailbox, so you only click which one and the name is filled in", and "the same with Battle.net friends, a tab of
+-- its own: I can't remember my friends' characters")
 --
 -- A small button at the right of the mailbox's To field (Send Mail) opens a menu:
 --   Your Characters      your other characters of your faction, each in its class colour with its level; a click puts
---                        the full name in the To field and moves on to Subject (a friend's character on another realm of this
---                        server too: same faction, the letter goes)
+--                        the full name in the To field and moves on to Subject
 --   Battle.net Friends   a friend a row (their BattleTag's name, "online" while they play), their characters under it
 --                        as a submenu; every character the game has shown of them while they played, so the ones you
---                        cannot remember are there while they are offline too
+--                        cannot remember are there while they are offline too. One on ANOTHER realm shows its
+--                        realm, and the To field gets the game's own address for it (R.Address, below): a bare
+--                        name there would go to whoever bears that name on your realm
 -- What it keeps, account-wide in its own settings (`keep`: never in a profile or a share string, as Services' learned
 -- services), only on this computer:
 --   alts       ["Name-Realm"] = { name (the full name, first name and surname), realm, class (the class's token),
@@ -19,6 +20,11 @@
 -- Nothing of the game's is replaced: the button is MelloUI's own frame on the Send Mail page, the menu the game's
 -- (MenuUtil), the click the To field's own SetText. Not with the Gamepad UI (the game's menu opened from MelloUI's
 -- code blocks its bindings: Services.lua's note), and nothing at all while the module is off.
+-- Off until switched on (Quality of Life > Mail): a new feature puts nothing on the screen by itself.
+-- A list of its own, not the Quest List's record of your characters: that one keeps the first name alone, and the
+-- Quest List is a feature addon that may not be loaded.
+-- With Battle.net Friends' Characters switched off, what was noted of friends is forgotten; a friend taken off your
+-- friend list is forgotten at the next read of the list.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -44,7 +50,7 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 	desc = "A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in.",
 	icon = "Interface\\Icons\\INV_Letter_15",
 	flavour = "Who was that again? One click and the letter has its name.",
-	enabledByDefault = true,
+	enabledByDefault = false,   -- (a new button shows only once asked for)
 	slash = "mail",   -- /mello mail names
 	keep ={ "alts", "bnetChars" },   -- your characters and your friends': never in a profile or a share string
 	defaults = {
@@ -61,6 +67,7 @@ local R = {
 	SIZE = 18,       -- the button
 	GAP = 4,         -- from the To field's right edge
 	SETTLE = 2,      -- seconds: the friend list read once its events have stopped coming
+	onList = {},     -- [BattleTag] = true: on the friend list at the last read (reused)
 }
 
 local function Tr(text)
@@ -139,8 +146,13 @@ local function WriteMe()
 	end
 	local alts = Store("alts")
 	local _, class = Call(UnitClass, "player")
-	alts[key] = { name = name, full = true, realm = realm, class = Text(class), level = Num(Call(UnitLevel, "player")),
-		faction = faction, seen = time() }
+	local rec = alts[key]
+	if type(rec) ~= "table" then
+		rec = {}
+		alts[key] = rec
+	end
+	rec.name, rec.full, rec.realm, rec.class = name, true, realm, Text(class)
+	rec.level, rec.faction, rec.seen = Num(Call(UnitLevel, "player")), faction, time()
 end
 
 -- the friend list: each friend's characters of this game they play now, noted
@@ -155,9 +167,16 @@ local function ReadFriends()
 	end
 	local wow, project = rawget(_G, "BNET_CLIENT_WOW"), rawget(_G, "WOW_PROJECT_ID")
 	local known = Store("bnetChars")
+	local whole = Call(rawget(_G, "BNConnected")) == true   -- (the list read whole: only then is anyone forgotten)
+	wipe(R.onList)
 	for i = 1, count do
 		local info = Call(BN.GetFriendAccountInfo, i)
 		local tag = type(info) == "table" and Text(info.battleTag) or nil
+		if tag then
+			R.onList[tag] = true
+		else
+			whole = false
+		end
 		local games = tag and Num(Call(BN.GetFriendNumGameAccounts, i)) or 0
 		for j = 1, games do
 			local g = Call(BN.GetFriendGameAccountInfo, i, j)
@@ -168,12 +187,30 @@ local function ReadFriends()
 				local name = Text(g.characterName)
 				local realm = Text(g.realmDisplayName) or Text(g.realmName)
 				if name and name ~= "" and realm and realm ~= "" then
-					local chars = known[tag] or {}
-					known[tag] = chars
-					chars[name .. "-" .. RealmKey(realm)] = { name = name, realm = realm,
-						class = Text(g.classFilename) or ClassToken(Text(g.className)),
-						level = Num(g.characterLevel), faction = Text(g.factionName), seen = time() }
+					local chars = known[tag]
+					if type(chars) ~= "table" then
+						chars = {}
+						known[tag] = chars
+					end
+					local key = name .. "-" .. RealmKey(realm)
+					local rec = chars[key]
+					if type(rec) ~= "table" then
+						rec = {}
+						chars[key] = rec
+					end
+					rec.name, rec.realm = name, realm
+					rec.class = Text(g.classFilename) or ClassToken(Text(g.className))
+					rec.level, rec.faction, rec.seen = Num(g.characterLevel), Text(g.factionName), time()
 				end
+			end
+		end
+	end
+	-- a friend taken off the friend list: what was noted of them forgotten (only after a whole read of a list that
+	-- is there: a Battle.net disconnect reads as no friends)
+	if whole and count > 0 then
+		for tag in pairs(known) do
+			if not R.onList[tag] then
+				known[tag] = nil
 			end
 		end
 	end
@@ -185,7 +222,7 @@ local function ReadFriendsSoon()
 		return
 	end
 	waiting = true
-	C_Timer.After(R.SETTLE, function()
+	Perf.C_Timer.After(R.SETTLE, function()
 		waiting = false
 		ReadFriends()
 	end)
@@ -197,10 +234,41 @@ end
 
 -- a character's line: its name in its class colour, its level after it dimmed (a friend's on another realm of this
 -- server is written to as well: the user, "same faction, I can still send", the game's own name list offering it)
+local function OtherRealm(c)
+	local mine, theirs = RealmKey(Text(Call(GetRealmName))), RealmKey(c.realm)
+	return (mine and theirs and mine ~= theirs) and theirs or nil
+end
+
 local function Line(c)
 	local hex = c.class and MelloUI.Colours and MelloUI.Colours.ClassHex and MelloUI.Colours.ClassHex(c.class)
 	local name = hex and ("|c" .. hex .. c.name .. "|r") or c.name
-	return c.level and (name .. "  |cff9d9d9d" .. c.level .. "|r") or name
+	local line = c.level and (name .. "  |cff9d9d9d" .. c.level .. "|r") or name
+	-- (another realm: named, so it is seen before the letter goes)
+	return OtherRealm(c) and (line .. "  |cff9d9d9d" .. c.realm .. "|r") or line
+end
+
+-- The address a letter needs. On your realm: the name. On another realm a bare name would go to whoever bears that
+-- name on YOUR realm, so: the game's own address for the character where the game knows one (C_AutoComplete, the
+-- name list the To field itself completes from: the very text the game would fill in), else the name with its realm
+-- after it, the realm's spaces left out (the game's form). Not seen in a real client with a friend on another realm:
+-- should this client refuse the form, the letter is refused and nothing is lost.
+function R.Address(c)
+	local theirs = OtherRealm(c)
+	if not theirs then
+		return c.name
+	end
+	local AC, lists = rawget(_G, "C_AutoComplete"), rawget(_G, "AUTOCOMPLETE_LIST")
+	local mail = type(lists) == "table" and lists.MAIL
+	if type(AC) == "table" and type(mail) == "table" then
+		local results = Call(AC.GetAutoCompleteResults, c.name, 8, #c.name, true, mail.include, mail.exclude)
+		for _, r in ipairs(type(results) == "table" and results or {}) do
+			local full = type(r) == "table" and Text(r.name) or nil
+			if full and (full == c.name or full:sub(1, #c.name + 1) == c.name .. "-") then
+				return full
+			end
+		end
+	end
+	return c.name .. "-" .. theirs
 end
 
 -- a character's entry in the menu: a click writes to it
@@ -228,13 +296,13 @@ local function Writable(list, me, faction, needFull)
 	return out
 end
 
--- the To field gets the full name (only a character on your realm is clickable), the cursor moves on to Subject
+-- the To field gets the character's address (R.Address), the cursor moves on to Subject
 local function Put(c)
 	local to, subject = rawget(_G, "SendMailNameEditBox"), rawget(_G, "SendMailSubjectEditBox")
 	if not to then
 		return
 	end
-	to:SetText(c.name)
+	to:SetText(R.Address(c))
 	if subject then
 		subject:SetFocus()
 	end
@@ -368,7 +436,7 @@ Perf.SetScript(events, "OnEvent", function(_, event)
 	if event == "MAIL_SHOW" then
 		Show()
 	elseif event == "PLAYER_LEVEL_UP" then
-		C_Timer.After(1, WriteMe)   -- (UnitLevel reads the new level a moment later)
+		Perf.C_Timer.After(1, WriteMe)   -- (UnitLevel reads the new level a moment later)
 	else
 		ReadFriendsSoon()
 	end
@@ -389,8 +457,12 @@ function M:OnDisable()
 	Show()
 end
 
-function M:OnSettingChanged(_, _, db)
+function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "bnet" and not value and type(db) == "table" then
+		db.bnetChars = nil   -- (switched off: nothing of your friends is kept)
+		return
+	end
 	ReadFriendsSoon()
 end
 
@@ -427,3 +499,4 @@ M.SlashWords = {
 -- for the test harness
 M.TEXT, M.R = TEXT, R
 M.Writable, M.Put, M.ClassToken = Writable, Put, ClassToken
+M.WriteMe, M.ReadFriends, M.Line = WriteMe, ReadFriends, Line

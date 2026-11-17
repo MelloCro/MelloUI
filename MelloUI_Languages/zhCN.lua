@@ -2988,6 +2988,20 @@ Lang:Add("zhCN", {
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "手柄聊天：在游戏的环形菜单中选择“聊天”，然后用 LB / RB 切换标签页，用方向键或右摇杆滚动。", -- draft
 	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "丢弃：现在回答“丢弃”会丢掉白色物品。此前游戏每次都会拒绝，聊天中也会提示。游戏自己保留的物品会被跳过。", -- draft
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "鼠标提示：同时使用 Questie 和 Polestar 时，生物的任务目标不再显示两遍。以 Questie 的文字为准，MelloUI 自己的物品行也会让给 Questie。", -- draft
+	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name. Switch it on in Quality of Life > Mail."] = "邮件收件人：邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色，点击即可填入名字。在“便利功能 > 邮件”中开启。", -- draft
+	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
+	["Mail Recipients"] = "邮件收件人", -- draft
+	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色：点击其中一个即可填入名字。", -- draft
+	["Who was that again? One click and the letter has its name."] = "那个人叫什么来着？点一下，信上就有名字了。", -- draft
+	["Battle.net Friends' Characters"] = "战网好友的角色", -- draft
+	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "菜单中也会列出你的战网好友，以及游戏在他们游玩时显示过的角色。关闭：只列出你自己的角色，不记录好友的角色。", -- draft
+	["Recipients"] = "收件人", -- draft
+	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "选择你的一个角色或战网好友的角色作为这封信的收件人。", -- draft
+	["Your Characters"] = "你的角色", -- draft
+	["Battle.net Friends"] = "战网好友", -- draft
+	["None yet: each of your characters is noted as it logs in."] = "暂无：你的每个角色会在登录时被记录。", -- draft
+	["None yet: a friend's characters are noted while they play."] = "暂无：好友的角色会在他们游玩时被记录。", -- draft
+	["online"] = "在线", -- draft
 	["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "任务瞬间：拾取物品的动画停留更久。图标和计数会停留两秒，再飞向你的任务追踪。", -- draft
 	["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "怀旧：任务动画会穿上你的框架套装：图标在套装的环中，文字在套装框架的牌匾上，配以手绘光效。", -- draft
 	["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "怀旧：进度条换上你框架套装的边框，取代带菱形端头的托架；列表行改为深色底上的细线，取代粗金条。", -- draft

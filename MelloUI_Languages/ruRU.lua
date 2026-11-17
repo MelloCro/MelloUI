@@ -2988,6 +2988,20 @@ Lang:Add("ruRU", {
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Чат с контроллером: выберите «Чат» в кольцевом меню игры, затем LB / RB переключают вкладки, а крестовина или правый стик прокручивают текст.", -- draft
 	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "Выбросить: ответ «Выбросить» теперь выбрасывает белый предмет. Раньше игра каждый раз отказывала, и чат сообщал об этом. Предмет, который игра сама оставляет, пропускается.", -- draft
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "Подсказки: с Questie и Polestar цели задания у существа больше не показываются дважды. Остаются строки Questie, а собственная строка MelloUI на предмете тоже уступает Questie.", -- draft
+	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name. Switch it on in Quality of Life > Mail."] = "Получатели почты: кнопка рядом с полем «Кому» у почтового ящика показывает ваших персонажей и персонажей друзей Battle.net; щелчок вписывает имя. Включается в «Удобства» > «Почта».", -- draft
+	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
+	["Mail Recipients"] = "Получатели почты", -- draft
+	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Кнопка рядом с полем «Кому» у почтового ящика показывает ваших персонажей и персонажей друзей Battle.net: щёлкните по одному, и его имя будет вписано.", -- draft
+	["Who was that again? One click and the letter has its name."] = "Как же его звали? Один щелчок, и в письме есть имя.", -- draft
+	["Battle.net Friends' Characters"] = "Персонажи друзей Battle.net", -- draft
+	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "В меню показаны и друзья Battle.net, у каждого те персонажи, которых игра показала, пока друг играл. Выключено: только ваши персонажи, персонажи друзей не запоминаются.", -- draft
+	["Recipients"] = "Получатели", -- draft
+	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Выберите своего персонажа или персонажа друга Battle.net, которому отправить это письмо.", -- draft
+	["Your Characters"] = "Ваши персонажи", -- draft
+	["Battle.net Friends"] = "Друзья Battle.net", -- draft
+	["None yet: each of your characters is noted as it logs in."] = "Пока никого: каждый ваш персонаж запоминается при входе в игру.", -- draft
+	["None yet: a friend's characters are noted while they play."] = "Пока никого: персонажи друга запоминаются, пока он играет.", -- draft
+	["online"] = "в сети", -- draft
 	["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "Моменты заданий: анимация взятого предмета держится дольше. Значок и счёт стоят две секунды, прежде чем улететь в список заданий.", -- draft
 	["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "Олдскул: анимации заданий носят ваш Набор рамок: значок в кольце набора, слова на табличке из его рамки, в нарисованном свете.", -- draft
 	["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "Олдскул: полосы прогресса носят рамку вашего Набора рамок вместо скобы с ромбами, а строки списков стали спокойными линиями на тёмном фоне вместо толстых золотых полос.", -- draft
