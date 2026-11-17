@@ -355,7 +355,7 @@ L.pages = {
 	QualityOfLife = { title = "Quality of Life", icon = "module:Vendor", set = "page_automation",
 		flavour = "The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip.",
 		tabs = { "Vendor", "Restock", "Quests", "Notices", "Combat Text", "Gains", "Error Messages", "Reminders", "Widgets",
-			"Role Picker", "FPS / Latency", "Tooltip" } },
+			"Role Picker", "Mail", "FPS / Latency", "Tooltip" } },
 	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", set = "page_voice", module = "VoiceOver",
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
 	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", set = "page_sounds", module = "CustomSounds",
@@ -1453,6 +1453,10 @@ function L.Define(R, Link)
 	-- selection", "And a checkbox that asks if i want to save that role for future dungeons") its own tab
 	R("QualityOfLife", "Role Picker", "General", "RolePicker.!enabled", { name = "Role Picker" })
 	R("QualityOfLife", "Role Picker", "Behaviour", "RolePicker.remember")
+	-- (2.1.59; a player's wish: "a list of our alts at the mailbox, so you only click which one", "the same with
+	-- Battle.net friends") its own tab
+	R("QualityOfLife", "Mail", "General", "MailRecipients.!enabled", { name = "Mail Recipients" })
+	R("QualityOfLife", "Mail", "General", "MailRecipients.bnet")
 	R("QualityOfLife", "Reminders", "General", "Reminders.!enabled", { name = "Reminders" })
 	R("QualityOfLife", "Reminders", "General", "Reminders.remind_mail")
 	R("QualityOfLife", "Reminders", "General", "Reminders.remind_repair")

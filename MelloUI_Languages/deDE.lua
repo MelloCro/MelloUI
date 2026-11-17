@@ -3756,6 +3756,19 @@ Lang:Add("deDE", {
 	["Remember for future dungeons"] = "Für künftige Dungeons merken", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Die Rollenwahl ist aus: Schalte sie unter Komfort > Rollenwahl ein.", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Addons-Seite: Sie öffnet sich wieder mit installiertem MaxDPS, wo sie bei Profile blieb.", -- draft
+	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
+	["Mail Recipients"] = "Post-Empfänger", -- draft
+	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Ein Knopf neben dem An-Feld des Briefkastens listet deine Charaktere und die Charaktere deiner Battle.net-Freunde: Klicke einen an, und sein Name wird eingetragen.", -- draft
+	["Who was that again? One click and the letter has its name."] = "Wie hieß der noch gleich? Ein Klick, und der Brief hat seinen Empfänger.", -- draft
+	["Battle.net Friends' Characters"] = "Charaktere der Battle.net-Freunde", -- draft
+	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "Das Menü listet auch deine Battle.net-Freunde, jeden mit den Charakteren, die das Spiel von ihnen gezeigt hat, während sie spielten. Aus: nur deine eigenen Charaktere, und keine ihrer Charaktere werden gemerkt.", -- draft
+	["Recipients"] = "Empfänger", -- draft
+	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Wähle einen deiner Charaktere oder den Charakter eines Battle.net-Freundes, an den dieser Brief gehen soll.", -- draft
+	["Your Characters"] = "Deine Charaktere", -- draft
+	["Battle.net Friends"] = "Battle.net-Freunde", -- draft
+	["None yet: each of your characters is noted as it logs in."] = "Noch keine: Jeder deiner Charaktere wird gemerkt, sobald er sich einloggt.", -- draft
+	["None yet: a friend's characters are noted while they play."] = "Noch keine: Die Charaktere eines Freundes werden gemerkt, während er spielt.", -- draft
+	["online"] = "online", -- draft
 	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Karte: Mit Questie sind dessen Quest-! und -? auf MelloUIs Karte größer und folgen dem Regler Symbolgröße, und ein Klick in die Nähe startet die Route dorthin.", -- draft
 	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: Jede Version seiner Datenbank wird jetzt gelesen, auch ältere und neuere.", -- draft
 	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Karte: Mit RareScanner und einem HandyNotes-Plugin, das ebenfalls seltene Gegner markiert, wird ein seltener Gegner nicht mehr doppelt markiert. Es gilt die Markierung von RareScanner, auf MelloUIs Karte und der Minikarte.", -- draft

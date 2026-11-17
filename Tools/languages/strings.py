@@ -47,6 +47,8 @@ FILES = {
     "Core/LevelCard.lua": (),
     # (2.1.55: the role picker's box and its on-screen lines)
     "Modules/RolePicker.lua": ("TEXT",),
+    # (2.1.59: the mailbox's recipients button, its tooltip and its menu)
+    "Modules/MailRecipients.lua": ("TEXT",),
 }
 # a section of a file the windows never draw (the slash commands' chat output, the probes): left out
 SKIP_FROM = {

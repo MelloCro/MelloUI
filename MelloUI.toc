@@ -124,6 +124,7 @@ Modules\MeterRaid.lua
 Modules\SwingTimers.lua
 Modules\PartyMarkers.lua
 Modules\RolePicker.lua
+Modules\MailRecipients.lua
 Modules\Sparkles.lua
 Modules\CustomSounds.lua
 Modules\Nameplates.lua
