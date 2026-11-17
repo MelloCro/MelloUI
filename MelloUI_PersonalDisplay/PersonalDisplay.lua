@@ -5600,9 +5600,11 @@ end
 
 -- Oldschool > Borders' Personal Resource Border changed, or the painted reskin switched (the kit's 'border' on the
 -- bus, Kit:PersonalLook's): every part in the new look
+-- (2.1.58) "frameset" too: a new Oldschool frame set is the display's new painting (MelloUI_Oldschool's Kit.Sets lays
+-- its pictures on the same notice, first: its listener is older than this one)
 local function OnBorder(kind)
 	local ui = S.ui
-	if kind == "personal" and ui then
+	if (kind == "personal" or kind == "frameset") and ui then
 		Dress.Apply(ui)
 		LayStack(ui)
 		Place()

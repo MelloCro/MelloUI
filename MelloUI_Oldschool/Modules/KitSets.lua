@@ -854,7 +854,9 @@ function Sets.PartyRoom()
 	return Sets.partyWorn and Sets.PartyRoomOf(Sets.Data()) or 0
 end
 
--- the unit frames' skin on the party (on) or gone (off): a set that needs room makes Group Frames lay the party again
+-- the unit frames' skin on the party (on) or gone (off): a set that needs room makes Group Frames lay the party again,
+-- told on the bus's own 'partyroom' (2.1.58: no longer a second 'border' "frameset" -- the set did not change, and a
+-- look switch told 'border' once more than its kinds, hard3/reviewfix)
 function Sets.PartyWorn(on)
 	on = on and true or false
 	if Sets.partyWorn == on then
@@ -862,7 +864,7 @@ function Sets.PartyWorn(on)
 	end
 	Sets.partyWorn = on
 	if Sets.PartyRoomOf(Sets.Data()) > 0 then
-		MelloUI:Fire("border", "frameset", select(2, Sets.Data()))
+		MelloUI:Fire("partyroom")
 	end
 end
 
@@ -1188,9 +1190,8 @@ Kit:OnBorderChanged("frameset", function()
 			pcall(fn)
 		end
 	end
-	if Kit.PersonalLook then
-		MelloUI:Fire("border", "personal", Kit:PersonalLook())
-	end
+	-- (the Personal Display hears this same 'border' "frameset" itself: no second 'border' "personal" here -- a set
+	-- change told 'border' twice, hard3/reviewfix)
 end)
 Sets.OnSet = {}
 if MelloUI.FrameHover then

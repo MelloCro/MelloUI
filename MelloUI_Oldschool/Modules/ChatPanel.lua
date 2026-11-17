@@ -502,18 +502,25 @@ end
 -- (2.1.58, the test in a real client: the chat players see is MelloUI's Chat View -- MelloUI_Chat's window,
 -- MelloUIChatView, over the game's chat -- so the set's frame stands round that window too: on a frame of its own over
 -- the window's parts, as MelloUI's rims stand (MelloUI.Rims), never written into the view's code. Made when the view is
--- there, laid with the rails)
-function SetFrame.View()
-	local view = rawget(_G, "MelloUIChatView")
-	if not (view and Kit.Sets) or SetFrame.list[view] then
-		return view and SetFrame.list[view] ~= nil
+-- there, laid with the rails. The user, with a picture: "You forgot to skin the Whisper Window" -- MelloUI_Chat's
+-- whisper window, MelloUIWhispers, the same way: made when it is built (its bus 'whisperwindow'); a child of the
+-- window, so it shows, hides and slides out with it)
+SetFrame.OWN = { "MelloUIChatView", "MelloUIWhispers" }
+
+-- the window by its name, its set frame made the first time; nil while the window is not built
+function SetFrame.Own(name)
+	local frame = rawget(_G, name)
+	if not (frame and Kit.Sets) then
+		return nil
 	end
-	local holder = CreateFrame("Frame", nil, view)
-	holder:SetAllPoints(view)
-	holder:EnableMouse(false)
-	holder:SetFrameLevel(view:GetFrameLevel() + 60)
-	SetFrame.list[view] = { window = Kit.Sets.Window(holder, "OVERLAY", 7), rect = view, view = true }
-	return true
+	if not SetFrame.list[frame] then
+		local holder = CreateFrame("Frame", nil, frame)
+		holder:SetAllPoints(frame)
+		holder:EnableMouse(false)
+		holder:SetFrameLevel(frame:GetFrameLevel() + 60)
+		SetFrame.list[frame] = { window = Kit.Sets.Window(holder, "OVERLAY", 7), rect = frame, view = true }
+	end
+	return frame
 end
 
 function SetFrame.Lay(frame)
@@ -557,11 +564,13 @@ function Border.LayAll()
 	for frame, rep in pairs(Border.rails) do
 		Border.Lay(frame, rep, a)
 	end
-	-- (2.1.58) the Chat View's window in the set's frame too, at Border Opacity
-	if SetFrame.View() then
-		local view = rawget(_G, "MelloUIChatView")
-		SetFrame.Lay(view)
-		SetFrame.list[view].window.t:SetAlpha(a)
+	-- (2.1.58) MelloUI's own chat windows (the Chat View, the whisper window) in the set's frame too, at Border Opacity
+	for _, name in ipairs(SetFrame.OWN) do
+		local frame = SetFrame.Own(name)
+		if frame then
+			SetFrame.Lay(frame)
+			SetFrame.list[frame].window.t:SetAlpha(a)
+		end
 	end
 end
 
@@ -1046,14 +1055,7 @@ local function Activate()
 	end
 	-- (a shade that waited while the reskin was off)
 	ShadeSeen()
-	Border.LayAll()   -- (the frame set's frame, or the rails)
-	if not SetFrame.View() and C_Timer and C_Timer.After then
-		C_Timer.After(1, function()   -- (the Chat View built a moment after the panel: its window then)
-			if active then
-				Border.LayAll()
-			end
-		end)
-	end
+	Border.LayAll()   -- (the frame set's frame, or the rails; the Chat View built after this: its 'drawn', OnEnable)
 	Kit:Cover("chat")
 	InkFollows()
 end
@@ -1096,6 +1098,19 @@ function M:OnEnable(db)
 			Border.LayAll()
 		end
 	end, "ChatPanel border opacity")
+	-- (2.1.58) MelloUI's Chat View come on (MelloUI_Chat/ChatView.lua's 'drawn' "chat"; first built after this panel
+	-- at login): its window in the frame set's painting too -- no timed retry (v140/chat: no timer in this file)
+	MelloUI:On("drawn", function(what)
+		if what == "chat" and active then
+			Border.LayAll()
+		end
+	end, "ChatPanel frame set")
+	-- (2.1.58) the whisper window built (its first open): in the set's frame as well
+	MelloUI:On("whisperwindow", function()
+		if active then
+			Border.LayAll()
+		end
+	end, "ChatPanel frame set")
 	-- (2.1.58) a new frame set: the chat windows in its painting
 	if Kit.Sets and not SetFrame.hooked then
 		SetFrame.hooked = true
@@ -1111,6 +1126,8 @@ function M:OnDisable()
 	Deactivate()
 	ChatAlpha(false)
 	MelloUI:Off("ChatPanel border opacity", "setting")
+	MelloUI:Off("ChatPanel frame set", "drawn")
+	MelloUI:Off("ChatPanel frame set", "whisperwindow")
 end
 
 --------------------------------------------------------------------------------

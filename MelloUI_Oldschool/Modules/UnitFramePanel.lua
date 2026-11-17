@@ -649,7 +649,11 @@ function SetSkin.Shown(on)
 	if Sets then
 		Sets.PartyWorn(on and SetSkin.On())   -- (the portrait party's room: Group Frames' Vertical Spacing)
 	end
+	for portrait in pairs(SetSkin.round) do
+		SetSkin.Round(portrait, on)   -- (2.1.58: the round portrait with the skin)
+	end
 end
+SetSkin.round = setmetatable({}, { __mode = "k" })   -- [portrait] = { mask, on } (SetSkin.Round, below)
 
 -- a picture laid again out of a fight (its game picture re-atlased: a target's classification, a party member's art)
 function SetSkin.Relay(e)
@@ -676,6 +680,28 @@ end
 local refits = setmetatable({}, { __mode = "k" })
 -- (0.20.4) the round mask a ringed portrait gets besides the game's (SkinRing's RoundMask)
 local ROUND_PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+-- (2.1.58) the same under a frame set (v204/roundfade: "round whatever the game's mask"): the player's portrait keeps a
+-- round mask of ours beside the game's while the set's painting dresses it -- a set's ring may not cover the corner the
+-- game's mask leaves square -- one mask a portrait, made once, put on and taken off with the skin (SetSkin.Shown)
+function SetSkin.Round(portrait, on)
+	if not (portrait and portrait.AddMaskTexture and portrait.RemoveMaskTexture) then
+		return
+	end
+	on = on and true or false
+	local r = SetSkin.round[portrait]
+	if on and not r then
+		local mask = portrait:GetParent():CreateMaskTexture()
+		mask:SetTexture(ROUND_PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetAllPoints(portrait)
+		r = { mask = mask, on = false }
+		SetSkin.round[portrait] = r
+	end
+	if r and r.on ~= on then
+		r.on = on
+		pcall(on and portrait.AddMaskTexture or portrait.RemoveMaskTexture, portrait, r.mask)
+	end
+end
 -- (0.19.0) [portrait] = the rep of the ring round it, for M:RingOf
 local ringOf = setmetatable({}, { __mode = "k" })
 -- (0.20.0) [level circle] = the kit's orb on it, for M:CoverOf
@@ -1700,6 +1726,7 @@ local function SkinPlayer()
 		CenterName(playerName, e and e.plaque)
 		SkinCircle(main.LevelBackgroundCircle, ScreenPlayerLevel())
 		PvPOnLevel(main.PvpBackgroundCircle, main.PvpBackgroundIcon, main.LevelBackgroundCircle)
+		SetSkin.Round(container.PlayerPortrait, active)
 		return
 	end
 	-- (its shade: the outline's parts, under the whole frame)

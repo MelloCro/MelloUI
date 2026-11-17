@@ -1100,6 +1100,10 @@ local function Listen()
 			H:Layout()
 		end
 	end, "GroupFrames.frameset")
+	-- (2.1.58) the frame set put on the party or taken off it: its room again (Kit.Sets.PartyWorn)
+	MelloUI:On("partyroom", function()
+		H:Layout()
+	end, "GroupFrames.partyroom")
 	-- the raid frames' border changed (Raid Frame Border, its placement): the
 	-- bars inside it again (Kit:RaidFrameInset; the kit lays borders out of a fight)
 	MelloUI:On("raidborder", function()
