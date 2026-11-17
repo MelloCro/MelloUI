@@ -1701,6 +1701,7 @@ function M:OnEnable(db)
 	Fog()   -- (a profile's)
 	Layers.MiniFlights(LayerOn("flights"))   -- (2.1.50: the flight masters on the minimap)
 	Town.Mini(true)   -- (2.1.53: the town marks there, by the same switches)
+	AddonPins.MiniRares(true)   -- (2.1.57: another addon's rares off the minimap while RareScanner's stand there)
 	Levels.Mini(true)   -- (2.1.55: the pills and fishing badges there, by the same switches)
 end
 
@@ -1732,6 +1733,7 @@ function M:OnDisable()
 	Dungeon.Listen(false)
 	Layers.MiniFlights(false)   -- (2.1.50)
 	Town.Mini(false)   -- (2.1.53)
+	AddonPins.MiniRares(false)   -- (2.1.57)
 	Levels.Mini(false)   -- (2.1.55)
 	if win.frame then
 		Dungeon.Hide()

@@ -2973,6 +2973,10 @@ Lang:Add("esES", {
 	["Remember for future dungeons"] = "Recordar para futuras mazmorras", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "El selector de rol está desactivado: actívalo en Comodidad > Selector de rol.", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Página Addons: vuelve a abrirse con MaxDPS instalado, donde se quedaba en Perfiles.", -- draft
+	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Mapa: con Questie, sus ! y ? de misión en el mapa de MelloUI son más grandes y siguen el deslizador Tamaño de icono, y un clic cerca de uno inicia la ruta hasta allí.", -- draft
+	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: ahora se lee cualquier versión de su base de datos, también las más antiguas y las más nuevas.", -- draft
+	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Mapa: con RareScanner y un plugin de HandyNotes que también marca raros, un raro ya no se marca dos veces. Queda la marca de RareScanner, en el mapa de MelloUI y en el minimapa.", -- draft
+	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "Mapa: sin RareScanner, los raros de un plugin de HandyNotes llevan también el sello de raros de MelloUI, en el mapa y en el minimapa.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

@@ -2973,6 +2973,10 @@ Lang:Add("koKR", {
 	["Remember for future dungeons"] = "다음 던전에도 기억", -- draft
 	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "역할 선택이 꺼져 있습니다: 편의 기능 > 역할 선택에서 켜세요.", -- draft
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "애드온 페이지: MaxDPS가 설치되어 있어도 다시 열립니다. 전에는 프로필 페이지에 머물렀습니다.", -- draft
+	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "지도: Questie 사용 시 MelloUI 지도의 퀘스트 !와 ?가 더 커지고 아이콘 크기 슬라이더를 따르며, 그 근처를 클릭하면 그곳으로 가는 경로가 시작됩니다.", -- draft
+	["Questie: every version of its database is read now, older and newer ones too."] = "Questie: 이제 데이터베이스의 모든 버전을 읽습니다. 이전 버전과 최신 버전도 포함됩니다.", -- draft
+	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "지도: RareScanner와 희귀 몹도 표시하는 HandyNotes 플러그인을 함께 쓸 때 희귀 몹이 더 이상 두 번 표시되지 않습니다. MelloUI 지도와 미니맵에는 RareScanner의 표시만 남습니다.", -- draft
+	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "지도: RareScanner가 없을 때 HandyNotes 플러그인의 희귀 몹도 지도와 미니맵에서 MelloUI의 희귀 몹 인장으로 표시됩니다.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

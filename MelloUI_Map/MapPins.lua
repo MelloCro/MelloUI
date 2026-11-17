@@ -1268,6 +1268,12 @@ function Pins.SetScale(k)
 	if k ~= Pins.scale then
 		Pins.scale = k
 		Restyle()
+		-- (2.1.56) Questie's dressed icons too: their pictures are sized by MapAddonPins (its Restyle), laid again on
+		-- its next beat
+		local A = ns.AddonPins
+		if A and A.Recheck then
+			A.Recheck()
+		end
 	end
 end
 
