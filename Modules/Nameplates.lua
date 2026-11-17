@@ -2618,6 +2618,7 @@ end
 -- a copy for its spend, the glint, the bar's flash
 function Combo.FXMake(row)
 	local FX = Combo.FX
+	local Lights = MelloUI.FrameFX
 	local f = CreateFrame("Frame", nil, row)
 	f:SetAllPoints(row)
 	f:EnableMouse(false)
@@ -2625,7 +2626,12 @@ function Combo.FXMake(row)
 	for i = 1, Combo.N do
 		row.pop[i] = f:CreateTexture(nil, "OVERLAY", nil, 1)
 		row.flash[i] = f:CreateTexture(nil, "OVERLAY", nil, 2)
-		row.flash[i]:SetTexture(FX.FLASH)
+		-- (2.1.59) the look's own glow (MelloUI.FrameFX.Light: Oldschool's painted one, the Default skin's)
+		if type(Lights) == "table" and Lights.Light then
+			Lights.Light(row.flash[i], "glow_white.tga")
+		else
+			row.flash[i]:SetTexture(FX.FLASH)
+		end
 		row.flash[i]:SetBlendMode("ADD")
 		row.spend[i] = f:CreateTexture(nil, "OVERLAY", nil, 1)
 	end

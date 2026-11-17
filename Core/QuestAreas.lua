@@ -1326,7 +1326,13 @@ local function Ring(frame, f)
 	local ring = f.ring
 	if not ring then
 		ring = frame:CreateTexture(nil, "OVERLAY", nil, 7)
-		ring:SetTexture(T.RING_ART)
+		-- (2.1.59) the look's own ring of light (MelloUI.FrameFX.Light: Oldschool's painted one, the Default skin's)
+		local Lights = MelloUI.FrameFX
+		if type(Lights) == "table" and Lights.Light then
+			Lights.Light(ring, "halo_white.tga")
+		else
+			ring:SetTexture(T.RING_ART)
+		end
 		ring:SetBlendMode("ADD")
 		ring:SetPoint("CENTER", frame, "CENTER", 0, 0)
 		if MelloUI.Painter and MelloUI.Painter.Paint then

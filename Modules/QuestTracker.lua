@@ -1370,7 +1370,13 @@ function Motion.Tick(fs, done, fresh)
 		-- (1.2.0) the glint as it is drawn (made at the line's first fresh tick)
 		if not tick.glint then
 			local glint = fs.block:CreateTexture(nil, "OVERLAY")
-			glint:SetTexture(Motion.GLINT_ART)
+			-- (2.1.59) the look's own glow (MelloUI.FrameFX.Light: Oldschool's painted one, the Default skin's)
+			local Lights = MelloUI.FrameFX
+			if type(Lights) == "table" and Lights.Light then
+				Lights.Light(glint, "glow_white.tga")
+			else
+				glint:SetTexture(Motion.GLINT_ART)
+			end
 			glint:SetBlendMode("ADD")
 			PaintKey(glint, "selectedTrim", "vertex")
 			tick.glint = glint

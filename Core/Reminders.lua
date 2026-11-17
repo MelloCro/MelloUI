@@ -1027,9 +1027,19 @@ local Motion = { RING = 0.6, SLIDE = 0.35, SLIDE_D = 10, TICK = 0.3, HOLD = 0.35
 	ART = "Interface\\AddOns\\MelloUI\\Media\\FrameFX\\Light\\halo_white",   -- (a moment's ring of light, both looks)
 	done = false, tickJob = {} }
 
+-- (2.1.59) the look's own ring of light (MelloUI.FrameFX.Light: Oldschool's painted one, the Default skin's)
+function Motion.Light(tex)
+	local Lights = MelloUI.FrameFX
+	if type(Lights) == "table" and Lights.Light then
+		Lights.Light(tex, "halo_white.tga")
+	else
+		tex:SetTexture(Motion.ART)
+	end
+end
+
 function Motion.Make(b)
 	local ring = b:CreateTexture(nil, "OVERLAY", nil, 7)
-	ring:SetTexture(Motion.ART)
+	Motion.Light(ring)
 	ring:SetBlendMode("ADD")
 	ring:SetPoint("CENTER", b, "CENTER", 0, 0)
 	ring:SetSize(SIZE, SIZE)
@@ -3484,7 +3494,7 @@ local function Column()
 			row.light = light
 			-- the ring of light round the face (its arrival, its time turning ember): under the face, seen past it
 			local halo = row:CreateTexture(nil, "OVERLAY", nil, 7)
-			halo:SetTexture(Motion.ART)
+			Motion.Light(halo)
 			halo:SetBlendMode("ADD")
 			halo:SetSize(FACE * Mo.HALO, FACE * Mo.HALO)
 			halo:SetPoint("CENTER", row.faceAt, "CENTER", 0, 0)

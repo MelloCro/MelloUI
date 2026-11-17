@@ -1202,7 +1202,13 @@ function Pins:Ring(pin)
 			rings[#rings] = nil
 		else
 			ring = layer.frame:CreateTexture(nil, "OVERLAY", nil, 7)
-			ring:SetTexture(T.RING_ART)
+			-- (2.1.59) the look's own ring of light (MelloUI.FrameFX.Light: Oldschool's painted one, the Default skin's)
+			local Lights = MelloUI.FrameFX
+			if type(Lights) == "table" and Lights.Light then
+				Lights.Light(ring, "halo_white.tga")
+			else
+				ring:SetTexture(T.RING_ART)
+			end
 			ring:SetBlendMode("ADD")
 			if MelloUI.Painter and MelloUI.Painter.Paint then
 				MelloUI.Painter.Paint(ring, "selectedTrim", "vertex")

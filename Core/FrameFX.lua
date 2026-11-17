@@ -136,8 +136,32 @@ do
 		end
 		return path
 	end
+	-- (2.1.59; the user, 2026-11-17: "all of the animations that we added recently must have ther oldschool look
+	-- aswell") a light of another part -- a map pin's ring, a nameplate's flash -- in the look's art too:
+	--   FX.Light(tex, "halo_white.tga")   the look's picture on it now, and again when the look changes
+	local lit = setmetatable({}, { __mode = "k" })   -- [a texture] = its file
+	function FX.Light(tex, file)
+		lit[tex] = file
+		tex:SetTexture(Art(file))
+	end
+	-- (the next frame: every part of a look's change has been told by then; the look read afresh after it)
+	local function Relight()
+		look = nil
+		for tex, file in pairs(lit) do
+			tex:SetTexture(Art(file))
+		end
+		look = nil
+	end
 	local function Again()
 		look = nil
+		if next(lit) then
+			local S = MelloUI.Schedule
+			if S and S.NextFrame then
+				S:NextFrame("FrameFX lights", Relight)
+			else
+				Relight()
+			end
+		end
 	end
 	MelloUI:On("look:effects", Again, "FrameFX")
 	MelloUI:On("skin", Again, "FrameFX")

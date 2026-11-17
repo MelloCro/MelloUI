@@ -5,6 +5,7 @@
 - Quest Moments: the item picked up animation stays on the screen longer, in every look. Its icon and count now stay two seconds before it flies to your tracker, and the flight is a little slower. Before, it was gone in under a second.
 - Quest Moments: the counted arcs of the ring round the item's icon are gold again. They were drawn white.
 - Oldschool: the three quest animations wear your Frame Set. The icon sits in the set's ring, its count on a small plate of the set, and the words of a finished objective or quest stand on a plaque of the set's frame. The lights are the painted ones.
+- Oldschool and Default: the small lights of the map pins, the quest marks, the reminders, the combo points, the quest tracker and Combat Text are drawn in the look's own art. Before, they used the Modern look's in every look.
 
 ## 2.1.58
 

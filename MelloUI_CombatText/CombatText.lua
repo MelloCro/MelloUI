@@ -1238,7 +1238,13 @@ function DEALT.Punch(line, size, align)
 	local flare = line.flare
 	if not flare then
 		flare = line:CreateTexture(nil, "ARTWORK", nil, 7)
-		flare:SetTexture("Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white.tga")
+		-- (2.1.59) the look's own glow (MelloUI.FrameFX.Light: Oldschool's painted one, the Default skin's)
+		local Lights = MelloUI.FrameFX
+		if type(Lights) == "table" and Lights.Light then
+			Lights.Light(flare, "glow_white.tga")
+		else
+			flare:SetTexture("Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white.tga")
+		end
 		flare:SetBlendMode("ADD")
 		line.flare = flare
 	end
