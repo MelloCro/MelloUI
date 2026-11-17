@@ -2990,6 +2990,7 @@ Lang:Add("zhCN", {
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "鼠标提示：同时使用 Questie 和 Polestar 时，生物的任务目标不再显示两遍。以 Questie 的文字为准，MelloUI 自己的物品行也会让给 Questie。", -- draft
 	["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "任务瞬间：拾取物品的动画停留更久。图标和计数会停留两秒，再飞向你的任务追踪。", -- draft
 	["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "怀旧：任务动画会穿上你的框架套装：图标在套装的环中，文字在套装框架的牌匾上，配以手绘光效。", -- draft
+	["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "怀旧：进度条换上你框架套装的边框，取代带菱形端头的托架；列表行改为深色底上的细线，取代粗金条。", -- draft
 	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool：单位框体、施法条、个人显示、姓名板和聊天换上了新边框，可在“边框 > 框架套装”中三选一：镀金石、锻铁和雕木。", -- draft
 })
 

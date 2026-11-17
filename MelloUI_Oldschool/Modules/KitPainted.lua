@@ -56,8 +56,20 @@ local StripMixin = {}
 -- and a `footH` px `foot` line (Kit:Paint, painted again with the palette). The strip keeps its pieces' sizes -- every
 -- place that fits, insets or centres text on it lays out as before -- and applies none of their art: no caps, no shade
 -- partner (the shade follows art).
+-- (2.1.59; the user's pick "Rows 2" of the borders sketch, Workspace/BuildData/output/oldschool_borders_sketch, to the
+-- friend cards' thick gold bars: "i dont like how these borders look, i want them redesigned") a row's plate as LINES:
+-- the dark ground under the row and one fine line under it; under the mouse a lighter ground; the picked row on the
+-- palette's selected red with a line above too and a gold marker at its left (`states`: a state's own values, the
+-- family's where it has none; `marker` / `markerW`: a bar at the left edge; `noActive`: its picked look is its own,
+-- no active ring round it). The lines keep their thickness at every row height: the painted plate's bars grew with
+-- the row, and its body was a small picture stretched.
 Kit.flatStrips = {
 	["lists/header"] = { fill = "raisedPanel", alpha = 0.92, top = "border", foot = "selectedTrim", footH = 1.5 },
+	["lists/plate"] = { fill = "innerPanel", alpha = 0.78, foot = "trim", footAlpha = 0.42, footH = 1, noActive = true,
+		states = {
+			hover = { fill = "raisedPanel", alpha = 0.85 },
+			selected = { fill = "selectedTab", alpha = 0.9, top = "trim", topAlpha = 0.42, marker = "selectedTrim", markerW = 3 },
+		} },
 }
 
 function StripMixin:SetState(state)
@@ -73,6 +85,17 @@ function StripMixin:SetState(state)
 		Kit:Apply(self.capR, StripName(self.base, self.endR and "end_r" or "cap_r", state))
 	end
 	self:SyncActive()
+end
+
+-- (a block of its own: this file's locals are near Lua's limit)
+do
+-- a flat look's value in a state: the state's own, the family's where it has none
+local function FlatOf(look, st, key)
+	local v = st and st[key]
+	if v == nil then
+		v = look[key]
+	end
+	return v
 end
 
 -- A flat strip's band (Kit.flatStrips), made on its first lay as regions where the pieces would be (the owner's, in
@@ -92,18 +115,38 @@ function StripMixin:FlatLay()
 		local host = self.kitOwner or self
 		local layer, sub = self.mid:GetDrawLayer()
 		sub = sub or 0
-		parts = { host:CreateTexture(nil, layer, nil, sub), host:CreateTexture(nil, layer, nil, math.min(sub + 1, 7)),
-			host:CreateTexture(nil, layer, nil, math.min(sub + 1, 7)) }
-		Kit:Paint(parts[1], look.fill, "fill", look.alpha or 1)
-		Kit:Paint(parts[2], look.top, "fill", 1)
-		Kit:Paint(parts[3], look.foot, "fill", 1)
+		local up = math.min(sub + 1, 7)
+		parts = { host:CreateTexture(nil, layer, nil, sub), host:CreateTexture(nil, layer, nil, up),
+			host:CreateTexture(nil, layer, nil, up) }
+		if look.states then
+			parts[4] = host:CreateTexture(nil, layer, nil, up)   -- (2.1.59: a picked row's marker)
+		end
 		self.flatParts = parts
+	end
+	-- (2.1.59) the look in the strip's state: a state's own values, the family's where it has none; painted when the
+	-- state changed (the palette paints them again by itself)
+	local st = look.states and look.states[self.state]
+	local fill, top, foot, marker = parts[1], parts[2], parts[3], parts[4]
+	local topKey, footKey = FlatOf(look, st, "top"), FlatOf(look, st, "foot")
+	local markKey = marker and FlatOf(look, st, "marker") or nil
+	local stamp = self.state or true
+	if parts.painted ~= stamp then
+		parts.painted = stamp
+		Kit:Paint(fill, FlatOf(look, st, "fill"), "fill", FlatOf(look, st, "alpha") or 1)
+		if topKey then
+			Kit:Paint(top, topKey, "fill", FlatOf(look, st, "topAlpha") or 1)
+		end
+		if footKey then
+			Kit:Paint(foot, footKey, "fill", FlatOf(look, st, "footAlpha") or 1)
+		end
+		if markKey then
+			Kit:Paint(marker, markKey, "fill", 1)
+		end
 	end
 	local sc = self.scale or Kit.scale
 	local mid = PIECES[StripName(self.base, "mid", self.state)]
 	local t = (mid and mid.box) and mid.box[2] * sc or 0
 	local b = (mid and mid.box) and (mid.h - mid.box[4]) * sc or 0
-	local fill, top, foot = parts[1], parts[2], parts[3]
 	fill:ClearAllPoints()
 	fill:SetPoint("TOPLEFT", self, "TOPLEFT", 0, -t)
 	fill:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, b)
@@ -111,12 +154,21 @@ function StripMixin:FlatLay()
 	top:SetPoint("TOPLEFT", fill, "TOPLEFT")
 	top:SetPoint("BOTTOMRIGHT", fill, "TOPRIGHT", 0, -1)
 	foot:ClearAllPoints()
-	foot:SetPoint("TOPLEFT", fill, "BOTTOMLEFT", 0, look.footH or 1)
+	foot:SetPoint("TOPLEFT", fill, "BOTTOMLEFT", 0, FlatOf(look, st, "footH") or 1)
 	foot:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
-	local on = not self.capsOff and (not self.kitOwner or self:IsShown())
-	for i = 1, #parts do
-		parts[i]:SetShown(on)
+	if marker then
+		marker:ClearAllPoints()
+		marker:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, -2)
+		marker:SetPoint("BOTTOMRIGHT", fill, "BOTTOMLEFT", FlatOf(look, st, "markerW") or 3, 2)
 	end
+	local on = not self.capsOff and (not self.kitOwner or self:IsShown())
+	fill:SetShown(on)
+	top:SetShown(on and topKey ~= nil)
+	foot:SetShown(on and footKey ~= nil)
+	if marker then
+		marker:SetShown(on and markKey ~= nil)
+	end
+end
 end
 
 -- A list's selected plate (a strip in its "selected" state) wears the active
@@ -126,7 +178,8 @@ end
 -- Hide. Only a strip that was selected turns it off (a row's plain and hover
 -- plates share its owner with the selected one)
 function StripMixin:SyncActive()
-	local on = self.state == "selected"
+	-- (2.1.59) a family drawn flat with its own picked look (a row's plate: its marker): no active ring round it
+	local on = self.state == "selected" and not (self.flatLook and self.flatLook.noActive)
 	if not (on or self.activeWas) then
 		return
 	end
@@ -1634,6 +1687,15 @@ Kit.buttonLooks = {
 	borderDesc = "The rim on each button: a thin iron rim, a hairline, rounded corners, iron with a gold line round the icon, "
 		.. "or sunk (a soft shadow inside the rim). Each lights up under the mouse and turns gold when checked.",
 }
+-- (2.1.59; the user's pick "Bars 1" of the borders sketch, Workspace/BuildData/output/oldschool_borders_sketch, to the
+-- ornate bracket's diamond caps: "they dont look good") Progress Bar Border's own list: its first look, the default
+-- "frame", is the FRAME SET's bar frame now -- Kit.Sets' one stretching texture round the bar, its small ornament at
+-- the ends only (Kit:BarLibraryBorder lays it) -- in the ornate bracket's place; the other looks as they were. The
+-- nameplates keep the list above (their set's own piece is NameplatePanel's).
+Kit.buttonLooks.progressBorders = {}
+for i, v in ipairs(Kit.buttonLooks.barBorders) do
+	Kit.buttonLooks.progressBorders[i] = v.value == "frame" and { value = "frame", label = "Frame Set", bar = "frame", set = true } or v
+end
 Kit.buttonLooks.backgroundPiece = {}
 Kit.buttonLooks.backgroundPaper = {}
 for _, v in ipairs(Kit.buttonLooks.backgrounds) do
@@ -5591,8 +5653,8 @@ do
 		  desc = "The rim on square buttons: action bars, micro menu, bags, equipment slots and spells." },
 		{ kind = "sidetab", key = "sideTabBorder", default = "slot", name = "Side Tab Border", values = Kit.sideTabLooks, preview = "rim",
 		  desc = "The rim on the windows' side tabs and the spellbook's tabs." },
-		{ kind = "bar", key = "barBorder", default = "frame", name = "Progress Bar Border", values = Kit.buttonLooks.barBorders, preview = "bar",
-		  desc = "The frame around progress bars: reputation, skills, professions, experience, tooltips and the damage meter." },
+		{ kind = "bar", key = "barBorder", default = "frame", name = "Progress Bar Border", values = Kit.buttonLooks.progressBorders, preview = "bar",
+		  desc = "The frame around progress bars: reputation, skills, professions, experience, tooltips and the damage meter. Frame Set is your Frame Set's own bar frame." },
 		{ kind = "nameplate", key = "nameplateBorder", default = "frame", name = "Nameplate Border", values = Kit.buttonLooks.barBorders, preview = "bar",
 		  desc = "The frame around the nameplates' health bars." },
 	}

@@ -2990,6 +2990,7 @@ Lang:Add("koKR", {
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "툴팁: Questie와 Polestar를 함께 쓸 때 생물의 퀘스트 목표가 더 이상 두 번 표시되지 않습니다. Questie의 줄이 표시되며, MelloUI의 아이템 줄도 Questie에 자리를 내줍니다.", -- draft
 	["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "퀘스트 순간: 아이템 집기 애니메이션이 더 오래 머뭅니다. 아이콘과 숫자가 2초 동안 머문 뒤 추적기로 날아갑니다.", -- draft
 	["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "올드스쿨: 퀘스트 애니메이션이 프레임 세트를 입습니다. 아이콘은 세트의 고리 안에, 글자는 세트 프레임의 판 위에, 그려진 빛과 함께 표시됩니다.", -- draft
+	["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "올드스쿨: 진행 바가 마름모 장식 받침 대신 프레임 세트의 프레임을 입고, 목록의 줄은 두꺼운 금색 막대 대신 어두운 바탕의 차분한 선으로 바뀝니다.", -- draft
 	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: 유닛 프레임, 시전바, 개인 표시기, 이름표, 채팅에 새 테두리가 생겼습니다. 테두리 > 프레임 세트에서 세 가지 중 고를 수 있습니다: 금박 석재, 단조 철, 조각 목재.", -- draft
 })
 

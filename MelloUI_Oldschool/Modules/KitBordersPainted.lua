@@ -355,17 +355,279 @@ local function GuardCaps(rep, strip)
 	end
 end
 
--- a bar's bracket in a library style, or put back (rep: Kit.lua's bar
--- replacement; true when the library took it)
+-- (2.1.59; the user's pick "Bars 1" of the borders sketch, Workspace/BuildData/output/oldschool_borders_sketch: "the
+-- frame of your Frame Set round each bar, its small ornament at the ends only") The FRAME SET's bar frame round a
+-- progress bar, in the ornate bracket's place: what Progress Bar Border's first look ("frame", its default) draws on
+-- every window's progress bar (the "bar" group; the nameplates, the unit frames and the cast bar have their set's own
+-- pieces). It stands where a library border would -- rep.libraryBorder, with that interface (SetShown, SetLayer,
+-- Inset, SetFit, Lay) -- as ONE stretching texture of Kit.Sets (its Strip, kind "plate") round the bar's band, the
+-- bracket's three pieces and its trough put out (alpha, as the nameplates' set does). A bar in a window keeps the
+-- frame inside its own height (FIT of it: the band, the frame's hole, is smaller than the bar); a bar whose fill
+-- keeps its whole size (the rule's capOut: the experience bar, a tooltip's, the damage meter's) gets it round itself
+-- in the ornate bracket's own footprint -- as tall as that bracket's canvas stood over the bar (Out(): its caps
+-- reached that far), the hole on the bar's middle, its ends past the bar's ends -- so nothing reaches where the
+-- bracket did not; the fill's top and bottom edges lie under the frame's rails, as under the bracket's.
+-- No set's numbers (a MelloUI without them): the ornate bracket as before.
+local SetBar = { FIT = 0.9, OUT = 1.6 }
+SetBar.__index = SetBar
+local setBars = setmetatable({}, { __mode = "k" })   -- [a bar's rep] = true while it wears the set's frame
+
+local function SetPiece()
+	local Sets = Kit.Sets
+	local set = Sets and Sets.Data()
+	local p = set and set.plate
+	if p and p.margins and p.hole then
+		return set, p
+	end
+	return nil
+end
+
+function SetBar:SetShown(on)
+	self.shown = on and true or false
+	local show = self.shown and self.laid == true
+	self.strip.t:SetShown(show)
+	self.ground:SetShown(show)
+end
+
+-- (the bracket's layer follows the bar's fill: the frame with it, its ground where the trough goes)
+function SetBar:SetLayer(layer, sub)
+	self.strip.t:SetDrawLayer(layer, sub)
+	if self.ownGround then
+		local _, _, tl, ts = Kit:BracketLayers(self.rep.barParent, true)
+		if tl then
+			self.ground:SetDrawLayer(tl, ts)
+		end
+	end
+end
+
+-- (a library border's: how far it reaches past its rect, sideways and up / down)
+function SetBar:Inset()
+	return self.x or 0, self.y or 0
+end
+
+function SetBar:SetFit()
+end
+
+function SetBar:Lay()
+	return true
+end
+
+-- the bar's insets to the frame's hole, its fill's place (the rep's GetOpening while it wears the frame)
+function SetBar.Opening(rep)
+	local b = rep.setFrame
+	return b.l or 0, b.r or 0, b.t or 0, b.b or 0
+end
+
+function SetBar.OuterHeight(rep)
+	return rep.setFrame.outer
+end
+
+-- how tall the frame stands over a bar whose fill keeps its whole size, as a share of the bar: the ornate bracket's
+-- canvas over its painted box (the kit's own numbers; SetBar.OUT where they are missing)
+local function Out()
+	local mid = Kit.Piece and Kit:Piece("bars/frame_mid")
+	local box = mid and mid.box
+	if box and mid.h and box[4] > box[2] then
+		return mid.h / (box[4] - box[2])
+	end
+	return SetBar.OUT
+end
+SetBar.Out = Out
+
+-- the frame's scale on a bar whose fill keeps its whole size (capOut): the one its last fit gave, else the one the
+-- bar's height gives now, else 1 (the art's own size: FitWhole answers in the same measure)
+local function OutScale(rep, p)
+	local b = rep.setFrame
+	if b.s and b.s > 0 then
+		return b.s
+	end
+	local h = rep:RectSize("GetHeight")
+	if not (h and h > 0) then
+		h = rep.fitHeight
+	end
+	return (h and h > 0) and h * Out() / p.h or 1
+end
+
+-- (the bracket's two fitting questions, answered for the frame: the panels that place their bars by them -- the
+-- damage meter's rows, a tooltip's health bar, a roll timer -- place them as before)
+-- how far the frame's ends reach past the bar (the rep's GetArms while it wears the frame): a bar in a window has
+-- the frame inside itself, none
+function SetBar.Arms(rep)
+	local _, p = SetPiece()
+	if not (p and rep.capOut) then
+		return 0, 0
+	end
+	local s = OutScale(rep, p)
+	return p.hole[1] * s, (p.w - p.hole[3]) * s
+end
+
+-- the scale at which the WHOLE frame is `height` tall and its hole's height there (the bracket strip's FitWhole
+-- while the frame is worn): the scale in the strip's own measure, so its share of the strip's scale is the frame's
+function SetBar.FitWhole(strip, height)
+	local rep = strip.setRep
+	local _, p = SetPiece()
+	if not (rep and p and height and height > 0 and strip.scale and strip.scale > 0) then
+		return nil
+	end
+	-- (the bar the whole frame stands `height` tall over: its own share of it)
+	return strip.scale * (height / p.h) / OutScale(rep, p), height / Out()
+end
+
+-- the frame fitted to the bar (h: its height where the caller read it)
+function SetBar:Fit(h)
+	local rep = self.rep
+	local set, p = SetPiece()
+	h = h or rep:RectSize("GetHeight")
+	if not (h and h > 0) then
+		h = rep.fitHeight
+	end
+	if not (set and h and h > 0) then
+		return
+	end
+	local hole = p.hole
+	local holeH = hole[4] - hole[2]
+	local s, l, r, t, b
+	if rep.capOut then
+		s = h * Out() / p.h
+		l, r = 0, 0
+		t = math.max(0, (h - holeH * s) / 2)
+		b = t
+	else
+		local outer = h * SetBar.FIT
+		s = outer / p.h
+		local pad = (h - outer) / 2
+		l, r = hole[1] * s, (p.w - hole[3]) * s
+		t, b = pad + hole[2] * s, pad + (p.h - hole[4]) * s
+	end
+	self.l, self.r, self.t, self.b = l, r, t, b
+	self.s = s
+	self.outer = p.h * s
+	self.x, self.y = (hole[1] + p.w - hole[3]) * s / 2, (hole[2] + p.h - hole[4]) * s / 2
+	local band = self.band
+	band:ClearAllPoints()
+	band:SetPoint("TOPLEFT", rep.rect, "TOPLEFT", l, -t)
+	band:SetPoint("BOTTOMRIGHT", rep.rect, "BOTTOMRIGHT", -r, b)
+	local w = rep:RectSize("GetWidth")
+	if not (w and w > 0) then
+		w = rep.fitWidth or 0
+	end
+	local length = w - l - r
+	if length <= 0 then
+		length = holeH * s * 6   -- (its width not read yet: long enough for both ends whole)
+	end
+	self.laid = self.strip:Lay(set, "plate", band, holeH * s, length) == true
+	self:SetShown(self.shown)
+end
+
+-- the frame taken off again (another look comes): the rep's own opening and height back, its trough shown
+function SetBar.Off(rep)
+	local b = rep.setFrame
+	if not (b and rep.libraryBorder == b) then
+		return
+	end
+	b:SetShown(false)
+	setBars[rep] = nil
+	rep.GetOpening, rep.OuterHeight, rep.GetArms = rep.kitOpening, rep.kitOuterHeight, rep.kitArms
+	rep.strip.FitWhole, rep.strip.setRep = rep.strip.kitFitWhole, nil
+	if rep.trough then
+		rep.trough:SetAlpha(1)
+	end
+	rep.libraryBorder = rep.libLibrary   -- (the library's own border, where this bar wore one before)
+end
+
+function SetBar.Wear(rep, strip)
+	local b = rep.setFrame
+	if not b then
+		local layer, sub = "BORDER", 1
+		local ok, l, s = pcall(strip.capL.GetDrawLayer, strip.capL)
+		if ok and not Secret(l) and type(l) == "string" then
+			layer, sub = l, (not Secret(s) and tonumber(s)) or 0
+		end
+		b = setmetatable({ rep = rep }, SetBar)
+		b.band = rep.barParent:CreateTexture(nil, "BACKGROUND")   -- (no picture: the hole's place)
+		b.strip = Kit.Sets.Strip(rep.barParent, layer, sub)
+		-- the hole's dark ground where the bracket's trough is: on the trough's own frame, in its layer -- under the
+		-- fill wherever that is drawn (the experience bar's fill is on a frame below the bracket's: a ground on the
+		-- bracket's frame lay over it, seen in the test client)
+		local trough = rep.trough
+		local host, gl, gs = rep.barParent, "BACKGROUND", 1
+		if trough then
+			local okP, tp = pcall(trough.GetParent, trough)
+			local okL, tl, ts = pcall(trough.GetDrawLayer, trough)
+			if okP and tp then
+				host = tp
+			end
+			if okL and not Secret(tl) and type(tl) == "string" then
+				gl, gs = tl, (not Secret(ts) and tonumber(ts)) or 0
+			end
+		end
+		b.ownGround = host == rep.barParent
+		b.ground = host:CreateTexture(nil, gl, nil, gs)
+		b.ground:SetPoint("TOPLEFT", b.band, "TOPLEFT", -1, 1)
+		b.ground:SetPoint("BOTTOMRIGHT", b.band, "BOTTOMRIGHT", 1, -1)
+		Kit.Sets.Ground(b.ground)
+		b.ground:Hide()
+		rep.setFrame = b
+		if not SetBar.heard then
+			-- (a new set: every bar that wears the frame laid again)
+			SetBar.heard = true
+			Kit.Sets.OnChange(function()
+				for r in pairs(setBars) do
+					r:Refit()
+					if r.onBarChanged then
+						pcall(r.onBarChanged, r)
+					end
+				end
+			end)
+		end
+	end
+	if rep.libraryBorder and rep.libraryBorder ~= b then
+		rep.libLibrary = rep.libraryBorder
+		rep.libraryBorder:SetShown(false)
+	end
+	rep.libraryBorder = b
+	rep.kitOpening = rep.kitOpening or rep.GetOpening
+	rep.kitOuterHeight = rep.kitOuterHeight or rep.OuterHeight
+	rep.kitArms = rep.kitArms or rep.GetArms
+	strip.kitFitWhole = strip.kitFitWhole or strip.FitWhole
+	rep.GetOpening, rep.OuterHeight, rep.GetArms = SetBar.Opening, SetBar.OuterHeight, SetBar.Arms
+	strip.FitWhole, strip.setRep = SetBar.FitWhole, rep
+	strip.capsOff = true
+	strip.capL:SetAlpha(0)
+	strip.mid:SetAlpha(0)
+	strip.capR:SetAlpha(0)
+	strip.capL:Hide()
+	strip.mid:Hide()
+	strip.capR:Hide()
+	GuardCaps(rep, strip)
+	if rep.trough then
+		rep.trough:SetAlpha(0)
+	end
+	rep.libraryStyle = "set"
+	setBars[rep] = true
+	b.shown = strip:IsShown() and true or false
+	b:Fit()
+	rep:Refit()
+	return true
+end
+Kit.SetBar = SetBar   -- (the tests')
+
+-- a bar's bracket in a library style or in the frame set's frame, or put back (rep: Kit.lua's bar
+-- replacement; true when one of them took it)
 function Kit:BarLibraryBorder(rep, style)
 	local strip = rep and rep.strip
 	if not (strip and strip.capL and strip.mid and strip.capR) then
 		return false
 	end
-	if not LibraryOnly(self, style) then
+	-- (2.1.59) the "bar" group's first look: the frame set's frame (the ornate bracket only without a set's numbers)
+	local set = rep.borderGroup == "bar" and (style == nil or style == "frame") and SetPiece() ~= nil
+	if not set and not LibraryOnly(self, style) then
 		if rep.libraryStyle then
+			SetBar.Off(rep)
 			rep.libraryStyle, strip.capsOff = nil, nil
-			rep.libraryBorder:SetShown(false)
+			if rep.libraryBorder then
+				rep.libraryBorder:SetShown(false)
+			end
 			strip.capL:SetAlpha(1)
 			strip.mid:SetAlpha(1)
 			strip.capR:SetAlpha(1)
@@ -395,6 +657,10 @@ function Kit:BarLibraryBorder(rep, style)
 			return true
 		end
 	end
+	if set then
+		return SetBar.Wear(rep, strip)
+	end
+	SetBar.Off(rep)   -- (from the set's frame to a library style: the library's own border, or none yet)
 	if not rep.libraryBorder then
 		local layer, sub = "BORDER", 1
 		local ok, l, s = pcall(strip.capL.GetDrawLayer, strip.capL)
@@ -443,6 +709,11 @@ local Perf = MelloUI.Perf:Scope("KitBorders")
 
 function Kit:BarLibraryFit(rep, h)
 	local b = rep and rep.libraryBorder
+	-- (2.1.59) the frame set's frame in a library border's place: its own fit (Kit.SetBar)
+	if b and rep.setFrame == b then
+		b:Fit(h)
+		return
+	end
 	if not (b and rep.libBand) then
 		return
 	end

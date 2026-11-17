@@ -6,6 +6,8 @@
 - Quest Moments: the counted arcs of the ring round the item's icon are gold again. They were drawn white.
 - Oldschool: the three quest animations wear your Frame Set. The icon sits in the set's ring, its count on a small plate of the set, and the words of a finished objective or quest stand on a plaque of the set's frame. The lights are the painted ones.
 - Oldschool and Default: the small lights of the map pins, the quest marks, the reminders, the combo points, the quest tracker and Combat Text are drawn in the look's own art. Before, they used the Modern look's in every look.
+- Oldschool: progress bars wear your Frame Set's own bar frame in place of the bracket with diamond caps: reputation, skills, professions, the experience bar, tooltips and the damage meter. It is the first choice of Borders > Progress Bar Border, named Frame Set, and the other looks there are as they were.
+- Oldschool: list rows are calm lines on a dark ground in place of thick gold bars: friend cards, guild and ignore rows, quest log, profession and collection lists. A picked row has a gold marker at its left.
 
 ## 2.1.58
 

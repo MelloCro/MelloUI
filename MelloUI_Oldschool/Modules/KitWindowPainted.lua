@@ -278,6 +278,10 @@ function Kit:ChoicePicture(tile, kind, choice)
 	if strip then
 		strip:Hide()
 	end
+	local setStrip = rawget(tile, "melloSetStrip")   -- (2.1.59: the frame set's bar frame, drawn by the choice before)
+	if setStrip then
+		setStrip:Hide()
+	end
 	tile.none:Hide()
 	if self.BorderPictureOff then
 		self:BorderPictureOff(tile)   -- (a border of the library's, drawn by the choice shown before)
@@ -322,6 +326,34 @@ function Kit:ChoicePicture(tile, kind, choice)
 		if choice.piece then
 			self:Apply(Layer(tile, LAYER_RIM, 2), choice.piece)
 		end
+	elseif kind == "bar" and choice.set and self.Sets and self.Sets.Data() and self.Sets.Data().plate then
+		-- (2.1.59) Progress Bar Border's Frame Set: the set's own bar frame round a sample fill, on stone
+		Stone(tile)
+		local set = self.Sets.Data()
+		local p = set.plate
+		local depth = size * 0.2
+		local s = depth / (p.hole[4] - p.hole[2])
+		local l, r = p.hole[1] * s, (p.w - p.hole[3]) * s
+		local hole = rawget(tile, "melloSetHole")
+		if not hole then
+			hole = pic:CreateTexture(nil, "BACKGROUND")   -- (no picture: the frame's hole)
+			rawset(tile, "melloSetHole", hole)
+		end
+		hole:ClearAllPoints()
+		hole:SetPoint("LEFT", pic, "LEFT", 3 + l, 0)
+		hole:SetPoint("RIGHT", pic, "RIGHT", -(3 + r), 0)
+		hole:SetHeight(depth)
+		if not setStrip then
+			setStrip = self.Sets.Strip(pic, "ARTWORK", 3)
+			rawset(tile, "melloSetStrip", setStrip)
+		end
+		setStrip:Lay(set, "plate", hole, depth, size - 6 - l - r)
+		local fill = Layer(tile, LAYER_OWN, 1)
+		fill:ClearAllPoints()
+		fill:SetPoint("TOPLEFT", hole, "TOPLEFT")
+		fill:SetPoint("BOTTOMLEFT", hole, "BOTTOMLEFT")
+		fill:SetWidth((size - 6 - l - r) * 0.66)
+		self:Paint(fill, "selectedTrim", "fill", 1)
 	elseif kind == "bar" and choice.style and self.BorderBarPicture then
 		-- (0.19.8) a style of the border library's round a sample fill
 		Stone(tile)
