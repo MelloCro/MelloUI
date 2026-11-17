@@ -1032,7 +1032,7 @@ local function ProfessionMenu(owner, kind)
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle("Profession Trainer")
 		for _, prof in ipairs(available) do
-			local text = prof.label
+			local text = Tr(prof.label)
 			if known[prof.label:lower()] then
 				text = text .. "  |cff40ff40(yours)|r"
 			end
