@@ -2221,6 +2221,8 @@ Lang:Add("frFR", {
 	["Health and power percent, spell names and times."] = "Pourcentage de vie et de ressource, nom et durée des sorts.",
 	["Text Font"] = "Police du texte",
 	["The font of the display's text. Shared: the interface font."] = "La police du texte de l'affichage. Partagée : la police de l'interface.",
+	["Druid Forms"] = "Formes de druide", -- draft
+	["For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "Pour un druide : deux barres fines sous la barre de ressource montrent les ressources qu’elle n’affiche pas en ce moment. Énergie et rage en forme humanoïde, mana et rage en forme de félin, mana et énergie en forme d’ours.", -- draft
 	["Class Colours"] = "Couleurs de classe",
 	["The health bar in your class colour instead of green."] = "La barre de vie dans votre couleur de classe au lieu du vert.",
 	["How wide the bars are."] = "La largeur des barres.",
