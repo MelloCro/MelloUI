@@ -289,7 +289,7 @@ function QL.Data()
 	return MelloUI_QuestListData
 end
 
--- (2.1.56; a German player: "The Barrens", "Razorfen Downs" in English on a German client) a zone's or a dungeon's name
+-- (2.1.60; a German player: "The Barrens", "Razorfen Downs" in English on a German client) a zone's or a dungeon's name
 -- as the game names it in the client's language, while MelloUI speaks that language too: a zone by its AreaTable id
 -- (C_Map.GetAreaInfo), a dungeon as Dungeon Info shows it (GetRealZoneText of its map: "Hügel von Razorfen"), else its
 -- area's; the data's English otherwise or when the game has none. Only for showing: matching keeps the data's names
@@ -706,7 +706,7 @@ function searchTextMeta.__index(t, row)
 	end
 	local zones = data.zones or {}
 	for _, r in ipairs(data.quests or {}) do
-		t[r] = (r[QL.F_TITLE] .. " " .. r[QL.F_GIVER] .. " " .. (zones[QL.ZoneOf(r)] or "") .. " " .. (QL.ZoneShown(QL.ZoneOf(r)) or "")):lower()   -- (2.1.56: the zone in the client's language found too)
+		t[r] = (r[QL.F_TITLE] .. " " .. r[QL.F_GIVER] .. " " .. (zones[QL.ZoneOf(r)] or "") .. " " .. (QL.ZoneShown(QL.ZoneOf(r)) or "")):lower()   -- (2.1.60: the zone in the client's language found too)
 	end
 	-- made while the map is closed (the panel lays itself out on a setting
 	-- change even then): no OnHide is coming, so the wait starts here

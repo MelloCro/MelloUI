@@ -633,7 +633,7 @@ local function BossLine(inst)
 	local J = rawget(MelloUI, "DungeonInfo")
 	local names = {}
 	for i, b in ipairs(inst.bosses) do
-		names[i] = (J and J.BossShown) and J.BossShown(b) or b.name   -- (2.1.56: in the client's language)
+		names[i] = (J and J.BossShown) and J.BossShown(b) or b.name   -- (2.1.60: in the client's language)
 	end
 	return W.Tr(TEXT.bosses):format(n, table.concat(names, ", "))
 end
@@ -697,7 +697,7 @@ local function EntranceTip(pin)
 	local J, inst = DungeonInfoOf(pin)
 	if inst then
 		local bosses = BossLine(inst)
-		local name = (J and J.Shown) and J.Shown(inst) or d.name   -- (2.1.56: in the client's language)
+		local name = (J and J.Shown) and J.Shown(inst) or d.name   -- (2.1.60: in the client's language)
 		return name, line .. (bosses and ("\n" .. bosses) or "") .. "\n" .. ClickLine(inst)
 	end
 	return d.name, line

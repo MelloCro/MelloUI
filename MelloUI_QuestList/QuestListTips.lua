@@ -27,7 +27,12 @@
 
 local _, ns = ...
 local MelloUI = (ns and ns.MelloUI) or _G.MelloUI
-local W = MelloUI.Widgets
+-- (2.1.60, pull request #39) a text in MelloUI's language: the widgets' translator, asked when the text is shown
+-- (a small world without one: the English)
+local function Tr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
+end
 local Perf = MelloUI.Perf:Scope("MelloUI_QuestList (QuestListTips)")
 local QL = ns.QuestList
 local M = QL.M
@@ -319,6 +324,17 @@ local function ReadUnit(guid, data)
 	end
 end
 
+-- (2.1.60, pull request #39: the line translated) a turn-in entry's line in MelloUI's language, composed once a
+-- language and kept on the entry: a tooltip is filled again many times a second, and nothing is made at a refill
+local function TurnInLine(entry)
+	local Lang = MelloUI.Lang
+	local code = Lang and Lang.code or false
+	if entry.code ~= code then
+		entry.code, entry.line = code, Tr(entry[1]):format(entry[2])
+	end
+	return entry.line
+end
+
 -- the ready ones first (pass 1), then those still in progress (pass 2),
 -- MAX_TURN_INS lines in all; returns how many were added
 local function AddTurnIns(tip, list, ready, added)
@@ -328,7 +344,7 @@ local function AddTurnIns(tip, list, ready, added)
 	for i = 1, #list do
 		local entry = list[i]
 		if entry[3] == ready and added < MAX_TURN_INS then
-			AddLine(tip, W.Tr(entry[1]):format(entry[2]), ready and "selectedTrim" or "mutedText")
+			AddLine(tip, TurnInLine(entry), ready and "selectedTrim" or "mutedText")
 			added = added + 1
 		end
 	end

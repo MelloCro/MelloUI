@@ -3862,7 +3862,9 @@ local function OnWhisper(_, event, text, sender, ...)
 	f.level = level or f.level
 	UpdateHeader(f)
 	local r, g, b = PopupColor(how.kind, how.incoming)
-	local who = how.incoming and ShortPerson(f.titleText, NameStyle()) or W.Tr("You")
+	-- (2.1.60, pull request #36: MelloUI's own word, in MelloUI's language; the game's word where the widgets have no
+	-- translator -- the suite's small worlds)
+	local who = how.incoming and ShortPerson(f.titleText, NameStyle()) or (W.Tr and W.Tr("You")) or YOU or "You"
 	-- A SECRET text gets the same line as any other: this client lets a
 	-- secret be joined into text, the line staying secret and still shown
 	-- (/mello secrets, 2026-09-23; user: "go ahead with the whisper popup").

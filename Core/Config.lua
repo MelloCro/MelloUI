@@ -177,6 +177,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.60", lines = {
+		"Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate.",
+		"Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms.",
+		"Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up.",
+		"Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on.",
+		"Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip.",
+		"Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French.",
+	} },
 	{ version = "2.1.59", lines = {
 		"Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker.",
 		"Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light.",
@@ -199,15 +207,6 @@ local CHANGELOG = {
 	{ version = "2.1.56", lines = {
 		"Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there.",
 		"Questie: every version of its database is read now, older and newer ones too.",
-	} },
-	{ version = "2.1.55", lines = {
-		"Controller Forever: MelloUI works beside it now. Its buttons and binds are the controller's, MelloUI's gamepad bars step aside, and its buttons step aside while a MelloUI window is open.",
-		"Controller Forever: its frames, minimap, chat, damage meter, bags and automatic quests step back where MelloUI has that part. A card on the Addons page has its switch.",
-		"Quest Tracker: with a controller, a Quest Tracker action (Key Bindings or /mellotracker) steps into the tracker: D-pad, A, X its item, Y its menu, B leaves. /mellonext marks the next quest.",
-		"Whispers: with a controller, the whisper window takes the D-pad: people and buttons, A picks, LB and RB turn the conversation, B closes.",
-		"Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones.",
-		"Addons page: it opens again with MaxDPS installed, where it stayed on Profiles.",
-		"Map: a Levels group on its Layers page, off at first: zone level ranges under the names and creature levels (both with Questie), and the fishing skill each water needs.",
 	} },
 }
 local LINKS = {
@@ -4315,6 +4314,12 @@ function CONFIG.Cogs(s)
 			r.cogParent = owner
 			owner.cogRows = owner.cogRows or {}
 			owner.cogRows[#owner.cogRows + 1] = r
+			-- (2.1.60: a new sub-setting sits behind its switch's cog, out of sight on the page -- Restock's Shopping
+			-- List Below: its tab wore the New tag and no row did) its switch's row wears the tag too, so the tab's tag
+			-- leads somewhere; the sub-setting's own row wears it in the cog's panel
+			if r.new and not owner.new then
+				owner.new = r.new
+			end
 		end
 	end
 end

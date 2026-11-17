@@ -2856,7 +2856,7 @@ local QITEM = {
 		end
 	end,
 	time = function()
-		return not InCombatLockdown() and M.Tr(TEXT.qiUse) or ""   -- (2.1.56: "Click to use" in German too)
+		return not InCombatLockdown() and M.Tr(TEXT.qiUse) or ""   -- (2.1.60: "Click to use" in German too)
 	end,
 	secure = function()
 		if qitem.spell then

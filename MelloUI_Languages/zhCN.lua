@@ -2989,6 +2989,19 @@ Lang:Add("zhCN", {
 	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "丢弃：现在回答“丢弃”会丢掉白色物品。此前游戏每次都会拒绝，聊天中也会提示。游戏自己保留的物品会被跳过。", -- draft
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "鼠标提示：同时使用 Questie 和 Polestar 时，生物的任务目标不再显示两遍。以 Questie 的文字为准，MelloUI 自己的物品行也会让给 Questie。", -- draft
 	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name."] = "邮件收件人：邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色，点击即可填入名字。", -- draft
+	["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "个人显示：法力回复暂停。施放消耗法力的法术后，在法力不回复的五秒内，一道光会沿着能量条移动。", -- draft
+	["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "个人显示：德鲁伊形态。对德鲁伊来说，能量条下方的两条细条显示其他形态的能量。", -- draft
+	["Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up."] = "补货：购物清单阈值让商店清单有自己的比例，可以比提醒更早打开。", -- draft
+	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "背包窗口：把身上穿着的装备放到 + 格上，会进入一个空格。以前它会重新穿回去。", -- draft
+	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "地下城信息：地下城、区域和首领以客户端语言命名，首领行里的掉落会显示物品提示。", -- draft
+	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "语言：德语已由一位德国玩家逐行检查，聊天、地图和菜单有了更多法语。", -- draft
+	-- the options new in 2.1.60 (the Personal Display's Mana Regen Pause and Druid Forms, Restock's Shopping List Below)
+	["Mana Regen Pause"] = "法力回复暂停", -- draft
+	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "施放消耗法力的法术后，精神在五秒内不会回复你的法力。这段时间里一道光沿着能量条移动，回复重新开始时能量条会亮起。", -- draft
+	["Druid Forms"] = "德鲁伊形态", -- draft
+	["For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "德鲁伊专用：能量条下方的两条细条显示它当前没有显示的能量。施法者形态显示能量和怒气，猎豹形态显示法力和怒气，熊形态显示法力和能量。", -- draft
+	["Shopping List Below"] = "购物清单阈值", -- draft
+	["The shopping list opens when an item the merchant sells is below this share of its amount. At 100% it opens whenever anything is missing. An item you are reminded of always opens it."] = "当商人出售的物品低于其数量的这一比例时，购物清单会打开。设为 100% 时，只要缺少任何东西就会打开。收到提醒的物品总会打开清单。", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "邮件收件人", -- draft
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色：点击其中一个即可填入名字。", -- draft

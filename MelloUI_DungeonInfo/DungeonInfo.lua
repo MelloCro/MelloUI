@@ -167,7 +167,7 @@ function J.List(kind, out)
 	return out
 end
 
--- (2.1.56; a German player: "Razorfen Downs", "Scarlet Monastery" in English on a German client) an instance's name as
+-- (2.1.60; a German player: "Razorfen Downs", "Scarlet Monastery" in English on a German client) an instance's name as
 -- the game names it in the client's language (GetRealZoneText of its map: "Hügel von Razorfen"), while MelloUI speaks
 -- that language too; else, or when the game has none, the data's English. Only for showing: matching, the bridge and
 -- the doors keep `inst.name`
@@ -198,7 +198,7 @@ function J.Shown(inst)
 	return inst.shown
 end
 
--- (2.1.56; the German player: OneForAll shows the bosses in German, from QuestieDB's names) a boss's name in the
+-- (2.1.60; the German player: OneForAll shows the bosses in German, from QuestieDB's names) a boss's name in the
 -- client's language: Questie's database names every creature in it (LibQuestieDB's Npc.Get, its l10n), by its id, and
 -- the data here has the English name only -- so the English names (Npc.GetRaw, its base rows) are made into ids once,
 -- a few thousand a frame, the first time a boss is shown in another language; until then, and without Questie, the

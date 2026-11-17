@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.60
+
+- Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds Spirit does not regenerate your mana, and the bar lights up when regeneration starts again (Unit & Group Frames > Personal > Behaviour).
+- Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers it does not show right now: energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. /mello personal druid shows them on any class.
+- Restock: Shopping List Below. The shopping list at a merchant has a share of its own, apart from Remind Below, so it can open sooner than the reminder comes up. An item you are reminded of always opens it.
+- Bag window: a weapon or armour piece you are wearing, dropped on a + slot, goes into a free slot. Before, it went back on.
+- Dungeon Info: on a client in MelloUI's language, dungeons and zones carry the game's own names, and with Questie the bosses do too. A boss row's drop pictures show the item's tooltip, and Shift- or Ctrl-click links the item or tries it on.
+- Quest List and map: zone and dungeon names in the client's language there too, and a search finds a zone by either name.
+- Damage Meter (Oldschool): the bars' places are put back more safely when the meter's rows are rebuilt or the look is switched.
+- German: the configurator and the installer were checked line by line by a German player, and the map, the Quest List and Dungeon Info speak German.
+- French: the chat (tabs, menus, the whisper window, Copy Chat), the map's boats, zeppelins, portals and tram, the damage meter's summary and the profession trainer menu are translated, and several lines read better.
+
 ## 2.1.59
 
 - Quest Moments: the item picked up animation stays on the screen longer, in every look. Its icon and count now stay two seconds before it flies to your tracker, and the flight is a little slower. Before, it was gone in under a second.

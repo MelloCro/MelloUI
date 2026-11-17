@@ -1505,7 +1505,7 @@ end
 -- stands locked in its own slot; ClearCursor only put it back there, and a split stack's part then joined its stack
 -- again -- dropped on a + slot it went nowhere (the + slot's place was kept, the stack stayed whole). A free slot
 -- takes it whole or split alike: the window lays the bags by kind, not by slot, so a whole stack moving loses nothing.
--- Worn gear taken off onto a + slot goes into a free slot too (2.1.56, a German player: "in the grouped bags I can't
+-- Worn gear taken off onto a + slot goes into a free slot too (2.1.60, a German player: "in the grouped bags I can't
 -- drag a weapon or armour I wear into a free slot"); one held from another view (the bank in the bags' window) goes
 -- back as before (ClearCursor). (2.1.54: without the post-hook on C_Container.SplitContainerItem #23 had -- no hook
 -- on the game's bag calls.)
@@ -1536,7 +1536,7 @@ function M.Plus.FromBody(id)
 		local ok, worn = pcall(GetInventoryItemID, "player", slot)
 		if ok and Num(worn) == id then
 			local okL, isLocked = pcall(locked, slot)
-			if okL and isLocked == true then
+			if okL and not Secret(isLocked) and isLocked == true then
 				return true
 			end
 		end

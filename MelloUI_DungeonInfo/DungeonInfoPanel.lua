@@ -581,7 +581,7 @@ local function BossRow(i)
 		star:SetPoint("CENTER", frame, "TOPRIGHT", -2, -2)
 		Star(star, true)
 		W.Paint(star, "selectedTrim", "vertex")
-		-- (2.1.56; the German player: "the tooltip should show the item, as OneForAll's does") the picture's own
+		-- (2.1.60; the German player: "the tooltip should show the item, as OneForAll's does") the picture's own
 		-- button: the game's item tooltip on hover, Shift- / Ctrl-click as an item row's, a plain click the boss's page
 		local hit = CreateFrame("Button", nil, r)
 		hit:SetAllPoints(frame)
@@ -710,7 +710,7 @@ local function QuestLine(q)
 		return W.Tr(TEXT.after)
 	end
 	local data = rawget(_G, "MelloUI_QuestListData")
-	local zone = J.ZoneShown(row[8], data and data.zones and data.zones[row[8]])   -- (2.1.56: in the client's language)
+	local zone = J.ZoneShown(row[8], data and data.zones and data.zones[row[8]])   -- (2.1.60: in the client's language)
 	return zone and (row[F.GIVER] .. ", " .. zone) or row[F.GIVER] or ""
 end
 
@@ -1326,7 +1326,7 @@ local function Build(pane)
 	S.events = f
 	MelloUI:On("dungeonInfo:tracked", Queue, "Dungeon Info panel")
 	MelloUI:On("questsource", Queue, "Dungeon Info panel")   -- (2.1.52: the quests' rows are there, J.Quests)
-	MelloUI:On("dungeonInfo:names", Queue, "Dungeon Info panel")   -- (2.1.56: the bosses' names in the client's language, once known)
+	MelloUI:On("dungeonInfo:names", Queue, "Dungeon Info panel")   -- (2.1.60: the bosses' names in the client's language, once known)
 	for k, tab in pairs(S.tabs) do
 		tab:SetSelected(k == S.tab)
 	end

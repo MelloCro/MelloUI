@@ -2989,6 +2989,19 @@ Lang:Add("koKR", {
 	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "버리기: 이제 버리기로 답하면 흰색 아이템이 버려집니다. 이전에는 게임이 매번 거부했고 채팅에 그렇게 표시되었습니다. 게임이 직접 남겨 두는 아이템은 건너뜁니다.", -- draft
 	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "툴팁: Questie와 Polestar를 함께 쓸 때 생물의 퀘스트 목표가 더 이상 두 번 표시되지 않습니다. Questie의 줄이 표시되며, MelloUI의 아이템 줄도 Questie에 자리를 내줍니다.", -- draft
 	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name."] = "우편 받는 사람: 우체통의 받는 사람 칸 옆 버튼이 내 캐릭터와 Battle.net 친구의 캐릭터를 보여 주며, 클릭하면 이름이 입력됩니다.", -- draft
+	["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "개인 표시기: 마나 재생 멈춤. 주문에 마나를 쓰면, 마나가 재생되지 않는 5초 동안 자원 바를 따라 빛이 흐릅니다.", -- draft
+	["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "개인 표시기: 드루이드 변신. 드루이드에게는 자원 바 아래의 가는 바 두 개가 다른 변신의 자원을 보여 줍니다.", -- draft
+	["Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up."] = "재보충: 구매 목록 기준 미만으로 상점 목록에 따로 비율을 줄 수 있어, 알림보다 먼저 목록이 열릴 수 있습니다.", -- draft
+	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "가방 창: 착용 중인 장비를 + 칸에 놓으면 빈 칸으로 들어갑니다. 전에는 다시 착용되었습니다.", -- draft
+	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "던전 정보: 던전, 지역, 우두머리 이름이 클라이언트 언어로 표시되고, 우두머리 줄의 전리품에 아이템 툴팁이 나옵니다.", -- draft
+	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "언어: 독일어를 독일 플레이어가 한 줄씩 검수했고, 대화창과 지도, 메뉴의 프랑스어가 늘었습니다.", -- draft
+	-- the options new in 2.1.60 (the Personal Display's Mana Regen Pause and Druid Forms, Restock's Shopping List Below)
+	["Mana Regen Pause"] = "마나 재생 멈춤", -- draft
+	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "주문에 마나를 쓰면 정신력에 의한 마나 재생이 5초 동안 멈춥니다. 그동안 자원 바를 따라 빛이 흐르고, 재생이 다시 시작되면 바가 밝게 빛납니다.", -- draft
+	["Druid Forms"] = "드루이드 변신", -- draft
+	["For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "드루이드용: 자원 바 아래의 가는 바 두 개가 지금 표시되지 않는 자원을 보여 줍니다. 기본 형태에서는 기력과 분노, 표범 변신에서는 마나와 분노, 곰 변신에서는 마나와 기력.", -- draft
+	["Shopping List Below"] = "구매 목록 기준 미만", -- draft
+	["The shopping list opens when an item the merchant sells is below this share of its amount. At 100% it opens whenever anything is missing. An item you are reminded of always opens it."] = "상인이 파는 아이템이 정해 둔 수량의 이 비율 아래로 떨어지면 구매 목록이 열립니다. 100%로 두면 하나라도 모자랄 때마다 열립니다. 알림이 뜬 아이템은 언제나 목록을 엽니다.", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "우편 받는 사람", -- draft
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "우체통의 받는 사람 칸 옆 버튼이 내 캐릭터와 Battle.net 친구의 캐릭터를 보여 줍니다. 하나를 클릭하면 이름이 입력됩니다.", -- draft

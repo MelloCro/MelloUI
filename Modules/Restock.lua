@@ -117,7 +117,7 @@ local M = MelloUI:RegisterModule("Restock", {
 		{ type = "toggle", key = "shopPanel", name = "Shopping List At The Shop",
 		  desc = "At a merchant, a shopping list of what you are low on. Nothing is bought until you click Buy." },
 		{ type = "slider", key = "shopBelow", parent = "shopPanel", name = "Shopping List Below", min = 0.25, max = 1,
-		  step = 0.05, percent = true, new = "2.1.52",
+		  step = 0.05, percent = true, new = "2.1.60",
 		  desc = "The shopping list opens when an item the merchant sells is below this share of its amount. At 100% it "
 			.. "opens whenever anything is missing. An item you are reminded of always opens it." },
 		{ type = "button", name = "Restock List", text = "Edit",

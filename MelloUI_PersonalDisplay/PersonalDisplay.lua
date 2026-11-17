@@ -49,7 +49,7 @@ local PREVIEW_PART = "personal"
 -- sizes in UI units (the sketch's, at the game's scale) and the timings
 local T = {
 	power = 0.7, cast = 0.9,             -- the power and cast fills' heights, shares of the health fill's (Height)
-	druid = 0.4,                         -- (2.1.59, Druid Forms) the other forms' two slim bars, the same share
+	druid = 0.4,                         -- (2.1.60, Druid Forms) the other forms' two slim bars, the same share
 	gap = 1,                             -- between two brackets' painted edges
 	colW = 7, colH = 70,                 -- the shield column's fill
 	text = 11,                           -- the percents' and the spell's size
@@ -105,7 +105,7 @@ local T = {
 	heavyRim = 0.38, dipDepth = 3, dip = 0.2,
 	lowHealth = 0.35, lowEdge = 0.001, beat = 0.6,
 	sparkShare = 0.08, sparkW = 8, sparkH = 2.4, spark = 0.42,
-	-- (2.1.59, Five-Second Rule) the rule's span after mana spent, the light's width and how far it stands past the
+	-- (2.1.60, Five-Second Rule) the rule's span after mana spent, the light's width and how far it stands past the
 	-- fill over and under, the veil it leaves behind it, the fade once the span is over
 	five = 5, fiveW = 12, fiveOver = 5, fiveCore = 4, fiveVeil = 0.35, fiveFade = 0.6,
 	fiveFlash = 0.55,   -- (the regeneration back: the whole bar lit this strong, then faded -- the player: "that I see when my mana regen starts again")
@@ -237,7 +237,7 @@ local Motion = {}   -- (0.25.0: the bars answering the fight; its section after 
 local Gilded = {}   -- (1.2.0: the modern look's gold rims; its section after the bars' look)
 local CastFX = {}   -- (1.2.0, Cast Motion: the cast bar's moments; in the cast bar's section)
 local Click = {}    -- (2.1.21, click-casting on the display; its section after the placing)
-local Druid = {}    -- (2.1.59, Druid Forms: the other forms' powers; its section after the power bar)
+local Druid = {}    -- (2.1.60, Druid Forms: the other forms' powers; its section after the power bar)
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -705,7 +705,7 @@ function Gilded.Make(ui)
 	g.icon = icon
 	local col = ui.column
 	g.column = Gilded.Rim(col.strip, col.bar:GetFrameLevel() + 3, col.strip)
-	-- (2.1.59) a druid's form bars each their own rim, as the cast bar (on its strip: hidden with it)
+	-- (2.1.60) a druid's form bars each their own rim, as the cast bar (on its strip: hidden with it)
 	g.druid = {}
 	for i, b in ipairs(ui.druid) do
 		g.druid[i] = Gilded.Rim(b.strip, b.bar:GetFrameLevel() + 2, b.strip)
@@ -816,7 +816,7 @@ local function LayStack(ui)
 	local widest = LayWidth(ui)
 	local float = ui.float
 	local y, prev, prevBelow = 0, nil, 0
-	-- (2.1.59) the bars laid: a druid's form bars only for a druid with Druid Forms on (Druid.Mark), no room kept else
+	-- (2.1.60) the bars laid: a druid's form bars only for a druid with Druid Forms on (Druid.Mark), no room kept else
 	Druid.Mark(ui)
 	local laid = {}
 	for _, b in ipairs(ui.stack) do
@@ -910,7 +910,7 @@ local function Build()
 	ui.health = NewBar(float, hh, "personal", true)
 	MelloUI.Shields.Attach(ui.health.bar)   -- (2.1.0: your shield on it, Core/Shields.lua)
 	ui.power = NewBar(float, hp, "personal", true)
-	-- (2.1.59, Druid Forms) the two powers the power bar does not show, under it; laid only for a druid (Druid.Mark)
+	-- (2.1.60, Druid Forms) the two powers the power bar does not show, under it; laid only for a druid (Druid.Mark)
 	ui.druid = { NewBar(float, hd, "personal"), NewBar(float, hd, "personal") }
 	ui.cast = NewBar(float, hc, "castbars")
 	ui.stack = { ui.health, ui.power, ui.druid[1], ui.druid[2], ui.cast }
@@ -1092,14 +1092,14 @@ local function Power()
 			S.powerLast = nil
 		end
 		Motion.Gain(Num(max), Num(v), plain)
-		Motion.FiveRead(plain, Num(v), shifted)   -- (2.1.59, Five-Second Rule)
+		Motion.FiveRead(plain, Num(v), shifted)   -- (2.1.60, Five-Second Rule)
 	end
 	Percent(ui.power.text, Share(rawget(_G, "UnitPowerPercent")), "player", nil, false, Curve())
 	Druid.Update()
 end
 
 --------------------------------------------------------------------------------
--- Druid Forms (2.1.59; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you
+-- Druid Forms (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you
 -- shift ... especially mana, while shifted"; the German player's pick: always the other two): under the power bar
 -- two slim bars, the two of mana, energy and rage the power bar does not show -- energy and rage in caster form,
 -- mana and rage in cat form, mana and energy in bear form. Their amounts handed to the bars as the client gives them
@@ -2809,68 +2809,7 @@ function Motion.Pale(r, g, b)
 	return r + (1 - r) * k, g + (1 - g) * k, b + (1 - b) * k
 end
 
--- the pieces (Build, once): each bar's rim under it, the loss of control's line, two words, the power's spark, the
--- driver
-function Motion.Make(ui)
-	local float = ui.float
-	local level = float:GetFrameLevel()
-	local Shade = MelloUI.Shade
-	ui.motionBars = { ui.health, ui.power }
-	for _, b in ipairs(ui.motionBars) do
-		-- (under the fill: a glow round the bar, never on it -- the nameplates' lesson, seen in the simulator)
-		local rim = CreateFrame("Frame", nil, float)
-		rim:SetFrameLevel(level)
-		rim:SetAllPoints(b.strip.fill)
-		rim:SetAlpha(0)
-		-- (full strength under the bracket's art, soft past its painted edge: Lay anchors it)
-		local band = Shade and Shade:Band(rim, { colour = "combatTaken", feather = T.rimFeather,
-			featherY = T.rimFeatherY })
-		if band then
-			band:SetStrength(1)
-		end
-		b.rim, b.rimBand = rim, band
-	end
-	-- the loss of control's line: the engine counts it down (Anim:TimerFor / Anim:Timer)
-	local line = CreateFrame("StatusBar", nil, float)
-	line:SetFrameLevel(level + 4)
-	line:SetStatusBarTexture(W.BarFill("personal"))
-	W.SoftEnds(line)
-	line:SetMinMaxValues(0, 1)
-	line:SetValue(1)
-	line:SetHeight(T.lineH)
-	line:SetAlpha(0)
-	line:Hide()
-	line.name = line:CreateFontString(nil, "OVERLAY")
-	StyleText(line.name, T.text - 1)
-	line.name:SetPoint("TOP", line, "BOTTOM", 0, -1)
-	ui.loc = line
-	-- two words, in turn (over the bracket's art)
-	ui.words, ui.nextWord = {}, 1
-	for i = 1, 2 do
-		local w = CreateFrame("Frame", nil, float)
-		w:SetSize(1, 1)
-		w:SetFrameLevel(level + 9)
-		w.text = w:CreateFontString(nil, "OVERLAY")
-		StyleText(w.text, T.text + 1)
-		w.text:SetPoint("BOTTOMLEFT", w, "BOTTOMLEFT")
-		w:Hide()
-		ui.words[i] = w
-	end
-	-- the spark on the power lead's edge (over the bracket's art)
-	local spark = CreateFrame("Frame", nil, ui.power.strip)
-	spark:SetFrameLevel(level + 6)
-	spark:SetPoint("CENTER", ui.power.lead:GetStatusBarTexture(), "RIGHT", 0, 0)
-	spark:SetAlpha(0)
-	Spark(spark, "OVERLAY", 6, "glow_white.tga"):SetAllPoints(spark)
-	ui.spark = spark
-	ui.motionFrame = CreateFrame("Frame", nil, float)
-	S.settle = { 0, 0 }
-	S.settleY, S.dipY = 0, 0
-	Motion.MakeMoments(ui, level)
-	Motion.FiveMake(ui, level)
-end
-
--- (2.1.59, Five-Second Rule; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the
+-- (2.1.60, Five-Second Rule; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the
 -- resource bar?") Spirit's mana regeneration pauses for five seconds after a spell costs mana. An unseen StatusBar over
 -- the power fill that the engine fills in those five seconds (Anim:Timer: no Lua a frame), a light on its edge running
 -- left to right and a faint veil behind it; then faded out. Told by the mana going down while it reads plain (a cost,
@@ -2927,15 +2866,10 @@ function Motion.FiveStart()
 	Motion.FivePaint(S.ui)   -- (the veil faint again after the last end's flash)
 	five:Show()
 	five:SetAlpha(1)
+	-- (its end told by the section's one driver, as a loss of control's: no timer made a cast -- Motion.Tick; mana
+	-- spent again moves the end on)
 	S.fiveEnds = GetTime() + T.five
-	C_Timer.After(T.five, Motion.FiveDue)
-end
-
--- a five seconds' end: over unless mana was spent again since (a later end is its own)
-function Motion.FiveDue()
-	if S.fiveEnds and GetTime() >= S.fiveEnds - 0.05 then
-		Motion.FiveOff(true)
-	end
+	Motion.Wake()
 end
 
 -- the five seconds over (faded) or cut off (the setting off, another power shown: at once)
@@ -2996,6 +2930,67 @@ function Motion.FiveRead(token, v, shifted)
 	elseif v and last and not shifted and v < last then
 		Motion.FiveStart()
 	end
+end
+
+-- the pieces (Build, once): each bar's rim under it, the loss of control's line, two words, the power's spark, the
+-- driver
+function Motion.Make(ui)
+	local float = ui.float
+	local level = float:GetFrameLevel()
+	local Shade = MelloUI.Shade
+	ui.motionBars = { ui.health, ui.power }
+	for _, b in ipairs(ui.motionBars) do
+		-- (under the fill: a glow round the bar, never on it -- the nameplates' lesson, seen in the simulator)
+		local rim = CreateFrame("Frame", nil, float)
+		rim:SetFrameLevel(level)
+		rim:SetAllPoints(b.strip.fill)
+		rim:SetAlpha(0)
+		-- (full strength under the bracket's art, soft past its painted edge: Lay anchors it)
+		local band = Shade and Shade:Band(rim, { colour = "combatTaken", feather = T.rimFeather,
+			featherY = T.rimFeatherY })
+		if band then
+			band:SetStrength(1)
+		end
+		b.rim, b.rimBand = rim, band
+	end
+	-- the loss of control's line: the engine counts it down (Anim:TimerFor / Anim:Timer)
+	local line = CreateFrame("StatusBar", nil, float)
+	line:SetFrameLevel(level + 4)
+	line:SetStatusBarTexture(W.BarFill("personal"))
+	W.SoftEnds(line)
+	line:SetMinMaxValues(0, 1)
+	line:SetValue(1)
+	line:SetHeight(T.lineH)
+	line:SetAlpha(0)
+	line:Hide()
+	line.name = line:CreateFontString(nil, "OVERLAY")
+	StyleText(line.name, T.text - 1)
+	line.name:SetPoint("TOP", line, "BOTTOM", 0, -1)
+	ui.loc = line
+	-- two words, in turn (over the bracket's art)
+	ui.words, ui.nextWord = {}, 1
+	for i = 1, 2 do
+		local w = CreateFrame("Frame", nil, float)
+		w:SetSize(1, 1)
+		w:SetFrameLevel(level + 9)
+		w.text = w:CreateFontString(nil, "OVERLAY")
+		StyleText(w.text, T.text + 1)
+		w.text:SetPoint("BOTTOMLEFT", w, "BOTTOMLEFT")
+		w:Hide()
+		ui.words[i] = w
+	end
+	-- the spark on the power lead's edge (over the bracket's art)
+	local spark = CreateFrame("Frame", nil, ui.power.strip)
+	spark:SetFrameLevel(level + 6)
+	spark:SetPoint("CENTER", ui.power.lead:GetStatusBarTexture(), "RIGHT", 0, 0)
+	spark:SetAlpha(0)
+	Spark(spark, "OVERLAY", 6, "glow_white.tga"):SetAllPoints(spark)
+	ui.spark = spark
+	ui.motionFrame = CreateFrame("Frame", nil, float)
+	S.settle = { 0, 0 }
+	S.settleY, S.dipY = 0, 0
+	Motion.MakeMoments(ui, level)
+	Motion.FiveMake(ui, level)
 end
 
 -- (1.2.0, the ten motions) a frame between two anchors of the fills: from `a`'s right edge to `b`'s (the part a heal
@@ -3161,7 +3156,7 @@ function Motion.LayLine()
 	if not line then
 		return
 	end
-	local b = S.casting and ui.cast or (ui.druid and not ui.druid[2].off and ui.druid[2]) or ui.power   -- (2.1.59: under a druid's form bars)
+	local b = S.casting and ui.cast or (ui.druid and not ui.druid[2].off and ui.druid[2]) or ui.power   -- (2.1.60: under a druid's form bars)
 	local _, below = Dress.Reach(b)
 	local fill = b.strip.fill
 	local y = -(below + T.gap + 1)
@@ -3239,7 +3234,7 @@ function Motion.Value(b, max, v, snap)
 	end
 end
 
--- the driver: awake only while a drain, the settle's wait or a loss of control's end is due
+-- the driver: awake only while a drain, the settle's wait, a loss of control's end or the mana pause's end is due
 function Motion.Wake()
 	local f = S.ui and S.ui.motionFrame
 	if f and not S.motionAwake then
@@ -3268,6 +3263,12 @@ function Motion.Tick(f)
 	if S.locDue and now >= S.locDue then
 		Motion.LocEnd()
 	elseif S.locDue then
+		busy = true
+	end
+	-- (2.1.60, Mana Regen Pause) its five seconds over: the bar lit, then faded
+	if S.fiveEnds and now >= S.fiveEnds then
+		Motion.FiveOff(true)
+	elseif S.fiveEnds then
 		busy = true
 	end
 	if not busy then
@@ -3790,7 +3791,7 @@ function Motion.FormApply()
 			b.text:SetAlpha(1 - math.max(rest, dead))
 		end
 	end
-	-- (2.1.59) a druid's form bars slim at rest, fold and open from the middle with them (the German player's
+	-- (2.1.60) a druid's form bars slim at rest, fold and open from the middle with them (the German player's
 	-- screenshots: out of a fight they stood thicker than the slimmed health and power)
 	for _, b in ipairs(ui.druid) do
 		if b.strip.plain then
@@ -4090,7 +4091,7 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
 		-- (a cooldown of yours cast: its spell ID plain, as Frame Effects reads its own; a secret one plays nothing)
 		if not S.preview and not Secret(a3) and type(a3) == "number" then
-			Motion.FiveCast(a3)   -- (2.1.59, Five-Second Rule: a cast that costs mana)
+			Motion.FiveCast(a3)   -- (2.1.60, Five-Second Rule: a cast that costs mana)
 			Cds.Start(a3)
 			Track.Cast(a3)   -- (2.1.24: a cast that puts a tracked one on, waiting for an aura of yours)
 			Shield.Cast(a3)   -- (a shield's: the aura it puts on you known by it)
@@ -5560,8 +5561,8 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "Health and power percent, spell names and times." },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces,
 		  desc = "The font of the display's text. Shared: the interface font." },
-		-- (2.1.59; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
-		{ type = "toggle", key = "druidForms", name = "Druid Forms", new = "2.1.59",
+		-- (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
+		{ type = "toggle", key = "druidForms", name = "Druid Forms", new = "2.1.60",
 		  search = "druid form forms shapeshift cat bear mana energy rage",
 		  desc = "For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form." },
 		{ type = "toggle", key = "classColour", name = "Class Colours",
@@ -5586,9 +5587,9 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "The power an ability costs stays lit for a moment, so you see the cost." },
 		{ type = "toggle", key = "gain", name = "Power Gained", play = "gain",
 		  desc = "New power lights up ahead of the bar before it fills." },
-		-- (2.1.59; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the resource
+		-- (2.1.60; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the resource
 		-- bar?"; its name theirs: "Mana Regen Pause" -- the five-second rule a players' word, kept for the search)
-		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause", new = "2.1.59",
+		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause", new = "2.1.60",
 		  search = "five second rule 5sr fsr mana regeneration regen spirit pause",
 		  desc = "After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again." },
 		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block", play = "avoid",
@@ -5857,7 +5858,7 @@ function Druid.TestStep()
 	C_Timer.After(Druid.STEP, Druid.TestStep)
 end
 
-M.SlashWords = { secrets = SecretsLog, shield = Shield.Log, druid = Druid.Test }   -- (2.1.59: druid, Druid Forms' look)
+M.SlashWords = { secrets = SecretsLog, shield = Shield.Log, druid = Druid.Test }   -- (2.1.60: druid, Druid Forms' look)
 
 -- Edit Layout's plates: the display made when it opens (its movers with it), never at login
 local function MoverSource()
@@ -5998,7 +5999,7 @@ function M:OnSettingChanged(key, _, db)
 		if key == "height" then
 			Refit(ui)
 		end
-		LayStack(ui)   -- (2.1.59: Druid Forms' bars laid or put away there, Druid.Mark)
+		LayStack(ui)   -- (2.1.60: Druid Forms' bars laid or put away there, Druid.Mark)
 		Place()
 		if key == "druidForms" then
 			Druid.Update()
