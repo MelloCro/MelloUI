@@ -16,9 +16,14 @@
 -- "Questie" is the addon itself, loaded, with its database readable: QuestieDB alone, without Questie, is "none".
 --
 --   * QuestieDB is a public library (its src/api.lua: "Another addon can read entity fields ... Questie is the first
---     consumer, but nothing here assumes it"): the global LibQuestieDB, read only through its Quest / Npc / Object
---     .Get, .GetAllIds and RequireContract. No code of Questie's runs for MelloUI, nothing of it is hooked, and none
+--     consumer, but nothing here assumes it"): the global LibQuestieDB, read only through its Quest / Npc / Object /
+--     Item .Get and its quests' .GetAllIds. No code of Questie's runs for MelloUI, nothing of it is hooked, and none
 --     of its data ships with MelloUI (it is the player's own copy, read where it is).
+--   * Taken by what it offers, never by a version (the user, 2026-11-16: "every version, past and future should load
+--     normally, dont ever bind addon compatibility addons to specific versions"): its contract number is not asked
+--     (until 2.1.55 QS.Lib asked RequireContract(3), and a QuestieDB outside that range was "no Questie"). The reader
+--     was written against 1.0.5's fields; every read is protected, so a field another release lacks or keeps another
+--     way is that quest's or that part's loss (QS.counts.failed), never the whole library's.
 --   * The rows are in the Quest List's own field order (QuestList.lua's QL.F_*), so its systems read them as before:
 --     id, title, level, required level, side, class, quest zone, giver zone, giver, x, y, kind, event, chain, dungeon,
 --     attunement (0: none is known), previous, continent, world x, world y, giver NPC, turn-in, its NPC, its zone, its
@@ -39,8 +44,7 @@ local MelloUI = ns.MelloUI
 local QS = {}
 MelloUI.QuestSource = QS
 
-QS.CONTRACT = 3      -- the QuestieDB contract this reader is written against (1.0.5's; RequireContract takes a range)
-QS.STEP_MS = 2       -- at most this many ms a frame while the rows are made
+QS.STEP_MS = 2      -- at most this many ms a frame while the rows are made
 QS.STARTERS = 4      -- at most this many rows for one quest (one per giver: MelloUI lists a quest at each giver)
 QS.CHAIN_DEPTH = 60  -- a chain followed back at most this many quests
 
@@ -52,17 +56,22 @@ local state = "idle"   -- "idle", "building", "ready"
 local waiting = {}     -- functions to run once the rows are ready
 QS.counts = nil        -- after the build: { questie = quests made, failed = quests that broke }
 
--- QuestieDB, while Questie itself is loaded and its database speaks a contract this reader knows; else nil. Whatever
--- Questie's switch says: the switch is the look (QS.Look). None found is kept as none only once the login is over
--- (every addon has loaded by then); found is kept
+-- a database that can be asked: its quests listed and read (whatever its version or contract number: see the header)
+local function Readable(L)
+	local Q = L.Quest
+	return type(Q) == "table" and type(Q.Get) == "function" and type(Q.GetAllIds) == "function"
+end
+
+-- QuestieDB, while Questie itself is loaded and its database can be asked; else nil. Whatever Questie's switch says:
+-- the switch is the look (QS.Look). None found is kept as none only once the login is over (every addon has loaded by
+-- then); found is kept
 function QS.Lib()
 	if lib == nil then
 		local L = rawget(_G, "LibQuestieDB")
 		local found
-		if type(rawget(_G, "Questie")) == "table" and type(L) == "table" and type(L.RequireContract) == "function"
-			and type(L.Quest) == "table" then
-			local ok, fits = pcall(L.RequireContract, QS.CONTRACT)
-			found = ok and fits and L or nil
+		if type(rawget(_G, "Questie")) == "table" and type(L) == "table" then
+			local ok, fine = pcall(Readable, L)
+			found = ok and fine and L or nil
 		end
 		if found then
 			lib = found
@@ -736,9 +745,13 @@ local function ObjectivesOf(questID)
 	if kept then
 		return kept[1], kept[2]
 	end
-	local okE, exists = pcall(L.Quest.Exists, questID)
-	if not okE or not exists then
-		return nil
+	-- (its own "is there such a quest", where it has one: a release without it is asked for the quest itself)
+	local Exists = L.Quest.Exists
+	if type(Exists) == "function" then
+		local okE, exists = pcall(Exists, questID)
+		if not okE or not exists then
+			return nil
+		end
 	end
 	local ok, entries, sources = pcall(Convert, L, questID)
 	if not ok or type(entries) ~= "table" or #entries == 0 then

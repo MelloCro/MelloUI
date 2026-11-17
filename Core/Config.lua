@@ -177,6 +177,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.57", lines = {
+		"Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap.",
+		"Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap.",
+	} },
+	{ version = "2.1.56", lines = {
+		"Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there.",
+		"Questie: every version of its database is read now, older and newer ones too.",
+	} },
 	{ version = "2.1.55", lines = {
 		"Controller Forever: MelloUI works beside it now. Its buttons and binds are the controller's, MelloUI's gamepad bars step aside, and its buttons step aside while a MelloUI window is open.",
 		"Controller Forever: its frames, minimap, chat, damage meter, bags and automatic quests step back where MelloUI has that part. A card on the Addons page has its switch.",
@@ -213,31 +221,6 @@ local CHANGELOG = {
 		"Questie's tracker: a leveling guide's steps no longer vanish when you have no quest. They stand on their own until Questie's tracker shows again.",
 		"Zygor Guides: its steps now show on the Quest Tracker and Route follows them, as with RestedXP. Its switch is on the Addons page.",
 		"Offhand: Quest Moments, the Level Up card, the on-screen line and Combat Text now go by your main game screen, not the gap between your two screens.",
-	} },
-	{ version = "2.1.52", lines = {
-		"Quest Moments: an item picked up flies to its line in your tracker, a finished objective closes its ring, a finished quest lands a gilded crest. Switches on the Animations page.",
-		"Quests: MelloUI's quests now come from Questie: the map, the minimap, the Quest List and Route to a quest use its quest data. MelloUI ships no quest data of its own any more.",
-		"Quests: without Questie, no quests are shown. The map's layers page and the Quest List say so, with a Get Questie button that opens Questie's card on the Addons page.",
-		"Addons page: Questie's switch is now named MelloUI's look. Off, Questie shows its own icons and tracker, on MelloUI's map too; the Quest List and Route to a quest keep working.",
-		"Quest List: quests Questie does not know are no longer listed. The Attunements view and the options Include Givers You Are Done With and Hide Grey Quests are gone.",
-		"Map: with Questie, every quest ! and ? is Questie's, in MelloUI's look, so Questie's quest level options decide which quests show. Point at one for its quests, click it for the route there.",
-		"Installer: a brand-new character now gets the installer once its intro cinematic is over. Before, the game closed it as the intro ended and it was never offered again.",
-		"Addons page: on a new install, a Use with MelloUI switch turned off before the first /reload or logout is kept now. It was lost before.",
-		"Bags: with the Collapse Arrow on, the backpack stays still when the bag bar folds or opens, and the key ring fits a vertical bag bar.",
-		"Restock: a new Fill All Ammo Bags switch on the Ammo page keeps your quivers and ammo pouches full. A single arrow or bullet now goes up to 2000, the best ammunition listed first.",
-		"Game Menu: with Polestar, its button and the MelloUI button no longer share a row, so both can be clicked.",
-		"French: the map, Dungeon Info, the quest tooltips, Services, Restock and Discard are translated now.",
-	} },
-	{ version = "2.1.51", lines = {
-		"Dark Mode: the minimap's tracking and calendar icons stay bright instead of turning dark.",
-		"Dungeon Info: Ctrl+Click on an item tries it on and Shift+Click links it in chat. In 2.1.50 both did nothing.",
-		"Chat: in the Minimal view, the Combat Log's My actions and What happened to me? tabs no longer cover its first lines, and a bar shows its loading progress, like the game's.",
-		"Minimap: with Questie, the minimap looks as it does without it: no second ! or ?, and Questie's objective icons no longer come back beside MelloUI's as you move.",
-		"Discard: a new Trade Goods Too switch lets cheap crafting materials like light leather or boar meat go too, and the button's tooltip now says what a left-click does.",
-		"Restock: the way to a shop for drink, food or ammo passes by shops that only sell worse than you carry. A shop with only worse says so on screen.",
-		"Action Bars: the pet, stance and possess bars follow a smaller Icon Size from Edit Mode, so their icons no longer lie over each other.",
-		"Addons page: Follow The Arrow, Azeroth Pilot Reloaded, Guidelime and FlowUp are listed now, and the guides' cards have Show its own arrow too, beside the World Marker.",
-		"Route: with Offhand on two screens, the World Marker's arrow and wisp and the Level Up card's wisp center on your character's screen, not between the screens.",
 	} },
 }
 local LINKS = {

@@ -4287,6 +4287,10 @@ Lang:Add("frFR", {
 	["None yet: each of your characters is noted as it logs in."] = "Aucun pour l’instant : chacun de vos personnages est retenu dès qu’il se connecte.", -- draft
 	["None yet: a friend's characters are noted while they play."] = "Aucun pour l’instant : les personnages d’un ami sont retenus pendant qu’il joue.", -- draft
 	["online"] = "en ligne", -- draft
+	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Carte : avec Questie, ses ! et ? de quête sur la carte de MelloUI sont plus grands et suivent le curseur Taille des icônes, et un clic à proximité lance l'itinéraire jusque-là.", -- draft
+	["Questie: every version of its database is read now, older and newer ones too."] = "Questie : toutes les versions de sa base de données sont lues désormais, les plus anciennes comme les plus récentes.", -- draft
+	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Carte : avec RareScanner et un plugin HandyNotes qui marque aussi les rares, un rare n'est plus marqué deux fois. C'est la marque de RareScanner qui reste, sur la carte de MelloUI et la minicarte.", -- draft
+	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "Carte : sans RareScanner, les rares d'un plugin HandyNotes portent eux aussi le sceau des rares de MelloUI, sur la carte et la minicarte.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
