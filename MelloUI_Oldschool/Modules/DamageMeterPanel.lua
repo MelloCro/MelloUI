@@ -105,6 +105,52 @@ local scaling = setmetatable({}, { __mode = "k" })   -- [entry] = true while its
 local barFresh = setmetatable({}, { __mode = "k" })   -- [entry] = true: its bar laid by the game since the last shift
 local baseTextOf = setmetatable({}, { __mode = "k" })   -- [entry] = the game's text scale
 local condensedEntries = setmetatable({}, { __mode = "k" })   -- [entry] = true: condensed
+
+-- GetPoint can briefly return no usable anchors while the game's meter rows
+-- are being rebuilt. Keep each anchor as named fields: an omitted relative
+-- frame leaves a hole in an array, so unpack() can pass the wrong arguments
+-- back to SetPoint().
+local function CapturePoints(region)
+	local okN, count = pcall(region.GetNumPoints, region)
+	if not okN or Secret(count) or type(count) ~= "number" or count < 1 then
+		return nil
+	end
+	local points = {}
+	for i = 1, count do
+		local okP, point, relative, relativePoint, x, y = pcall(region.GetPoint, region, i)
+		if not okP or Secret(point) or Secret(relative) or Secret(relativePoint) or Secret(x) or Secret(y)
+			or type(point) ~= "string" or (relativePoint ~= nil and type(relativePoint) ~= "string")
+			or (x ~= nil and type(x) ~= "number") or (y ~= nil and type(y) ~= "number") then
+			return nil
+		end
+		points[#points + 1] = {
+			point = point, relative = relative or region:GetParent(), relativePoint = relativePoint or point,
+			x = x or 0, y = y or 0,
+		}
+	end
+	return points
+end
+
+local function ApplyPoints(region, points)
+	if not points or #points == 0 then
+		return false
+	end
+	region:ClearAllPoints()
+	for _, p in ipairs(points) do
+		local ok = pcall(region.SetPoint, region, p.point, p.relative, p.relativePoint, p.x, p.y)
+		if not ok then
+			-- If a game rebuild invalidated the old relative frame, keep the bar
+			-- anchored to its row rather than letting a transient bad point abort
+			-- the module's disable path.
+			local parent = region:GetParent()
+			if parent then
+				pcall(region.SetPoint, region, p.point, parent, p.point, p.x, p.y)
+			end
+		end
+	end
+	return true
+end
+
 local function CondenseEntry(entry, rep)
 	if condensedEntries[entry] then
 		return
@@ -124,25 +170,7 @@ local function CondenseEntry(entry, rep)
 	-- (the caps stand outside the bar, `capOut`): a StatusBar's fill cannot
 	-- be re-anchored, so the bar itself ends where the gems begin. Done once
 	-- per game layout (UpdateStyle re-anchors it, then this shifts it again).
-	-- the bar's anchors as plain values, or nil while any reads secret (2.1.58: the first read was the raw GetPoint's,
-	-- so a secret offset went back into SetPoint when the skin let go -- "Error in module 'DamageMeterPanel'
-	-- (OnDisable): StatusBar:SetPoint(): Usage", seen at a look switch away from Oldschool in the test VM)
-	local function ReadPoints()
-		local okN, n = pcall(bar.GetNumPoints, bar)
-		if not okN or Secret(n) or not n then
-			return nil
-		end
-		local read = {}
-		for i = 1, n do
-			local okP, point, rel, relPoint, x, y = pcall(bar.GetPoint, bar, i)
-			if not okP or Secret(point) or Secret(x) or Secret(y) or type(point) ~= "string" then
-				return nil
-			end
-			read[i] = { point, rel, relPoint, x or 0, y or 0 }
-		end
-		return read
-	end
-	local savedBar = ReadPoints()
+	local savedBar = CapturePoints(bar)
 	barFresh[entry] = true
 	-- the game's own anchors for the current layout, read right after the game
 	-- set them (barFresh) and kept: every fit is computed from these, so it
@@ -151,7 +179,7 @@ local function CondenseEntry(entry, rep)
 	local basePoints
 	local function ShiftBar()
 		if barFresh[entry] or not basePoints then
-			local read = ReadPoints()
+			local read = CapturePoints(bar)
 			if not read then
 				return
 			end
@@ -179,10 +207,10 @@ local function CondenseEntry(entry, rep)
 				-- (the game's default: TOP -1, BOTTOMRIGHT +1)
 				local topY, bottomY
 				for _, pt in ipairs(points) do
-					if pt[1]:find("^TOP") then
-						topY = pt[5]
-					elseif pt[1]:find("^BOTTOM") then
-						bottomY = pt[5]
+					if pt.point:find("^TOP") then
+						topY = pt.y
+					elseif pt.point:find("^BOTTOM") then
+						bottomY = pt.y
 					end
 				end
 				if topY and bottomY then
@@ -193,7 +221,7 @@ local function CondenseEntry(entry, rep)
 		barFresh[entry] = nil
 		bar:ClearAllPoints()
 		for _, pt in ipairs(points) do
-			local point, rel, relPoint, x, y = unpack(pt)
+			local point, rel, relPoint, x, y = pt.point, pt.relative, pt.relativePoint, pt.x, pt.y
 			if point == "LEFT" or point == "TOPLEFT" or point == "BOTTOMLEFT" then
 				x = x + armL
 			elseif point == "RIGHT" or point == "TOPRIGHT" or point == "BOTTOMRIGHT" then
@@ -204,7 +232,13 @@ local function CondenseEntry(entry, rep)
 			elseif point:find("^BOTTOM") then
 				y = y + inset
 			end
-			bar:SetPoint(point, rel, relPoint, x, y)
+			local setPointOK = pcall(bar.SetPoint, bar, point, rel, relPoint, x, y)
+			if not setPointOK then
+				local parent = bar:GetParent()
+				if parent then
+					pcall(bar.SetPoint, bar, point, parent, point, x, y)
+				end
+			end
 		end
 	end
 	local function Apply()
@@ -232,14 +266,11 @@ local function CondenseEntry(entry, rep)
 		value:SetPoint("RIGHT", -3, 0)
 		icon:SetSize(savedIcon[1], savedIcon[2])
 		-- the game's latest anchors (read after its last re-anchor), else the first ones; neither readable: the bar is
-		-- left where it stands (the game re-anchors it at its next layout)
-		local back = basePoints or savedBar
-		if back and #back > 0 then
-			bar:ClearAllPoints()
-			for _, pt in ipairs(back) do
-				bar:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5])
-			end
-		end
+		-- left where it stands (the game re-anchors it at its next layout). (2.1.58: the first read was the raw
+		-- GetPoint's, so a secret offset went back into SetPoint when the skin let go -- "Error in module
+		-- 'DamageMeterPanel' (OnDisable): StatusBar:SetPoint(): Usage"; 2.1.60, pull request #37: the anchors as named
+		-- fields, every write guarded)
+		ApplyPoints(bar, basePoints or savedBar)
 		barFresh[entry] = true
 	end
 	hooksecurefunc(entry, "SetTextScale", function(_, textScale)
