@@ -111,6 +111,8 @@ I.LIST = {
 		-- (2.1.53; the user: "Yes, write them") Core/QuestieLook.lua's Apply / Give
 		"Its tracker follows the Quest Tracker page's width, height, text sizes, Nearest Quest First and Reset Position; its own come back with the look off.",
 		"Leveling guide steps dock under its tracker, and stand on their own while it has no quest.",
+		-- (2.1.58) one owner for the quest lines in tooltips (Core/Overlaps.lua)
+		"Its quest lines in tooltips are the ones: Polestar's on creatures and objects and MelloUI's own on items step aside.",
 	  },
 	  short = "Its quest data for MelloUI's quests; its icons and its tracker in MelloUI's look",
 	  links = { { "Quest List > Map", id = "QuestList.mapPins" }, { "Quest Tracker", id = "QuestTracker.showXP" },
@@ -181,7 +183,9 @@ I.LIST = {
 	{ key = "Polestar", name = "Polestar", folders = { "Polestar" }, group = "quests", arrow = "polestar",
 	  url = "https://github.com/fitzforge/polestar",
 	  does = { "The jobs it does while its own switches are on go before MelloUI's (Who does what lists them).",
-		"Route follows its guide's steps.", STEP_BUTTONS },
+		"Route follows its guide's steps.", STEP_BUTTONS,
+		-- (2.1.58) Core/Overlaps.lua's QuestLines
+		"With Questie, its quest lines on creatures and objects are left out: Questie writes them." },
 	  short = "Its jobs go before MelloUI's; Route follows its guide",
 	  links = {},
 	  parts = { { "its settings", function()
@@ -700,9 +704,24 @@ function I.Jobs()
 		(rares and Used("HandyNotes") and RL and RL.Rares and RL.Rares())
 			and "Other addons' rare marks hidden on MelloUI's map and the minimap" or nil }
 	local polestar = Used("Polestar")
+	-- (2.1.58) one owner for a creature's and an object's quest lines: Questie's while it writes them (Overlaps'
+	-- QuestLines), Polestar's of the same kind left out
+	if polestar and questie then
+		local OV = rawget(MelloUI, "Overlaps")
+		if OV and OV.QuestLines and OV.QuestLines() then
+			rows[#rows + 1] = { "Quest lines in creature and object tooltips", "Questie",
+				"Polestar's of the same kind are left out" }
+		elseif By("questItemTips") == "Polestar" then
+			rows[#rows + 1] = { "Quest lines in creature and object tooltips", "Polestar" }
+		end
+	end
 	for _, j in ipairs(POLESTAR_JOBS) do
-		if By(j[2]) == "Polestar" then
+		local who = By(j[2])
+		if who == "Polestar" then
 			rows[#rows + 1] = { j[1], "Polestar", "MelloUI's own steps aside while Polestar's switch is on" }
+		elseif who == "Questie" then
+			-- (2.1.58: Questie's item lines, where Polestar does not write them)
+			rows[#rows + 1] = { j[1], "Questie", "MelloUI's own steps aside while Questie's tooltips are on" }
 		else
 			rows[#rows + 1] = { j[1], "MelloUI", polestar and "Polestar's switch for it is off" or nil }
 		end

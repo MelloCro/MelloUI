@@ -183,6 +183,7 @@ local CHANGELOG = {
 		"Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read.",
 		"Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls.",
 		"Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over.",
+		"Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too.",
 		"Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood.",
 	} },
 	{ version = "2.1.57", lines = {

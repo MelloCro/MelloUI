@@ -16,6 +16,9 @@
 --                                   and its guide wanting the quest)
 --   bus "overlap" (job)             its setting for a job changed: a module
 --                                   that holds what it shows reads it again
+--   O.QuestLines() -> "Questie"|nil (2.1.58) Questie writes a creature's and an
+--                                   object's quest lines now, Polestar's of the
+--                                   same kind are left out (below)
 --
 -- Questie (2.1.39): its own tracker only (questTracker: MelloUI's steps aside,
 -- Questie's dressed in MelloUI's look, Core/QuestieLook.lua). Its map and
@@ -109,9 +112,12 @@ end
 -- (2.1.39) Questie's jobs: its profile's switches (Questie.db.profile, AceDB; read, never written), every one on --
 -- nil counts as on, Questie's own defaults. Only its tracker (the user, 2026-11-10: "Questie Function but our Look":
 -- MelloUI's tracker steps aside -- Modules/QuestTracker.lua)
+-- (2.1.58) its tooltips' quest lines too: an item one of your quests asks for gets Questie's lines, so MelloUI's own
+-- "Quest: ..." line on it steps aside (questItemTips, after Polestar)
 local QUESTIE = "Questie"
 local QUESTIE_JOBS = {
 	questTracker = { "trackerEnabled" },
+	questItemTips = { "enableTooltips" },
 }
 O.QUESTIE_JOBS = QUESTIE_JOBS
 
@@ -135,6 +141,72 @@ local function ByQuestie(job)
 	end
 	return QUESTIE
 end
+
+--------------------------------------------------------------------------------
+-- One owner for a creature's and an object's quest lines (2.1.58; the user, 2026-11-17, with a picture of a
+-- creature's tooltip: "we have double quest text in the tooltip", then "Fix the double quest text in the tooltip").
+-- Neither block was MelloUI's: Polestar wrote "<Quest>:  Kill <creature> 5/5" and Questie its own block under it
+-- ("[35] <Quest>", "5/5 <creature> slain", the drop chances). Questie is the quests' engine here (the user,
+-- 2026-11-10: "Questie Function but our Look"), so its lines are the ones: while Questie writes a creature's or an
+-- object's quest lines, Polestar's of the same kind are left out.
+--
+-- How: Polestar adds those lines through two functions it keeps public for other tooltip paths
+-- (Polestar.QuestDB.AddUnitLines, AddObjectLines). Each is looked at before it is used; at the login, with both
+-- addons loaded, each gets a plain Lua stand-in that adds nothing while Questie writes and is Polestar's own function
+-- otherwise (no hooksecurefunc: nothing of Polestar's runs through a C call of ours). Nothing of either addon is
+-- written or kept: Questie's switch is read each time (its profile's enableTooltips; nil counts as on), and either
+-- addon's Use with MelloUI switch off (the Addons page) leaves Polestar's lines as they are. In an instance Questie
+-- writes none on this client, so Polestar's stay there. Polestar's lines on an ITEM stay too: they also say what its
+-- guide needs ahead, which Questie does not.
+--
+--   O.QuestLines() -> "Questie" | nil   Questie writes a creature's and an object's quest lines now and Polestar's
+--                                        are left out; nil: nothing is left out
+--------------------------------------------------------------------------------
+local yield = { names = { "AddUnitLines", "AddObjectLines" }, own = {} }
+O.yield = yield
+
+-- Questie writes a creature's and an object's quest lines now
+local function QuestieTips()
+	local profile = QuestieProfile()
+	if not profile or Plain(profile.enableTooltips) == false then
+		return false
+	end
+	local ok, inside = pcall(IsInInstance)
+	return not (ok and Plain(inside) == true)
+end
+
+function O.QuestLines()
+	if not next(yield.own) then
+		return nil   -- (Polestar's adders were never stood in for: nothing is left out)
+	end
+	local I = rawget(MelloUI, "Integrations")
+	if I and not (I.Use(POLESTAR) and I.Use(QUESTIE)) then
+		return nil
+	end
+	return QuestieTips() and QUESTIE or nil
+end
+
+-- at the login: Polestar's two adders stood in for, once, when Questie is loaded too
+local function Yield()
+	local P, Q = rawget(_G, POLESTAR), rawget(_G, QUESTIE)
+	local db = type(P) == "table" and rawget(P, "QuestDB")
+	if type(db) ~= "table" or type(Q) ~= "table" then
+		return
+	end
+	for _, name in ipairs(yield.names) do
+		local own = rawget(db, name)
+		if type(own) == "function" and not yield.own[name] then
+			yield.own[name] = own
+			db[name] = function(...)
+				if O.QuestLines() then
+					return 0   -- (as Polestar's own answer for "no line added")
+				end
+				return own(...)
+			end
+		end
+	end
+end
+O.Yield = Yield
 
 -- (2.1.49) the bag addons whose bag window MelloUI's makes room for, in the Addons page's order (Core/Integrations.lua)
 O.BAG_ADDONS = { "Baganator", "Bagnon", "ArkInventory", "BetterBags" }
@@ -192,8 +264,10 @@ function O.Quest(verb, questID)
 end
 
 -- the rows' notes: the option's hint, unless it has one of its own
-local function Notes()
-	for _, n in ipairs(NOTES) do
+local QUESTIE_NOTES = { { "QuestList", "tipQuestItems", "Questie does this while its tooltips are on." } }
+O.QUESTIE_NOTES = QUESTIE_NOTES
+local function Notes(list)
+	for _, n in ipairs(list or NOTES) do
 		local m = MelloUI.modules and MelloUI.modules[n[1]]
 		for _, o in ipairs(type(m) == "table" and type(m.options) == "table" and m.options or {}) do
 			if o.key == n[2] and o.hint == nil then
@@ -220,11 +294,18 @@ local login = CreateFrame("Frame")
 login:RegisterEvent("PLAYER_LOGIN")
 Perf.SetScript(login, "OnEvent", function(self)
 	self:UnregisterEvent("PLAYER_LOGIN")
+	Yield()   -- (2.1.58: Polestar's creature and object quest lines aside for Questie's; only with both loaded)
 	local P = Polestar()
+	if P then
+		Notes()
+	end
+	-- (2.1.58) Questie's own note on the row it does, where Polestar's is not there
+	if type(rawget(_G, QUESTIE)) == "table" then
+		Notes(QUESTIE_NOTES)
+	end
 	if not P then
 		return
 	end
-	Notes()
 	if type(P.On) == "function" then
 		pcall(P.On, "SETTING_CHANGED", Changed)
 	end

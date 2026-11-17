@@ -2987,6 +2987,7 @@ Lang:Add("koKR", {
 	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "컨트롤러: 게임의 노란 포인터가 더 이상 MelloUI 창 위에 표시되지 않으며, 버튼 안내가 가운데 정렬되어 읽기 쉬워졌습니다.", -- draft
 	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "컨트롤러로 채팅 사용: 게임의 원형 메뉴에서 채팅을 선택하면 LB / RB로 탭을 바꾸고 방향 패드나 오른쪽 스틱으로 스크롤합니다.", -- draft
 	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "버리기: 이제 버리기로 답하면 흰색 아이템이 버려집니다. 이전에는 게임이 매번 거부했고 채팅에 그렇게 표시되었습니다. 게임이 직접 남겨 두는 아이템은 건너뜁니다.", -- draft
+	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "툴팁: Questie와 Polestar를 함께 쓸 때 생물의 퀘스트 목표가 더 이상 두 번 표시되지 않습니다. Questie의 줄이 표시되며, MelloUI의 아이템 줄도 Questie에 자리를 내줍니다.", -- draft
 	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: 유닛 프레임, 시전바, 개인 표시기, 이름표, 채팅에 새 테두리가 생겼습니다. 테두리 > 프레임 세트에서 세 가지 중 고를 수 있습니다: 금박 석재, 단조 철, 조각 목재.", -- draft
 })
 

@@ -265,6 +265,7 @@ local function OnItem(tip, data)
 		return
 	end
 	-- (2.1.0; the user, 2026-10-31: "Polestar takes priority") another addon writing the item's quest lines: its own
+	-- (2.1.58: Questie too, while its tooltips are on -- its lines on the item said the same again)
 	local O = MelloUI.Overlaps
 	if O and O.By("questItemTips") then
 		return

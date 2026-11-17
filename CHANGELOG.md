@@ -13,6 +13,8 @@
 - Chat: with a controller, picking Chat on the game's ring menu gives MelloUI's chat the controller. LB / RB switch its tabs, the D-pad or the right stick scrolls, and B leaves. The game's yellow pointer no longer shows at its edge.
 - Discard: answering Discard on its question now throws a white item away. Before, the game refused it every time and the chat said the game did not let MelloUI throw it away, so no white item could go.
 - Discard: an item the game itself keeps no longer blocks the button. Discard passes over it until you log in again and takes the next cheapest, and its chat line shows the game's reason when the game gives one.
+- Tooltips: with Questie and Polestar, a creature's or an object's quest objectives were listed twice. Questie's lines are the ones now, and Polestar's of the same kind are left out while Questie writes them. Who does what on the Addons page says so.
+- Tooltips: with Questie, MelloUI's own Quest line on an item one of your quests asks for steps aside, as Questie already lists it.
 - Oldschool: the unit frames, the cast bar, the Personal Display, the nameplates and the chat have new frames, in three sets to choose from: Gilded Stone, Forged Iron and Carved Wood (Oldschool > Borders > Frame Set). Each frame is one painting that stretches to any size with its ornaments whole, and the level sits in a badge of the set's own style.
 - Oldschool: your target's nameplate glows in the shape of its frame, and so do your unit, party and raid frames for your target and under the mouse. The old orange target tint is gone.
 - Oldschool: the nameplates keep the same size as in the Modern look, at any Plate Width and Plate Height.
