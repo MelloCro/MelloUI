@@ -39,7 +39,6 @@ local max, min = math.max, math.min
 
 local M = MelloUI:RegisterModule("RolePicker", {
 	title = "Role Picker",
-	new = "2.1.55",
 	play = "pick",   -- its motion row's Play, the Animations page
 	slash = "roles",   -- /mello roles show | pick
 	desc = "As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves.",
@@ -51,11 +50,11 @@ local M = MelloUI:RegisterModule("RolePicker", {
 		motion = true,
 	},
 	options = {
-		{ type = "dropdown", key = "remember", name = "Role On Entering", new = "2.1.55",
+		{ type = "dropdown", key = "remember", name = "Role On Entering",
 		  desc = "Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too.",
 		  values = { { value = "ask", label = "Ask Every Time" }, { value = "TANK", label = "Tank" },
 			{ value = "HEALER", label = "Healer" }, { value = "DAMAGER", label = "Damage" } } },
-		{ type = "toggle", key = "motion", name = "Role Picker Motion", play = "pick", new = "2.1.55",
+		{ type = "toggle", key = "motion", name = "Role Picker Motion", play = "pick",
 		  desc = "The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once." },
 	},
 })
