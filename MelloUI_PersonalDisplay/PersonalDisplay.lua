@@ -104,7 +104,7 @@ local T = {
 	heavyRim = 0.38, dipDepth = 3, dip = 0.2,
 	lowHealth = 0.35, lowEdge = 0.001, beat = 0.6,
 	sparkShare = 0.08, sparkW = 8, sparkH = 2.4, spark = 0.42,
-	-- (2.1.56, Five-Second Rule) the rule's span after mana spent, the light's width and how far it stands past the
+	-- (2.1.59, Five-Second Rule) the rule's span after mana spent, the light's width and how far it stands past the
 	-- fill over and under, the veil it leaves behind it, the fade once the span is over
 	five = 5, fiveW = 12, fiveOver = 5, fiveCore = 4, fiveVeil = 0.35, fiveFade = 0.6,
 	fiveFlash = 0.55,   -- (the regeneration back: the whole bar lit this strong, then faded -- the player: "that I see when my mana regen starts again")
@@ -1017,7 +1017,7 @@ local function Power()
 			S.powerLast = nil
 		end
 		Motion.Gain(Num(max), Num(v), plain)
-		Motion.FiveRead(plain, Num(v), shifted)   -- (2.1.56, Five-Second Rule)
+		Motion.FiveRead(plain, Num(v), shifted)   -- (2.1.59, Five-Second Rule)
 	end
 	Percent(ui.power.text, Share(rawget(_G, "UnitPowerPercent")), "player", nil, false, Curve())
 end
@@ -2724,7 +2724,7 @@ function Motion.Make(ui)
 	Motion.FiveMake(ui, level)
 end
 
--- (2.1.56, Five-Second Rule; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the
+-- (2.1.59, Five-Second Rule; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the
 -- resource bar?") Spirit's mana regeneration pauses for five seconds after a spell costs mana. An unseen StatusBar over
 -- the power fill that the engine fills in those five seconds (Anim:Timer: no Lua a frame), a light on its edge running
 -- left to right and a faint veil behind it; then faded out. Told by the mana going down while it reads plain (a cost,
@@ -3935,7 +3935,7 @@ local function OnEvent(_, event, a1, a2, a3, a4)
 	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
 		-- (a cooldown of yours cast: its spell ID plain, as Frame Effects reads its own; a secret one plays nothing)
 		if not S.preview and not Secret(a3) and type(a3) == "number" then
-			Motion.FiveCast(a3)   -- (2.1.56, Five-Second Rule: a cast that costs mana)
+			Motion.FiveCast(a3)   -- (2.1.59, Five-Second Rule: a cast that costs mana)
 			Cds.Start(a3)
 			Track.Cast(a3)   -- (2.1.24: a cast that puts a tracked one on, waiting for an aura of yours)
 			Shield.Cast(a3)   -- (a shield's: the aura it puts on you known by it)
@@ -5427,7 +5427,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "The power an ability costs stays lit for a moment, so you see the cost." },
 		{ type = "toggle", key = "gain", name = "Power Gained", play = "gain",
 		  desc = "New power lights up ahead of the bar before it fills." },
-		-- (2.1.56; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the resource
+		-- (2.1.59; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the resource
 		-- bar?"; its name theirs: "Mana Regen Pause" -- the five-second rule a players' word, kept for the search)
 		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause", new = "2.1.59",
 		  search = "five second rule 5sr fsr mana regeneration regen spirit pause",

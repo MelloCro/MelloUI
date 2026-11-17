@@ -1348,7 +1348,7 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.zoom")
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.lowHealth")
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.stun")
-	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.fiveSecond")   -- (2.1.56: Mana Regen Pause, the five-second rule)
+	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.fiveSecond")   -- (2.1.59: Mana Regen Pause, the five-second rule)
 	-- (0.21.0: its border on Oldschool > Borders, its fade on the Fader's page)
 
 	-- Quest Tracker (header: its module's switch; one look, stage E, the user 2026-10-15: its Painted Skin row is
