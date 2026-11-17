@@ -604,8 +604,8 @@ function QL.MarkTip(tip, kind, data, hints)
 			Line(tip, W.Tr("Position from the client's own entrance list."), "text")
 		end
 	elseif kind == "transport" then
-		QL.TipTitle(tip, data.label)
-		Line(tip, W.Tr("%s at %s"):format(W.Tr(TRANSPORT_PLACE[data.kind] or "Dock"), data.dock), "text")
+		QL.TipTitle(tip, W.Tr(data.label))
+		Line(tip, W.Tr("%s at %s"):format(W.Tr(TRANSPORT_PLACE[data.kind] or "Dock"), W.Tr(data.dock)), "text")
 		if data.faction == 1 then
 			Line(tip, W.Tr("Alliance"), "alliance")
 		elseif data.faction == 2 then
