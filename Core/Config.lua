@@ -5909,6 +5909,7 @@ local HOME_TIPS = {
 	profile = "Choose a profile to load it: every setting of every module. It asks first. The Profiles page saves, shares and deletes them.",
 	palette = "The colours of MelloUI's own windows and, with the painted kit reskin, of all its art. Chosen on the Look page: Change… takes you there.",
 	change = "The colours of the painted art: frames, headers, rows, buttons, slots and bars. Chosen on the Look page: Change… takes you there.",
+	frameset = "The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat: Gilded Stone, Forged Iron or Carved Wood. Chosen on the Oldschool page: Change… takes you there.",
 	fit = "Mello's Edit Mode layout was fitted to another screen size or UI scale, or by an older MelloUI. The installer fits it to this one, and you can go back right after.",
 	install = "The installer: a setup for the whole interface in a few steps, fitted to this screen. Closes this window while it runs.",
 	revert = "Back to how MelloUI was before the installer ran (the 'Before install' profile): your settings, and Edit Mode's layouts if the installer changed them. Asks first.",
@@ -5973,6 +5974,22 @@ local function KitColoursLabel()
 		end
 	end
 	return look and (look.label or tostring(look.value)) or tostring(value)
+end
+
+-- (2.1.58) the Oldschool frame set in use, by its label (Gilded Stone ...); nil without MelloUI_Oldschool's sets
+function CONFIG.FrameSetName()
+	local K = MelloUI.Kit
+	local Sets = K and rawget(K, "Sets")
+	if not (type(Sets) == "table" and type(Sets.LOOKS) == "table" and K.BorderValue) then
+		return nil
+	end
+	local value = K:BorderValue("frameset")
+	for _, l in ipairs(Sets.LOOKS) do
+		if l.value == value then
+			return W.Tr(l.label)
+		end
+	end
+	return nil
 end
 
 -- "3440 × 1440 (21:9)": Core's one formatter (MelloUI:ScreenText, shared
@@ -6544,10 +6561,13 @@ end
 -- Your setup (right): a row each, shown in this order (a row not wanted
 -- now -- Fit to this screen while the layout fits, the installer's row
 -- without the installer -- leaves no gap)
-local SETUP_ROWS = { "profile", "palette", "colours", "screen", "fit", "mello", "voice", "installer" }
-local SETUP_LABELS = { profile = "Profile", palette = "Palette", colours = "Kit Colours", screen = "Screen", mello = "MelloUI",
-	voice = "Voice pack", installer = "Installer" }
-local SETUP_VALUES = { "palette", "colours", "screen", "mello", "voice" }
+-- (2.1.58; the user, 2026-11-17, a shortcut to the new frames "where it would be obvious", then "Build all four") Frame
+-- Set: the Oldschool frame set by name, with Change… to its row; only while the reskin dresses and MelloUI_Oldschool
+-- has its sets (CONFIG.FrameSetName)
+local SETUP_ROWS = { "profile", "palette", "colours", "frameset", "screen", "fit", "mello", "voice", "installer" }
+local SETUP_LABELS = { profile = "Profile", palette = "Palette", colours = "Kit Colours", frameset = "Frame Set",
+	screen = "Screen", mello = "MelloUI", voice = "Voice pack", installer = "Installer" }
+local SETUP_VALUES = { "palette", "colours", "frameset", "screen", "mello", "voice" }
 
 -- the rows laid top down, those wanted only; the card's height (true when
 -- it changed)
@@ -6633,6 +6653,14 @@ local function BuildSetup(page, sec, width, x)
 	revert:SetPoint("RIGHT", install, "LEFT", -8, 0)
 	HomeTip(revert, "Revert", HOME_TIPS.revert)
 	card.install, card.revert = install, revert
+	-- (2.1.58) the Oldschool frame set with Change… to its row, New-tagged (built last here: a tag counts for the
+	-- control built after it too, Tools/lint/check_new_tags.py)
+	local changeSet = W.Button(rows.frameset, "Change…", CHANGE_W, SKIN, { onClick = ChangeClick })
+	changeSet:SetPoint("RIGHT", -CARD_PAD, 0)
+	changeSet.melloJump = "UIModifications.frameSet"
+	rows.frameset.value:SetPoint("RIGHT", changeSet, "LEFT", -8, 0)
+	HomeTip(changeSet, "Frame Set", HOME_TIPS.frameset)
+	W.ButtonTag(changeSet, "2.1.58")
 	W.Dress(card, SKIN)   -- (the dropdown in the kit's look)
 	LaySetup(card)
 	page.setup = card   -- (the tour points at it)
@@ -6676,6 +6704,8 @@ local function RefreshSetup(page)
 	local painted = MelloUI:PaintedPalettes()
 	card.changePalette:SetShown(painted)
 	rows.colours.value:SetText(KitColoursLabel())
+	local frameSet = painted and CONFIG.FrameSetName() or nil
+	rows.frameset.value:SetText(frameSet or "")
 	rows.screen.value:SetText(ScreenText())
 	local on, total = ModulesOn()
 	rows.mello.value:SetText(MelloUI.Lang.F("%s, %d of %d modules on", tostring(MelloUI.version), on, total))
@@ -6686,10 +6716,13 @@ local function RefreshSetup(page)
 	card.install:SetShown(installer)
 	card.revert:SetShown(canRevert)
 	local fit, row = installer and FitDue() or false, installer or canRevert
-	if rows.fit.wanted == fit and rows.installer.wanted == row and rows.colours.wanted == painted then
+	local setRow = frameSet ~= nil
+	if rows.fit.wanted == fit and rows.installer.wanted == row and rows.colours.wanted == painted
+		and rows.frameset.wanted == setRow then
 		return false
 	end
 	rows.fit.wanted, rows.installer.wanted, rows.colours.wanted = fit, row, painted
+	rows.frameset.wanted = setRow
 	return LaySetup(card)
 end
 

@@ -16,6 +16,7 @@
 - Oldschool: the nameplates keep the same size as in the Modern look, at any Plate Width and Plate Height.
 - Oldschool: Frame Set takes the place of the Unit Frame Border, Cast Bar Border, Personal Display Border and Portrait Ring choices.
 - Oldschool: elites, rare elites, rares and bosses wear their own ring on the target and focus frames, drawn in the frame set's style: a gold dragon, a silver dragon, a silver star with laurels and a horned skull. Their nameplate shows a small one on its level badge. Both follow the Elite and Rare Marks switches (Oldschool > Frame Art).
+- Oldschool: Frame Set is easier to find. It is first on Oldschool > Borders, each frame it dresses links to it (Unit & Group Frames' Player, Target, Focus, Pet, Party and Personal, Nameplates' Enemies), Home's Your setup shows it with a Change… button, and /mello frameset opens it.
 
 ## 2.1.57
 
