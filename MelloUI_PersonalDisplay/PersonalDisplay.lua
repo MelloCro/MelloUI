@@ -5429,7 +5429,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "New power lights up ahead of the bar before it fills." },
 		-- (2.1.56; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the resource
 		-- bar?"; its name theirs: "Mana Regen Pause" -- the five-second rule a players' word, kept for the search)
-		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause", new = "2.1.56",
+		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause", new = "2.1.59",
 		  search = "five second rule 5sr fsr mana regeneration regen spirit pause",
 		  desc = "After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again." },
 		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block", play = "avoid",
