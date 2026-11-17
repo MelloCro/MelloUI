@@ -1037,7 +1037,9 @@ Lint workflow) fails when a copy is added and names the system to use.
   "bags_open", "bags_close" (0.19.0: the game's own backpack sounds, as its
   bag window played them); the Ready Check widget's "ready_check" (0.19.4:
   the game's READY_CHECK, played while the game's own ready-check box no
-  longer hears the event). A new sound is one row of Core's SOUNDS
+  longer hears the event); a game window's tab, "window_tab" (2.1.54: the
+  game's character-window tab kit, the Play of Custom Sounds' Window Tab
+  row). A new sound is one row of Core's SOUNDS
   table; Custom Sounds is asked first and its PlaySound hook swaps a game
   kit as it does any game click.
 - **Secret values: `MelloUI.Safe`.** Bound plainly at load, `local Secret =
