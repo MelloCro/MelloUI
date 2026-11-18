@@ -441,6 +441,7 @@ R.open = {}          -- [BattleTag] = true: that friend's characters unfolded (t
 R.first = 1          -- the first entry shown (the wheel's)
 R.list = {}          -- the entries in order: { kind = "title" | "char" | "friend" | "none", text, c, tag }
 R.rows = {}          -- the panel's rows (reused)
+R.MORE = { kind = "none", text = "..." }   -- (the rows' hint: more above or below, the wheel's)
 
 local panel
 
@@ -569,9 +570,15 @@ function R.Fill()
 	local n = #R.list
 	R.first = math.max(1, math.min(R.first, math.max(1, n - room + 1)))
 	local W = MelloUI.Widgets
+	-- (2.1.61; the German player's screenshot: four friends under the box's foot, nothing to say so) a dim "..." in the
+	-- first row while some are scrolled away above, in the last while some wait below; the wheel brings them
+	local up, down = R.first > 1, R.first + room - 1 < n
 	for i = 1, room do
 		local row = R.rows[i] or NewRow(f, i)
 		local e = R.list[R.first + i - 1]
+		if (i == 1 and up) or (i == room and down) then
+			e = R.MORE
+		end
 		row.entry = e
 		if e then
 			row.text:SetText(e.kind == "none" and ("|cff9d9d9d" .. e.text .. "|r") or e.text)
