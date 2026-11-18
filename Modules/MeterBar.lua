@@ -73,6 +73,7 @@ local B = {
 	LABEL = 10, ME_LABEL = 12, TOP = 13, CAPTION = 11,
 	FADE_IN = 0.6, FADE_OUT = 1.2, OUT_DELAY = 1.5,
 	THREAT_TICK = 0.3, THREAT_TEST = 2,   -- (2.1.61, #26) threat read this often in a fight; the test's steps
+	CLAMP_TOP = 6,   -- (2.1.61) the room kept over the holder at the screen's top: the caption's title face reaches past it
 	LIST_ROW = 16, LIST_W = 220, LIST_MAX = 10,
 	HOME_Y = 325,
 }
@@ -354,6 +355,9 @@ local function Build()
 	holder:SetSize(B.WIDTH, B.ABOVE + B.BELOW)   -- (the settings' width: Bar.Resize, below)
 	holder:SetFrameStrata("MEDIUM")
 	holder:SetClampedToScreen(true)
+	-- (2.1.61; the German player's screenshot: the bar at the screen's top, its caption cut by the edge) the clamp
+	-- reaching CLAMP_TOP over the holder, so the screen's edge stops it that far down
+	holder:SetClampRectInsets(0, 0, B.CLAMP_TOP, 0)
 	holder:SetAlpha(0)
 	holder:Hide()
 	Home(holder)
