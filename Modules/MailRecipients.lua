@@ -121,7 +121,9 @@ end
 -- player's /mello mail names had a friend's character on "CAMWOW EU5 Realm 7 PvE", their screenshot a day later the same
 -- character on "CAMWOW EU5 Realm 5 PvE"; and "CAMWOW EU4 Realm 1 PvE" is one more (the player: "my Battle.net friends
 -- and I play on one and the same EU mega server; the layers are shown nowhere", a letter to "Lilei Lilei-CAMWOW..."
--- refused, to "Lilei Lilei" sent). So the shard and the layer, "EU<n>" and "Realm <n>", are left out: "CAMWOW PvE".
+-- refused, to "Lilei Lilei" sent). So the layer and the shard's number, "Realm <n>" and the "<n>" of "EU<n>", are
+-- left out: "CAMWOW EU PvE". The region stays: the player could write to a stranger of the EU server by the name
+-- alone, to one of the American realm not.
 -- Characters of one server get a letter by their bare name; the realm shown and put in the address only for a realm
 -- that differs past those
 function R.ServerKey(realm)
@@ -129,7 +131,7 @@ function R.ServerKey(realm)
 		return nil
 	end
 	local server = realm:gsub("%s+[Rr]ealm%s+%d+", "")
-	server = server:gsub("%s+%a%a%d+", "")
+	server = server:gsub("%s+(%a%a)%d+", " %1")   -- (the region kept: "EU5" -> "EU", an American one stays apart)
 	return RealmKey(server)
 end
 
