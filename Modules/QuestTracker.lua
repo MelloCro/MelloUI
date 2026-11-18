@@ -3932,8 +3932,13 @@ end
 -- it looks at an earlier step, and the right arrow walks forward), the icon set's round arrow turned either way, as
 -- the cog dims and lights. (On GUIDE: the file's top-level locals stand near Lua's 200.)
 do
+	-- (2.1.61, #40) Back greyed (nav.backOff: no step before to show): dim, its tooltip says why, a click does nothing
+	local OFF = 0.3
+	local function Rest(self)
+		return self.off and OFF or 0.8
+	end
 	local function Enter(self)
-		self.icon:SetAlpha(1)
+		self.icon:SetAlpha(self.off and OFF or 1)
 		local nav = self.spec
 		local W = MelloUI.Widgets
 		local text = self.back and "Back a step" or (nav and nav.ahead and "Forward a step" or "Skip this step")
@@ -3944,7 +3949,7 @@ do
 			GameTooltip:AddLine(nav.name, c[1], c[2], c[3], true)
 		end
 		-- (2.1.61, #40) the guide's own word on what the arrow does (RestedXP's Back only looks back)
-		local hint = nav and (self.back and nav.backHint or nav.skipHint)
+		local hint = nav and (self.back and (self.off and "No earlier step to show here." or nav.backHint) or nav.skipHint)
 		if hint then
 			local c = MelloUI.Look.TipPalette().text
 			GameTooltip:AddLine(W.Tr(hint), c[1], c[2], c[3], true)
@@ -3952,7 +3957,7 @@ do
 		GameTooltip:Show()
 	end
 	local function Leave(self)
-		self.icon:SetAlpha(0.8)
+		self.icon:SetAlpha(Rest(self))
 		GameTooltip:Hide()
 	end
 	local function Click(self)
@@ -3998,7 +4003,9 @@ do
 		back:ClearAllPoints()
 		back:SetPoint("RIGHT", cog or row.toggle, "LEFT", -6 - 16, 0)
 		back.spec, skip.spec = nav, nav
-		back:SetShown(nav.Back ~= nil)
+		back.off = nav.Back == nil and nav.backOff and true or nil
+		back.icon:SetAlpha(Rest(back))
+		back:SetShown(nav.Back ~= nil or back.off == true)
 		skip:SetShown(nav.Skip ~= nil)
 		if GameTooltip:IsOwned(back) or GameTooltip:IsOwned(skip) then
 			Enter(GameTooltip:IsOwned(back) and back or skip)   -- (the words follow the guide: Skip or Forward)

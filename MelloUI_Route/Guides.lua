@@ -51,8 +51,10 @@ Guide.NEXT_MAX = 5
 -- "Skip this step" box under its lines) a reader's step buttons, steps.nav: Back runs the guide's own step back, Skip
 -- its own skip -- ahead: the guide is looking at an earlier step, and the arrow walks forward as its own window's
 -- does; the guide read again a frame later (its own update may wait for its next one)
--- (2.1.61, #40) `hints`: { back, skip } a second line under each arrow's tooltip (RestedXP's: Back only looks)
-local function StepButtons(reader, back, skip, ahead, hints)
+-- (2.1.61, #40) `hints`: { back, skip } a second line under each arrow's tooltip (RestedXP's: Back only looks);
+-- `backOff`: no step before to go to or show, the Back arrow there greyed (the German player: "the arrow is gone all
+-- of a sudden", their pick: greyed, not gone)
+local function StepButtons(reader, back, skip, ahead, hints, backOff)
 	if type(back) ~= "function" and type(skip) ~= "function" then
 		return nil
 	end
@@ -63,13 +65,15 @@ local function StepButtons(reader, back, skip, ahead, hints)
 		end or nil
 	end
 	return { Back = Run(back), Skip = Run(skip), ahead = ahead and true or nil, name = reader.name,
-		backHint = hints and hints.back, skipHint = hints and hints.skip }
+		backHint = hints and hints.back, skipHint = hints and hints.skip,
+		backOff = type(back) ~= "function" and backOff and true or nil }
 end
 
 -- (a step's buttons in its signatures: one shown or gone, or Skip turned into a walk forward, is a change)
 local function NavSig(steps)
 	local nav = steps and steps.nav
-	return nav and ((nav.Back and "<" or "") .. (nav.Skip and (nav.ahead and ">" or ">>") or "")) or ""
+	return nav and ((nav.Back and "<" or (nav.backOff and "(<)" or "")) .. (nav.Skip and (nav.ahead and ">" or ">>") or ""))
+		or ""
 end
 
 local function Following()
@@ -1322,7 +1326,7 @@ do
 			elseif now then
 				set(now + 1)
 			end
-		end, view ~= nil, rxp.HINTS[view and "looking" or "live"])
+		end, view ~= nil, rxp.HINTS[view and "looking" or "live"], n > 1)
 		return { title = (view or n) and W.Tr("%s - step %s"):format(title, view or n) or title, nav = nav,
 			lines = lines, upcoming = not view and rxp.Upcoming(R, guide, steps, cdata) or nil,
 			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",
