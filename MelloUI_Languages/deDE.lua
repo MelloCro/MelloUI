@@ -3624,6 +3624,9 @@ Lang:Add("deDE", {
 	["Click: its page   Shift-click: link it in the chat"] = "Klick: seine Seite   Umschalt-Klick: im Chat verlinken",
 	["Tracked in the Quest Tracker: click to take it off, or to show it there"] = "In der Questverfolgung: Klicken, um sie herauszunehmen oder dort zu zeigen",
 	["Click: fold or unfold this zone"] = "Klick: diese Zone ein- oder ausklappen",
+	-- (2.1.61, #34) the tracked boxes of a zone and of the whole log (MelloUI_Map/MapQuestLog.lua)
+	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "Alle Quests dieser Zone in der Questverfolgung: Klicken, um sie alle dort zu zeigen oder alle herauszunehmen", -- draft
+	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Alle deine Quests in der Questverfolgung: Klicken, um sie alle dort zu zeigen oder alle herauszunehmen", -- draft
 	["My Items"] = "Meine Gegenstände",
 	["For your level"] = "Für deine Stufe",
 	["Later"] = "Später",

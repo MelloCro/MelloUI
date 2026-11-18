@@ -3430,6 +3430,9 @@ Lang:Add("frFR", {
 	["Click: its page   Shift-click: link it in the chat"] = "Clic : ouvrir la page   Maj-clic : partager le lien dans le chat",
 	["Tracked in the Quest Tracker: click to take it off, or to show it there"] = "Quête suivie : cliquez pour arrêter le suivi ou l'afficher dans le suivi des quêtes",
 	["Click: fold or unfold this zone"] = "Clic : replier ou déplier cette zone",
+	-- (2.1.61, #34) the tracked boxes of a zone and of the whole log (MelloUI_Map/MapQuestLog.lua)
+	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "Toutes les quêtes de cette zone dans le suivi des quêtes : cliquez pour toutes les y afficher ou toutes les retirer", -- draft
+	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Toutes vos quêtes dans le suivi des quêtes : cliquez pour toutes les y afficher ou toutes les retirer", -- draft
 	["My Items"] = "Mes objets",
 	["For your level"] = "À votre niveau",
 	["Later"] = "Pour plus tard",
