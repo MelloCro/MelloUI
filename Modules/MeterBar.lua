@@ -57,6 +57,7 @@ local pcall, ipairs, min = pcall, ipairs, math.min
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local UNKNOWN_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local MOVER_KEY = "meterbar"
+local PET_ICON = "Interface\\Icons\\Ability_Hunter_BeastTaming"   -- (2.1.61: your pet's threat pin; the pet widget's icon)
 
 -- (onelook B "Rail") ABOVE: the holder's top to the rail's middle; BELOW: the
 -- rail's middle to the holder's bottom (56 in all, 76 before); THICK: Race
@@ -102,8 +103,15 @@ end
 -- down: "dps", "hps", "threat".
 --   Race Bar Shows: Your Pick (raceShows "pick", the default) -- the ticked ones of Damage (raceDps, on), Healing
 --     (raceHps) and Threat (raceThreat); Auto -- healing as a healer, damage otherwise, and threat under it in a
---     group for a tank or a damage dealer. Threat only in a group (Threat.Grouped: solo it tells nothing new); none
---     left, damage
+--     group for a tank or a damage dealer. Threat only in a group or with your pet out (Threat.Grouped: solo, with no
+--     pet, it tells nothing new); none left, damage
+-- (2.1.61; the German player: "when I am out with my Voidwalker and it tanks, I would like to see my threat too") your
+-- pet out: threat tells something solo too
+local function HasPet()
+	local ok, out = pcall(_G.UnitExists, "pet")
+	return ok and not Secret(out) and out == true
+end
+
 local kinds = {}
 -- (`grouped`: as in a group, for Edit Layout's samples)
 local function Kinds(grouped)
@@ -112,7 +120,7 @@ local function Kinds(grouped)
 	end
 	local db = M.db or {}
 	local T = rawget(MelloUI, "Threat")
-	grouped = grouped or (T ~= nil and T.Grouped())
+	grouped = grouped or (T ~= nil and T.Grouped()) or HasPet()   -- (a pet out: threat solo too)
 	if db.raceShows == "auto" then
 		local ok, role = pcall(_G.UnitGroupRolesAssigned, "player")
 		local healer = ok and Text(role) == "HEALER"
@@ -266,13 +274,14 @@ end
 
 -- a pin's picture: its class's plain medallion (no diamonds: the kit's rim
 -- is its ring), set when its class changes
-local function Medallion(pin, class)
+local function Medallion(pin, class, icon)
 	class = Text(class)
-	if pin.classSet and pin.class == class then
+	local key = icon or class   -- (2.1.61: a picture of its own, a pet's)
+	if pin.classSet and pin.class == key then
 		return
 	end
-	pin.class, pin.classSet = class, true
-	local path = class and MelloUI.ClassIconPath and MelloUI:ClassIconPath(class, "plain")
+	pin.class, pin.classSet = key, true
+	local path = icon or (class and MelloUI.ClassIconPath and MelloUI:ClassIconPath(class, "plain"))
 	pin.face:SetIcon(path or UNKNOWN_ICON)
 end
 
@@ -747,6 +756,9 @@ local function GroupUnits()
 			units[#units + 1] = "party" .. i
 		end
 	end
+	if HasPet() then
+		units[#units + 1] = "pet"   -- (2.1.61: your own pet, a Voidwalker tanking for you)
+	end
 	return units
 end
 
@@ -784,6 +796,7 @@ local function ThreatSources()
 			local okC, _, class = pcall(_G.UnitClass, unit)
 			src.classFilename = okC and not Secret(class) and class or nil
 			src.isLocalPlayer = IsYou(unit)
+			src.icon = unit == "pet" and PET_ICON or nil
 			local okN, name = pcall(_G.UnitName, unit)
 			src.name = okN and name or nil
 			src.value, src.status, src.fraction, src.tanking = value, status, fraction, tanking
@@ -835,7 +848,7 @@ function Bar.LayThreat(ui, sources, plain)
 		if pin then
 			pcall(pin.bar.SetMinMaxValues, pin.bar, 0, 100)
 			pcall(pin.bar.SetValue, pin.bar, src.value)
-			Medallion(pin, src.classFilename)
+			Medallion(pin, src.classFilename, src.icon)
 			pin.want = true
 			shown[#shown + 1] = pin
 		end

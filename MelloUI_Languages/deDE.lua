@@ -1158,10 +1158,10 @@ Lang:Add("deDE", {
 	["Race Bar Shows"] = "Die Rennleiste zeigt",
 	-- (2.1.61) Race Bar Shows: Auto or Your Pick, its rows (Modules/Meter.lua, MeterBar.lua's Kinds)
 	["Your Pick"] = "Eigene Wahl", -- draft
-	["Auto: healing as a healer, damage otherwise, and in a group a threat row under it for a tank or a damage dealer. Your Pick: the rows ticked below, one under the other."] = "Automatisch: Heilung als Heiler, sonst Schaden, und in einer Gruppe darunter eine Bedrohungsreihe für Tanks und Schadensverursacher. Eigene Wahl: die unten angehakten Reihen, untereinander.", -- draft
+	["Auto: healing as a healer, damage otherwise, and a threat row under it for a tank or a damage dealer in a group or with a pet out. Your Pick: the rows ticked below, one under the other."] = "Automatisch: Heilung als Heiler, sonst Schaden, und darunter eine Bedrohungsreihe für Tanks und Schadensverursacher in einer Gruppe oder mit Begleiter. Eigene Wahl: die unten angehakten Reihen, untereinander.", -- draft
 	["A row of your group's damage."] = "Eine Reihe mit dem Schaden deiner Gruppe.", -- draft
 	["A row of your group's healing."] = "Eine Reihe mit der Heilung deiner Gruppe.", -- draft
-	["In a group, a row of everyone's threat on your target. Its right end is where you pull."] = "In einer Gruppe eine Reihe mit der Bedrohung aller auf dein Ziel. Ihr rechtes Ende ist der Punkt, an dem du Aggro ziehst.", -- draft
+	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "In einer Gruppe oder mit deinem Begleiter eine Reihe mit der Bedrohung aller auf dein Ziel. Ihr rechtes Ende ist der Punkt, an dem du Aggro ziehst.", -- draft
 	["Only with Race Bar Shows: Your Pick"] = "Nur mit „Die Rennleiste zeigt: Eigene Wahl“", -- draft
 	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "Was die Rennleiste vergleicht. Auto: Heilung als Heiler, sonst Schaden.",
 	["Auto"] = "Automatisch",
