@@ -3,7 +3,7 @@
 -- mailbox, so you only click which one and the name is filled in", and "the same with Battle.net friends, a tab of
 -- its own: I can't remember my friends' characters")
 --
--- A small button at the right of the mailbox's To field (Send Mail) opens a menu:
+-- A small button at the right end of the mailbox's To field (Send Mail; 2.1.61: inside it) opens a menu:
 --   Your Characters      your other characters, each in its class colour with its level where that is known; a click
 --                        puts the full name in the To field and moves on to Subject. Every other character of the
 --                        account is there at once: the game's own name list is asked for them (FromGame), so an alt
@@ -68,8 +68,8 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 MelloUI.MailRecipients = M
 
 local R = {
-	SIZE = 18,       -- the button
-	GAP = 4,         -- from the To field's right edge
+	SIZE = 15,       -- the button (2.1.61: inside the To field, at its right end)
+	GAP = 3,         -- from the To field's right edge, inward; the text kept this far off the button too
 	SETTLE = 2,      -- seconds: the friend list read once its events have stopped coming
 	MAX = 100,       -- the most characters asked of the game's own name list (FromGame)
 	onList = {},     -- [BattleTag] = true: on the friend list at the last read (reused)
@@ -500,7 +500,8 @@ local function Button()
 	local W = MelloUI.Widgets
 	button = Safe.CreateFrame("Button", nil, page)
 	button:SetSize(R.SIZE, R.SIZE)
-	button:SetPoint("LEFT", to, "RIGHT", R.GAP, 0)
+	button:SetPoint("RIGHT", to, "RIGHT", -R.GAP, 0)
+	button:SetFrameLevel(to:GetFrameLevel() + 2)   -- (over the field it sits in: its clicks its own)
 	button.icon = button:CreateTexture(nil, "ARTWORK")
 	button.icon:SetAllPoints()
 	W.Icon(button.icon, "chat_friends", R.SIZE)
@@ -516,23 +517,21 @@ local function Button()
 	return button
 end
 
--- (2.1.61; the German player's screenshot: right of the To field the button stood on the postage's label --
--- "Versand:" is longer than "Postage:") the To field narrower by the button's room while the button shows, so it sits
--- between the field and the label; the field's own width back when it does not. Its width read once, while the mailbox
--- shows (laid out then)
+-- (2.1.61; the German player's screenshots: right of the To field the button stood on the postage's label --
+-- "Versand:" is longer than "Postage:" -- and a narrower field left its painted frame as wide, the button on it) the
+-- button inside the field at its right end, as a search box's, and the field's text kept short of it (its right
+-- inset); the field's own insets back when the button does not show. Read once, as the game laid them
 function R.Room(on)
 	local to = rawget(_G, "SendMailNameEditBox")
-	if type(to) ~= "table" or not to.GetWidth then
+	if type(to) ~= "table" or not (to.GetTextInsets and to.SetTextInsets) then
 		return
 	end
-	if not R.toWidth then
-		local w = Num(to:GetWidth())
-		if not w or w <= R.SIZE * 3 then
-			return
-		end
-		R.toWidth = w
+	if not R.insets then
+		local l, r, t, b = to:GetTextInsets()
+		R.insets = { Num(l) or 0, Num(r) or 0, Num(t) or 0, Num(b) or 0 }
 	end
-	to:SetWidth(on and (R.toWidth - R.SIZE - R.GAP) or R.toWidth)
+	local i = R.insets
+	to:SetTextInsets(i[1], i[2] + (on and (R.SIZE + 2 * R.GAP) or 0), i[3], i[4])
 end
 
 local function Show()
