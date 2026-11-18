@@ -411,7 +411,23 @@ function Bar.Resize()
 	end
 	local w, h = Size()
 	local rowH = B.ABOVE + B.BELOW
-	ui.holder:SetSize(w, rowH * (ui.shownRows or 1))   -- (2.1.61: as tall as its rows)
+	local want = rowH * (ui.shownRows or 1)
+	local holder = ui.holder
+	-- (2.1.61; the German player's screenshot: the bar placed at the screen's top, a second row grew it up against the
+	-- edge) a new number of rows grows the bar away from the edge it was placed at: from its top in the screen's upper
+	-- half, from its bottom in the lower; the place it was given kept. Read before the size changes, as the frame
+	-- stands (its own units, from the screen's bottom left: the offsets a point takes)
+	local old, top, bottom, x = holder:GetHeight(), holder:GetTop(), holder:GetBottom(), holder:GetCenter()
+	holder:SetSize(w, want)   -- (as tall as its rows)
+	if top and bottom and x and math.abs((old or 0) - want) > 0.5 then
+		local screenMid = UIParent:GetHeight() * UIParent:GetEffectiveScale() / holder:GetEffectiveScale() / 2
+		holder:ClearAllPoints()
+		if (top + bottom) / 2 > screenMid then
+			holder:SetPoint("TOP", UIParent, "BOTTOMLEFT", x, top)
+		else
+			holder:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", x, bottom)
+		end
+	end
 	for k, row in ipairs(ui.rows) do
 		row.holder:ClearAllPoints()
 		row.holder:SetPoint("TOPLEFT", ui.holder, "TOPLEFT", 0, -(k - 1) * rowH)
@@ -535,7 +551,7 @@ local function Lay(ui, sources, healing, sample)
 	end
 	ui.me.want = false
 	ui.unit:SetText(healing and TEXT.hps or TEXT.dps)
-	ui.caption:SetText(healing and TEXT.captionHeal or TEXT.caption)
+	ui.caption:SetText(W.Tr(healing and TEXT.captionHeal or TEXT.caption))   -- (2.1.61: in German too)
 	if not top then
 		ui.top:SetText(Meter.TEXT.dash)
 		ui.fill:SetValue(0)
@@ -800,7 +816,8 @@ local function ThreatSources()
 			local okN, name = pcall(_G.UnitName, unit)
 			src.name = okN and name or nil
 			src.value, src.status, src.fraction, src.tanking = value, status, fraction, tanking
-			src.plain = not Secret(value) and Num(value) or nil
+			-- (over 100 while you hold it -- the German player's screenshot, "196%": the pull is the end, so 100)
+			src.plain = not Secret(value) and Num(value) and math.min(Num(value), 100) or nil
 			src.valueText = src.plain and ("%.0f%%"):format(src.plain) or nil
 			src.amountPerSecond = nil
 			if src.plain == nil then

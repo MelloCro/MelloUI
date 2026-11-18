@@ -1163,6 +1163,8 @@ Lang:Add("deDE", {
 	["A row of your group's healing."] = "Eine Reihe mit der Heilung deiner Gruppe.", -- draft
 	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "In einer Gruppe oder mit deinem Begleiter eine Reihe mit der Bedrohung aller auf dein Ziel. Ihr rechtes Ende ist der Punkt, an dem du Aggro ziehst.", -- draft
 	["Only with Race Bar Shows: Your Pick"] = "Nur mit „Die Rennleiste zeigt: Eigene Wahl“", -- draft
+	["Current DPS"] = "Aktuelle DPS", -- draft
+	["Current HPS"] = "Aktuelle HPS", -- draft
 	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "Was die Rennleiste vergleicht. Auto: Heilung als Heiler, sonst Schaden.",
 	["Auto"] = "Automatisch",
 	["Damage"] = "Schaden",
