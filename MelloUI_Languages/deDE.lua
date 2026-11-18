@@ -3852,12 +3852,11 @@ Lang:Add("deDE", {
 	["off"] = "aus", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "Post-Empfänger", -- draft
-	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Ein Knopf neben dem An-Feld des Briefkastens listet deine Charaktere und die Charaktere deiner Battle.net-Freunde: Klicke einen an, und sein Name wird eingetragen.", -- draft
+	["Beside the mailbox's Send Mail page, a list of your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Neben der Seite „Post versenden“ des Briefkastens eine Liste deiner Charaktere und der Charaktere deiner Battle.net-Freunde: Klicke einen an, und sein Name wird eingetragen.", -- draft
 	["Who was that again? One click and the letter has its name."] = "Wie hieß der noch gleich? Ein Klick, und der Brief hat seinen Empfänger.", -- draft
 	["Battle.net Friends' Characters"] = "Charaktere der Battle.net-Freunde", -- draft
-	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "Das Menü listet auch deine Battle.net-Freunde, jeden mit den Charakteren, die das Spiel von ihnen gezeigt hat, während sie spielten. Aus: nur deine eigenen Charaktere, und keine ihrer Charaktere werden gemerkt.", -- draft
+	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "Die Liste zeigt auch deine Battle.net-Freunde, jeden mit den Charakteren, die das Spiel von ihnen gezeigt hat, während sie spielten. Aus: nur deine eigenen Charaktere, und keine ihrer Charaktere werden gemerkt.", -- draft
 	["Recipients"] = "Empfänger", -- draft
-	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Wähle einen deiner Charaktere oder den Charakter eines Battle.net-Freundes, an den dieser Brief gehen soll.", -- draft
 	["Your Characters"] = "Deine Charaktere", -- draft
 	["Battle.net Friends"] = "Battle.net-Freunde", -- draft
 	["No other characters."] = "Keine weiteren Charaktere.", -- draft
