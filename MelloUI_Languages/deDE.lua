@@ -1156,7 +1156,7 @@ Lang:Add("deDE", {
 	["Race Bar"] = "Rennleiste",
 	["In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers."] = "Im Kampf eine Rennleiste des Schadens deiner Gruppe, du hervorgehoben. Zeige darauf für die Zahlen aller.",
 	["Race Bar Shows"] = "Die Rennleiste zeigt",
-	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "Was die Rennleiste vergleicht. Auto: Heilung als Heiler, sonst Schaden.",
+	["What the race bar compares. Auto: healing as a healer, damage otherwise. Threat: in a group, everyone's threat on your target; solo, damage."] = "Was die Rennleiste vergleicht. Auto: Heilung als Heiler, sonst Schaden. Bedrohung: in einer Gruppe die Bedrohung aller auf dein Ziel; allein der Schaden.", -- draft
 	["Auto"] = "Automatisch",
 	["Damage"] = "Schaden",
 	["Healing"] = "Heilung",

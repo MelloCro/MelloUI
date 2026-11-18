@@ -183,8 +183,9 @@ local M = MelloUI:RegisterModule("Meter", {
 		{ type = "toggle", key = "bar", name = "Race Bar",
 		  desc = "In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers." },
 		{ type = "dropdown", key = "metric", name = "Race Bar Shows",
-		  values = { { value = "auto", label = "Auto" }, { value = "dps", label = "Damage" }, { value = "hps", label = "Healing" } },
-		  desc = "What the race bar compares. Auto: healing as a healer, damage otherwise." },
+		  values = { { value = "auto", label = "Auto" }, { value = "dps", label = "Damage" }, { value = "hps", label = "Healing" },
+			{ value = "threat", label = "Threat" } },   -- (2.1.61, #26: Modules/MeterBar.lua's Threat)
+		  desc = "What the race bar compares. Auto: healing as a healer, damage otherwise. Threat: in a group, everyone's threat on your target; solo, damage." },
 		{ type = "slider", key = "pins", name = "Race Bar Pins", min = T.PINS_MIN, max = T.PINS_MAX, step = 1,
 		  desc = "How many players the race bar shows. You are always on it." },
 		{ type = "slider", key = "barWidth", name = "Race Bar Width", min = 150, max = 600, step = 10,
@@ -1896,6 +1897,15 @@ end
 function M:SlashTest()
 	Meter.TestFight()
 end
+
+-- (2.1.61, #26) /mello meter threat: the race bar's Threat with a made-up group (MeterBar.lua, Bar.ThreatTest)
+M.SlashWords = {
+	threat = function()
+		if Meter.Bar and Meter.Bar.ThreatTest then
+			Meter.Bar.ThreatTest()
+		end
+	end,
+}
 
 --------------------------------------------------------------------------------
 -- The preview (0.17.0, Core/Preview.lua): a made-up fight that is never

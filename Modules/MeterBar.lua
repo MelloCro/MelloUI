@@ -10,7 +10,9 @@
 -- (yours always shows); the pointer on the bar lists everyone in order.
 -- It fades in when a fight starts and out ~1.5 s after it ends (MelloUI.Anim;
 -- Reduce Motion: at once). Healing instead of damage for a healer (Race Bar
--- Shows: Auto, by the group role) or by the setting.
+-- Shows: Auto, by the group role) or by the setting; (2.1.61, #26) or the
+-- group's threat on your target (Race Bar Shows: Threat, in a group; its
+-- section below the pins' lay).
 -- Secret-safe by the engine: each pin is an invisible StatusBar on the
 -- track's rect, the pin hung on its fill's right edge, so the game places it
 -- from the secret amounts (SetMinMaxValues(0, the top's) / SetValue); the
@@ -69,6 +71,7 @@ local B = {
 	ABOVE = 30, BELOW = 26, ICON_IN = 0.09, BAND_Y = 10,
 	LABEL = 10, ME_LABEL = 12, TOP = 13, CAPTION = 11,
 	FADE_IN = 0.6, FADE_OUT = 1.2, OUT_DELAY = 1.5,
+	THREAT_TICK = 0.3, THREAT_TEST = 2,   -- (2.1.61, #26) threat read this often in a fight; the test's steps
 	LIST_ROW = 16, LIST_W = 220, LIST_MAX = 10,
 	HOME_Y = 325,
 }
@@ -79,6 +82,7 @@ local TEXT = {
 	dps = "dps",
 	hps = "hps",
 	label = "Race Bar",
+	captionThreat = "Threat",   -- (2.1.61, #26: Race Bar Shows' Threat)
 }
 
 local Bar = { ui = nil, shown = false, samples = false, healing = false, list = nil }
@@ -421,7 +425,11 @@ local function Lay(sources, healing, sample)
 	if not ui then
 		return
 	end
-	Bar.list, Bar.healing = sources, healing
+	Bar.list, Bar.healing, Bar.threat = sources, healing, false
+	if Bar.threatPainted then
+		Bar.threatPainted = false
+		Bar.Look()   -- (2.1.61: your share in your class colour again after Threat's colours)
+	end
 	local top = sources and sources[1]
 	-- (each pin shown or hidden once, at the end, as this list wants it: a pin
 	-- that stays stays shown)
@@ -554,7 +562,8 @@ ListShow = Shared("OnEnter on the race bar", function(holder)
 	local n = min(#sources, B.LIST_MAX)
 	for i = 1, n do
 		local src, row = sources[i], ListRow(i)
-		row.rank:SetText(Meter.Ordinal(i))
+		-- (2.1.61: threat's list in order only while its numbers read plain)
+		row.rank:SetText((Bar.threat and not Bar.threatPlain) and "" or Meter.Ordinal(i))
 		if src.isLocalPlayer == true then
 			row.name:SetText(W.Tr(Meter.TEXT.you))
 			Look.Text(row.name, "value", B.CAPTION)
@@ -565,7 +574,7 @@ ListShow = Shared("OnEnter on the race bar", function(holder)
 			ClassColour(row.name, src.classFilename)
 		end
 		ClassColour(row.rank, src.classFilename)
-		row.value:SetText(Meter.Format(src.amountPerSecond) or Meter.TEXT.dash)
+		row.value:SetText(src.valueText or Meter.Format(src.amountPerSecond) or Meter.TEXT.dash)
 		row.rank:Show()
 		row.name:Show()
 		row.value:Show()
@@ -619,6 +628,173 @@ ListHide = Shared("OnLeave on the race bar", function()
 end, "script")
 
 --------------------------------------------------------------------------------
+-- Threat (2.1.61, #26; a German player's wish: "in a dungeon I'd like to see at a glance who is how close to
+-- pulling, as I can with damage"): Race Bar Shows' third choice. While you are in a group, the bar is your target's
+-- threat list: its right end the pull point (100: it comes for you; the tank stands there), each member a pin at their
+-- share of the pull (Core/Threat.lua's Threat.Read, the game's scaledPercentage, plain or SECRET -- the pins placed by
+-- the engine from it as the damage pins are), you the bigger pin, your share on the rail in the threat colours the
+-- nameplates and the Threat widget use (gold, close, aggro; Threat.State). Ranks and "73%" only while the numbers read
+-- plain (in instances); secret (the open world), the pins alone. Solo the bar shows damage, as Threat.Grouped says
+-- threat tells nothing new there. Read every THREAT_TICK while it shows in a fight (the target may change, a heal adds
+-- threat with no damage). /mello meter threat: a made-up group in three steps, you drawing near the pull
+--------------------------------------------------------------------------------
+
+-- threat for this fight: the setting, while you are in a group
+function Bar.ThreatOn()
+	local T = rawget(MelloUI, "Threat")
+	return M.db ~= nil and M.db.metric == "threat" and T ~= nil and T.Grouped() or false
+end
+
+-- your group's units (a raid's own list holds you)
+local units = {}
+local function GroupUnits()
+	for i = #units, 1, -1 do
+		units[i] = nil
+	end
+	local okR, raid = pcall(_G.IsInRaid)
+	local okN, n = pcall(_G.GetNumGroupMembers)
+	n = okN and Num(n) or 0
+	if okR and raid == true then
+		for i = 1, math.min(n, 40) do
+			units[#units + 1] = "raid" .. i
+		end
+	else
+		units[1] = "player"
+		for i = 1, math.min(math.max(n - 1, 0), 4) do
+			units[#units + 1] = "party" .. i
+		end
+	end
+	return units
+end
+
+-- a unit is you (a raid's list holds you under its own token; UnitIsUnit read only when plain)
+local function IsYou(unit)
+	if unit == "player" then
+		return true
+	end
+	local ok, same = pcall(_G.UnitIsUnit, unit, "player")
+	return ok and not Secret(same) and same == true
+end
+
+local threatList, threatPool = {}, {}
+local function ByThreat(a, b)
+	return a.plain > b.plain
+end
+
+-- the group's threat on your target: its sources (one table a member, reused), and whether every number read plain
+local function ThreatSources()
+	for i = #threatList, 1, -1 do
+		threatList[i] = nil
+	end
+	local T = rawget(MelloUI, "Threat")
+	local okE, exists = pcall(_G.UnitExists, "target")
+	local okA, foe = pcall(_G.UnitCanAttack, "player", "target")
+	if not (T and okE and okA and not Secret(exists) and not Secret(foe) and exists == true and foe == true) then
+		return threatList, true
+	end
+	local plain = true
+	for _, unit in ipairs(GroupUnits()) do
+		local status, fraction, tanking, value = T.Read(unit, "target")
+		if value ~= nil then
+			local src = threatPool[#threatList + 1] or {}
+			threatPool[#threatList + 1] = src
+			local okC, _, class = pcall(_G.UnitClass, unit)
+			src.classFilename = okC and not Secret(class) and class or nil
+			src.isLocalPlayer = IsYou(unit)
+			local okN, name = pcall(_G.UnitName, unit)
+			src.name = okN and name or nil
+			src.value, src.status, src.fraction, src.tanking = value, status, fraction, tanking
+			src.plain = not Secret(value) and Num(value) or nil
+			src.valueText = src.plain and ("%.0f%%"):format(src.plain) or nil
+			src.amountPerSecond = nil
+			if src.plain == nil then
+				plain = false
+			end
+			threatList[#threatList + 1] = src
+		end
+	end
+	if plain then
+		table.sort(threatList, ByThreat)
+	end
+	return threatList, plain
+end
+
+-- the threat list laid on the pins (the live one, or the test's plain made-up one)
+function Bar.LayThreat(sources, plain)
+	local ui = Bar.ui
+	if not ui then
+		return
+	end
+	Bar.list, Bar.healing, Bar.threat, Bar.threatPlain = sources, false, true, plain
+	for _, pin in ipairs(ui.pins) do
+		pin.want = false
+	end
+	ui.me.want = false
+	ui.caption:SetText(W.Tr(TEXT.captionThreat))
+	ui.unit:SetText("")
+	pcall(ui.fill.SetMinMaxValues, ui.fill, 0, 100)
+	ui.fill:SetValue(0)
+	ui.top:SetText(Meter.TEXT.dash)
+	local shown, other, room = {}, 0, math.min(#ui.pins, Pins() - 1)
+	local mine = nil
+	for i, src in ipairs(sources) do
+		local pin
+		if src.isLocalPlayer then
+			pin, mine = ui.me, src
+			pcall(ui.fill.SetValue, ui.fill, src.value)
+			ui.top:SetText(src.valueText or Meter.TEXT.dash)
+		elseif other < room then
+			other = other + 1
+			pin = ui.pins[other]
+			pin.label:SetText(plain and Meter.Ordinal(i) or "")
+			ClassColour(pin.label, src.classFilename)
+			TextShadow(pin.label)
+		end
+		if pin then
+			pcall(pin.bar.SetMinMaxValues, pin.bar, 0, 100)
+			pcall(pin.bar.SetValue, pin.bar, src.value)
+			Medallion(pin, src.classFilename)
+			pin.want = true
+			shown[#shown + 1] = pin
+		end
+	end
+	-- your share in the threat colours (your class colour while your state cannot be read)
+	local T = rawget(MelloUI, "Threat")
+	local state = mine and T and T.State(mine.status, mine.fraction, T.IsTank()) or nil
+	local tex = ui.fill:GetStatusBarTexture()
+	if state and tex then
+		local Kit = MelloUI.Kit
+		if Kit and Kit.Unpaint then
+			Kit:Unpaint(tex, "vertex")
+		end
+		tex:SetVertexColor(T.Colour(state))
+		Bar.threatPainted = true
+	elseif Bar.threatPainted then
+		Bar.threatPainted = false
+		Bar.Look()
+	end
+	Bar.ShowWanted(ui)
+	Declutter(ui, shown)
+end
+
+-- every THREAT_TICK while it shows in a fight with Threat on (one loop at a time)
+function Bar.ThreatTick()
+	if Bar.shown and Bar.ui and not Bar.samples and not Bar.preview and Bar.ThreatOn() then
+		Bar.LayThreat(ThreatSources())
+		C_Timer.After(B.THREAT_TICK, Bar.ThreatTick)
+	else
+		Bar.ticking = false
+	end
+end
+
+local function ThreatStart()
+	if not Bar.ticking then
+		Bar.ticking = true
+		Bar.ThreatTick()
+	end
+end
+
+--------------------------------------------------------------------------------
 -- In a fight, fading, and Edit Layout's samples
 --------------------------------------------------------------------------------
 
@@ -646,6 +822,10 @@ function Bar.Live(dmg, heal)
 	if not (Bar.shown and Bar.ui) or Bar.samples then
 		return
 	end
+	if Bar.ThreatOn() then
+		ThreatStart()   -- (2.1.61: threat read on its own beat, Bar.ThreatTick)
+		return
+	end
 	local healing = Healing()
 	Lay(healing and heal or dmg, healing, false)
 end
@@ -664,8 +844,12 @@ function Bar.Fight(on)
 		Build()
 		Bar.shown = true
 		if not Bar.samples then
-			local healing = Healing()
-			Lay(LiveSources(healing), healing, false)
+			if Bar.ThreatOn() then
+				ThreatStart()   -- (2.1.61, #26)
+			else
+				local healing = Healing()
+				Lay(LiveSources(healing), healing, false)
+			end
 		end
 		FadeTo(1, B.FADE_IN)
 	elseif Bar.shown then
@@ -704,8 +888,12 @@ function Bar.Samples()
 		ui.holder:SetAlpha(1)
 		ui.holder:Show()
 	elseif Bar.shown then
-		local healing = Healing()
-		Lay(LiveSources(healing), healing, false)
+		if Bar.ThreatOn() then
+			ThreatStart()
+		else
+			local healing = Healing()
+			Lay(LiveSources(healing), healing, false)
+		end
 	else
 		FadeTo(0, 0)
 	end
@@ -730,6 +918,60 @@ function Bar.Preview(on, sources)
 		OutNow()
 	end
 end
+
+-- /mello meter threat: a made-up group on a made-up foe, plain numbers: the tank at the pull, you drawing near it
+-- (safe, close, then pulling), then faded out as the preview's
+Bar.THREAT_SAMPLE = {
+	{ classFilename = "WARRIOR", name = "Tarnok", tanking = true, status = 3 },
+	{ classFilename = "MAGE", name = "Fellaria", status = 0 },
+	{ classFilename = nil, name = Meter.TEXT.you, isLocalPlayer = true },
+	{ classFilename = "HUNTER", name = "Shadeleaf", status = 0 },
+	{ classFilename = "PRIEST", name = "Brightwood", status = 0 },
+}
+Bar.THREAT_STEPS = {
+	{ 100, 64, 55, 41, 22 },   -- (the tank's, the mage's, yours, the hunter's, the priest's)
+	{ 100, 78, 86, 52, 30 },
+	{ 100, 81, 100, 60, 34 },
+}
+
+function Bar.ThreatTest()
+	if not On() or Bar.testStep then   -- (one run at a time)
+		return
+	end
+	local ui = Build()
+	local ok, _, file = pcall(_G.UnitClass, "player")
+	Bar.THREAT_SAMPLE[3].classFilename = ok and Text(file) or "WARRIOR"
+	if not Bar.preview then
+		Bar.preview = true
+		ui.holder:SetAlpha(0)
+		FadeTo(1, B.FADE_IN)
+	end
+	Bar.testStep = 0
+	Bar.ThreatTestStep()
+end
+
+function Bar.ThreatTestStep()
+	Bar.testStep = (Bar.testStep or 0) + 1
+	local step = Bar.THREAT_STEPS[Bar.testStep]
+	if not (step and Bar.preview and Bar.ui) then
+		Bar.testStep = nil
+		Bar.Preview(false)
+		return
+	end
+	local made = {}
+	for i, src in ipairs(Bar.THREAT_SAMPLE) do
+		src.value, src.plain = step[i], step[i]
+		src.fraction, src.valueText = step[i] / 100, ("%.0f%%"):format(step[i])
+		if src.isLocalPlayer then
+			src.status = step[i] >= 100 and 3 or (step[i] >= 80 and 1 or 0)
+		end
+		made[#made + 1] = src
+	end
+	table.sort(made, ByThreat)
+	Bar.LayThreat(made, true)
+	C_Timer.After(B.THREAT_TEST, Bar.ThreatTestStep)
+end
+
 
 -- a new palette (the texts' shadow, the fill's fallback) or Bar Texture
 local looking = false
@@ -765,6 +1007,11 @@ function Bar.Apply()
 	end
 	Bar.Samples()
 	if Bar.shown and Bar.ui and not Bar.samples then
+		if Bar.ThreatOn() then
+			Bar.threatPainted = false   -- (Bar.Look above put your class colour back)
+			ThreatStart()
+			return
+		end
 		local healing = Healing()
 		Lay(LiveSources(healing), healing, false)
 	end

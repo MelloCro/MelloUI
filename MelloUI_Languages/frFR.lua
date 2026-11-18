@@ -982,7 +982,7 @@ Lang:Add("frFR", {
 	["Race Bar"] = "Barre de performance",
 	["In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers."] = "En combat, une barre de performance des dégâts de votre groupe, avec votre score mis en évidence. Survolez-la pour voir les valeurs de chaque joueur.",
 	["Race Bar Shows"] = "La barre de performance montre",
-	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "Ce que compare la barre de performance. Auto : les soins en soigneur, sinon les dégâts.",
+	["What the race bar compares. Auto: healing as a healer, damage otherwise. Threat: in a group, everyone's threat on your target; solo, damage."] = "Ce que compare la barre de performance. Auto : les soins en soigneur, sinon les dégâts. Menace : en groupe, la menace de chacun sur votre cible ; seul, les dégâts.", -- draft
 	["Auto"] = "Auto",
 	["Damage"] = "Dégâts",
 	["Healing"] = "Soins",
