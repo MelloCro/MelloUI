@@ -12,7 +12,9 @@
 --                        as a submenu; every character the game has shown of them while they played, so the ones you
 --                        cannot remember are there while they are offline too. One on ANOTHER realm shows its
 --                        realm, and the To field gets the game's own address for it (R.Address, below): a bare
---                        name there would go to whoever bears that name on your realm
+--                        name there would go to whoever bears that name on your realm. (2.1.61) Another realm is
+--                        another server: WoW Forever names its layers as realms ("CAMWOW EU5 Realm 5 PvE" and
+--                        "... Realm 7 ..."), and a layer is left out of the comparison (R.ServerKey)
 -- What it keeps, account-wide in its own settings (`keep`: never in a profile or a share string, as Services' learned
 -- services), only on this computer:
 --   alts       ["Name-Realm"] = { name (the full name, first name and surname), realm, class (the class's token),
@@ -114,6 +116,18 @@ local function RealmKey(realm)
 	return type(realm) == "string" and (realm:gsub("%s", "")) or nil
 end
 
+-- (2.1.61) a realm without its layer: WoW Forever names each layer of a server a realm of its own -- the German
+-- player's /mello mail names had a friend's character on "CAMWOW EU5 Realm 7 PvE", their screenshot a day later the same
+-- character on "CAMWOW EU5 Realm 5 PvE" -- so "Realm <n>" is left out: "CAMWOW EU5 PvE". Characters of one server get
+-- a letter by their bare name (the player: "same faction, I can still send"); the realm shown and put in the address
+-- only for another server's ("CAMWOW EU4 ...")
+function R.ServerKey(realm)
+	if type(realm) ~= "string" then
+		return nil
+	end
+	return RealmKey((realm:gsub("%s+[Rr]ealm%s+%d+", "")))
+end
+
 local function Me()
 	local short, realm = Text(Call(UnitName, "player")), Text(Call(GetRealmName))
 	if not short or short == "" or not realm or realm == "" then
@@ -195,7 +209,7 @@ local function ReadFriends()
 						chars = {}
 						known[tag] = chars
 					end
-					local key = name .. "-" .. RealmKey(realm)
+					local key = name .. "-" .. R.ServerKey(realm)   -- (2.1.61: one record whatever layer they play on)
 					local rec = chars[key]
 					if type(rec) ~= "table" then
 						rec = {}
@@ -238,8 +252,9 @@ end
 -- a character's line: its name in its class colour, its level after it dimmed (a friend's on another realm of this
 -- server is written to as well: the user, "same faction, I can still send", the game's own name list offering it)
 local function OtherRealm(c)
-	local mine, theirs = RealmKey(Text(Call(GetRealmName))), RealmKey(c.realm)
-	return (mine and theirs and mine ~= theirs) and theirs or nil
+	-- (2.1.61: another SERVER, R.ServerKey -- another layer of yours is no other realm; the address keeps the realm whole)
+	local mine, theirs = R.ServerKey(Text(Call(GetRealmName))), R.ServerKey(c.realm)
+	return (mine and theirs and mine ~= theirs) and RealmKey(c.realm) or nil
 end
 
 local function Line(c)
@@ -290,12 +305,21 @@ local function ByLevel(a, b)
 end
 
 local function Writable(list, me, faction, needFull)
-	local out = {}
+	local out, one = {}, {}
 	for key, c in pairs(type(list) == "table" and list or {}) do
 		if key ~= me and type(c) == "table" and type(c.name) == "string" and (c.full or not needFull)
 			and (c.faction == nil or faction == nil or c.faction == faction) then
-			out[#out + 1] = c
+			-- (2.1.61) a character noted on two layers of its server (before R.ServerKey, or this character's own
+			-- record by its layer): once, as last seen
+			local id = c.name .. "-" .. (R.ServerKey(c.realm) or "")
+			local had = one[id]
+			if not had or (c.seen or 0) > (had.seen or 0) then
+				one[id] = c
+			end
 		end
+	end
+	for _, c in pairs(one) do
+		out[#out + 1] = c
 	end
 	table.sort(out, ByLevel)
 	return out
@@ -333,16 +357,22 @@ end
 -- its level where the Quest List has met it. A noted character the menu leaves out (the other faction's) stays out.
 local function Alts(me, myName, faction)
 	local noted = Store("alts")
-	local out = Writable(noted, me, faction, true)
 	local realm = Text(Call(GetRealmName))
-	local here = RealmKey(realm)
+	local here = R.ServerKey(realm)   -- (2.1.61: the server, not the layer)
+	-- (2.1.61) you yourself left out by name too: your record of another layer bears another key than `me`
+	local out = {}
+	for _, c in ipairs(Writable(noted, me, faction, true)) do
+		if not (c.name == myName and R.ServerKey(c.realm) == here) then
+			out[#out + 1] = c
+		end
+	end
 	local known = {}
 	if myName then
 		known[myName] = true
 	end
 	for _, c in pairs(noted) do
 		if type(c) == "table" and type(c.name) == "string" then
-			local theirs = RealmKey(c.realm)
+			local theirs = R.ServerKey(c.realm)
 			known[c.name .. "-" .. (theirs or "")] = true
 			if theirs == nil or theirs == here then
 				known[c.name] = true
@@ -486,10 +516,31 @@ local function Button()
 	return button
 end
 
+-- (2.1.61; the German player's screenshot: right of the To field the button stood on the postage's label --
+-- "Versand:" is longer than "Postage:") the To field narrower by the button's room while the button shows, so it sits
+-- between the field and the label; the field's own width back when it does not. Its width read once, while the mailbox
+-- shows (laid out then)
+function R.Room(on)
+	local to = rawget(_G, "SendMailNameEditBox")
+	if type(to) ~= "table" or not to.GetWidth then
+		return
+	end
+	if not R.toWidth then
+		local w = Num(to:GetWidth())
+		if not w or w <= R.SIZE * 3 then
+			return
+		end
+		R.toWidth = w
+	end
+	to:SetWidth(on and (R.toWidth - R.SIZE - R.GAP) or R.toWidth)
+end
+
 local function Show()
-	local b = (M.isEnabled and not Safe.GamepadUI()) and Button() or button
+	local on = M.isEnabled and not Safe.GamepadUI()
+	local b = on and Button() or button
 	if b then
-		b:SetShown(M.isEnabled and not Safe.GamepadUI())
+		b:SetShown(on)
+		R.Room(on)
 	end
 end
 
