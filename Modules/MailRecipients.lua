@@ -14,7 +14,8 @@
 --                        realm, and the To field gets the game's own address for it (R.Address, below): a bare
 --                        name there would go to whoever bears that name on your realm. (2.1.61) Another realm is
 --                        another server: WoW Forever names its layers as realms ("CAMWOW EU5 Realm 5 PvE" and
---                        "... Realm 7 ..."), and a layer is left out of the comparison (R.ServerKey)
+--                        "CAMWOW EU4 Realm 1 PvE": one EU server), and the layer is left out of the comparison
+--                        (R.ServerKey)
 -- What it keeps, account-wide in its own settings (`keep`: never in a profile or a share string, as Services' learned
 -- services), only on this computer:
 --   alts       ["Name-Realm"] = { name (the full name, first name and surname), realm, class (the class's token),
@@ -116,16 +117,20 @@ local function RealmKey(realm)
 	return type(realm) == "string" and (realm:gsub("%s", "")) or nil
 end
 
--- (2.1.61) a realm without its layer: WoW Forever names each layer of a server a realm of its own -- the German
+-- (2.1.61) a realm without its layer: WoW Forever names each layer of its server a realm of its own -- the German
 -- player's /mello mail names had a friend's character on "CAMWOW EU5 Realm 7 PvE", their screenshot a day later the same
--- character on "CAMWOW EU5 Realm 5 PvE" -- so "Realm <n>" is left out: "CAMWOW EU5 PvE". Characters of one server get
--- a letter by their bare name (the player: "same faction, I can still send"); the realm shown and put in the address
--- only for another server's ("CAMWOW EU4 ...")
+-- character on "CAMWOW EU5 Realm 5 PvE"; and "CAMWOW EU4 Realm 1 PvE" is one more (the player: "my Battle.net friends
+-- and I play on one and the same EU mega server; the layers are shown nowhere", a letter to "Lilei Lilei-CAMWOW..."
+-- refused, to "Lilei Lilei" sent). So the shard and the layer, "EU<n>" and "Realm <n>", are left out: "CAMWOW PvE".
+-- Characters of one server get a letter by their bare name; the realm shown and put in the address only for a realm
+-- that differs past those
 function R.ServerKey(realm)
 	if type(realm) ~= "string" then
 		return nil
 	end
-	return RealmKey((realm:gsub("%s+[Rr]ealm%s+%d+", "")))
+	local server = realm:gsub("%s+[Rr]ealm%s+%d+", "")
+	server = server:gsub("%s+%a%a%d+", "")
+	return RealmKey(server)
 end
 
 local function Me()
