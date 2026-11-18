@@ -51,7 +51,8 @@ Guide.NEXT_MAX = 5
 -- "Skip this step" box under its lines) a reader's step buttons, steps.nav: Back runs the guide's own step back, Skip
 -- its own skip -- ahead: the guide is looking at an earlier step, and the arrow walks forward as its own window's
 -- does; the guide read again a frame later (its own update may wait for its next one)
-local function StepButtons(reader, back, skip, ahead)
+-- (2.1.61, #40) `hints`: { back, skip } a second line under each arrow's tooltip (RestedXP's: Back only looks)
+local function StepButtons(reader, back, skip, ahead, hints)
 	if type(back) ~= "function" and type(skip) ~= "function" then
 		return nil
 	end
@@ -61,7 +62,8 @@ local function StepButtons(reader, back, skip, ahead)
 			C_Timer.After(0, function() Guide.Changed(reader) end)
 		end or nil
 	end
-	return { Back = Run(back), Skip = Run(skip), ahead = ahead and true or nil, name = reader.name }
+	return { Back = Run(back), Skip = Run(skip), ahead = ahead and true or nil, name = reader.name,
+		backHint = hints and hints.back, skipHint = hints and hints.skip }
 end
 
 -- (a step's buttons in its signatures: one shown or gone, or Skip turned into a walk forward, is a change)
@@ -788,6 +790,13 @@ do
 
 	-- (2.1.61, #40; the German player's test: RestedXP's own "Go to step" moved on from a done step at once, as Back
 	-- did -- their pick: Back only looks back) a step that shows in the tracker: one line of text at least
+	-- (the German player: "the tooltip should say it is about looking back and ahead") the arrows' second lines
+	rxp.HINTS = {
+		live = { back = "Shows the step before here, to look at. RestedXP stays on its own step." },
+		looking = { back = "Shows the step before here, to look at. RestedXP stays on its own step.",
+			skip = "Shows the next step here, back up to RestedXP's own step." },
+	}
+
 	function rxp.Shows(step)
 		for _, el in ipairs(type(step) == "table" and type(step.elements) == "table" and step.elements or {}) do
 			if Usable(el) then
@@ -1293,7 +1302,7 @@ do
 			elseif now then
 				set(now + 1)
 			end
-		end, view ~= nil)
+		end, view ~= nil, rxp.HINTS[view and "looking" or "live"])
 		return { title = (view or n) and W.Tr("%s - step %s"):format(title, view or n) or title, nav = nav,
 			lines = lines, upcoming = not view and rxp.Upcoming(R, guide, steps, cdata) or nil,
 			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",

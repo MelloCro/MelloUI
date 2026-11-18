@@ -3943,6 +3943,12 @@ do
 			local c = MelloUI.Look.TipPalette().text   -- (a hint: small text is never mutedText)
 			GameTooltip:AddLine(nav.name, c[1], c[2], c[3], true)
 		end
+		-- (2.1.61, #40) the guide's own word on what the arrow does (RestedXP's Back only looks back)
+		local hint = nav and (self.back and nav.backHint or nav.skipHint)
+		if hint then
+			local c = MelloUI.Look.TipPalette().text
+			GameTooltip:AddLine(W.Tr(hint), c[1], c[2], c[3], true)
+		end
 		GameTooltip:Show()
 	end
 	local function Leave(self)

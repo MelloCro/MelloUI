@@ -3888,6 +3888,13 @@ Lang:Add("deDE", {
 	["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "Oldschool: Die Quest-Animationen tragen dein Rahmen-Set: das Symbol im Ring des Sets, die Worte auf einer Tafel aus dem Rahmen des Sets, in gemaltem Licht.", -- draft
 	["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "Oldschool: Fortschrittsbalken tragen den Rahmen deines Rahmen-Sets statt der Klammer mit Rautenkappen, und Listenzeilen sind ruhige Linien auf dunklem Grund statt dicker Goldbalken.", -- draft
 	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: Neue Rahmen für die Einheitenfenster, den Zauberbalken, die Persönliche Anzeige, die Namensplaketten und den Chat, in drei Sets zur Wahl unter Ränder > Rahmen-Set: Vergoldeter Stein, Geschmiedetes Eisen und Geschnitztes Holz.", -- draft
+	-- the guides' step buttons in the Quest Tracker (Modules/QuestTracker.lua; 2.1.61, #40: RestedXP's Back only looks)
+	["%s - step %s"] = "%s – Schritt %s", -- draft
+	["Back a step"] = "Einen Schritt zurück", -- draft
+	["Forward a step"] = "Einen Schritt vor", -- draft
+	["Skip this step"] = "Diesen Schritt überspringen", -- draft
+	["Shows the step before here, to look at. RestedXP stays on its own step."] = "Zeigt hier den vorigen Schritt zum Ansehen. RestedXP bleibt auf seinem eigenen Schritt.", -- draft
+	["Shows the next step here, back up to RestedXP's own step."] = "Zeigt hier den nächsten Schritt, bis zurück zu RestedXPs eigenem Schritt.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
