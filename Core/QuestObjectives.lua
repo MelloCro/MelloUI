@@ -272,14 +272,20 @@ function QO.ReadCounts()
 				was = {}
 				L.counts[questID] = was
 			end
-			local data = learnNow and DataOf(questID) or nil
-			local itemLine = data and QO.ItemLine(data, lines) or nil
+			-- (2.1.60) the quest's data asked for only when one of its counts went up: this read comes after every change
+			-- of the log, and asked for every quest of the log it was the conversion of them all each time (QuestSource)
+			local data, itemLine, asked
 			for _, t in ipairs(lines) do
 				local i, have = t[3], t[7]
 				if type(have) == "number" then
 					local before = was[i]
 					was[i] = have
 					if learnNow and before and have > before then
+						if not asked then
+							asked = true
+							data = DataOf(questID)
+							itemLine = data and QO.ItemLine(data, lines) or nil
+						end
 						local placed = false
 						for _, entry in ipairs(data or {}) do
 							if QO.Match(entry, lines, itemLine) == t then

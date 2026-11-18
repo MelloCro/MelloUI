@@ -2995,6 +2995,7 @@ Lang:Add("koKR", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "가방 창: 착용 중인 장비를 + 칸에 놓으면 빈 칸으로 들어갑니다. 전에는 다시 착용되었습니다.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "던전 정보: 던전, 지역, 우두머리 이름이 클라이언트 언어로 표시되고, 우두머리 줄의 전리품에 아이템 툴팁이 나옵니다.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "언어: 독일어를 독일 플레이어가 한 줄씩 검수했고, 대화창과 지도, 메뉴의 프랑스어가 늘었습니다.", -- draft
+	["Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished."] = "Questie와 함께하는 퀘스트: 아이템을 줍거나 처치가 집계되거나 퀘스트를 끝낼 때마다 생기던 끊김이 사라졌습니다.", -- draft
 	-- the options new in 2.1.60 (the Personal Display's Mana Regen Pause and Druid Forms, Restock's Shopping List Below)
 	["Mana Regen Pause"] = "마나 재생 멈춤", -- draft
 	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "주문에 마나를 쓰면 정신력에 의한 마나 재생이 5초 동안 멈춥니다. 그동안 자원 바를 따라 빛이 흐르고, 재생이 다시 시작되면 바가 밝게 빛납니다.", -- draft

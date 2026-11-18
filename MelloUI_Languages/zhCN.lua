@@ -2995,6 +2995,7 @@ Lang:Add("zhCN", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "背包窗口：把身上穿着的装备放到 + 格上，会进入一个空格。以前它会重新穿回去。", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "地下城信息：地下城、区域和首领以客户端语言命名，首领行里的掉落会显示物品提示。", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "语言：德语已由一位德国玩家逐行检查，聊天、地图和菜单有了更多法语。", -- draft
+	["Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished."] = "搭配 Questie 做任务：每次拾取物品、击杀计数或完成任务时不再卡顿。", -- draft
 	-- the options new in 2.1.60 (the Personal Display's Mana Regen Pause and Druid Forms, Restock's Shopping List Below)
 	["Mana Regen Pause"] = "法力回复暂停", -- draft
 	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "施放消耗法力的法术后，精神在五秒内不会回复你的法力。这段时间里一道光沿着能量条移动，回复重新开始时能量条会亮起。", -- draft

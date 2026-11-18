@@ -178,6 +178,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "2.1.60", lines = {
+		"Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished.",
 		"Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate.",
 		"Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms.",
 		"Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up.",

@@ -2,6 +2,7 @@
 
 ## 2.1.60
 
+- Fixed: with Questie installed, the game hitched at every quest update (an item picked up, a kill counted, a quest finished). MelloUI read the places of every quest in your log from Questie's data again each time; it keeps them now.
 - Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds Spirit does not regenerate your mana, and the bar lights up when regeneration starts again (Unit & Group Frames > Personal > Behaviour).
 - Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers it does not show right now: energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. /mello personal druid shows them on any class.
 - Restock: Shopping List Below. The shopping list at a merchant has a share of its own, apart from Remind Below, so it can open sooner than the reminder comes up. An item you are reminded of always opens it.

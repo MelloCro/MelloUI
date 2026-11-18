@@ -534,7 +534,16 @@ QS.GRID, QS.CAP = 40, 30
 QS.SOURCES = 4       -- the sources named per objective
 QS.DROPPERS = 12     -- the creatures and objects an item's places are gathered from, at most
 QS.WORLD_DROP = 20   -- more kinds of creature than this drop it: a world drop (the build tool's rule), sold: its vendors
-local objKept, objOrder, OBJ_KEPT = {}, {}, 4
+-- (2.1.60; two players, 2026-11-18: "getting lots of hitching ingame now", "fps dropping each time when i get a quest
+-- item") the conversions kept: the whole quest log's and some more. Four were (2.1.39), and the log's readers -- the
+-- counts' read, the minimap's and the maps' marks, Route -- ask for every quest of the log after each change of it:
+-- with more than four quests every ask converted again, every spawn QuestieDB has for every quest, twice a change
+-- (measured with 12 quests: 24 conversions and 5.6 MB of garbage in two frames for one item picked up). QuestieDB does
+-- not change in a session, so a conversion stays good; past OBJ_KEPT the one asked for longest ago goes. A quest with
+-- nothing placed is remembered so for OBJ_NONE seconds only (a place the client cannot name yet at the login).
+--   objKept[questID] = { entries or false, sources, used (objUsed at its last ask), again (GetTime: a `false` asked anew) }
+local objKept, OBJ_KEPT, OBJ_NONE = {}, 48, 30
+local objCount, objUsed = 0, 0
 
 -- every spawn of `id` (an Npc or Object of QuestieDB) into `into` as { world map, x, y }; how many
 local function Spawns(entity, id, into)
@@ -741,28 +750,59 @@ local function ObjectivesOf(questID)
 	if not L or type(questID) ~= "number" then
 		return nil
 	end
+	local now = type(GetTime) == "function" and GetTime() or 0
 	local kept = objKept[questID]
+	objUsed = objUsed + 1
 	if kept then
-		return kept[1], kept[2]
-	end
-	-- (its own "is there such a quest", where it has one: a release without it is asked for the quest itself)
-	local Exists = L.Quest.Exists
-	if type(Exists) == "function" then
-		local okE, exists = pcall(Exists, questID)
-		if not okE or not exists then
+		kept[3] = objUsed
+		if kept[1] then
+			return kept[1], kept[2]
+		elseif now < kept[4] then
 			return nil
 		end
 	end
-	local ok, entries, sources = pcall(Convert, L, questID)
-	if not ok or type(entries) ~= "table" or #entries == 0 then
-		return nil
+	-- (its own "is there such a quest", where it has one: a release without it is asked for the quest itself)
+	local Exists = L.Quest.Exists
+	local known = true
+	if type(Exists) == "function" then
+		local okE, exists = pcall(Exists, questID)
+		known = (okE and exists) and true or false
 	end
-	objKept[questID] = { entries, sources }
-	objOrder[#objOrder + 1] = questID
-	if #objOrder > OBJ_KEPT then
-		objKept[table.remove(objOrder, 1)] = nil
+	local entries, sources
+	if known then
+		local ok, made, from = pcall(Convert, L, questID)
+		if ok and type(made) == "table" and #made > 0 then
+			entries, sources = made, from
+		end
 	end
-	return entries, sources
+	if not kept then
+		-- room for it: the one asked for longest ago goes (a scan of the kept ones, only when a new quest comes in full)
+		if objCount >= OBJ_KEPT then
+			local oldest, least
+			for id, k in pairs(objKept) do
+				if not least or k[3] < least then
+					oldest, least = id, k[3]
+				end
+			end
+			if oldest then
+				objKept[oldest] = nil
+				objCount = objCount - 1
+			end
+		end
+		kept = { false, nil, objUsed, 0 }
+		objKept[questID] = kept
+		objCount = objCount + 1
+	end
+	if entries then
+		kept[1], kept[2], kept[4] = entries, sources, 0
+		return entries, sources
+	end
+	kept[1], kept[2], kept[4] = false, nil, now + OBJ_NONE
+	return nil
+end
+-- (the tests) how many conversions are kept, and the most
+function QS.ObjectivesKept()
+	return objCount, OBJ_KEPT
 end
 
 function QS.Objectives(questID)
