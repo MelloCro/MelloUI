@@ -791,6 +791,7 @@ do
 	-- (2.1.61, #40; the German player's test: RestedXP's own "Go to step" moved on from a done step at once, as Back
 	-- did -- their pick: Back only looks back) a step that shows in the tracker: one line of text at least
 	-- (the German player: "the tooltip should say it is about looking back and ahead") the arrows' second lines (Back: a step not done is gone back to, a done one looked at)
+	rxp.SETTLE = 0.5   -- (Back: seconds before RestedXP is asked again whether it stayed on the step gone back to)
 	rxp.HINTS = {
 		live = { back = "The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step." },
 		looking = { back = "The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step.",
@@ -1287,14 +1288,24 @@ do
 			if not i then
 				return
 			end
-			-- (the German player's pick: both) a step not done yet -- one skipped -- RestedXP goes back to for real
-			-- (its own step set, nothing to move it on), the look let go; a done one only looked at
-			if all[i].completed ~= true then
-				rxp.view, rxp.viewFrom = nil, nil
-				set(i)
-			else
+			-- (the German player's pick: both) a step not done yet -- one skipped -- RestedXP goes back to for real; a
+			-- done one only looked at. RestedXP marks a step completed only once it has checked it this session (their
+			-- test after a reload: Back to an earlier, unmarked step, and RestedXP ran on to 65 again), so a step not
+			-- marked is gone back to and asked again a moment later: RestedXP still on it, it was open; moved on, it
+			-- was done, and it is looked at instead
+			if all[i].completed == true then
 				rxp.view, rxp.viewFrom = i, Now()
+				return
 			end
+			rxp.view, rxp.viewFrom = nil, nil
+			set(i)
+			C_Timer.After(rxp.SETTLE, function()
+				local now = Now()
+				if now and now ~= i then
+					rxp.view, rxp.viewFrom = i, now
+					Guide.Changed(rxp)
+				end
+			end)
 		end, function()
 			local now = Now()
 			if rxp.view and now then
