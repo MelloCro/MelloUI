@@ -8,6 +8,7 @@
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
+local W = MelloUI.Widgets
 local Perf = MelloUI.Perf:Scope("Stats")
 local C_Timer = Perf.C_Timer
 
@@ -196,11 +197,11 @@ Perf.SetScript(frame, "OnEnter", function(self)
 	-- the FPS and latency figures keep their good -> bad gradient
 	local P = MelloUI.Look.TipPalette()
 	local gold, ink = P.selectedTrim, P.text
-	GameTooltip:AddLine("MelloUI Stats", gold[1], gold[2], gold[3])
-	GameTooltip:AddDoubleLine("FPS", string.format("%d", math.floor((GetFramerate() or 0) + 0.5)), ink[1], ink[2], ink[3], Gradient(GetFramerate() or 0, 60, 20))
-	GameTooltip:AddDoubleLine("Home latency", string.format("%d ms", home or 0), ink[1], ink[2], ink[3], Gradient(home or 0, 50, 300))
-	GameTooltip:AddDoubleLine("World latency", string.format("%d ms", world or 0), ink[1], ink[2], ink[3], Gradient(world or 0, 50, 300))
-	GameTooltip:AddDoubleLine("Bandwidth", string.format("%.1f KB/s in, %.1f KB/s out", bandwidthIn or 0, bandwidthOut or 0),
+	GameTooltip:AddLine(W.Tr("MelloUI Stats"), gold[1], gold[2], gold[3])
+	GameTooltip:AddDoubleLine(W.Tr("FPS"), string.format("%d", math.floor((GetFramerate() or 0) + 0.5)), ink[1], ink[2], ink[3], Gradient(GetFramerate() or 0, 60, 20))
+	GameTooltip:AddDoubleLine(W.Tr("Home latency"), string.format("%d ms", home or 0), ink[1], ink[2], ink[3], Gradient(home or 0, 50, 300))
+	GameTooltip:AddDoubleLine(W.Tr("World latency"), string.format("%d ms", world or 0), ink[1], ink[2], ink[3], Gradient(world or 0, 50, 300))
+	GameTooltip:AddDoubleLine(W.Tr("Bandwidth"), W.Tr("%.1f KB/s in, %.1f KB/s out"):format(bandwidthIn or 0, bandwidthOut or 0),
 		ink[1], ink[2], ink[3], ink[1], ink[2], ink[3])
 	-- with the route data companion's once it is loaded (MelloUI:MemoryKB,
 	-- Core/Companions.lua): the data lives next door now, and MelloUI's own
@@ -211,7 +212,7 @@ Perf.SetScript(frame, "OnEnter", function(self)
 		kb = GetAddOnMemoryUsage(ADDON_NAME) or 0
 	end
 	if kb then
-		GameTooltip:AddDoubleLine("MelloUI memory", string.format("%.1f MB", kb / 1024), ink[1], ink[2], ink[3], ink[1], ink[2], ink[3])
+		GameTooltip:AddDoubleLine(W.Tr("MelloUI memory"), string.format("%.1f MB", kb / 1024), ink[1], ink[2], ink[3], ink[1], ink[2], ink[3])
 	end
 	GameTooltip:Show()
 end)

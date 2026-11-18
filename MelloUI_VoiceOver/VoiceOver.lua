@@ -2680,7 +2680,7 @@ local function CreateReadButton()
 	readButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 	readButton:SetSize(72, 22)
 	readButton:SetPoint("RIGHT", frame, "RIGHT", -11, 4)
-	readButton:SetText("Read")
+	readButton:SetText(MelloUI.Widgets.Tr("Read"))
 	Perf.SetScript(readButton, "OnClick", function()
 		M.ReadToggle(QuestMapFrame.DetailsFrame.questID)
 	end)
@@ -2699,7 +2699,7 @@ local function CreateReadButton()
 		local reading = IsReadingLog()
 		if reading ~= self.reading then
 			self.reading = reading
-			self:SetText(reading and "Stop" or "Read")
+			self:SetText(MelloUI.Widgets.Tr(reading and "Stop" or "Read"))
 		end
 	end)
 end

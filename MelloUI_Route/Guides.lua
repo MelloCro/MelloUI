@@ -828,7 +828,7 @@ do
 		end
 		look.holder:Show()
 		local text = type(title) == "table" and title.text and title.text.GetText and Plain(title.text:GetText())
-		look.title:SetText(type(text) == "string" and text ~= "" and text or "Active Targets")
+		look.title:SetText(type(text) == "string" and text ~= "" and text or W.Tr("Active Targets"))
 		if type(title) == "table" and title.SetAlpha then
 			title:SetAlpha(0)
 		end
@@ -1411,7 +1411,7 @@ do
 		local function Guides()
 			local order, guides = rawget(t, "guideOrder"), rawget(t, "guides")
 			if type(order) ~= "table" or type(guides) ~= "table" or not Menu(function(_, root)
-				root:CreateTitle("Follow The Arrow")
+				root:CreateTitle(W.Tr("Follow The Arrow"))
 				local current = type(char) == "table" and char.guide
 				for _, id in ipairs(order) do
 					local g = guides[id]
@@ -1423,7 +1423,7 @@ do
 					end
 				end
 				root:CreateDivider()
-				root:CreateButton("Settings", Settings)
+				root:CreateButton(W.Tr("Settings"), Settings)
 			end) then
 				Settings()
 			end

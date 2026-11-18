@@ -130,10 +130,13 @@ MelloUI.Widgets = W
 -- field, not a local: Widgets.lua's headroom. A world without Core.lua's: the text as it is)
 local Lang = MelloUI.Lang
 local languageReady = false
+-- Saved variables can arrive after ADDON_LOADED on this client. Do not
+-- choose and cache a language from Core's temporary database: wait until
+-- the saved language preference is available.
 W.Tr = function(text)
-	if Lang and not languageReady then
-		languageReady = true
+	if Lang and not languageReady and type(MelloUI.db) == "table" and not MelloUI.dbIsTemporary then
 		Lang:Load()
+		languageReady = true
 	end
 	return Lang and Lang.T(text) or text
 end
