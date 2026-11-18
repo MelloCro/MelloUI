@@ -160,7 +160,9 @@ local M = MelloUI:RegisterModule("Meter", {
 		values = true,
 		party = true,
 		bar = true,
-		metric = "auto",
+		-- (2.1.61) Race Bar Shows: Auto or Your Pick, and Your Pick's rows (MeterBar.lua's Kinds; the old one Race Bar
+		-- Shows, metric, read once into them: Bar.Migrate)
+		raceShows = "pick", raceDps = true, raceHps = false, raceThreat = false,
 		pins = T.PINS,
 		barWidth = 260,
 		-- (onelook B "Rail", 2026-10-15: Race Bar Thickness, your share's height
@@ -182,10 +184,17 @@ local M = MelloUI:RegisterModule("Meter", {
 		  desc = "A damage or healing number on each raid-style frame. Point at a frame for all three." },
 		{ type = "toggle", key = "bar", name = "Race Bar",
 		  desc = "In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers." },
-		{ type = "dropdown", key = "metric", name = "Race Bar Shows",
-		  values = { { value = "auto", label = "Auto" }, { value = "dps", label = "Damage" }, { value = "hps", label = "Healing" },
-			{ value = "threat", label = "Threat" } },   -- (2.1.61, #26: Modules/MeterBar.lua's Threat)
-		  desc = "What the race bar compares. Auto: healing as a healer, damage otherwise. Threat: in a group, everyone's threat on your target; solo, damage." },
+		-- (2.1.61; #26 and the German player: "leave it to the player what to show, damage, healing and threat?", their
+		-- picks: stacked rows, Auto kept, damage alone by default)
+		{ type = "dropdown", key = "raceShows", name = "Race Bar Shows", new = "2.1.61",
+		  values = { { value = "auto", label = "Auto" }, { value = "pick", label = "Your Pick" } },
+		  desc = "Auto: healing as a healer, damage otherwise, and in a group a threat row under it for a tank or a damage dealer. Your Pick: the rows ticked below, one under the other." },
+		{ type = "toggle", key = "raceDps", name = "Damage", new = "2.1.61",
+		  desc = "A row of your group's damage." },
+		{ type = "toggle", key = "raceHps", name = "Healing", new = "2.1.61",
+		  desc = "A row of your group's healing." },
+		{ type = "toggle", key = "raceThreat", name = "Threat", new = "2.1.61",
+		  desc = "In a group, a row of everyone's threat on your target. Its right end is where you pull." },
 		{ type = "slider", key = "pins", name = "Race Bar Pins", min = T.PINS_MIN, max = T.PINS_MAX, step = 1,
 		  desc = "How many players the race bar shows. You are always on it." },
 		{ type = "slider", key = "barWidth", name = "Race Bar Width", min = 150, max = 600, step = 10,
@@ -2171,7 +2180,7 @@ function M:OnSettingChanged(key, value, db)
 		end
 		wipe(runCache)
 		MelloUI:Fire("meter", "clear")
-	elseif key == "bar" or key == "metric" or key == "pins" or key == "barWidth" or key == "railHeight" then
+	elseif key == "bar" or key == "raceShows" or key == "raceDps" or key == "raceHps" or key == "raceThreat" or key == "pins" or key == "barWidth" or key == "railHeight" then
 		if Meter.Bar and Meter.Bar.Apply then
 			Meter.Bar.Apply()
 		end

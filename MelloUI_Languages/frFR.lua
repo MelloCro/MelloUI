@@ -982,7 +982,14 @@ Lang:Add("frFR", {
 	["Race Bar"] = "Barre de performance",
 	["In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers."] = "En combat, une barre de performance des dégâts de votre groupe, avec votre score mis en évidence. Survolez-la pour voir les valeurs de chaque joueur.",
 	["Race Bar Shows"] = "La barre de performance montre",
-	["What the race bar compares. Auto: healing as a healer, damage otherwise. Threat: in a group, everyone's threat on your target; solo, damage."] = "Ce que compare la barre de performance. Auto : les soins en soigneur, sinon les dégâts. Menace : en groupe, la menace de chacun sur votre cible ; seul, les dégâts.", -- draft
+	-- (2.1.61) Race Bar Shows: Auto or Your Pick, its rows (Modules/Meter.lua, MeterBar.lua's Kinds)
+	["Your Pick"] = "Votre choix", -- draft
+	["Auto: healing as a healer, damage otherwise, and in a group a threat row under it for a tank or a damage dealer. Your Pick: the rows ticked below, one under the other."] = "Auto : les soins en soigneur, sinon les dégâts, et en groupe une rangée de menace en dessous pour un tank ou un personnage de dégâts. Votre choix : les rangées cochées ci-dessous, l’une sous l’autre.", -- draft
+	["A row of your group's damage."] = "Une rangée des dégâts de votre groupe.", -- draft
+	["A row of your group's healing."] = "Une rangée des soins de votre groupe.", -- draft
+	["In a group, a row of everyone's threat on your target. Its right end is where you pull."] = "En groupe, une rangée de la menace de chacun sur votre cible. Son extrémité droite est le point où vous prenez l’aggro.", -- draft
+	["Only with Race Bar Shows: Your Pick"] = "Seulement avec La barre de performance montre : Votre choix", -- draft
+	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "Ce que compare la barre de performance. Auto : les soins en soigneur, sinon les dégâts.",
 	["Auto"] = "Auto",
 	["Damage"] = "Dégâts",
 	["Healing"] = "Soins",
