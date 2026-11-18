@@ -790,10 +790,10 @@ do
 
 	-- (2.1.61, #40; the German player's test: RestedXP's own "Go to step" moved on from a done step at once, as Back
 	-- did -- their pick: Back only looks back) a step that shows in the tracker: one line of text at least
-	-- (the German player: "the tooltip should say it is about looking back and ahead") the arrows' second lines
+	-- (the German player: "the tooltip should say it is about looking back and ahead") the arrows' second lines (Back: a step not done is gone back to, a done one looked at)
 	rxp.HINTS = {
-		live = { back = "Shows the step before here, to look at. RestedXP stays on its own step." },
-		looking = { back = "Shows the step before here, to look at. RestedXP stays on its own step.",
+		live = { back = "The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step." },
+		looking = { back = "The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step.",
 			skip = "Shows the next step here, back up to RestedXP's own step." },
 	}
 
@@ -1245,7 +1245,8 @@ do
 		-- (its step buttons. 2.1.61, #40: Back only LOOKS back -- RestedXP checks its active step's elements and moves on
 		-- from one already done at once, so its own "Go to step" lands on the step after again (the German player's
 		-- test of its window) -- the step before is shown in the tracker, its lines without boxes, RestedXP's own step
-		-- untouched; the arrow forward walks back up to it (ahead), then skips as before with RestedXP's own step set.
+		-- untouched; the arrow forward walks back up to it (ahead), then skips as before with RestedXP's own step set. A step not
+		-- done yet (one skipped) RestedXP itself goes back to, as before: nothing moves it on there (the player: "both").
 		-- A sticky step -- one RestedXP passes on to the next -- and one with no line left out; the current step read
 		-- at the click)
 		local set = type(R.SetStep) == "function" and R.SetStep
@@ -1283,7 +1284,15 @@ do
 		local nav = set and all and n and StepButtons(rxp, Before(view or n) and function()
 			local from = rxp.view or Now()
 			local i = Before(from)
-			if i then
+			if not i then
+				return
+			end
+			-- (the German player's pick: both) a step not done yet -- one skipped -- RestedXP goes back to for real
+			-- (its own step set, nothing to move it on), the look let go; a done one only looked at
+			if all[i].completed ~= true then
+				rxp.view, rxp.viewFrom = nil, nil
+				set(i)
+			else
 				rxp.view, rxp.viewFrom = i, Now()
 			end
 		end, function()

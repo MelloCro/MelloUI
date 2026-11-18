@@ -3893,7 +3893,7 @@ Lang:Add("deDE", {
 	["Back a step"] = "Einen Schritt zurück", -- draft
 	["Forward a step"] = "Einen Schritt vor", -- draft
 	["Skip this step"] = "Diesen Schritt überspringen", -- draft
-	["Shows the step before here, to look at. RestedXP stays on its own step."] = "Zeigt hier den vorigen Schritt zum Ansehen. RestedXP bleibt auf seinem eigenen Schritt.", -- draft
+	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "Der vorige Schritt: Ist er noch nicht erledigt, geht RestedXP zu ihm zurück. Ein erledigter wird hier nur angezeigt, und RestedXP bleibt auf seinem eigenen Schritt.", -- draft
 	["Shows the next step here, back up to RestedXP's own step."] = "Zeigt hier den nächsten Schritt, bis zurück zu RestedXPs eigenem Schritt.", -- draft
 })
 

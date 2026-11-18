@@ -4085,7 +4085,7 @@ Lang:Add("frFR", {
 	["Back a step"] = "Revenir à l’étape précédente",
 	["Forward a step"] = "Passer à l’étape suivante",
 	-- (2.1.61, #40) RestedXP's Back only looks
-	["Shows the step before here, to look at. RestedXP stays on its own step."] = "Affiche ici l’étape précédente, pour la consulter. RestedXP reste sur sa propre étape.", -- draft
+	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "L’étape précédente : RestedXP y revient tant qu’elle n’est pas faite. Une étape faite est seulement affichée ici, et RestedXP reste sur sa propre étape.", -- draft
 	["Shows the next step here, back up to RestedXP's own step."] = "Affiche ici l’étape suivante, jusqu’à revenir à l’étape de RestedXP.", -- draft
 	["Click: the way there"] = "Clic : afficher l’itinéraire",
 	["This guide step has no place to mark on the map."] = "Cette étape du guide n’indique aucun lieu à marquer sur la carte.",
