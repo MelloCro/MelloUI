@@ -177,6 +177,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.62", lines = {
+		"Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row.",
+		"Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it.",
+		"More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers.",
+		"Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before.",
+	} },
 	{ version = "2.1.61", lines = {
 		"Loot rolls in a window of their own: every pick and number, and the item flies to the winner.",
 		"Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs.",
@@ -208,10 +214,6 @@ local CHANGELOG = {
 		"Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over.",
 		"Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too.",
 		"Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood.",
-	} },
-	{ version = "2.1.57", lines = {
-		"Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap.",
-		"Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap.",
 	} },
 }
 local LINKS = {

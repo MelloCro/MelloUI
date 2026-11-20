@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.62
+
+- Damage Meter: the race bar can show more than one row. Race Bar Shows has a new choice, Your Pick, with ticks for Damage, Healing and Threat, one row under the other. Auto stays the default and stays one row. Threat shows in a group or with your pet out, and its line turns from yellow to red as you get close to pulling.
+- Mail Recipients: the button beside the To field opens a list beside the Send Mail window in place of its menu: your characters on top, your Battle.net friends under them, each friend unfolding their characters in place. A second click closes it, and it stays open or closed as you left it.
+- French: Edit Layout's controls, the Quest List's filters, Follow The Arrow's menu, Voice Over's Read and Stop buttons, the Stats tooltip and the boat route markers are translated.
+- Fixed in the Oldschool look: on the party frames the portrait's ring cut across the level badge. The badge and its border are drawn over the ring now.
+- Fixed: a text drawn very early at login could lock MelloUI to English for that session although another language was chosen. The language is read once your saved settings are there.
+- Fixed in Mail Recipients: a friend's character on another layer of your own server counted as being on another realm, and the letter got an address the game refused.
+
 ## 2.1.61
 
 - Loot rolls have a window of their own in every look: what dropped, everyone's pick and number, your Need, Greed and Pass, and a raid's forty in a scrolling table. A favourite from your Dungeon Info list stands out, and the item flies to the winner's frame. Under Master Loot it shows what the loot master hands out, and the loot master gets Roll and Assign for each item on the boss.

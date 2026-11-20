@@ -830,6 +830,14 @@ Lang:Add("zhCN", {
 	["Race Bar"] = "竞速条", -- draft
 	["In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers."] = "战斗中显示小队伤害的竞速条，突出显示你。指向它查看所有人的数字。", -- draft
 	["Race Bar Shows"] = "竞速条显示", -- draft
+	["Auto: one row, healing as a healer and damage otherwise. Your Pick: the rows ticked below, one under the other."] = "自动：一行，治疗职责显示治疗，否则显示伤害。自选：显示下方勾选的各行，上下排列。", -- draft
+	["Your Pick"] = "自选", -- draft
+	["A row of your group's damage."] = "一行显示队伍的伤害。", -- draft
+	["A row of your group's healing."] = "一行显示队伍的治疗。", -- draft
+	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "在队伍中或宠物在场时，一行显示所有人对你目标的仇恨。最右端即为你获得仇恨的位置。", -- draft
+	["Only with Race Bar Shows: Your Pick"] = "仅在“竞速条显示：自选”时", -- draft
+	["Current DPS"] = "当前每秒伤害", -- draft
+	["Current HPS"] = "当前每秒治疗", -- draft
 	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "竞速条比较的内容。自动：治疗者比较治疗，否则比较伤害。", -- draft
 	["Auto"] = "自动", -- draft
 	["Damage"] = "伤害", -- draft
@@ -2997,6 +3005,10 @@ Lang:Add("zhCN", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "背包窗口：把身上穿着的装备放到 + 格上，会进入一个空格。以前它会重新穿回去。", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "地下城信息：地下城、区域和首领以客户端语言命名，首领行里的掉落会显示物品提示。", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "语言：德语已由一位德国玩家逐行检查，聊天、地图和菜单有了更多法语。", -- draft
+	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "竞速条：新增“自选”，可将伤害、治疗和仇恨分行上下显示。“自动”仍是默认设置，仍为一行。", -- draft
+	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "邮件收件人：收件人栏旁的按钮会在发送邮件窗口旁打开一个列表。好友的角色就地展开，列表会保持你上次的打开或关闭状态。", -- draft
+	["More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers."] = "更多法语翻译：Edit Layout、任务列表的筛选、Follow The Arrow 的菜单、Voice Over 的按钮、Stats 的鼠标提示以及乘船路线标记。", -- draft
+	["Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before."] = "Oldschool 小队框体：等级徽章及其边框现在绘制在头像环之上。此前头像环会压在徽章上。", -- draft
 	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "拾取掷骰有了自己的窗口：每个人的选择和点数一目了然，物品会飞向赢家。", -- draft
 	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "任务追踪器中的 Polestar：点击目标行即可追踪对应任务。步骤会显示距离、任务物品，以及切换 Polestar 已打开指南标签页的按钮。", -- draft
 	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "任务追踪器中的 Polestar：步骤编号与 Polestar 窗口一致，指南区域在某些步骤不再消失。", -- draft
@@ -3018,6 +3030,7 @@ Lang:Add("zhCN", {
 	["Who was that again? One click and the letter has its name."] = "那个人叫什么来着？点一下，信上就有名字了。", -- draft
 	["Battle.net Friends' Characters"] = "战网好友的角色", -- draft
 	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "菜单中也会列出你的战网好友，以及游戏在他们游玩时显示过的角色。关闭：只列出你自己的角色，不记录好友的角色。", -- draft
+	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "列表也会显示你的 Battle.net 好友，以及游戏在他们游玩时显示过的角色。关闭：只显示你自己的角色，不记录好友的角色。", -- draft
 	["Recipients"] = "收件人", -- draft
 	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "选择你的一个角色或战网好友的角色作为这封信的收件人。", -- draft
 	["Your Characters"] = "你的角色", -- draft

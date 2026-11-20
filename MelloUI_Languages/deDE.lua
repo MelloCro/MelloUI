@@ -1158,7 +1158,7 @@ Lang:Add("deDE", {
 	["Race Bar Shows"] = "Die Rennleiste zeigt",
 	-- (2.1.61) Race Bar Shows: Auto or Your Pick, its rows (Modules/Meter.lua, MeterBar.lua's Kinds)
 	["Your Pick"] = "Eigene Wahl", -- draft
-	["Auto: healing as a healer, damage otherwise, and a threat row under it for a tank or a damage dealer in a group or with a pet out. Your Pick: the rows ticked below, one under the other."] = "Automatisch: Heilung als Heiler, sonst Schaden, und darunter eine Bedrohungsreihe für Tanks und Schadensverursacher in einer Gruppe oder mit Begleiter. Eigene Wahl: die unten angehakten Reihen, untereinander.", -- draft
+	["Auto: one row, healing as a healer and damage otherwise. Your Pick: the rows ticked below, one under the other."] = "Automatisch: eine Reihe, Heilung als Heiler und sonst Schaden. Eigene Wahl: die unten angehakten Reihen, untereinander.", -- draft
 	["A row of your group's damage."] = "Eine Reihe mit dem Schaden deiner Gruppe.", -- draft
 	["A row of your group's healing."] = "Eine Reihe mit der Heilung deiner Gruppe.", -- draft
 	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "In einer Gruppe oder mit deinem Begleiter eine Reihe mit der Bedrohung aller auf dein Ziel. Ihr rechtes Ende ist der Punkt, an dem du Aggro ziehst.", -- draft
@@ -3868,9 +3868,10 @@ Lang:Add("deDE", {
 	["off"] = "aus", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "Post-Empfänger", -- draft
-	["Beside the mailbox's Send Mail page, a list of your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Neben der Seite „Post versenden“ des Briefkastens eine Liste deiner Charaktere und der Charaktere deiner Battle.net-Freunde: Klicke einen an, und sein Name wird eingetragen.", -- draft
 	["Who was that again? One click and the letter has its name."] = "Wie hieß der noch gleich? Ein Klick, und der Brief hat seinen Empfänger.", -- draft
 	["Battle.net Friends' Characters"] = "Charaktere der Battle.net-Freunde", -- draft
+	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Ein Knopf neben dem An-Feld des Briefkastens listet deine Charaktere und die Charaktere deiner Battle.net-Freunde: Klicke einen an, und sein Name wird eingetragen.", -- draft
+	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Wähle einen deiner Charaktere oder den Charakter eines Battle.net-Freundes, an den dieser Brief gehen soll.", -- draft
 	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "Die Liste zeigt auch deine Battle.net-Freunde, jeden mit den Charakteren, die das Spiel von ihnen gezeigt hat, während sie spielten. Aus: nur deine eigenen Charaktere, und keine ihrer Charaktere werden gemerkt.", -- draft
 	["Recipients"] = "Empfänger", -- draft
 	["Your Characters"] = "Deine Charaktere", -- draft
@@ -3895,6 +3896,10 @@ Lang:Add("deDE", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Taschenfenster: Angelegte Ausrüstung, die du auf ein +-Feld ziehst, kommt in einen freien Platz. Vorher ging sie zurück an den Charakter.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Dungeon-Info: Dungeons, Gebiete und Bosse heißen wie in der Sprache deines Clients, und die Beute in einer Bosszeile zeigt ihren Gegenstands-Tooltip.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Sprachen: Deutsch Zeile für Zeile von einem deutschen Spieler geprüft, und mehr vom Chat, von der Karte und von den Menüs auf Französisch.", -- draft
+	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "Rennleiste: Die neue Auswahl „Eigene Wahl“ zeigt Schaden, Heilung und Bedrohung als Reihen untereinander. „Automatisch“ bleibt die Voreinstellung und bleibt eine Reihe.", -- draft
+	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "Post-Empfänger: Der Knopf neben „An“ öffnet eine Liste neben dem Fenster „Post versenden“. Freunde klappen ihre Charaktere an Ort und Stelle auf, und die Liste bleibt offen oder geschlossen, wie du sie verlassen hast.", -- draft
+	["More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers."] = "Mehr auf Französisch: Edit Layout, die Filter der Questliste, das Menü von Follow The Arrow, die Schaltflächen von Voice Over, der Stats-Tooltip und die Markierungen der Schiffsrouten.", -- draft
+	["Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before."] = "Oldschool-Gruppenfenster: Das Stufenabzeichen und sein Rand werden über dem Porträtring gezeichnet. Vorher verlief der Ring quer über das Abzeichen.", -- draft
 	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "Beutewürfe in einem eigenen Fenster: jede Wahl und jede Zahl, und der Gegenstand fliegt zum Gewinner.", -- draft
 	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "Polestar in der Questverfolgung: Klicke auf eine Zielzeile, um ihrer Quest zu folgen. Der Schritt zeigt seine Entfernung, seinen Questgegenstand und eine Schaltfläche für Polestars geöffnete Guide-Tabs.", -- draft
 	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "Polestar in der Questverfolgung: Die Schrittnummern stimmen mit Polestars Fenster überein, und der Guide-Abschnitt verschwindet bei manchen Schritten nicht mehr.", -- draft

@@ -830,6 +830,14 @@ Lang:Add("ruRU", {
 	["Race Bar"] = "Полоса гонки", -- draft
 	["In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers."] = "В бою — полоса гонки урона группы, вы выделены. Наведите, чтобы увидеть числа всех.", -- draft
 	["Race Bar Shows"] = "Полоса гонки показывает", -- draft
+	["Auto: one row, healing as a healer and damage otherwise. Your Pick: the rows ticked below, one under the other."] = "Авто: одна строка, исцеление для лекаря и урон в остальных случаях. Свой выбор: отмеченные ниже строки, одна под другой.", -- draft
+	["Your Pick"] = "Свой выбор", -- draft
+	["A row of your group's damage."] = "Строка с уроном вашей группы.", -- draft
+	["A row of your group's healing."] = "Строка с исцелением вашей группы.", -- draft
+	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "В группе или с призванным питомцем: строка с угрозой всех участников на вашей цели. Правый край означает, что вы срываете цель на себя.", -- draft
+	["Only with Race Bar Shows: Your Pick"] = "Только при «Полоса гонки показывает: Свой выбор»", -- draft
+	["Current DPS"] = "Текущий УВС", -- draft
+	["Current HPS"] = "Текущее ИВС", -- draft
 	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "Что сравнивает полоса гонки. Авто: исцеление у лекаря, иначе урон.", -- draft
 	["Auto"] = "Авто", -- draft
 	["Damage"] = "Урон", -- draft
@@ -2997,6 +3005,10 @@ Lang:Add("ruRU", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Окно сумок: надетая экипировка, брошенная на ячейку «+», попадает в свободную ячейку. Раньше она надевалась обратно.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Сведения о подземельях: подземелья, зоны и боссы названы на языке вашего клиента, а добыча в строке босса показывает подсказку предмета.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Языки: немецкий проверен построчно немецким игроком, а в чате, на карте и в меню стало больше французского.", -- draft
+	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "Полоса гонки: новый вариант «Свой выбор» показывает урон, исцеление и угрозу строками, одна под другой. «Авто» остаётся по умолчанию и остаётся одной строкой.", -- draft
+	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "Получатели почты: кнопка рядом с полем «Кому» открывает список рядом с окном отправки письма. Персонажи друга раскрываются на месте, а список остаётся открытым или закрытым, как вы его оставили.", -- draft
+	["More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers."] = "Больше на французском: Edit Layout, фильтры списка заданий, меню Follow The Arrow, кнопки Voice Over, подсказка Stats и метки маршрутов на корабле.", -- draft
+	["Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before."] = "Рамки группы в стиле Oldschool: значок уровня и его рамка рисуются поверх кольца портрета. Раньше кольцо проходило поверх значка.", -- draft
 	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "Розыгрыши добычи в отдельном окне: каждый выбор и каждое число, а предмет летит к победителю.", -- draft
 	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "Polestar в отслеживании заданий: щёлкните по строке цели, чтобы следовать её заданию. Шаг показывает расстояние, предмет для задания и кнопку для открытых вкладок руководств Polestar.", -- draft
 	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "Polestar в отслеживании заданий: номера шагов совпадают с окном Polestar, а раздел руководства больше не исчезает на некоторых шагах.", -- draft
@@ -3018,6 +3030,7 @@ Lang:Add("ruRU", {
 	["Who was that again? One click and the letter has its name."] = "Как же его звали? Один щелчок, и в письме есть имя.", -- draft
 	["Battle.net Friends' Characters"] = "Персонажи друзей Battle.net", -- draft
 	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "В меню показаны и друзья Battle.net, у каждого те персонажи, которых игра показала, пока друг играл. Выключено: только ваши персонажи, персонажи друзей не запоминаются.", -- draft
+	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "В списке показаны и ваши друзья по Battle.net, у каждого те персонажи, которых игра показала, пока они играли. Выкл.: только ваши персонажи, персонажи друзей не запоминаются.", -- draft
 	["Recipients"] = "Получатели", -- draft
 	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Выберите своего персонажа или персонажа друга Battle.net, которому отправить это письмо.", -- draft
 	["Your Characters"] = "Ваши персонажи", -- draft

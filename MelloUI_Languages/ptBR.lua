@@ -830,6 +830,14 @@ Lang:Add("ptBR", {
 	["Race Bar"] = "Barra de corrida", -- draft
 	["In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers."] = "Na luta, uma barra de corrida do dano do seu grupo, com você em destaque. Aponte para ela para ver os números de todos.", -- draft
 	["Race Bar Shows"] = "A barra de corrida mostra", -- draft
+	["Auto: one row, healing as a healer and damage otherwise. Your Pick: the rows ticked below, one under the other."] = "Auto: uma linha, cura se você for curandeiro e dano caso contrário. Sua escolha: as linhas marcadas abaixo, uma sob a outra.", -- draft
+	["Your Pick"] = "Sua escolha", -- draft
+	["A row of your group's damage."] = "Uma linha com o dano do seu grupo.", -- draft
+	["A row of your group's healing."] = "Uma linha com a cura do seu grupo.", -- draft
+	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "Em grupo ou com seu ajudante ativo, uma linha com a ameaça de todos no seu alvo. A ponta direita é onde você puxa o inimigo.", -- draft
+	["Only with Race Bar Shows: Your Pick"] = "Somente com A barra de corrida mostra: Sua escolha", -- draft
+	["Current DPS"] = "DPS atual", -- draft
+	["Current HPS"] = "CPS atual", -- draft
 	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "O que a barra de corrida compara. Auto: cura como curador, dano nos demais casos.", -- draft
 	["Auto"] = "Auto", -- draft
 	["Damage"] = "Dano", -- draft
@@ -2997,6 +3005,10 @@ Lang:Add("ptBR", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Janela de bolsas: o equipamento vestido solto em um espaço + vai para um espaço livre. Antes, ele voltava a ser equipado.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Info de masmorras: masmorras, zonas e chefes têm o nome no idioma do seu cliente, e os espólios da linha de um chefe mostram a dica do item.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Idiomas: o alemão revisado linha por linha por um jogador alemão, e mais partes do bate-papo, do mapa e dos menus em francês.", -- draft
+	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "Barra de corrida: a nova opção Sua escolha mostra dano, cura e ameaça em linhas, uma sob a outra. Auto continua sendo o padrão e continua com uma linha.", -- draft
+	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "Destinatários do correio: o botão ao lado de Para abre uma lista ao lado da janela Enviar correio. Os amigos mostram seus personagens ali mesmo, e ela fica aberta ou fechada como você deixou.", -- draft
+	["More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers."] = "Mais em francês: Edit Layout, os filtros da lista de missões, o menu do Follow The Arrow, os botões do Voice Over, a dica do Stats e os marcadores das rotas de barco.", -- draft
+	["Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before."] = "Quadros de grupo do Oldschool: a insígnia de nível e sua borda são desenhadas sobre o anel do retrato. Antes, o anel passava por cima dela.", -- draft
 	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "Disputas de saque em uma janela própria: cada escolha e cada número, e o item voa até o vencedor.", -- draft
 	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "Polestar no Rastreador de missões: clique em uma linha de objetivo para seguir a missão dela. A etapa mostra a distância, o item de missão e um botão para as abas de guia abertas do Polestar.", -- draft
 	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "Polestar no Rastreador de missões: os números das etapas coincidem com a janela do Polestar, e a seção do guia não some mais em algumas etapas.", -- draft
@@ -3018,6 +3030,7 @@ Lang:Add("ptBR", {
 	["Who was that again? One click and the letter has its name."] = "Como era mesmo o nome? Um clique e a carta já tem destinatário.", -- draft
 	["Battle.net Friends' Characters"] = "Personagens de amigos da Battle.net", -- draft
 	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "O menu lista também seus amigos da Battle.net, cada um com os personagens que o jogo mostrou deles enquanto jogavam. Desligado: só os seus personagens, e nenhum dos deles é anotado.", -- draft
+	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "A lista também mostra seus amigos da Battle.net, cada um com os personagens que o jogo mostrou deles enquanto jogavam. Desligado: apenas seus próprios personagens, e nenhum deles é anotado.", -- draft
 	["Recipients"] = "Destinatários", -- draft
 	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Escolha um dos seus personagens ou o de um amigo da Battle.net para enviar esta carta.", -- draft
 	["Your Characters"] = "Seus personagens", -- draft

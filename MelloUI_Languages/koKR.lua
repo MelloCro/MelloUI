@@ -830,6 +830,14 @@ Lang:Add("koKR", {
 	["Race Bar"] = "경주 막대", -- draft
 	["In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers."] = "전투 중 파티 피해 경주 바, 나를 강조. 마우스를 올리면 모두의 숫자를 봅니다.", -- draft
 	["Race Bar Shows"] = "경주 막대 표시", -- draft
+	["Auto: one row, healing as a healer and damage otherwise. Your Pick: the rows ticked below, one under the other."] = "자동: 한 줄만 표시합니다. 치유 담당이면 치유량, 아니면 피해량입니다. 직접 선택: 아래에서 선택한 줄을 위아래로 표시합니다.", -- draft
+	["Your Pick"] = "직접 선택", -- draft
+	["A row of your group's damage."] = "파티의 피해량을 한 줄로 표시합니다.", -- draft
+	["A row of your group's healing."] = "파티의 치유량을 한 줄로 표시합니다.", -- draft
+	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "파티 중이거나 소환수가 나와 있을 때, 대상에 대한 모두의 위협 수준을 한 줄로 표시합니다. 오른쪽 끝이 어그로를 끄는 지점입니다.", -- draft
+	["Only with Race Bar Shows: Your Pick"] = "경주 막대 표시가 직접 선택일 때만", -- draft
+	["Current DPS"] = "현재 DPS", -- draft
+	["Current HPS"] = "현재 HPS", -- draft
 	["What the race bar compares. Auto: healing as a healer, damage otherwise."] = "경주 바가 비교하는 것. 자동: 치유사는 치유량, 그 외는 피해.", -- draft
 	["Auto"] = "자동", -- draft
 	["Damage"] = "피해", -- draft
@@ -2997,6 +3005,10 @@ Lang:Add("koKR", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "가방 창: 착용 중인 장비를 + 칸에 놓으면 빈 칸으로 들어갑니다. 전에는 다시 착용되었습니다.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "던전 정보: 던전, 지역, 우두머리 이름이 클라이언트 언어로 표시되고, 우두머리 줄의 전리품에 아이템 툴팁이 나옵니다.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "언어: 독일어를 독일 플레이어가 한 줄씩 검수했고, 대화창과 지도, 메뉴의 프랑스어가 늘었습니다.", -- draft
+	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "경주 막대: 새 선택지 ‘직접 선택’으로 피해, 치유, 위협을 줄마다 위아래로 표시합니다. 자동은 기본값으로 남으며 한 줄 그대로입니다.", -- draft
+	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "우편 받는 사람: 받는 사람 칸 옆의 버튼이 우편 보내기 창 옆에 목록을 엽니다. 친구를 누르면 그 자리에서 캐릭터가 펼쳐지며, 열어 두거나 닫아 둔 상태가 그대로 유지됩니다.", -- draft
+	["More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers."] = "프랑스어 번역 추가: Edit Layout, 퀘스트 목록의 필터, Follow The Arrow 메뉴, Voice Over 버튼, Stats 툴팁, 배 경로 표시.", -- draft
+	["Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before."] = "올드스쿨 파티 프레임: 레벨 배지와 그 테두리가 초상화 고리 위에 그려집니다. 이전에는 고리가 배지를 가로질렀습니다.", -- draft
 	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "주사위 굴림 전용 창: 모든 선택과 숫자가 표시되고, 아이템이 승자에게 날아갑니다.", -- draft
 	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "퀘스트 추적기의 Polestar: 목표 줄을 클릭하면 해당 퀘스트를 따라갑니다. 단계에 거리, 퀘스트 아이템, 그리고 Polestar의 열린 가이드 탭을 넘기는 버튼이 표시됩니다.", -- draft
 	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "퀘스트 추적기의 Polestar: 단계 번호가 Polestar 창과 일치하고, 일부 단계에서 가이드 구역이 더는 사라지지 않습니다.", -- draft
@@ -3018,6 +3030,7 @@ Lang:Add("koKR", {
 	["Who was that again? One click and the letter has its name."] = "그게 누구였더라? 클릭 한 번이면 편지에 이름이 들어갑니다.", -- draft
 	["Battle.net Friends' Characters"] = "Battle.net 친구의 캐릭터", -- draft
 	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "메뉴에 Battle.net 친구도 표시하며, 친구가 플레이하는 동안 게임이 보여 준 캐릭터를 함께 보여 줍니다. 끄면 내 캐릭터만 표시하고 친구의 캐릭터는 기록하지 않습니다.", -- draft
+	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "목록에 Battle.net 친구도 표시하며, 친구가 플레이하는 동안 게임이 보여 준 캐릭터를 함께 보여 줍니다. 끄면 내 캐릭터만 표시하고 친구의 캐릭터는 기록하지 않습니다.", -- draft
 	["Recipients"] = "받는 사람", -- draft
 	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "이 편지를 보낼 내 캐릭터나 Battle.net 친구의 캐릭터를 고르세요.", -- draft
 	["Your Characters"] = "내 캐릭터", -- draft
