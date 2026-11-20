@@ -10,7 +10,9 @@
 -- (yours always shows); the pointer on the bar lists everyone in order.
 -- It fades in when a fight starts and out ~1.5 s after it ends (MelloUI.Anim;
 -- Reduce Motion: at once). Healing instead of damage for a healer (Race Bar
--- Shows: Auto, by the group role) or by the setting.
+-- Shows: Auto, by the group role) or by the setting; (2.1.61, #26) or the
+-- group's threat on your target (Race Bar Shows: Threat, in a group; its
+-- section below the pins' lay).
 -- Secret-safe by the engine: each pin is an invisible StatusBar on the
 -- track's rect, the pin hung on its fill's right edge, so the game places it
 -- from the secret amounts (SetMinMaxValues(0, the top's) / SetValue); the
@@ -55,6 +57,7 @@ local pcall, ipairs, min = pcall, ipairs, math.min
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local UNKNOWN_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local MOVER_KEY = "meterbar"
+local PET_ICON = "Interface\\Icons\\Ability_Hunter_BeastTaming"   -- (2.1.61: your pet's threat pin; the pet widget's icon)
 
 -- (onelook B "Rail") ABOVE: the holder's top to the rail's middle; BELOW: the
 -- rail's middle to the holder's bottom (56 in all, 76 before); THICK: Race
@@ -69,6 +72,8 @@ local B = {
 	ABOVE = 30, BELOW = 26, ICON_IN = 0.09, BAND_Y = 10,
 	LABEL = 10, ME_LABEL = 12, TOP = 13, CAPTION = 11,
 	FADE_IN = 0.6, FADE_OUT = 1.2, OUT_DELAY = 1.5,
+	THREAT_TICK = 0.3, THREAT_TEST = 2,   -- (2.1.61, #26) threat read this often in a fight; the test's steps
+	CLAMP_TOP = 6,   -- (2.1.61) the room kept over the holder at the screen's top: the caption's title face reaches past it
 	LIST_ROW = 16, LIST_W = 220, LIST_MAX = 10,
 	HOME_Y = 325,
 }
@@ -79,6 +84,7 @@ local TEXT = {
 	dps = "dps",
 	hps = "hps",
 	label = "Race Bar",
+	captionThreat = "Threat",   -- (2.1.61, #26: Race Bar Shows' Threat)
 }
 
 local Bar = { ui = nil, shown = false, samples = false, healing = false, list = nil }
@@ -93,16 +99,64 @@ local function Pins()
 	return math.max(Meter.T.PINS_MIN, math.min(Meter.T.PINS_MAX, math.floor(n)))
 end
 
--- healing for this fight: the setting, or Auto by your group role
-local function Healing()
-	local metric = M.db and M.db.metric or "auto"
-	if metric == "hps" then
-		return true
-	elseif metric == "dps" then
-		return false
+-- (2.1.61, the German player: "how do we show both -- or leave it to the player what to show, damage, healing and
+-- threat?", their picks: stacked, Auto kept, damage alone as before by default) the rows this fight shows, top
+-- down: "dps", "hps", "threat".
+--   Race Bar Shows: Your Pick (raceShows "pick", the default) -- the ticked ones of Damage (raceDps, on), Healing
+--     (raceHps) and Threat (raceThreat); Auto -- healing as a healer, damage otherwise, and threat under it in a
+--     group for a tank or a damage dealer. Threat only in a group or with your pet out (Threat.Grouped: solo, with no
+--     pet, it tells nothing new); none left, damage
+-- (2.1.61; the German player: "when I am out with my Voidwalker and it tanks, I would like to see my threat too") your
+-- pet out: threat tells something solo too
+local function HasPet()
+	local ok, out = pcall(_G.UnitExists, "pet")
+	return ok and not Secret(out) and out == true
+end
+
+local kinds = {}
+-- (`grouped`: as in a group, for Edit Layout's samples)
+local function Kinds(grouped)
+	for i = #kinds, 1, -1 do
+		kinds[i] = nil
 	end
-	local ok, role = pcall(_G.UnitGroupRolesAssigned, "player")
-	return ok and Text(role) == "HEALER" or false
+	local db = M.db or {}
+	local T = rawget(MelloUI, "Threat")
+	grouped = grouped or (T ~= nil and T.Grouped()) or HasPet()   -- (a pet out: threat solo too)
+	if db.raceShows == "auto" then
+		local ok, role = pcall(_G.UnitGroupRolesAssigned, "player")
+		local healer = ok and Text(role) == "HEALER"
+		kinds[1] = healer and "hps" or "dps"
+		if grouped and not healer then
+			kinds[2] = "threat"
+		end
+	else
+		if db.raceDps ~= false then
+			kinds[#kinds + 1] = "dps"
+		end
+		if db.raceHps == true then
+			kinds[#kinds + 1] = "hps"
+		end
+		if db.raceThreat == true and grouped then
+			kinds[#kinds + 1] = "threat"
+		end
+	end
+	if #kinds == 0 then
+		kinds[1] = "dps"
+	end
+	return kinds
+end
+
+-- (2.1.61) the one Race Bar Shows of before (metric: "auto", "dps", "hps"), read once into the new ones: a chosen
+-- Healing stays ticked. "auto" was every player's saved default, so it reads as damage alone, the new default
+function Bar.Migrate()
+	local db = M.db
+	if not db or db.raceMigrated then
+		return
+	end
+	db.raceMigrated = true
+	if db.metric == "hps" then
+		db.raceDps, db.raceHps = false, true
+	end
 end
 
 
@@ -221,17 +275,77 @@ end
 
 -- a pin's picture: its class's plain medallion (no diamonds: the kit's rim
 -- is its ring), set when its class changes
-local function Medallion(pin, class)
+local function Medallion(pin, class, icon)
 	class = Text(class)
-	if pin.classSet and pin.class == class then
+	local key = icon or class   -- (2.1.61: a picture of its own, a pet's)
+	if pin.classSet and pin.class == key then
 		return
 	end
-	pin.class, pin.classSet = class, true
-	local path = class and MelloUI.ClassIconPath and MelloUI:ClassIconPath(class, "plain")
+	pin.class, pin.classSet = key, true
+	local path = icon or (class and MelloUI.ClassIconPath and MelloUI:ClassIconPath(class, "plain"))
 	pin.face:SetIcon(path or UNKNOWN_ICON)
 end
 
 local ListShow, ListHide   -- (below)
+
+-- (2.1.61) one row of the bar: its caption and values over its rail, its share, its pins under it -- each row the
+-- whole bar of before, on a frame of its own in the holder (Bar.Arrange stacks them); the pointer on a row lists
+-- that row's sources
+local function NewRow(ui, k)
+	local holder = CreateFrame("Frame", nil, ui.holder)
+	holder:SetHeight(B.ABOVE + B.BELOW)
+	local row = { holder = holder, pins = {}, k = k }
+	holder.row = row
+	-- the caption and the top value: one line, GAP over the rims (the caption
+	-- in the title face over the left end, the value over the right)
+	local lineY = -(B.ABOVE - B.ME_PIN / 2 - B.GAP)
+	local caption = W.Text(holder, "GameFontNormal", TEXT.caption, "text")
+	caption:SetPoint("BOTTOMLEFT", holder, "TOPLEFT", 0, lineY)
+	if MelloUI.Kit and MelloUI.Kit.TitleFont then
+		MelloUI.Kit:TitleFont(caption, true)
+	end
+	row.caption = caption
+	local unit = holder:CreateFontString(nil, "OVERLAY")
+	Look.Text(unit, "value", B.CAPTION)
+	unit:SetPoint("BOTTOMRIGHT", holder, "TOPRIGHT", 0, lineY)
+	row.unit = unit
+	local top = holder:CreateFontString(nil, "OVERLAY")
+	Look.Text(top, "value", B.TOP)
+	top:SetPoint("BOTTOMRIGHT", unit, "BOTTOMLEFT", -3, 0)
+	row.top = top
+	-- the track: on the rail's middle line, as tall as your share (Race Bar
+	-- Thickness); the rail across it, your share over the rail (Bar.Look)
+	local track = CreateFrame("Frame", nil, holder)
+	track:SetPoint("LEFT", holder, "TOPLEFT", 0, -B.ABOVE)
+	track:SetPoint("RIGHT", holder, "TOPRIGHT", 0, -B.ABOVE)
+	track:SetHeight(B.THICK)
+	row.track = track
+	local rail = W.Solid(track, "BACKGROUND", "border", 1)
+	rail:SetPoint("LEFT", track, "LEFT", 0, 0)
+	rail:SetPoint("RIGHT", track, "RIGHT", 0, 0)
+	rail:SetHeight(B.RAIL)
+	row.rail = rail
+	local fill = CreateFrame("StatusBar", nil, track)
+	fill:SetAllPoints(track)
+	fill:SetMinMaxValues(0, 1)
+	fill:SetValue(0)
+	row.fill = fill
+	-- the pins: the others, then yours over them
+	for i = 1, Meter.T.PINS_MAX - 1 do
+		row.pins[i] = NewPin(row, false)
+		SetPinShown(row.pins[i], false)
+	end
+	row.me = NewPin(row, true)
+	SetPinShown(row.me, false)
+	row.me.label:SetText(W.Tr(Meter.TEXT.you))
+	-- the pointer on it: everyone in order
+	holder:EnableMouse(true)
+	Perf.SetScript(holder, "OnEnter", ListShow)
+	Perf.SetScript(holder, "OnLeave", ListHide)
+	holder:Hide()
+	ui.rows[k] = row
+	return row
+end
 
 local function Build()
 	if Bar.ui then
@@ -241,48 +355,17 @@ local function Build()
 	holder:SetSize(B.WIDTH, B.ABOVE + B.BELOW)   -- (the settings' width: Bar.Resize, below)
 	holder:SetFrameStrata("MEDIUM")
 	holder:SetClampedToScreen(true)
+	-- (2.1.61; the German player's screenshot: the bar at the screen's top, its caption cut by the edge) the clamp
+	-- reaching CLAMP_TOP over the holder, so the screen's edge stops it that far down
+	holder:SetClampRectInsets(0, 0, B.CLAMP_TOP, 0)
 	holder:SetAlpha(0)
 	holder:Hide()
 	Home(holder)
-	local ui = { holder = holder, pins = {} }
+	local ui = { holder = holder, rows = {}, shownRows = 1 }
 	Bar.ui = ui
-	-- the caption and the top value: one line, GAP over the rims (the caption
-	-- in the title face over the left end, the value over the right)
-	local lineY = -(B.ABOVE - B.ME_PIN / 2 - B.GAP)
-	local caption = W.Text(holder, "GameFontNormal", TEXT.caption, "text")
-	caption:SetPoint("BOTTOMLEFT", holder, "TOPLEFT", 0, lineY)
-	if MelloUI.Kit and MelloUI.Kit.TitleFont then
-		MelloUI.Kit:TitleFont(caption, true)
-	end
-	ui.caption = caption
-	local unit = holder:CreateFontString(nil, "OVERLAY")
-	Look.Text(unit, "value", B.CAPTION)
-	unit:SetPoint("BOTTOMRIGHT", holder, "TOPRIGHT", 0, lineY)
-	ui.unit = unit
-	local top = holder:CreateFontString(nil, "OVERLAY")
-	Look.Text(top, "value", B.TOP)
-	top:SetPoint("BOTTOMRIGHT", unit, "BOTTOMLEFT", -3, 0)
-	ui.top = top
-	-- the track: on the rail's middle line, as tall as your share (Race Bar
-	-- Thickness); the rail across it, your share over the rail (Bar.Look)
-	local track = CreateFrame("Frame", nil, holder)
-	track:SetPoint("LEFT", holder, "TOPLEFT", 0, -B.ABOVE)
-	track:SetPoint("RIGHT", holder, "TOPRIGHT", 0, -B.ABOVE)
-	track:SetHeight(B.THICK)
-	ui.track = track
-	local rail = W.Solid(track, "BACKGROUND", "border", 1)
-	rail:SetPoint("LEFT", track, "LEFT", 0, 0)
-	rail:SetPoint("RIGHT", track, "RIGHT", 0, 0)
-	rail:SetHeight(B.RAIL)
-	ui.rail = rail
-	local fill = CreateFrame("StatusBar", nil, track)
-	fill:SetAllPoints(track)
-	fill:SetMinMaxValues(0, 1)
-	fill:SetValue(0)
-	ui.fill = fill
 	-- the whole group on one soft band in the text look (its middle the
 	-- holder grown by the look's padX at each side, faded BAND_Y above and
-	-- below: a block of lines, Shade:Band's featherY)
+	-- below: a block of lines, Shade:Band's featherY) -- (2.1.61) every row on it
 	local Shade = MelloUI.Shade
 	local look = Shade.TEXT
 	ui.band = Shade:Band(holder, { colour = look.colour, alpha = look.alpha, feather = look.feather, layer = look.layer,   -- look-ok: the one look's band (onelook B "Rail"; no game twin since stage C)
@@ -290,18 +373,7 @@ local function Build()
 	if ui.band then
 		ui.band:Anchor(holder, look.padX, 0)
 	end
-	-- the pins: the others, then yours over them
-	for i = 1, Meter.T.PINS_MAX - 1 do
-		ui.pins[i] = NewPin(ui, false)
-		SetPinShown(ui.pins[i], false)
-	end
-	ui.me = NewPin(ui, true)
-	SetPinShown(ui.me, false)
-	ui.me.label:SetText(W.Tr(Meter.TEXT.you))
-	-- the pointer on it: everyone in order
-	holder:EnableMouse(true)
-	Perf.SetScript(holder, "OnEnter", ListShow)
-	Perf.SetScript(holder, "OnLeave", ListHide)
+	NewRow(ui, 1)
 	-- its place: the one mover (Width and Thickness are the configurator's,
 	-- its box's "Design >")
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = MOVER_KEY, default = Home, min = 0.5, max = 2, base = 1,
@@ -309,9 +381,29 @@ local function Build()
 	if not MelloUI:RestorePosition(MOVER_KEY, holder) then
 		Home(holder)
 	end
-	Bar.Resize()
+	Bar.Arrange(1)
 	Bar.Look()
 	return ui
+end
+
+-- (2.1.61) `n` rows shown, stacked top down in the holder, the holder as tall as they are (placed by its bottom: more
+-- rows grow it upward); the others hidden. Each row made the first time it is needed
+function Bar.Arrange(n)
+	local ui = Bar.ui
+	if not ui then
+		return
+	end
+	n = math.max(1, math.min(3, n or 1))
+	ui.shownRows = n
+	for k = 1, n do
+		if not ui.rows[k] then
+			Bar.LookRow(NewRow(ui, k))   -- (a row made now: its look as the others')
+		end
+	end
+	Bar.Resize()
+	for k, row in ipairs(ui.rows) do
+		row.holder:SetShown(k <= n)
+	end
 end
 
 -- the size from the settings (the holder's height is the rims' and texts':
@@ -322,8 +414,30 @@ function Bar.Resize()
 		return
 	end
 	local w, h = Size()
-	ui.holder:SetSize(w, B.ABOVE + B.BELOW)
-	ui.track:SetHeight(h)
+	local rowH = B.ABOVE + B.BELOW
+	local want = rowH * (ui.shownRows or 1)
+	local holder = ui.holder
+	-- (2.1.61; the German player's screenshot: the bar placed at the screen's top, a second row grew it up against the
+	-- edge) a new number of rows grows the bar away from the edge it was placed at: from its top in the screen's upper
+	-- half, from its bottom in the lower; the place it was given kept. Read before the size changes, as the frame
+	-- stands (its own units, from the screen's bottom left: the offsets a point takes)
+	local old, top, bottom, x = holder:GetHeight(), holder:GetTop(), holder:GetBottom(), holder:GetCenter()
+	holder:SetSize(w, want)   -- (as tall as its rows)
+	if top and bottom and x and math.abs((old or 0) - want) > 0.5 then
+		local screenMid = UIParent:GetHeight() * UIParent:GetEffectiveScale() / holder:GetEffectiveScale() / 2
+		holder:ClearAllPoints()
+		if (top + bottom) / 2 > screenMid then
+			holder:SetPoint("TOP", UIParent, "BOTTOMLEFT", x, top)
+		else
+			holder:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", x, bottom)
+		end
+	end
+	for k, row in ipairs(ui.rows) do
+		row.holder:ClearAllPoints()
+		row.holder:SetPoint("TOPLEFT", ui.holder, "TOPLEFT", 0, -(k - 1) * rowH)
+		row.holder:SetPoint("TOPRIGHT", ui.holder, "TOPRIGHT", 0, -(k - 1) * rowH)
+		row.track:SetHeight(h)
+	end
 end
 
 -- the look (onelook B "Rail", 2026-10-15: MelloUI's one look for it, whatever
@@ -337,6 +451,14 @@ function Bar.Look()
 	if not ui then
 		return
 	end
+	for _, row in ipairs(ui.rows) do
+		Bar.LookRow(row)
+	end
+end
+
+-- (2.1.61) one row's look (your share, its texts' shadow); a threat row's share in your class colour until its next lay
+function Bar.LookRow(ui)
+	ui.threatPainted = false
 	local fill, Kit = ui.fill, MelloUI.Kit
 	fill:SetStatusBarTexture(FillTexture())
 	MelloUI.Widgets.SoftEnds(fill)   -- (every bar's ends soft: the user, 2026-10-16)
@@ -416,12 +538,15 @@ local function LiveSources(healing)
 end
 
 local order = {}
-local function Lay(sources, healing, sample)
-	local ui = Bar.ui
+local function Lay(ui, sources, healing, sample)
 	if not ui then
 		return
 	end
-	Bar.list, Bar.healing = sources, healing
+	-- (2.1.61: `ui` one row of the bar; its own list for its pointer)
+	ui.list, ui.healing, ui.threat = sources, healing, false
+	if ui.threatPainted then
+		Bar.LookRow(ui)   -- (your share in your class colour again after Threat's colours)
+	end
 	local top = sources and sources[1]
 	-- (each pin shown or hidden once, at the end, as this list wants it: a pin
 	-- that stays stays shown)
@@ -430,7 +555,7 @@ local function Lay(sources, healing, sample)
 	end
 	ui.me.want = false
 	ui.unit:SetText(healing and TEXT.hps or TEXT.dps)
-	ui.caption:SetText(healing and TEXT.captionHeal or TEXT.caption)
+	ui.caption:SetText(W.Tr(healing and TEXT.captionHeal or TEXT.caption))   -- (2.1.61: in German too)
 	if not top then
 		ui.top:SetText(Meter.TEXT.dash)
 		ui.fill:SetValue(0)
@@ -546,7 +671,8 @@ local function ListRow(i)
 end
 
 ListShow = Shared("OnEnter on the race bar", function(holder)
-	local sources = Bar.list
+	local bar = holder.row   -- (2.1.61: the bar's row under the pointer, its own list)
+	local sources = bar and bar.list
 	if not (sources and sources[1]) then
 		return
 	end
@@ -554,7 +680,8 @@ ListShow = Shared("OnEnter on the race bar", function(holder)
 	local n = min(#sources, B.LIST_MAX)
 	for i = 1, n do
 		local src, row = sources[i], ListRow(i)
-		row.rank:SetText(Meter.Ordinal(i))
+		-- (2.1.61: threat's list in order only while its numbers read plain)
+		row.rank:SetText((bar.threat and not bar.threatPlain) and "" or Meter.Ordinal(i))
 		if src.isLocalPlayer == true then
 			row.name:SetText(W.Tr(Meter.TEXT.you))
 			Look.Text(row.name, "value", B.CAPTION)
@@ -565,7 +692,7 @@ ListShow = Shared("OnEnter on the race bar", function(holder)
 			ClassColour(row.name, src.classFilename)
 		end
 		ClassColour(row.rank, src.classFilename)
-		row.value:SetText(Meter.Format(src.amountPerSecond) or Meter.TEXT.dash)
+		row.value:SetText(src.valueText or Meter.Format(src.amountPerSecond) or Meter.TEXT.dash)
 		row.rank:Show()
 		row.name:Show()
 		row.value:Show()
@@ -619,6 +746,207 @@ ListHide = Shared("OnLeave on the race bar", function()
 end, "script")
 
 --------------------------------------------------------------------------------
+-- Threat (2.1.61, #26; a German player's wish: "in a dungeon I'd like to see at a glance who is how close to
+-- pulling, as I can with damage"): Race Bar Shows' third choice. While you are in a group, the bar is your target's
+-- threat list: its right end the pull point (100: it comes for you; the tank stands there), each member a pin at their
+-- share of the pull (Core/Threat.lua's Threat.Read, the game's scaledPercentage, plain or SECRET -- the pins placed by
+-- the engine from it as the damage pins are), you the bigger pin, your share on the rail in the threat colours the
+-- nameplates and the Threat widget use (gold, close, aggro; Threat.State). Ranks and "73%" only while the numbers read
+-- plain (in instances); secret (the open world), the pins alone. Solo the bar shows damage, as Threat.Grouped says
+-- threat tells nothing new there. Read every THREAT_TICK while it shows in a fight (the target may change, a heal adds
+-- threat with no damage). /mello meter threat: a made-up group in three steps, you drawing near the pull
+--------------------------------------------------------------------------------
+
+-- your group's units (a raid's own list holds you)
+local units = {}
+local function GroupUnits()
+	for i = #units, 1, -1 do
+		units[i] = nil
+	end
+	local okR, raid = pcall(_G.IsInRaid)
+	local okN, n = pcall(_G.GetNumGroupMembers)
+	n = okN and Num(n) or 0
+	if okR and raid == true then
+		for i = 1, math.min(n, 40) do
+			units[#units + 1] = "raid" .. i
+		end
+	else
+		units[1] = "player"
+		for i = 1, math.min(math.max(n - 1, 0), 4) do
+			units[#units + 1] = "party" .. i
+		end
+	end
+	if HasPet() then
+		units[#units + 1] = "pet"   -- (2.1.61: your own pet, a Voidwalker tanking for you)
+	end
+	return units
+end
+
+-- a unit is you (a raid's list holds you under its own token; UnitIsUnit read only when plain)
+local function IsYou(unit)
+	if unit == "player" then
+		return true
+	end
+	local ok, same = pcall(_G.UnitIsUnit, unit, "player")
+	return ok and not Secret(same) and same == true
+end
+
+local threatList, threatPool = {}, {}
+local function ByThreat(a, b)
+	return a.plain > b.plain
+end
+
+-- the group's threat on your target: its sources (one table a member, reused), and whether every number read plain
+local function ThreatSources()
+	for i = #threatList, 1, -1 do
+		threatList[i] = nil
+	end
+	local T = rawget(MelloUI, "Threat")
+	local okE, exists = pcall(_G.UnitExists, "target")
+	local okA, foe = pcall(_G.UnitCanAttack, "player", "target")
+	if not (T and okE and okA and not Secret(exists) and not Secret(foe) and exists == true and foe == true) then
+		return threatList, true
+	end
+	local plain = true
+	for _, unit in ipairs(GroupUnits()) do
+		local status, fraction, tanking, value = T.Read(unit, "target")
+		if value ~= nil then
+			local src = threatPool[#threatList + 1] or {}
+			threatPool[#threatList + 1] = src
+			local okC, _, class = pcall(_G.UnitClass, unit)
+			src.classFilename = okC and not Secret(class) and class or nil
+			src.isLocalPlayer = IsYou(unit)
+			src.icon = unit == "pet" and PET_ICON or nil
+			local okN, name = pcall(_G.UnitName, unit)
+			src.name = okN and name or nil
+			src.value, src.status, src.fraction, src.tanking = value, status, fraction, tanking
+			-- (over 100 while you hold it -- the German player's screenshot, "196%": the pull is the end, so 100)
+			src.plain = not Secret(value) and Num(value) and math.min(Num(value), 100) or nil
+			src.valueText = src.plain and ("%.0f%%"):format(src.plain) or nil
+			src.amountPerSecond = nil
+			if src.plain == nil then
+				plain = false
+			end
+			threatList[#threatList + 1] = src
+		end
+	end
+	if plain then
+		table.sort(threatList, ByThreat)
+	end
+	return threatList, plain
+end
+
+-- the threat list laid on a row's pins (the live one, or the test's and Edit Layout's plain made-up one)
+function Bar.LayThreat(ui, sources, plain)
+	if not ui then
+		return
+	end
+	ui.list, ui.healing, ui.threat, ui.threatPlain = sources, false, true, plain
+	for _, pin in ipairs(ui.pins) do
+		pin.want = false
+	end
+	ui.me.want = false
+	ui.caption:SetText(W.Tr(TEXT.captionThreat))
+	ui.unit:SetText("")
+	pcall(ui.fill.SetMinMaxValues, ui.fill, 0, 100)
+	ui.fill:SetValue(0)
+	ui.top:SetText(Meter.TEXT.dash)
+	local shown, other, room = {}, 0, math.min(#ui.pins, Pins() - 1)
+	local mine = nil
+	for i, src in ipairs(sources) do
+		local pin
+		if src.isLocalPlayer then
+			pin, mine = ui.me, src
+			pcall(ui.fill.SetValue, ui.fill, src.value)
+			ui.top:SetText(src.valueText or Meter.TEXT.dash)
+		elseif other < room then
+			other = other + 1
+			pin = ui.pins[other]
+			pin.label:SetText(plain and Meter.Ordinal(i) or "")
+			ClassColour(pin.label, src.classFilename)
+			TextShadow(pin.label)
+		end
+		if pin then
+			pcall(pin.bar.SetMinMaxValues, pin.bar, 0, 100)
+			pcall(pin.bar.SetValue, pin.bar, src.value)
+			Medallion(pin, src.classFilename, src.icon)
+			pin.want = true
+			shown[#shown + 1] = pin
+		end
+	end
+	-- your share in the threat colours (your class colour while your state cannot be read)
+	local T = rawget(MelloUI, "Threat")
+	local state = mine and T and T.State(mine.status, mine.fraction, T.IsTank()) or nil
+	local tex = ui.fill:GetStatusBarTexture()
+	if state and tex then
+		local Kit = MelloUI.Kit
+		if Kit and Kit.Unpaint then
+			Kit:Unpaint(tex, "vertex")
+		end
+		tex:SetVertexColor(T.Colour(state))
+		ui.threatPainted = true
+	elseif ui.threatPainted then
+		Bar.LookRow(ui)
+	end
+	Bar.ShowWanted(ui)
+	Declutter(ui, shown)
+end
+
+-- (2.1.61) the rows this fight shows (Kinds), each laid: damage and healing from Meter's live lists (or the ones
+-- handed over), threat from the group's (not with `noThreat`: Bar.ThreatTick lays those on its own beat). True when
+-- one of them is threat
+local function LayRows(dmg, heal, noThreat)
+	local ui = Bar.ui
+	if not ui then
+		return false
+	end
+	local want = Kinds()
+	Bar.Arrange(#want)
+	local threat = false
+	for k, kind in ipairs(want) do
+		local row = ui.rows[k]
+		row.kind = kind
+		if kind == "threat" then
+			threat = true
+			if not noThreat then
+				Bar.LayThreat(row, ThreatSources())
+			end
+		elseif kind == "hps" then
+			Lay(row, heal or LiveSources(true), true, false)
+		else
+			Lay(row, dmg or LiveSources(false), false, false)
+		end
+	end
+	return threat
+end
+
+-- every THREAT_TICK while a threat row shows in a fight (one loop at a time)
+function Bar.ThreatTick()
+	local ui, any = Bar.ui, false
+	if Bar.shown and ui and not Bar.samples and not Bar.preview then
+		for k = 1, ui.shownRows do
+			local row = ui.rows[k]
+			if row and row.kind == "threat" then
+				any = true
+				Bar.LayThreat(row, ThreatSources())
+			end
+		end
+	end
+	if any then
+		C_Timer.After(B.THREAT_TICK, Bar.ThreatTick)
+	else
+		Bar.ticking = false
+	end
+end
+
+local function ThreatStart()
+	if not Bar.ticking then
+		Bar.ticking = true
+		Bar.ThreatTick()
+	end
+end
+
+--------------------------------------------------------------------------------
 -- In a fight, fading, and Edit Layout's samples
 --------------------------------------------------------------------------------
 
@@ -641,13 +969,15 @@ local function FadeTo(alpha, duration)
 	end
 end
 
--- the live sources (Meter.lua's read, at most 4 a second)
+-- the live sources (Meter.lua's read, at most 4 a second): damage and healing rows laid, a threat row's read kept
+-- going (its own beat)
 function Bar.Live(dmg, heal)
-	if not (Bar.shown and Bar.ui) or Bar.samples then
+	if not (Bar.shown and Bar.ui) or Bar.samples or Bar.preview then
 		return
 	end
-	local healing = Healing()
-	Lay(healing and heal or dmg, healing, false)
+	if LayRows(dmg, heal, true) then
+		ThreatStart()
+	end
 end
 
 local function OutNow()
@@ -663,9 +993,10 @@ function Bar.Fight(on)
 		end
 		Build()
 		Bar.shown = true
-		if not Bar.samples then
-			local healing = Healing()
-			Lay(LiveSources(healing), healing, false)
+		if not Bar.samples and not Bar.preview then
+			if LayRows() then
+				ThreatStart()
+			end
 		end
 		FadeTo(1, B.FADE_IN)
 	elseif Bar.shown then
@@ -690,6 +1021,56 @@ local SAMPLE = {
 	{ name = "Brightwood", classFilename = "PRIEST", totalAmount = 390, amountPerSecond = 6.5 },
 }
 
+-- (2.1.61) a made-up group's threat on a made-up foe, plain: the tank at the pull, you drawing near it step by step
+-- (/mello meter threat; Edit Layout's sample a threat row's step 2)
+Bar.THREAT_SAMPLE = {
+	{ classFilename = "WARRIOR", name = "Tarnok", tanking = true, status = 3 },
+	{ classFilename = "MAGE", name = "Fellaria", status = 0 },
+	{ classFilename = nil, name = Meter.TEXT.you, isLocalPlayer = true },
+	{ classFilename = "HUNTER", name = "Shadeleaf", status = 0 },
+	{ classFilename = "PRIEST", name = "Brightwood", status = 0 },
+}
+Bar.THREAT_STEPS = {
+	{ 100, 64, 55, 41, 22 },   -- (the tank's, the mage's, yours, the hunter's, the priest's)
+	{ 100, 78, 86, 52, 30 },
+	{ 100, 81, 100, 60, 34 },
+}
+
+local function ThreatSample(n)
+	local step = Bar.THREAT_STEPS[n]
+	local ok, _, file = pcall(_G.UnitClass, "player")
+	Bar.THREAT_SAMPLE[3].classFilename = ok and Text(file) or "WARRIOR"
+	local made = {}
+	for i, src in ipairs(Bar.THREAT_SAMPLE) do
+		src.value, src.plain = step[i], step[i]
+		src.fraction, src.valueText = step[i] / 100, ("%.0f%%"):format(step[i])
+		if src.isLocalPlayer then
+			src.status = step[i] >= 100 and 3 or (step[i] >= 80 and 1 or 0)
+		end
+		made[#made + 1] = src
+	end
+	table.sort(made, ByThreat)
+	return made
+end
+
+-- (2.1.61) every row the setting would show in a group, laid with samples
+local function LaySamples()
+	local ui = Bar.ui
+	local want = Kinds(true)
+	Bar.Arrange(#want)
+	local ok, _, file = pcall(_G.UnitClass, "player")
+	SAMPLE[3].classFilename = ok and Text(file) or "WARRIOR"
+	for k, kind in ipairs(want) do
+		local row = ui.rows[k]
+		row.kind = kind
+		if kind == "threat" then
+			Bar.LayThreat(row, ThreatSample(2), true)
+		else
+			Lay(row, SAMPLE, kind == "hps", true)
+		end
+	end
+end
+
 function Bar.Samples()
 	local want = On() and MelloUI:EditingLayout() and true or false
 	if want == Bar.samples then
@@ -698,21 +1079,20 @@ function Bar.Samples()
 	Bar.samples = want
 	if want then
 		local ui = Build()
-		local ok, _, file = pcall(_G.UnitClass, "player")
-		SAMPLE[3].classFilename = ok and Text(file) or "WARRIOR"
-		Lay(SAMPLE, false, true)
+		LaySamples()
 		ui.holder:SetAlpha(1)
 		ui.holder:Show()
 	elseif Bar.shown then
-		local healing = Healing()
-		Lay(LiveSources(healing), healing, false)
+		if LayRows() then
+			ThreatStart()
+		end
 	else
 		FadeTo(0, 0)
 	end
 end
 
 -- the preview's made-up group fight (0.17.0, Modules/Meter.lua's): its
--- sources laid on each hit, faded out after the kill or the stop
+-- sources laid on each hit (one damage row), faded out after the kill or the stop
 function Bar.Preview(on, sources)
 	if on then
 		if not On() then
@@ -724,11 +1104,42 @@ function Bar.Preview(on, sources)
 			ui.holder:SetAlpha(0)
 			FadeTo(1, B.FADE_IN)
 		end
-		Lay(sources, false, true)
+		Bar.Arrange(1)
+		ui.rows[1].kind = "dps"
+		Lay(ui.rows[1], sources, false, true)
 	elseif Bar.preview then
 		Bar.preview = false
 		OutNow()
 	end
+end
+
+-- /mello meter threat: one threat row with the made-up group in three steps (safe, close, pulling), then faded out
+-- as the preview
+function Bar.ThreatTest()
+	if not On() or Bar.testStep then   -- (one run at a time)
+		return
+	end
+	local ui = Build()
+	if not Bar.preview then
+		Bar.preview = true
+		ui.holder:SetAlpha(0)
+		FadeTo(1, B.FADE_IN)
+	end
+	Bar.Arrange(1)
+	ui.rows[1].kind = "threat"
+	Bar.testStep = 0
+	Bar.ThreatTestStep()
+end
+
+function Bar.ThreatTestStep()
+	Bar.testStep = (Bar.testStep or 0) + 1
+	if not (Bar.THREAT_STEPS[Bar.testStep] and Bar.preview and Bar.ui) then
+		Bar.testStep = nil
+		Bar.Preview(false)
+		return
+	end
+	Bar.LayThreat(Bar.ui.rows[1], ThreatSample(Bar.testStep), true)
+	C_Timer.After(B.THREAT_TEST, Bar.ThreatTestStep)
 end
 
 -- a new palette (the texts' shadow, the fill's fallback) or Bar Texture
@@ -741,6 +1152,7 @@ end
 
 -- the module or its settings changed
 function Bar.Apply()
+	Bar.Migrate()   -- (2.1.61: the one Race Bar Shows of before into the ticks)
 	if not looking then
 		looking = true
 		-- (onelook B: the kit bracket's 'border' and 'look:statusbars' are gone
@@ -763,9 +1175,14 @@ function Bar.Apply()
 		end
 		return
 	end
+	if Bar.samples and Bar.ui then
+		LaySamples()   -- (2.1.61: a tick changed while Edit Layout shows the samples)
+		return
+	end
 	Bar.Samples()
-	if Bar.shown and Bar.ui and not Bar.samples then
-		local healing = Healing()
-		Lay(LiveSources(healing), healing, false)
+	if Bar.shown and Bar.ui and not Bar.samples and not Bar.preview then
+		if LayRows() then
+			ThreatStart()
+		end
 	end
 end
