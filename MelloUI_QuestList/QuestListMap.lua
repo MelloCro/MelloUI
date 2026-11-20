@@ -730,7 +730,8 @@ MarkClick = function(self, button)
 		local what = TRANSPORT_WHAT[data.kind] or "boat"
 		local icon = MelloUI.Widgets.IconMarkup(TRANSPORT_PIN[data.kind] or "pin_boat", 16) .. " "
 		local set, chimed = QL.RouteToPoint(mapID, data.x, data.y, icon .. data.label,
-			string.format("%sTracking the %s to %s, {dist} away", icon, what, data.label))
+			string.format("%sTracking the %s to %s, {dist} away", icon, what, MelloUI.Widgets.Tr(data.label)),
+			data.label, icon)
 		if set and not chimed then   -- (Route's notice chimes when it can)
 			MelloUI:PlayUISound("waypoint_set")
 		end
