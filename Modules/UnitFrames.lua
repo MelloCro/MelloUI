@@ -71,7 +71,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		  desc = "Mirrors the party frames for a party on the right of the screen: portraits on the right." },
 		-- (2.1.61; a player: "could we also have rage & energy bar on the player unit frames with numbers?", the user's
 		-- pick A of druid_bars_sketch: one row, split in two) Modules/UnitFramesOwn.lua's Forms
-		{ type = "toggle", key = "druidForms", name = "Druid Forms", new = "2.1.61",
+		{ type = "toggle", key = "druidForms", name = "Druid Forms",
 		  search = "druid form forms shapeshift cat bear mana energy rage",
 		  desc = "For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values." },
 		{ type = "header", name = "Names" },
