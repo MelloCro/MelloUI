@@ -2011,7 +2011,11 @@ function PartyLevel.Make(frame, portrait)
 	local okW, w = pcall(portrait.GetWidth, portrait)
 	w = saved and saved.w or (okW and not Secret(w) and w) or 37
 	local k = w > 0 and w / PartyLevel.PORTRAIT or 37 / PartyLevel.PORTRAIT
-	local circle = frame:CreateTexture(nil, "ARTWORK", nil, 2)
+	-- (2.1.62) OVERLAY 4, the layer the game gives the player's level circle (PlayerFrame.xml), ARTWORK 2 before: a
+	-- frame set's painting lies in OVERLAY -8 on a holder at this frame's own level, so the orb, the set's badge and
+	-- the dark ground -- each in the circle's layer -- lay under its ring (the user's screenshot of 2026-11-20: "the
+	-- level circle border ... not on the correct strata")
+	local circle = frame:CreateTexture(nil, "OVERLAY", nil, 4)
 	circle:SetAtlas("UI-HUD-UnitFrame-SmallCircle")
 	circle:SetSize(PartyLevel.SIZE * k, PartyLevel.SIZE * k)
 	circle:SetPoint("CENTER", portrait, "CENTER", PartyLevel.DX * k, PartyLevel.DY * k)
