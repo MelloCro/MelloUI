@@ -135,6 +135,16 @@ function M.Language()
 	return Lang and Lang.code or "enUS"
 end
 
+local function DestinationLabel(d)
+	if not d then
+		return nil
+	end
+	if d.labelKey then
+		return (d.labelPrefix or "") .. M.Tr(d.labelKey)
+	end
+	return d.label
+end
+
 --------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------
@@ -5085,11 +5095,11 @@ local function Announce(text)
 			text = text:gsub("{dist}", distance)
 		end
 	elseif time then
-		text = M.F("Tracking %s: %s, %s", destination.label or M.Tr("map pin"), Yards(d), time)
+		text = M.F("Tracking %s: %s, %s", DestinationLabel(destination) or M.Tr("map pin"), Yards(d), time)
 	elseif d then
-		text = M.F("Tracking %s, %s away", destination.label or M.Tr("map pin"), Yards(d))
+		text = M.F("Tracking %s, %s away", DestinationLabel(destination) or M.Tr("map pin"), Yards(d))
 	else
-		text = M.F("Tracking %s", destination.label or M.Tr("map pin"))
+		text = M.F("Tracking %s", DestinationLabel(destination) or M.Tr("map pin"))
 	end
 	-- (0.19.4) one sound for a new destination: no chime while the World
 	-- Marker's own sound stands for it (M.TrackMute, by the marker below)
@@ -6036,11 +6046,12 @@ do
 	-- (`whole`: the marker's whole label, a quest's own place's; `spot`:
 	-- the quest's own place; `step`: either, the quest's step's own place, not
 	-- a dock; `key`: what it stands for, Update's -- dismissed as that)
-	local function PlaceStandIn(dock, label, whole, spot, step, key)
+	local function PlaceStandIn(dock, label, whole, spot, step, key, labelKey, labelPrefix)
 		local mapID, mx, my = MapPointOfYards(dock[1], dock[2], dock[3])
 		local before = standIn
 		local s = { cont = dock[1], x = dock[2], y = dock[3], spot = spot, step = step, key = key,
-			label = whole or (M.IconMark("goal_pin", 16) .. " " .. (label or "the boat")) }
+			label = whole, labelKey = labelKey or (not whole and label),
+			labelPrefix = labelPrefix or (not whole and (M.IconMark("goal_pin", 16) .. " ")) }
 		if before then
 			s.pin, s.questID = before.pin, before.questID
 			-- (2026-10-04) another quest meanwhile: the one to give back is that one,
@@ -6188,10 +6199,10 @@ do
 		end
 		if want and atSpot then
 			if standIn and standIn.cont == d.cont and Dist(standIn.x, standIn.y, d.x, d.y) < SPOT_MOVE and standIn.spot then
-				standIn.label, standIn.key = d.label, key
+				standIn.label, standIn.labelKey, standIn.labelPrefix, standIn.key = d.label, d.labelKey, d.labelPrefix, key
 				return
 			end
-			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, true, true, key)
+			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, true, true, key, d.labelKey, d.labelPrefix)
 			return
 		end
 		local dock, label
@@ -6236,7 +6247,7 @@ end
 
 -- Route to a candidate; with `pin`, also place the map waypoint there so the
 -- map and the waypoint arrow show it (removing the pin ends the route).
-function M:SetDestinationTo(candidate, label, pin, noticeText)
+function M:SetDestinationTo(candidate, label, pin, noticeText, labelKey, labelPrefix)
 	local cont, x, y = CandidateYards(candidate)
 	if not cont then
 		-- (a point on a map with no place: said once; its caller falls back)
@@ -6250,7 +6261,8 @@ function M:SetDestinationTo(candidate, label, pin, noticeText)
 		mapID, mx, my = MapPointOfYards(cont, x, y)
 	end
 	M.stopped = nil   -- (a destination chosen: the player's pick, M.StopRoute)
-	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = mx, my = my, label = label }
+	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = mx, my = my, label = label,
+		labelKey = labelKey, labelPrefix = labelPrefix }
 	if pin and mapID and C_Map.SetUserWaypoint and UiMapPoint then
 		local okCan, can = pcall(C_Map.CanSetUserWaypointOnMap, mapID)
 		if not (okCan and can == false) then
@@ -10074,7 +10086,7 @@ UpdateMarker = function()
 	end
 	-- the tick places it: over the destination or on the ring round the character
 	marker.nav = nav
-	marker.label:SetText((standIn and standIn.label) or destination.label or "")
+	marker.label:SetText((standIn and (DestinationLabel(standIn) or standIn.label)) or DestinationLabel(destination) or "")
 	-- a new destination (another quest, another place: not the next spot of
 	-- the same quest) while it shows (0.18.4, the user's video: it jumped
 	-- there): it comes up afresh there, its way in played as on its first show.
@@ -10502,7 +10514,7 @@ function M.MinimapLine(aimed)
 		return
 	end
 	local remaining = route.length or 0
-	local label = destination and destination.label
+	local label = DestinationLabel(destination)
 	local secret = MelloUI.Safe.IsSecret(label)
 	if secret or remaining ~= mm.lineLength or label ~= mm.lineLabel then
 		mm.lineLength, mm.lineLabel = remaining, secret and mm or label
