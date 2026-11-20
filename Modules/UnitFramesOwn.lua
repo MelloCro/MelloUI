@@ -1334,18 +1334,18 @@ end
 -- Values writes its number in the middle (Units.FormBars: both ask for them). Only for a druid with Druid Forms on
 -- (Unit Frames' own switch): nothing is made for anyone else, nothing is made or laid in a fight.
 -- Under the painted reskin (Kit:IsCovered "unitframes") the frame's picture is the set's painting, which has two
--- holes: the plain picture stays, and the painting's own power row -- the rail over its power hole, the hole, its
--- foot -- is drawn once more one row further down, under the painting (a frame a level under the bars': the
--- painting's own foot lies over the copy's top rail), so the frame reads as one border with a third row in it (the
--- user, 2026-11-20: "1 main border with separators in the middle, depending on how many bars we have active"; the
--- first build hung the set's bar under the painting). The row is the copy's hole.
+-- holes: the plain picture stays, and the set is asked for a row more under its power hole (Kit.Sets.Rows) -- it lays
+-- its painting longer, ONE border round all three rows, its rail between the power bar and ours (the user,
+-- 2026-11-20: "1 main border with separators in the middle, depending on how many bars we have active", then, to a
+-- row drawn under the painting with the painting's corner left in the middle: "can you make a dynamic unitframe
+-- depending on how many bars are being tracked, like you did with the Personal Nameplate"). The row is that hole;
+-- nothing of the painting is ours.
 --   Units.FormBars() -> { bar, bar } | nil   the halves while the row shows
 --   Units.FormsTest(on)                      (/mello personal druid) the row with sample amounts, for any class
 --------------------------------------------------------------------------------
 do
 	local Forms = { POWERS = { "MANA", "ENERGY", "RAGE" }, TYPE = { MANA = 0, RAGE = 1, ENERGY = 3 },
 		W = 124, H = 9, X = 87, Y = -73, GAP = 2,
-		LEFT = 4,   -- (the painted reskin: the copy of the painting's power row starts this far left of its hole)
 		SAMPLE = { MANA = { 1840, 2130 }, ENERGY = { 100, 100 }, RAGE = { 35, 100 } } }
 	P.Forms = Forms
 
@@ -1376,6 +1376,15 @@ do
 	function Forms.Painted()
 		local Kit = MelloUI.Kit
 		return (Kit and Kit.IsCovered and Kit:IsCovered("unitframes")) and true or false
+	end
+
+	-- the painted reskin's painting without our row (the row off, the reskin gone: a painting it no longer dresses
+	-- keeps nothing of it)
+	function Forms.NoRows(f)
+		local Sets = MelloUI.Kit and MelloUI.Kit.Sets
+		if Sets and Sets.Rows then
+			Sets.Rows(f.PlayerFrameContainer.FrameTexture, nil)
+		end
 	end
 
 	-- the class-resource picture wanted for our row (P.Art)
@@ -1426,51 +1435,28 @@ do
 		local okW, rw = pcall(region.GetWidth, region)
 		row:ClearAllPoints()
 		local painted = false
-		if u and u.power and u.health and u.w and u.h and u.u and u.v and okW and Num(rw) and rw > 0 and u.rw and u.rh
-			and Sets.File then
+		if u and u.power and u.health and okW and Num(rw) and rw > 0 and u.rw and u.rh and Sets.Rows then
 			-- (the painting's numbers are for a picture u.rw x u.rh, laid from the game picture's middle: Sets.LayUnit)
 			local k = rw / u.rw
-			local cx, cy = u.rw / 2, u.rh / 2
 			local hole = u.power
-			-- (one row further down: the rail between the two holes and a hole's depth)
+			-- (a row further down: the rail between the two holes and a hole's depth -- the hole the set makes for it)
 			local pitch = hole[4] - u.health[4]
 			w = (hole[3] - hole[1]) * k
 			h = (hole[4] - hole[2]) * k
-			row:SetPoint("TOPLEFT", region, "CENTER", (hole[1] - cx) * k, -(hole[2] + pitch - cy) * k)
-			-- the copy: from the rail over the power hole down to the painting's foot, from a little left of the hole to
-			-- the painting's right edge -- that part of the painting's file, its ground under the hole
-			if not row.under then
-				row.under = CreateFrame("Frame", nil, row)
-				row.under:SetAllPoints(row)
-				row.art = row.under:CreateTexture(nil, "ARTWORK", nil, 0)
-				row.ground = row.under:CreateTexture(nil, "BACKGROUND", nil, 0)
-				if Kit.RegisterTexture then
-					Kit:RegisterTexture(row.art)   -- (Dark Mode's unit frames brightness, as the painting's)
+			row:SetPoint("TOPLEFT", region, "CENTER", (hole[1] - u.rw / 2) * k, -(hole[2] + pitch - u.rh / 2) * k)
+			Sets.Rows(region, 1)
+			-- (the bars of a painted frame stand at the painting's level: ours with the power bar)
+			local okL, level = pcall(f.manabar.GetFrameLevel, f.manabar)
+			if okL and Num(level) then
+				row:SetFrameLevel(level)
+				for _, b in ipairs(row.bars) do
+					b:SetFrameLevel(level)
 				end
 			end
-			row.under:SetFrameLevel(math.max(0, Main(f):GetFrameLevel() - 1))
-			local x0, y0, x1, y1 = hole[1] - Forms.LEFT, u.health[4], u.x + u.w, u.y + u.h
-			row.art:SetTexture(Sets.File(set, "player"))
-			row.art:SetTexCoord((x0 - u.x) / u.w * u.u, (x1 - u.x) / u.w * u.u, (y0 - u.y) / u.h * u.v,
-				(y1 - u.y) / u.h * u.v)
-			row.art:ClearAllPoints()
-			row.art:SetPoint("TOPLEFT", region, "CENTER", (x0 - cx) * k, -(y0 + pitch - cy) * k)
-			row.art:SetSize(math.max((x1 - x0) * k, 0.01), math.max((y1 - y0) * k, 0.01))
-			local pad = Sets.GROUND_PAD or 0
-			row.ground:ClearAllPoints()
-			row.ground:SetPoint("TOPLEFT", row, "TOPLEFT", -pad, pad)
-			row.ground:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", pad, -pad)
-			local e = Sets.byRegion and Sets.byRegion[region]
-			if Sets.Ground then
-				Sets.Ground(row.ground, e and e.paintGround or nil)
-			end
-			row.under:Show()
 			painted = true
 		else
 			row:SetPoint("TOPLEFT", area, "TOPLEFT", Forms.X, Forms.Y)
-			if row.under then
-				row.under:Hide()
-			end
+			Forms.NoRows(f)
 		end
 		row:SetSize(w, h)
 		local half = math.max(1, (w - Forms.GAP) / 2)
@@ -1567,6 +1553,8 @@ do
 		row:SetShown(want)
 		if want then
 			Forms.Place(f)
+		else
+			Forms.NoRows(f)
 		end
 		if quiet then
 			return
@@ -1878,7 +1866,9 @@ function P.Art(f)
 	local c = f.PlayerFrameContainer
 	local altBar = Ask(rawget(_G, "PlayerFrame_GetAlternatePowerBar") or function() return nil end)
 	-- (2.1.61, Druid Forms: our own row stands in the class bar's place, so the class-resource picture shows for it
-	-- too, with what the game changes for that picture -- the mana bar's mask the plain one, the flash its own)
+	-- too, with the flash the game shows for that picture. The mana bar's mask stays as it is -- the game swaps it for
+	-- a plain one there; the painted reskin cuts that same mask to its painting's hole, and a swap here after its cut
+	-- left the power bar's fill a thin band: seen in the simulator, Druid Forms switched off and on under the reskin)
 	local res = altBar ~= nil or P.Forms.Res(f)
 	c.VehicleFrameTexture:Hide()
 	Atlas(c.FrameTexture, ART.frame)
@@ -1886,9 +1876,6 @@ function P.Art(f)
 	c.AlternatePowerFrameTexture:SetShown(res)
 	if f.resArt ~= res then
 		f.resArt = res
-		local mask = f.manabar.ManaBarMask
-		Atlas(mask, res and "Unit_BarMask" or ART.manaMask, true)
-		mask:SetWidth(128)
 		Atlas(c.FrameFlash, res and ART.resFlash or ART.flash, true)
 		c.FrameFlash:ClearAllPoints()
 		c.FrameFlash:SetPoint("CENTER", c, "CENTER", res and -0.5 or 0, res and -0.5 or 0)

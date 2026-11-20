@@ -55,9 +55,13 @@ local Sets = {
 	byFrame = setmetatable({}, { __mode = "k" }),      -- [the unit frame] = its entry (2.1.58: the glows, the effects)
 	levels = setmetatable({}, { __mode = "k" }),       -- [a level circle's orb rep] = its badge (2.1.58)
 	rects = setmetatable({}, { __mode = "k" }),        -- [a raid cell] = its glow (2.1.58)
+	extra = setmetatable({}, { __mode = "k" }),        -- [the game's picture] = rows wanted under its power hole (2.1.61)
 	PICTURE = { "OVERLAY", -8 },                       -- the picture's layer: over the fills, under the texts
 	GROUND = { "BACKGROUND", -8 },                     -- a hole's ground: under the fills
 	GROUND_PAD = 1,                                    -- (units) a ground past its hole, under the painted rim
+	CUT_ROW = 0.25,                                    -- (units) the row of a painting drawn deeper for more bars (2.1.61)
+	CUT_UNDER = 1,                                     -- (units) the holes' cut this far under the power hole's top
+	CUT_RAIL = 1.5,                                    -- (units) the right rail starts this far right of the holes
 	CREST = 0.95,                                      -- the crest's side, a share of the ring's opening radius
 }
 Kit.Sets = Sets
@@ -146,6 +150,7 @@ local function Make(e)
 		Kit:RegisterTexture(e.art)   -- (Dark Mode's unit frames brightness, as the game's picture it stands for)
 	end
 	e.held = { levels = {}, layers = {}, masks = {}, points = {} }
+	e.parts = {}   -- (2.1.61: a picture's three more textures while it is laid in parts, LayPicture)
 	-- the game's picture shown or hidden (a vehicle's art in its place): ours with it
 	if not e.watched then
 		e.watched = true
@@ -312,6 +317,110 @@ local function ShadeAlpha()
 	return nil
 end
 
+-- (2.1.61; the user, 2026-11-20, with a picture of the player frame -- a druid's form row hung under the painting,
+-- the painting's corner ornament left in the middle: "can you make a dynamic unitframe depending on how many bars are
+-- being tracked, like you did with the Personal Nameplate") A frame's bars are as many as its unit shows: a row more
+-- under the power hole (Sets.Rows; MelloUI's own player frame asks for a druid's form row) is ONE border round all of
+-- them. The painting is one picture with two holes, so it is laid in parts. Only a PLAIN row of it is ever drawn
+-- deeper, so no ornament loses its shape (the user, on Carved Wood, of a first cut through the power hole's middle
+-- row, where that set's and Gilded Stone's corner leaf climbs the right rail: "the edge texture is being spread
+-- instead and lost its artstyle ... it got stretched"). Three columns, two cuts:
+--   left of the ring's edge: as it is, all the way down (the ring's foot, the level's socket);
+--   the holes' columns: cut just under the power hole's top rim -- that row is the open hole between its two plain
+--     side rims -- drawn a row deep, everything under it a row lower (the hole's foot, the plate's foot and whatever
+--     of the corner ornament lies over them, whole);
+--   the right rail: cut beside the health hole's middle, where every set's rail is plain -- that row drawn a row
+--     deep, everything under it a row lower (the corner ornament whole, from its tip).
+-- Both lower parts move by the same row, so an ornament that lies over both columns stays in one piece. In the longer
+-- hole the painting's own rail between its two holes is drawn once more, between the power bar and the new row. The
+-- picture's glow is laid the same way. A row is the power hole's pitch: its rail and its depth.
+--------------------------------------------------------------------------------
+
+-- the cuts for a frame's rows now, in the picture's units -- { xc, xr, yr, yh, pitch, row }: the ring's edge and the
+-- right rail's start, the right rail's cut and the holes' -- or nil (none wanted, a mirrored frame, a painting
+-- without the two holes)
+local function CutOf(e, u, flip)
+	local extra = Sets.extra[e.region]
+	if not extra or flip or not (u.power and u.health and u.ring) then
+		return nil
+	end
+	local yh = u.power[2] + Sets.CUT_UNDER
+	local yr = (u.health[2] + u.health[4]) / 2
+	local outer = u.ring[4] or u.ring[3] * 1.25
+	local dy = yh - u.ring[2]
+	local xc = u.ring[1] + math.sqrt(math.max(0, outer * outer - dy * dy))
+	return { xc = math.min(xc, u.power[1] - 1), xr = math.max(u.health[3], u.power[3]) + Sets.CUT_RAIL, yr = yr, yh = yh,
+		pitch = u.power[4] - u.health[4], row = Sets.CUT_ROW }
+end
+
+-- a picture of the painting's shape on e[key] (`r`: its rect in the picture's units, its share u, v of its file), whole
+-- or in the cuts' seven parts (its six more textures made the first time, beside the first: its frame, its layer)
+local function LayPicture(e, key, file, r, flip, Put, cut)
+	local main = e[key]
+	local parts = e.parts[key]
+	main:SetTexture(file)
+	if not cut then
+		if flip then
+			main:SetTexCoord(r.u, 0, 0, r.v)
+		else
+			main:SetTexCoord(0, r.u, 0, r.v)
+		end
+		Put(main, r.x, r.y, r.w, r.h)
+		for i = 1, parts and #parts or 0 do
+			parts[i].used = false
+			parts[i]:Hide()
+		end
+		return
+	end
+	if not parts then
+		parts = {}
+		local okL, layer, sub = pcall(main.GetDrawLayer, main)
+		for i = 1, 6 do
+			parts[i] = main:GetParent():CreateTexture(nil, okL and layer or "ARTWORK", nil, okL and Num(sub) or 0)
+			if key == "art" and Kit.RegisterTexture then
+				Kit:RegisterTexture(parts[i])   -- (Dark Mode's unit frames brightness, as the first part)
+			end
+		end
+		e.parts[key] = parts
+	end
+	local x1, y1 = r.x + r.w, r.y + r.h
+	local function Part(t, xa, xb, ya, yb, toY, depth)
+		t:SetTexture(file)
+		t:SetTexCoord((xa - r.x) / r.w * r.u, (xb - r.x) / r.w * r.u, (ya - r.y) / r.h * r.v, (yb - r.y) / r.h * r.v)
+		Put(t, xa, toY, xb - xa, depth)
+	end
+	local xc, xr, yr, yh, pitch = cut.xc, math.min(cut.xr, x1), cut.yr, cut.yh, cut.pitch
+	-- over the higher cut: all of it
+	Part(main, r.x, x1, r.y, yr, r.y, yr - r.y)
+	-- left of the ring's edge: as it is
+	Part(parts[1], r.x, xc, yr, y1, yr, y1 - yr)
+	-- the holes' columns: as they are down to their cut, its row a row deep, the rest a row lower
+	Part(parts[2], xc, xr, yr, yh, yr, yh - yr)
+	Part(parts[3], xc, xr, yh, yh + cut.row, yh, pitch)
+	Part(parts[4], xc, xr, yh, y1, yh + pitch, y1 - yh)
+	-- the right rail: its cut's row a row deep, the rest a row lower
+	Part(parts[5], xr, x1, yr, yr + cut.row, yr, pitch)
+	Part(parts[6], xr, x1, yr, y1, yr + pitch, y1 - yr)
+	for i = 1, 6 do
+		parts[i].used = true
+		parts[i]:SetShown(key ~= "glow" or main:IsShown())
+	end
+end
+
+-- rows wanted under a frame's power hole (0 / nil: none; one is what the paintings' rails allow), by the game's
+-- picture the frame's painting stands on -- asked before or after the painting is laid
+function Sets.Rows(region, n)
+	n = (type(n) == "number" and n >= 1) and 1 or nil
+	if type(region) ~= "table" or Sets.extra[region] == n then
+		return
+	end
+	Sets.extra[region] = n
+	local e = Sets.byRegion[region]
+	if e and e.on then
+		Sets.LayUnit(e)
+	end
+end
+
 function Sets.LayUnit(e)
 	if InCombatLockdown() then
 		Kit:WhenOutOfCombat(function()
@@ -354,20 +463,37 @@ function Sets.LayUnit(e)
 		tex:SetSize(math.max(w * k, 0.01), math.max(h * k, 0.01))
 	end
 	e.put = Put   -- (2.1.58: the rank laid by the picture's own placer, Sets.Rank)
-	e.art:SetTexture(Sets.File(set, e.shape))
-	if flip then
-		e.art:SetTexCoord(u.u, 0, 0, u.v)
-	else
-		e.art:SetTexCoord(0, u.u, 0, u.v)
-	end
-	Put(e.art, u.x, u.y, u.w, u.h)
+	-- (2.1.61: whole, or in parts with a row more under the power hole -- CutOf, LayPicture)
+	local cut = CutOf(e, u, flip)
+	e.cut = cut
+	LayPicture(e, "art", Sets.File(set, e.shape), u, flip, Put, cut)
 	local pad = Sets.GROUND_PAD
 	for i, b in ipairs(e.bars) do
 		local hole, ground = u[b[3]], e.grounds[i]
 		if hole and ground then
-			Put(ground, hole[1] - pad, hole[2] - pad, hole[3] - hole[1] + 2 * pad, hole[4] - hole[2] + 2 * pad)
+			-- (the power hole's ground under the longer hole: the new row's too)
+			local more = (cut and b[3] == "power") and cut.pitch or 0
+			Put(ground, hole[1] - pad, hole[2] - pad, hole[3] - hole[1] + 2 * pad, hole[4] - hole[2] + 2 * pad + more)
 			Sets.Ground(ground, e.paintGround)
 		end
+	end
+	-- (the painting's own rail between its two holes once more, under the power hole: between it and the new row)
+	if cut then
+		local hp, pw = u.health, u.power
+		local file = Sets.File(set, e.shape)
+		if not e.sep then
+			e.sep = e.holder:CreateTexture(nil, Sets.PICTURE[1], nil, Sets.PICTURE[2])
+			if Kit.RegisterTexture then
+				Kit:RegisterTexture(e.sep)
+			end
+		end
+		e.sep:SetTexture(file)
+		e.sep:SetTexCoord((pw[1] - u.x) / u.w * u.u, (pw[3] - u.x) / u.w * u.u, (hp[4] - u.y) / u.h * u.v,
+			(pw[2] - u.y) / u.h * u.v)
+		Put(e.sep, pw[1], pw[4], pw[3] - pw[1], pw[2] - hp[4])
+		e.sep:Show()
+	elseif e.sep then
+		e.sep:Hide()
 	end
 	if u.plaque then
 		local p = u.plaque
@@ -381,13 +507,7 @@ function Sets.LayUnit(e)
 	-- (2.1.58) the glow, as the shade; the ring's copy on its square (its share of the picture)
 	local g = u.glow
 	if g then
-		e.glow:SetTexture(Sets.File(set, e.shape .. "_glow"))
-		if flip then
-			e.glow:SetTexCoord(g.u, 0, 0, g.v)
-		else
-			e.glow:SetTexCoord(0, g.u, 0, g.v)
-		end
-		Put(e.glow, g.x, g.y, g.w, g.h)
+		LayPicture(e, "glow", Sets.File(set, e.shape .. "_glow"), g, flip, Put, cut)
 	end
 	do
 		local x0, y0 = (cx - outer - u.x) / u.w, (cy - outer - u.y) / u.h
@@ -519,6 +639,17 @@ function Sets.GlowState(e)
 		glow:Show()
 	else
 		glow:Hide()
+	end
+	-- (2.1.61: the glow of a painting laid in parts -- its other parts with it)
+	local parts = e.parts and e.parts.glow
+	for i = 1, parts and #parts or 0 do
+		local p = parts[i]
+		if state and p.used then
+			PaintGlow(p, state)
+			p:Show()
+		else
+			p:Hide()
+		end
 	end
 end
 
