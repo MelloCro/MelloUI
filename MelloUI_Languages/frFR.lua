@@ -3555,6 +3555,7 @@ Lang:Add("frFR", {
 	["Portal"] = "Portail",
 	["Tram station"] = "Station du tramway",
 	["Airship dock"] = "Quai du dirigeable",
+	["the boat"] = "le bateau", -- draft
 	["Boat to Booty Bay"] = "Bateau vers la Baie-du-Butin",
 	["Boat to Ratchet"] = "Bateau vers Cabestan",
 	["Zeppelin to Orgrimmar"] = "Zeppelin vers Orgrimmar",

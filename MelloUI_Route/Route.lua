@@ -6050,7 +6050,8 @@ do
 		local mapID, mx, my = MapPointOfYards(dock[1], dock[2], dock[3])
 		local before = standIn
 		local s = { cont = dock[1], x = dock[2], y = dock[3], spot = spot, step = step, key = key,
-			label = whole, labelKey = labelKey or (not whole and label),
+			-- (a dock the data has no label for: "the boat", as before the labels were translated when drawn)
+			label = whole, labelKey = labelKey or (not whole and (label or "the boat")),
 			labelPrefix = labelPrefix or (not whole and (M.IconMark("goal_pin", 16) .. " ")) }
 		if before then
 			s.pin, s.questID = before.pin, before.questID
