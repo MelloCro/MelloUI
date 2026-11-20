@@ -1444,18 +1444,100 @@ BUG.READS = { "ContainerFrameItemButton_OnClick", "ContainerFrame_GetExtendedPri
 	"ItemUpgradeFrame", "ObliterumForgeFrame", "ChallengesKeystoneFrame", "StackSplitFrame" }
 BUG.FIELDS = { "MerchantFrame", "BankFrame", "ItemButtonUtil", "ItemLocation", "C_Container" }
 
+-- (2.1.61; a controller player's report, 2026-11-19: ten blocks in the game's own gamepad code, each way cut at its 14th
+-- line -- all the game's, nothing on where the run began, and the user could capture no taint log) The way keeps both of
+-- its ends: its first BUG.WAY lines (the blocked call and what led to it) and its last BUG.WAY_END (where the run began:
+-- an event of the game's, or a function of MelloUI's), the middle left out and counted.
+BUG.WAY_END = 10
+
 function BUG.Way()
-	local ok, text = pcall(rawget(_G, "debugstack") or error, 1, 30, 0)
+	local ok, text = pcall(rawget(_G, "debugstack") or error, 1, 30, BUG.WAY_END + 4)
 	if not ok or Secret(text) or type(text) ~= "string" then
 		return nil
 	end
-	local way = {}
+	local all = {}
 	for line in text:gmatch("[^\n]+") do
-		if #way < BUG.WAY and not line:find("Core/Perf.lua", 1, true) and not line:find("'pcall'", 1, true) then
-			way[#way + 1] = (line:gsub("Interface/AddOns/", "")):sub(1, 150)
+		if not line:find("Core/Perf.lua", 1, true) and not line:find("'pcall'", 1, true) then
+			all[#all + 1] = (line:gsub("Interface/AddOns/", "")):sub(1, 150)
 		end
 	end
+	if #all <= BUG.WAY + BUG.WAY_END then
+		return all
+	end
+	local way = {}
+	for i = 1, BUG.WAY do
+		way[i] = all[i]
+	end
+	way[#way + 1] = format("... (%d lines left out)", #all - BUG.WAY - BUG.WAY_END)
+	for i = #all - BUG.WAY_END + 1, #all do
+		way[#way + 1] = all[i]
+	end
 	return way
+end
+
+-- (2.1.61, the same report) In the game's Gamepad UI a block comes out of the game's own controller code: its window
+-- manager, its navigation, its binding stack and its crossbar pass every window that opens or closes through tables of
+-- their own, and one value in them that is no longer the game's stops the next protected call. Which values, and who
+-- wrote them: the tables' own keys and the lists one step under them, asked of the game (issecurevariable), at the
+-- block and only in the Gamepad UI. A frame found under a key is named, never walked (its fields are its own).
+BUG.PAD = {
+	{ "SmartNavigation" }, { "SmartNavigation", "activeInfo" },
+	{ "GamepadMode", "FrameControlsManager" },
+	{ "GamepadSharedUtility", "InputBindingManager" },
+	{ "GamepadMainActionBarFrame" }, { "GamepadMainActionBarFrame", "PageUnit" },
+	{ "GamepadMainActionBarFrame", "PageUnit", "actionBars" },
+	{ "LootFrame" }, { "ActionBarButtonEventsFrame" }, { "ActionBarActionEventsFrame" },
+}
+BUG.PAD_NAMES, BUG.PAD_KEYS = 40, 400   -- the names kept; the keys looked at in one table
+
+function BUG.PadNotGames()
+	local check = rawget(_G, "issecurevariable")
+	if type(check) ~= "function" then
+		return nil
+	end
+	local out, seen = {}, {}
+	local function Walk(label, t, deep)
+		if type(t) ~= "table" or seen[t] then
+			return
+		end
+		seen[t] = true
+		local n = 0
+		for k, v in pairs(t) do
+			n = n + 1
+			if n > BUG.PAD_KEYS or #out >= BUG.PAD_NAMES then
+				return
+			end
+			local kind = type(k)
+			if kind == "string" or kind == "number" then
+				local name = label .. "." .. tostring(k)
+				local ok, secure, by = pcall(check, t, k)
+				if ok and secure == false then
+					out[#out + 1] = format("%s (%s)", name:sub(1, 90), tostring(by))
+				end
+				if deep and type(v) == "table" and rawget(v, 0) == nil then
+					Walk(name, v, false)
+				end
+			end
+		end
+	end
+	local asked = {}   -- [a global's name] = true: asked once, though several paths begin at it
+	for _, path in ipairs(BUG.PAD) do
+		local t = rawget(_G, path[1])
+		local label = path[1]
+		if not asked[label] then
+			asked[label] = true
+			local ok, secure, by = pcall(check, label)
+			if ok and secure == false and #out < BUG.PAD_NAMES then
+				out[#out + 1] = format("%s (%s)", label, tostring(by))
+			end
+		end
+		for i = 2, #path do
+			t = type(t) == "table" and rawget(t, path[i]) or nil
+			label = label .. "." .. path[i]
+		end
+		Walk(label, t, true)
+	end
+	return out
 end
 
 function BUG.Under()
@@ -1612,6 +1694,11 @@ function BUG.Capture(event, addon, func)
 	local okT, tainted = pcall(BUG.NotGames, okU and button or nil)
 	local okO, others = pcall(BUG.Others)
 	local okM, made = pcall(BUG.MadeLines)
+	local gamepad = MelloUI.Safe.GamepadUI and MelloUI.Safe.GamepadUI() and true or false
+	local okP, pad = false, nil
+	if gamepad then
+		okP, pad = pcall(BUG.PadNotGames)   -- (the Gamepad UI's own tables: only while it is on)
+	end
 	local entry = {
 		when = date("%Y-%m-%d %H:%M:%S"),
 		what = event == "ADDON_ACTION_FORBIDDEN" and "forbidden" or "blocked",
@@ -1619,10 +1706,11 @@ function BUG.Capture(event, addon, func)
 		combat = okC and combat and true or false,
 		zone = okZ and type(zone) == "string" and not Secret(zone) and zone or "?",
 		version = MelloUI.version, memory = kb and math.floor(kb + 0.5) or nil,
-		gamepad = MelloUI.Safe.GamepadUI and MelloUI.Safe.GamepadUI() and true or false,
+		gamepad = gamepad,
 		lines = lines,
 		under = okU and under or nil, way = okW and way or nil,
 		tainted = okT and tainted or nil, others = okO and others or nil, made = okM and made or nil,
+		pad = okP and pad or nil,
 	}
 	table.insert(list, 1, entry)
 	BUG.seen[func] = { entry = entry, at = at }
@@ -1667,6 +1755,10 @@ function BUG.Report()
 		end
 		if e.tainted then
 			add("   Not the game's: %s", #e.tainted > 0 and table.concat(e.tainted, ", ") or "nothing the bag click reads")
+		end
+		if e.pad then
+			add("   Not the game's, in its Gamepad UI: %s", #e.pad > 0 and table.concat(e.pad, ", ")
+				or "nothing in its window manager, navigation, binding stack or crossbar")
 		end
 		if e.others and #e.others > 0 then
 			add("   Other addons: %s", table.concat(e.others, ", "))

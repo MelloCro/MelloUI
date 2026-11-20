@@ -15,9 +15,10 @@
 --     the form, the pet action or its autocast (a right click) or cancels the possession -- securely, in a fight too.
 --     Keys stay the game's (SHAPESHIFTBUTTON<i>, BONUSACTIONBUTTON<i>: they press the game's buttons). Drag and drop on
 --     the pet bar: PickupPetAction, the game's lock and modifier.
---   * When each shows: a state driver of ours ([vehicleui] [possessbar] [overridebar] [petbattle] hide the stance and
---     pet bars; the pet bar while a pet is out; the possess bar while [possessbar]); the stance bar with no form at all,
---     hidden (out of a fight, on UPDATE_SHAPESHIFT_FORMS).
+--   * When each shows: a state driver of ours ([vehicleui] [overridebar] [petbattle] hide the stance and pet bars, a
+--     possession the stance bar only; the pet bar while a pet is out -- a possessed unit too: its abilities are pet
+--     actions, 2.1.61; the possess bar while [possessbar]); the stance bar with no form at all, hidden (out of a
+--     fight, on UPDATE_SHAPESHIFT_FORMS).
 --   * Their look and state from the game's own data (GetShapeshiftFormInfo, GetPetActionInfo, GetPossessInfo), the
 --     buttons laid as the game lays its own (each button's place and scale on the game's bar, read: the layout's
 --     orientation, rows, icon size and padding, Tweaks' Bar Layout rows); cooldowns as the game sets them while plain,
@@ -59,9 +60,14 @@ local KINDS = {
 		name = "MelloUIPossessBar", label = "Possess Bar", index = 13 },
 }
 local ORDER = { "stance", "pet", "possess" }
+-- (2.1.61; a player, 2026-11-20: "as a Priest using Mind Control the abilities seem to be hidden? I am told the pet bar
+-- handles this but I can't make it not hidden within Mello") the pet bar stays while the player possesses a unit: the
+-- unit's abilities are pet actions, on the pet bar -- the game's own pet bar shows whenever PetHasActionBar() and the
+-- pet is seen, a possession or not (Blizzard_ActionBar's PetActionBar.lua; its gamepad bars call the same buttons the
+-- possess bar). Before, [possessbar] hid ours for as long as the Mind Control lasted.
 local DRIVERS = {
 	stance = "[vehicleui][possessbar][overridebar][petbattle] hide; show",
-	pet = "[vehicleui][possessbar][overridebar][petbattle] hide; [@pet,exists,nodead] show; hide",
+	pet = "[vehicleui][overridebar][petbattle] hide; [@pet,exists,nodead] show; hide",
 	possess = "[possessbar] show; hide",
 }
 local BUTTON = 30   -- (SmallActionButtonTemplate's size)
@@ -71,7 +77,7 @@ local EVENTS = { "PLAYER_ENTERING_WORLD", "UPDATE_SHAPESHIFT_FORMS", "UPDATE_SHA
 	"UPDATE_POSSESS_BAR", "UPDATE_BINDINGS", "ACTIONBAR_UPDATE_COOLDOWN", "SPELL_UPDATE_COOLDOWN" }
 local UNIT_EVENTS = { "UNIT_PET", "UNIT_FLAGS", "UNIT_AURA" }
 
-local S = { bars = {}, built = nil, gameOf = {} }
+local S = { bars = {}, built = nil, gameOf = {}, DRIVERS = DRIVERS }   -- (DRIVERS: read by the tests)
 OB.Special = S
 
 --------------------------------------------------------------------------------

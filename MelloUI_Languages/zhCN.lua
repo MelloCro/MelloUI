@@ -2496,6 +2496,8 @@ Lang:Add("zhCN", {
 	["its main screen"] = "它的主屏幕", -- draft
 	["Its finds in MelloUI's look, and on Rare Alert"] = "它的发现换成 MelloUI 外观，并显示在稀有警报中", -- draft
 	["Its gathering nodes on MelloUI's map"] = "它的采集点显示在 MelloUI 地图上", -- draft
+	["Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons, one a kind: herbs, veins, fishing pools and treasures."] = "它的采集点在 MelloUI 的地图和它自己的小地图标记上使用 MelloUI 的图标，每类一个：草药、矿脉、鱼群和宝藏。", -- draft
+	["Its gathering nodes in MelloUI's icons"] = "它的采集点使用 MelloUI 的图标", -- draft
 	["Its notes on MelloUI's map"] = "它的标注显示在 MelloUI 地图上", -- draft
 	["The minimap stays in place while it scans"] = "它扫描时小地图保持原位", -- draft
 	["Click-casting on MelloUI's frames"] = "在 MelloUI 框体上点击施法", -- draft
@@ -2995,12 +2997,19 @@ Lang:Add("zhCN", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "背包窗口：把身上穿着的装备放到 + 格上，会进入一个空格。以前它会重新穿回去。", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "地下城信息：地下城、区域和首领以客户端语言命名，首领行里的掉落会显示物品提示。", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "语言：德语已由一位德国玩家逐行检查，聊天、地图和菜单有了更多法语。", -- draft
+	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "拾取掷骰有了自己的窗口：每个人的选择和点数一目了然，物品会飞向赢家。", -- draft
+	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "任务追踪器中的 Polestar：点击目标行即可追踪对应任务。步骤会显示距离、任务物品，以及切换 Polestar 已打开指南标签页的按钮。", -- draft
+	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "任务追踪器中的 Polestar：步骤编号与 Polestar 窗口一致，指南区域在某些步骤不再消失。", -- draft
+	["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "精神控制及其他控制效果：带有被控制生物技能的宠物动作条会一直显示。", -- draft
+	["GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap."] = "GatherMate2：它的草药、矿脉、鱼群和宝藏在地图和小地图上使用 MelloUI 自己的图标。", -- draft
+	["Druid Forms on the player frame too: your other two powers in one row under the power bar, split in two, each with its number. The Personal Display shows them the same way."] = "德鲁伊形态现在也显示在玩家框体上：另外两种能量在能量条下方的一行里，分成两半，各带数值。个人显示也以同样方式显示。", -- draft
 	["Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished."] = "搭配 Questie 做任务：每次拾取物品、击杀计数或完成任务时不再卡顿。", -- draft
 	-- the options new in 2.1.60 (the Personal Display's Mana Regen Pause and Druid Forms, Restock's Shopping List Below)
 	["Mana Regen Pause"] = "法力回复暂停", -- draft
 	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "施放消耗法力的法术后，精神在五秒内不会回复你的法力。这段时间里一道光沿着能量条移动，回复重新开始时能量条会亮起。", -- draft
 	["Druid Forms"] = "德鲁伊形态", -- draft
-	["For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "德鲁伊专用：能量条下方的两条细条显示它当前没有显示的能量。施法者形态显示能量和怒气，猎豹形态显示法力和怒气，熊形态显示法力和能量。", -- draft
+	["For a druid: one more row under the power bar, split in two, shows the two powers it does not show right now, each with its number. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "德鲁伊专用：能量条下方多出一行，分成两半，显示它当前没有显示的两种能量，各带数值。施法者形态显示能量和怒气，猎豹形态显示法力和怒气，熊形态显示法力和能量。", -- draft
+	["For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values."] = "德鲁伊专用：你的能量条下方多出一行，分成两半，显示它当前没有显示的两种能量。施法者形态显示能量和怒气，猎豹形态显示法力和怒气，熊形态显示法力和能量。数值跟随条数值设置。", -- draft
 	["Shopping List Below"] = "购物清单阈值", -- draft
 	["The shopping list opens when an item the merchant sells is below this share of its amount. At 100% it opens whenever anything is missing. An item you are reminded of always opens it."] = "当商人出售的物品低于其数量的这一比例时，购物清单会打开。设为 100% 时，只要缺少任何东西就会打开。收到提醒的物品总会打开清单。", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)

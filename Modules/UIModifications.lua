@@ -1031,6 +1031,24 @@ local function HasCVar(name)
 	return ok and value ~= nil
 end
 
+-- (2.1.61; a player's blocked-actions report, 2026-11-19: "MelloUI blocked by the game: UNKNOWN()" three times, from
+-- here, at a reload in a fight) the game refuses this setting while a fight goes on: written out of one only -- after
+-- it through the one queue, the last value asked for -- and only where the game holds another value
+local function SetSurname(value)
+	local function Write()
+		local ok, current = pcall(C_CVar.GetCVar, SURNAME_CVAR)
+		if not (ok and current ~= nil and tostring(current) == value) then
+			pcall(C_CVar.SetCVar, SURNAME_CVAR, value)
+		end
+	end
+	local S = MelloUI.Schedule or Kit
+	if type(S) == "table" and type(S.WhenOutOfCombat) == "function" then
+		S:WhenOutOfCombat(Write, "UI Modifications: the own name's form")
+	elseif not (InCombatLockdown and InCombatLockdown()) then
+		Write()
+	end
+end
+
 local function ApplyNameFormat(db, on)
 	local mode = on and (db.nameFormat or "both") or "both"
 	for _, name in ipairs({ "UnitFrames", "Nameplates" }) do
@@ -1045,9 +1063,9 @@ local function ApplyNameFormat(db, on)
 				local ok, current = pcall(C_CVar.GetCVar, SURNAME_CVAR)
 				db.savedSurnameOwn = (ok and current) and tostring(current) or "1"
 			end
-			pcall(C_CVar.SetCVar, SURNAME_CVAR, mode == "first" and "0" or "1")
+			SetSurname(mode == "first" and "0" or "1")
 		elseif db.savedSurnameOwn ~= nil then
-			pcall(C_CVar.SetCVar, SURNAME_CVAR, db.savedSurnameOwn)
+			SetSurname(tostring(db.savedSurnameOwn))
 			db.savedSurnameOwn = nil
 		end
 	end

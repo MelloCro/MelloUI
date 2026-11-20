@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.1.61
+
+- Loot rolls have a window of their own in every look: what dropped, everyone's pick and number, your Need, Greed and Pass, and a raid's forty in a scrolling table. A favourite from your Dungeon Info list stands out, and the item flies to the winner's frame.
+- Quest Tracker with Polestar: click a goal line, or the guide's title, to follow that quest, and hover it for the quest's tooltip. The guide's next step lets the quest go again.
+- Quest Tracker with Polestar: the guide's step shows the distance to its spot and its quest item button, a goal line lights up once when it is done, and a tab button in the heading switches between Polestar's open guide tabs.
+- Quest Tracker with Polestar: step numbers match Polestar's window. While you look at another step its count is greyed, and a click on it goes back to the live step.
+- Quest Tracker: a guide's goal lines line up with the quest titles, a long heading is cut short before its buttons, and a new guide step brings the list back to the top.
+- Map and minimap: a rare is marked by its skull alone, without the round plate behind it. Treasures and events keep their plate.
+- Map and minimap with GatherMate2: its nodes wear MelloUI's own icons, one a kind: a leaf for herbs, a boulder for veins, a fish for fishing pools and the chest for treasures, on MelloUI's map and on GatherMate2's own minimap pins. Its tracking circle stays its own.
+- Druid Forms on the player frame: a druid's other two powers (of mana, energy and rage) in one more row under the power bar, split in two, each with its number. The numbers follow Bar Values. Its own switch on the player frame's page, on by default.
+- Personal Display: health, power and a druid's form row share one border with a separator between each two, in every look. In the Oldschool look each bar had a frame of its own; the cast bar keeps its own. Druid Forms' two slim bars are one row there, split in two, with a number on each half.
+- Fixed with Polestar: the guide section no longer vanishes on a step that is only a heading, on a past step whose goals no longer apply, or behind a TomTom arrow until a /reload.
+- Fixed: a priest's Mind Control, and any other possession, hid the pet bar and with it the controlled creature's abilities. The pet bar stays now.
+- Fixed: after a /reload during a fight the game refused a name setting MelloUI wrote at its start (a line in the blocked actions report). It is written once the fight is over.
+- Blocked actions report (/mellobug): in the Gamepad UI it names which of the game's controller values are no longer the game's and who changed them, and each entry shows where the blocked run began as well as where it ended.
+
 ## 2.1.60
 
 - Fixed: with Questie installed, the game hitched at every quest update (an item picked up, a kill counted, a quest finished). MelloUI read the places of every quest in your log from Questie's data again each time; it keeps them now.

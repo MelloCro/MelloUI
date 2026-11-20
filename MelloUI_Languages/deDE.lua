@@ -2222,6 +2222,10 @@ Lang:Add("deDE", {
 	["Shift-click: stop watching"] = "Umschalt-Klick: nicht mehr verfolgen", -- draft
 	["Click: follow it  -  Click again: stop following"] = "Klick: ihr folgen  -  Erneut klicken: nicht mehr folgen", -- draft
 	["Click: mark this step on the map again  -  Right-click: remove its mark"] = "Klick: diesen Schritt erneut auf der Karte markieren  -  Rechtsklick: Markierung entfernen", -- draft
+	["Click: focus %s"] = "Klick: %s folgen", -- draft
+	["Right-click: remove its mark"] = "Rechtsklick: Markierung entfernen", -- draft
+	["Next guide tab: %s (%d/%d)"] = "Nächster Guide-Tab: %s (%d/%d)", -- draft
+	["Viewing step %s. Click: back to step %s."] = "Schritt %s wird angezeigt. Klick: zurück zu Schritt %s.", -- draft
 	["Click: open the recipe  -  Shift-click: stop tracking"] = "Klick: Rezept öffnen  -  Umschalt-Klick: nicht mehr verfolgen", -- draft
 	-- Chat
 	["Clean chat: hidden background and input art, short coloured channel tags, class coloured names."] = "Aufgeräumter Chat: ausgeblendeter Hintergrund und Eingabegrafik, kurze farbige Kanalmarken, Namen in Klassenfarbe.",
@@ -2484,7 +2488,8 @@ Lang:Add("deDE", {
 	["Text Font"] = "Textschrift",
 	["The font of the display's text. Shared: the interface font."] = "Die Schrift des Texts der Anzeige. Gemeinsam: die Oberflächenschrift.",
 	["Druid Forms"] = "Druidengestalten", -- draft
-	["For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "Für Druiden: Zwei schmale Leisten unter der Ressourcenleiste zeigen die Ressourcen, die sie gerade nicht zeigt. Energie und Wut in Normalgestalt, Mana und Wut in Katzengestalt, Mana und Energie in Bärengestalt.", -- draft
+	["For a druid: one more row under the power bar, split in two, shows the two powers it does not show right now, each with its number. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "Für Druiden: Eine weitere Zeile unter der Ressourcenleiste, zweigeteilt, zeigt die beiden Ressourcen, die sie gerade nicht zeigt, jede mit ihrer Zahl. Energie und Wut in Normalgestalt, Mana und Wut in Katzengestalt, Mana und Energie in Bärengestalt.", -- draft
+	["For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values."] = "Für Druiden: Eine weitere Zeile unter deiner Ressourcenleiste, zweigeteilt, zeigt die beiden Ressourcen, die sie gerade nicht zeigt. Energie und Wut in Normalgestalt, Mana und Wut in Katzengestalt, Mana und Energie in Bärengestalt. Ihre Zahlen folgen den Leistenwerten.", -- draft
 	["Class Colours"] = "Klassenfarben",
 	["The health bar in your class colour instead of green."] = "Die Gesundheitsleiste in deiner Klassenfarbe statt grün.",
 	["How wide the bars are."] = "Wie breit die Leisten sind.",
@@ -3019,6 +3024,8 @@ Lang:Add("deDE", {
 	["its main screen"] = "sein Hauptbildschirm",
 	["Its finds in MelloUI's look, and on Rare Alert"] = "Seine Funde in MelloUIs Look und im Seltenen-Alarm",
 	["Its gathering nodes on MelloUI's map"] = "Seine Sammelpunkte auf MelloUIs Karte",
+	["Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons, one a kind: herbs, veins, fishing pools and treasures."] = "Seine Sammelpunkte auf MelloUIs Karte und auf seinen eigenen Minikarten-Pins in MelloUIs Symbolen, eines je Art: Kräuter, Adern, Fischschwärme und Schätze.", -- draft
+	["Its gathering nodes in MelloUI's icons"] = "Seine Sammelpunkte in MelloUIs Symbolen", -- draft
 	["Its notes on MelloUI's map"] = "Seine Notizen auf MelloUIs Karte",
 	["The minimap stays in place while it scans"] = "Die Minikarte bleibt an ihrem Platz, während es sucht",
 	["Click-casting on MelloUI's frames"] = "Klickzaubern auf MelloUIs Rahmen",
@@ -3880,6 +3887,12 @@ Lang:Add("deDE", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Taschenfenster: Angelegte Ausrüstung, die du auf ein +-Feld ziehst, kommt in einen freien Platz. Vorher ging sie zurück an den Charakter.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Dungeon-Info: Dungeons, Gebiete und Bosse heißen wie in der Sprache deines Clients, und die Beute in einer Bosszeile zeigt ihren Gegenstands-Tooltip.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Sprachen: Deutsch Zeile für Zeile von einem deutschen Spieler geprüft, und mehr vom Chat, von der Karte und von den Menüs auf Französisch.", -- draft
+	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "Beutewürfe in einem eigenen Fenster: jede Wahl und jede Zahl, und der Gegenstand fliegt zum Gewinner.", -- draft
+	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "Polestar in der Questverfolgung: Klicke auf eine Zielzeile, um ihrer Quest zu folgen. Der Schritt zeigt seine Entfernung, seinen Questgegenstand und eine Schaltfläche für Polestars geöffnete Guide-Tabs.", -- draft
+	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "Polestar in der Questverfolgung: Die Schrittnummern stimmen mit Polestars Fenster überein, und der Guide-Abschnitt verschwindet bei manchen Schritten nicht mehr.", -- draft
+	["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "Gedankenkontrolle und andere Besessenheiten: Die Begleiterleiste mit den Fähigkeiten der kontrollierten Kreatur bleibt sichtbar.", -- draft
+	["GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap."] = "GatherMate2: seine Kräuter, Adern, Fischschwärme und Schätze in MelloUIs eigenen Symbolen, auf der Karte und der Minikarte.", -- draft
+	["Druid Forms on the player frame too: your other two powers in one row under the power bar, split in two, each with its number. The Personal Display shows them the same way."] = "Druidengestalten jetzt auch am Spielerfenster: deine beiden anderen Ressourcen in einer Zeile unter der Ressourcenleiste, zweigeteilt, jede mit ihrer Zahl. Die Persönliche Anzeige zeigt sie genauso.", -- draft
 	["Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished."] = "Questen mit Questie: kein Ruckeln mehr, wenn ein Gegenstand aufgehoben wird, ein Kill zählt oder eine Quest abgeschlossen ist.", -- draft
 	-- the options new in 2.1.60 (the Personal Display's Mana Regen Pause and Druid Forms, Restock's Shopping List Below)
 	["Shopping List Below"] = "Einkaufsliste unter", -- draft

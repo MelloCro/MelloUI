@@ -1440,8 +1440,13 @@ function Motion.Complete(block, fs)
 	if mark and mark:IsShown() then
 		Motion.PopMark(block, mark)
 	end
+	Motion.Sheen(block, nil)
+end
+
+-- the light run once over a block's title, or over `fs` (a guide's goal line): one sheen a block, made at its first run
+-- (1.2.0: in the body text's colour, added to the words under it)
+function Motion.Sheen(block, fs)
 	if not block.sweep then
-		-- (1.2.0) a sheen, in the body text's colour, added to the title
 		local sheen = block:CreateTexture(nil, "OVERLAY")
 		sheen:SetTexture(Motion.SHEEN)
 		sheen:SetBlendMode("ADD")
@@ -1450,7 +1455,16 @@ function Motion.Complete(block, fs)
 		block.sweep = sheen
 		block.sweepJob = { block = block }
 	end
-	anim:Drive(block.sweepJob, Motion.SweepStep, Motion.SWEEP, "linear", Motion.SweepOver)
+	block.sweepJob.target = fs
+	MelloUI.Anim:Drive(block.sweepJob, Motion.SweepStep, Motion.SWEEP, "linear", Motion.SweepOver)
+end
+
+-- (2.1.61, Madspike's patch) a quest focused from a guide's line (Act.FocusFromGuide): the same sheen over its title,
+-- nothing else; `fs` given (a guide goal line done just now, FillGuideBlock): over that line instead
+function Motion.Flash(block, fs)
+	if Motion.On() then
+		Motion.Sheen(block, fs)
+	end
 end
 
 -- (1.2.0) the list's motion (see the top): whether this rebuild moves (the option, not the first list, the quests'
@@ -1610,7 +1624,7 @@ end
 
 function Motion.SweepStep(job, u)
 	local block = job.block
-	local t, h = block.title, TitleSize()
+	local t, h = job.target or block.title, TitleSize()
 	local w = math.min(t:GetStringWidth() or 0, t:GetWidth() or 0)
 	local s = block.sweep
 	local sw = h * Motion.SHEEN_W
@@ -2165,11 +2179,66 @@ function Act.MarkClick(block, button)
 	Act.Follow(id)
 end
 
+-- a guide step's goal line under the pointer whose quest is in the log: its index and the quest (block.guideQuest,
+-- FillGuideBlock); nil for a line with no quest or one not picked up yet
+function Act.GuideLine(block)
+	local Q = C_QuestLog
+	if not (block.guideQuest and Q and Q.GetLogIndexForQuestID) then
+		return nil
+	end
+	-- (its title under the pointer: the first goal line, top to bottom, not done and whose quest is in the log)
+	local t = block.title
+	if t and t:IsVisible() and t:IsMouseOver() then
+		local done = block.guideDone or {}
+		for i = 1, (block.lines and #block.lines or 0) do
+			local id = block.guideQuest[i]
+			if id and not done[i] then
+				local ok, index = pcall(Q.GetLogIndexForQuestID, id)
+				if ok and Plain(index) then
+					return i, id, t
+				end
+			end
+		end
+		return nil
+	end
+	for i, id in pairs(block.guideQuest) do
+		local fs = block.lines and block.lines[i]
+		if fs and fs:IsVisible() and fs:IsMouseOver() then
+			local ok, index = pcall(Q.GetLogIndexForQuestID, id)
+			if ok and Plain(index) then
+				return i, id, fs
+			end
+			return nil
+		end
+	end
+	return nil
+end
+
+-- a click on a guide's goal line: its quest followed as its mark's click does, never let go from here (a click on
+-- the followed one keeps it); remembered so the next step lets it go only if it is still this one (GUIDE's "guide");
+-- its block shown and its title lit after the rebuild (Act.Reveal, set by the Rebuild's part)
+function Act.FocusFromGuide(id)
+	if Act.Followed() ~= id then
+		Act.Follow(id)
+	end
+	Act.guideFocus = id
+	if type(Act.Reveal) == "function" then
+		pcall(Act.Reveal, id)
+	end
+end
+
 local function OnBlockClick(block, button)
 	if block.guideClick and block.overLink then
 		return   -- (a click on one of its links: the link's, GuideLinkClick)
 	end
 	if block.guideClick then
+		if button ~= "RightButton" then
+			local _, id = Act.GuideLine(block)
+			if id then
+				Act.FocusFromGuide(id)
+				return
+			end
+		end
 		-- (the user, 2026-10-18: the World Marker missing, "click on that current step and re-check the pin";
 		-- "a way to remove the waypoint, by right clicking on the step")
 		pcall(button == "RightButton" and block.guideRight or block.guideClick)
@@ -2232,10 +2301,38 @@ Act.HINT = {
 local function OnBlockEnter(block, onMark)
 	if block.guideClick then
 		-- (a guide's step: a click marks it on the map again -- GUIDE, below)
+		-- (a goal line whose quest is in the log: lit, its quest's tooltip, and what its click does)
+		local _, id, fs = Act.GuideLine(block)
 		GameTooltip:SetOwner(block, "ANCHOR_LEFT")
-		GameTooltip:SetText(block.title:GetText() or "")
+		-- (the same quest tooltip a quest's own block shows -- below)
+		if not (id and pcall(GameTooltip.SetHyperlink, GameTooltip, "quest:" .. id)) then
+			GameTooltip:SetText(block.title:GetText() or "")
+		end
 		local c = MelloUI.Look.TipPalette().text
-		GameTooltip:AddLine(Tr("Click: mark this step on the map again  -  Right-click: remove its mark"), c[1], c[2], c[3], true)
+		block.guideHover = fs   -- (the line or the title lit: the same goal's index on both)
+		local hi = block.guideHi
+		local hint
+		if id then
+			if not hi then
+				-- (the block's own hover wash, on the one line: the palette's hover through the widget set)
+				hi = MelloUI.Widgets.Solid(fs:GetParent(), "BACKGROUND", "hover", 0.6)
+				hi:SetAlpha(0.35)
+				block.guideHi = hi
+			end
+			hi:ClearAllPoints()
+			hi:SetPoint("TOPLEFT", fs, "TOPLEFT", -2, 1)
+			hi:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", 2, -1)
+			hi:Show()
+			-- (what this click does here, not the step's own click: one click, one line)
+			local okT, title = pcall(C_QuestLog.GetTitleForQuestID, id)
+			title = okT and Plain(title) or nil
+			local ok, text = pcall(string.format, Tr("Click: focus %s"), type(title) == "string" and title or "")
+			hint = ok and (text .. "  -  " .. Tr("Right-click: remove its mark")) or nil
+		elseif hi then
+			hi:Hide()
+		end
+		GameTooltip:AddLine(hint or Tr("Click: mark this step on the map again  -  Right-click: remove its mark"),
+			c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		Act.Lit(block, true)
 		return
@@ -2280,6 +2377,10 @@ end
 
 local function OnBlockLeave(block)
 	GameTooltip:Hide()
+	block.guideHover = nil
+	if block.guideHi then
+		block.guideHi:Hide()
+	end
 	Act.Lit(block, false)
 end
 
@@ -2525,6 +2626,7 @@ end
 --------------------------------------------------------------------------------
 
 Near.OWNER = "Quest Tracker nearest"   -- (Route:WantWhere's owner; the bus's)
+Near.GUIDE = "guide"                   -- the guide block's key: its step's spot measured as a quest's
 Near.n = 0                             -- the quests in Near.order
 Near.order = {}                        -- the quest IDs as laid, top to bottom
 Near.dist = {}                         -- [questID] = yards from the player now, or nil
@@ -2832,12 +2934,15 @@ do
 		end
 	end
 
-	function Near.Order(list, followedID, open)
+	function Near.Order(list, followedID, open, spot)
 		Near.followed, Near.open = followedID, open
 		local R = Route()
+		-- (the guide's step's spot, shown: its distance as a quest's, under Near.GUIDE)
+		local gl = type(spot) == "table" and Num(spot.mapID) and Num(spot.x) and Num(spot.y) and R ~= nil
+			and Near.ShowDist() and true or false
 		-- (the Quests section folded: nothing laid, nothing to measure)
-		local live = open and R ~= nil and (Near.On() or Near.ShowDist() or Near.TurnInOn()) or false
-		Near.live = live
+		local live = R ~= nil and (open and (Near.On() or Near.ShowDist() or Near.TurnInOn()) or gl) or false
+		Near.live, Near.guideLive = live, gl
 		if live then
 			Where(R)
 			-- the quest map and the places of the quests with none of their own
@@ -2852,7 +2957,22 @@ do
 		else
 			SetPlace()
 		end
-		local n = #list
+		local G = Near.GUIDE
+		if gl then
+			local c = cand[G]
+			if not c then
+				c = {}
+				cand[G] = c
+			end
+			c.mapID, c.x, c.y = Num(spot.mapID), Num(spot.x), Num(spot.y)
+			kind[G] = "cand"
+			Settle(G, Measure(R, G))
+		else
+			kind[G] = false
+			Settle(G, nil)
+		end
+		-- (only the guide's spot measured: the folded quests left out)
+		local n = (open or not gl) and #list or 0
 		if live then
 			for i = 1, n do
 				local id = list[i]
@@ -3068,6 +3188,10 @@ do
 				return
 			end
 		end
+		local gb = Near.guideLive and blocks[Near.GUIDE]
+		if gb and gb.dist and gb:IsShown() and Label(R, gb, Near.GUIDE) then
+			Near.MarkDirty()
+		end
 	end
 
 	-- the distances moved: a new order asks a rebuild, else the words only
@@ -3142,6 +3266,9 @@ do
 			local id = order[i]
 			Settle(id, Measure(R, id))
 		end
+		if Near.guideLive then
+			Settle(Near.GUIDE, Measure(R, Near.GUIDE))
+		end
 		Follow(R)
 	end
 
@@ -3151,8 +3278,9 @@ do
 	function Near.Want(off)
 		local R = MelloUI:GetModule("Route")
 		local can = R and R.isEnabled and type(R.WantWhere) == "function"
-		local want = (not off and can and Near.live and Near.open and M.isEnabled and frame and frame:IsShown()
-			and not (M.db and M.db.collapsed) and not inEditMode and Near.n > 0) and true or false
+		local want = (not off and can and Near.live and M.isEnabled and frame and frame:IsShown()
+			and not (M.db and M.db.collapsed) and not inEditMode
+			and (Near.open and Near.n > 0 or Near.guideLive)) and true or false
 		if want ~= Near.wanting and R and type(R.WantWhere) == "function" then
 			Near.wanting = want
 			pcall(R.WantWhere, R, Near.OWNER, want)
@@ -3446,6 +3574,16 @@ local function ItemCooldown(item)
 		if ok and Plain(start) and Plain(duration) then
 			pcall(item.cooldown.SetCooldown, item.cooldown, start, duration, enable)
 		end
+	elseif item.itemID then
+		-- (a guide step's item, FillGuideBlock: from the bags)
+		local CC = rawget(_G, "C_Container")
+		local get = CC and CC.GetItemCooldown or rawget(_G, "GetItemCooldown")
+		if type(get) == "function" then
+			local ok, start, duration, enable = pcall(get, item.itemID)
+			if ok and Plain(start) and Plain(duration) then
+				pcall(item.cooldown.SetCooldown, item.cooldown, start, duration, enable)
+			end
+		end
 	end
 end
 
@@ -3524,11 +3662,11 @@ local function FillBlock(block, questID, width, followedID)
 		if tray then
 			tray:Show()
 		end
-		item.logIndex = logIndex
+		item.logIndex, item.itemID = logIndex, nil
 		ItemCooldown(item)
 		textWidth = width - ITEM_SIZE - 8   -- (the text and the distance 4 clear of the tray)
 	else
-		item.itemLink, item.logIndex = nil, nil
+		item.itemLink, item.logIndex, item.itemID = nil, nil, nil
 		item:Hide()
 		if item.tray then
 			item.tray:Hide()
@@ -3703,6 +3841,7 @@ local function SetOffset(offset)
 end
 
 Scroll = function(delta)
+	M.handScrolled = GetTime()   -- (the player's own scroll: a new guide step leaves the view where it is a while)
 	local step = tonumber(M.db and M.db.scrollStep) or 25
 	SetOffset(scrollOffset - delta * step)
 end
@@ -3840,7 +3979,40 @@ end
 -- (Route's reader of RestedXP Guides) -- { title, lines = { { text, done,
 -- box, Toggle } } }, or nil for none. A line with a box can be ticked to skip
 -- it, through the guide's own skip (line.Toggle); a text-only line has none.
-local GUIDE = { data = nil }
+local GUIDE = { data = nil, items = nil }   -- items: the bus's "guideitem" (Route's Guide.PublishItems)
+
+-- the guide step's usable item for the guide block's item button (Quest Items on): the guide's own quest item (an
+-- item of "guideitem" marked quest: Polestar's PolestarQuestItemButton's, in the bags), else the first of its lines'
+-- quests' log items (as FillBlock reads one); link, icon, logIndex (a log item) or itemID (a bag item); nil for none
+function GUIDE.Item(data)
+	if not (M.db and M.db.itemButtons) then
+		return nil
+	end
+	for _, e in ipairs(GUIDE.items and GUIDE.items.items or {}) do
+		local id = type(e) == "table" and e.kind == "item" and e.quest and tonumber(e.id)
+		if id and e.icon then
+			return "item:" .. id, e.icon, nil, id
+		end
+	end
+	local getIndex = C_QuestLog and C_QuestLog.GetLogIndexForQuestID
+	if not (getIndex and GetQuestLogSpecialItemInfo) then
+		return nil
+	end
+	for _, line in ipairs(type(data) == "table" and data.lines or {}) do
+		local q = type(line) == "table" and not line.done and tonumber(line.quest)
+		local okI, logIndex = pcall(getIndex, q or 0)
+		logIndex = q and okI and Plain(logIndex) or nil
+		if logIndex then
+			local ok, l, tex, _, showWhenComplete = pcall(GetQuestLogSpecialItemInfo, logIndex)
+			l, tex = ok and Plain(l), ok and Plain(tex)
+			local okC, complete = pcall(C_QuestLog.IsComplete, q)
+			if l and tex and not (okC and complete and not showWhenComplete) then
+				return l, tex, logIndex, nil
+			end
+		end
+	end
+	return nil
+end
 
 local function GuideBox(block, i)
 	block.boxes = block.boxes or {}
@@ -3864,6 +4036,10 @@ local function GuideBox(block, i)
 	Perf.SetScript(b, "OnClick", function(self)
 		local line = self.line
 		if line and line.Toggle then
+			-- (ticked by hand: its line not flashed as done, FillGuideBlock)
+			if block.guideHand and self.n then
+				block.guideHand[self.n] = true
+			end
 			pcall(line.Toggle, not line.done)
 		end
 	end)
@@ -3936,6 +4112,12 @@ do
 		self.icon:SetAlpha(1)
 		local nav = self.spec
 		local W = MelloUI.Widgets
+		if self.tab then   -- (Polestar's open tabs: the next one's name, n/m)
+			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+			GameTooltip:SetText(nav and nav.tabTip or "")
+			GameTooltip:Show()
+			return
+		end
 		local text = self.back and "Back a step" or (nav and nav.ahead and "Forward a step" or "Skip this step")
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText(W.Tr(text))
@@ -3951,7 +4133,7 @@ do
 	end
 	local function Click(self)
 		local nav = self.spec
-		local fn = nav and (self.back and nav.Back or nav.Skip)
+		local fn = nav and (self.tab and nav.Tab or (self.back and nav.Back or nav.Skip))
 		if fn then
 			pcall(fn)
 		end
@@ -3972,12 +4154,13 @@ do
 	end
 
 	function GUIDE.Nav(row, nav)
-		local back, skip = row.navBack, row.navSkip
-		local has = type(nav) == "table" and (nav.Back or nav.Skip)
+		local back, skip, tab = row.navBack, row.navSkip, row.navTab
+		local has = type(nav) == "table" and (nav.Back or nav.Skip or nav.Tab)
 		if not has then
 			if back then
 				back:Hide()
 				skip:Hide()
+				tab:Hide()
 			end
 			return
 		end
@@ -3985,17 +4168,32 @@ do
 			local parent = row.toggle:GetParent()
 			back, skip = Arrow(parent, true), Arrow(parent, false)
 			skip:SetPoint("RIGHT", back, "RIGHT", 16, 0)
-			row.navBack, row.navSkip = back, skip
+			-- (Polestar's next open tab: left of the arrows, the set's list icon)
+			tab = CreateFrame("Button", nil, parent)
+			tab:SetSize(14, 14)
+			tab.tab = true
+			tab.icon = tab:CreateTexture(nil, "ARTWORK")
+			tab.icon:SetAllPoints(tab)
+			MelloUI.Widgets.Icon(tab.icon, "btn_list", 14)
+			tab.icon:SetAlpha(0.8)
+			Perf.SetScript(tab, "OnClick", Click)
+			Perf.SetScript(tab, "OnEnter", Enter)
+			Perf.SetScript(tab, "OnLeave", Leave)
+			tab:SetPoint("RIGHT", back, "LEFT", -4, 0)
+			row.navBack, row.navSkip, row.navTab = back, skip, tab
 		end
 		-- (the pair's right end left of the cog, or of the fold button when the guide has no cog)
 		local cog = row.cog and row.cog:IsShown() and row.cog
 		back:ClearAllPoints()
 		back:SetPoint("RIGHT", cog or row.toggle, "LEFT", -6 - 16, 0)
-		back.spec, skip.spec = nav, nav
+		back.spec, skip.spec, tab.spec = nav, nav, nav
 		back:SetShown(nav.Back ~= nil)
 		skip:SetShown(nav.Skip ~= nil)
+		tab:SetShown(nav.Tab ~= nil)
 		if GameTooltip:IsOwned(back) or GameTooltip:IsOwned(skip) then
 			Enter(GameTooltip:IsOwned(back) and back or skip)   -- (the words follow the guide: Skip or Forward)
+		elseif GameTooltip:IsOwned(tab) then
+			Enter(tab)
 		end
 	end
 end
@@ -4017,6 +4215,7 @@ local GuideLayer, GuideText
 do
 	local GUIDE_LINK = "mellouiguide"
 	local GUIDE_LINK_TIP = "Click: open the link to copy it"
+	local STEP_LINK = "mellouistep"   -- (the step count while another step than the guide's live one is shown)
 
 
 	-- (a Frame of the block's own over it, its lines' owner while it is a guide's: the block is a Button, and a Button's
@@ -4031,6 +4230,9 @@ do
 		GameTooltip:SetOwner(layer, "ANCHOR_CURSOR")
 		if link:match("^" .. GUIDE_LINK .. ":%d+$") then
 			GameTooltip:SetText(Tr(GUIDE_LINK_TIP), 1, 1, 1)
+		elseif link == STEP_LINK then
+			local away = block.guideAway
+			GameTooltip:SetText(away and away.tip or "", 1, 1, 1, true)
 		elseif not pcall(GameTooltip.SetHyperlink, GameTooltip, link) then
 			GameTooltip:Hide()
 			return
@@ -4057,6 +4259,12 @@ do
 			if open then
 				pcall(open)
 			end
+		elseif link == STEP_LINK then
+			local away = block.guideAway
+			if away and type(away.Back) == "function" then
+				GameTooltip:Hide()
+				pcall(away.Back)
+			end
 		elseif IsModifiedClick() and rawget(_G, "HandleModifiedItemClick") then
 			pcall(rawget(_G, "HandleModifiedItemClick"), text)
 		elseif rawget(_G, "SetItemRef") then
@@ -4070,10 +4278,43 @@ do
 			OnBlockClick(layer.block, button)
 		end
 	end, "script")
+	-- (2.1.61, Madspike's patch) while the pointer is on the guide's block, and only then: the tooltip and the line's
+	-- light drawn again when it moves to another goal line (the game tells a frame of its own enter and leave, not of
+	-- the pointer moving over its lines). Nothing is read while the pointer rests; off the layer it ends itself, should
+	-- a leave ever be missed (the layer hidden under the pointer).
+	local GuideLayerMove = Perf.Shared("OnUpdate on a hovered guide step's link layer", function(layer)
+		local x, y = GetCursorPosition()
+		if x == layer.cursorX and y == layer.cursorY then
+			return
+		end
+		layer.cursorX, layer.cursorY = x, y
+		local block = layer.block
+		if not layer:IsMouseOver() then
+			layer.cursorX, layer.cursorY = nil, nil
+			Perf.SetScript(layer, "OnUpdate", nil)
+			OnBlockLeave(block)
+			return
+		end
+		if block.overLink then
+			return
+		end
+		local _, _, fs = Act.GuideLine(block)
+		if fs ~= block.guideHover then
+			OnBlockEnter(block)
+		end
+	end, "script")
 	local GuideLayerEnter = Perf.Shared("OnEnter on a guide step's link layer", function(layer)
 		OnBlockEnter(layer.block)
+		-- (only a step with a quest's goal line has a line to tell apart: none, no script)
+		local quests = layer.block.guideQuest
+		if quests and next(quests) ~= nil then
+			layer.cursorX, layer.cursorY = GetCursorPosition()
+			Perf.SetScript(layer, "OnUpdate", GuideLayerMove)
+		end
 	end, "script")
 	local GuideLayerLeave = Perf.Shared("OnLeave on a guide step's link layer", function(layer)
+		layer.cursorX, layer.cursorY = nil, nil
+		Perf.SetScript(layer, "OnUpdate", nil)
 		OnBlockLeave(layer.block)
 	end, "script")
 	local GuideLayerWheel = Perf.Shared("OnMouseWheel on a guide step's link layer", function(_, delta)
@@ -4114,6 +4355,24 @@ do
 		end
 		return text
 	end
+
+	-- the guide's title as the tracker shows it: while it shows another step than the live one (data.away, Route's
+	-- Guides.lua) its step count tinted in the palette's muted text and a link (a click: back to the live step)
+	function GUIDE.Title(block, data)
+		local title = data.title or "Guide"
+		local away = type(data.away) == "table" and data.away or nil
+		block.guideAway = away
+		local count = away and type(away.count) == "string" and away.count ~= "" and away.count
+		local s, e = nil, nil
+		if count then
+			s, e = title:find(count, 1, true)
+		end
+		if not s then
+			return title
+		end
+		return title:sub(1, s - 1) .. MelloUI:PaletteCode("mutedText") .. "|H" .. STEP_LINK .. "|h" .. count .. "|h|r"
+			.. title:sub(e + 1)
+	end
 end
 
 local function FillGuideBlock(block, data, width)
@@ -4123,21 +4382,40 @@ local function FillGuideBlock(block, data, width)
 	wipe(block.guideLinks)
 	block.overLink = nil
 	block.questID, block.recipeID, block.recraft = nil, nil, nil
-	block.item.itemLink = nil
-	block.item:Hide()
-	if block.item.tray then
-		block.item.tray:Hide()
-		Art.ItemLit(block.item, false)
+	-- (the step's usable item on the quest blocks' own item button, as FillBlock lays it: GUIDE.Item)
+	local item = block.item
+	local link, icon, logIndex, itemID = GUIDE.Item(data)
+	if item.itemLink ~= link and itemOverlay and itemOverlay.over == item then
+		DetachOverlay()   -- (another item, or none: the secure button let go, out of a fight only)
+	end
+	local textWidth = width
+	if link and icon then
+		item.itemLink, item.logIndex, item.itemID = link, logIndex, itemID
+		item.icon:SetTexture(icon)
+		item.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		item:ClearAllPoints()
+		item:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, -2)
+		item:SetFrameLevel(layer:GetFrameLevel() + 1)   -- (over the link layer: its mouse its own)
+		item:Show()
+		local tray = Art.ItemTray(item)
+		if tray then
+			tray:Show()
+		end
+		ItemCooldown(item)
+		textWidth = width - ITEM_SIZE - 8
+	else
+		item.itemLink, item.logIndex, item.itemID = nil, nil, nil
+		item:Hide()
+		if item.tray then
+			item.tray:Hide()
+			Art.ItemLit(item, false)
+		end
 	end
 	block.tier = nil
 	if block.mark then
 		block.mark:Hide()
 	end
 	Act.Washed(block, false)
-	if block.dist then
-		block.dist:Hide()
-		block.distValue, block.distLabel, block.distRoom = nil, nil, 0
-	end
 	if block.xp then
 		block.xp:Hide()   -- (2.1.39: nor its XP)
 	end
@@ -4145,10 +4423,12 @@ local function FillGuideBlock(block, data, width)
 	StyleText(t, TitleSize())
 	t:ClearAllPoints()
 	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
-	t:SetWidth(width - TEXT_X)
-	t:SetText(data.title or "Guide")
 	block.guideClick, block.guideRight = data.Repin, data.Unpin   -- (a click: its step marked again; a right-click: its mark gone)
 	block.ink = Inked()
+	-- its step's spot's distance as a quest's (Near.Lay; none: no spot, another continent, an instance)
+	local distRoom = Near.Lay(block, Near.GUIDE, textWidth, block.ink)
+	t:SetWidth(textWidth - TEXT_X - distRoom)
+	t:SetText(GUIDE.Title(block, data))
 	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
 	InkLine(t, block.ink, 1)
 	if block.ink and MelloUI.QuestInk then
@@ -4156,18 +4436,46 @@ local function FillGuideBlock(block, data, width)
 	end
 	local y = t:GetStringHeight() + TITLE_GAP
 	local n, boxes = 0, 0
-	for _, line in ipairs(data.lines or {}) do
+	-- (the step's goal lines with a quest: a click on one follows it, Act.GuideLine)
+	block.guideQuest = block.guideQuest or {}
+	wipe(block.guideQuest)
+	block.guideDone = block.guideDone or {}
+	wipe(block.guideDone)
+	-- (a goal line done since the last fill of the same step -- not the first, not after a step change, not one
+	-- ticked by hand -- flashed once: Motion.Flash)
+	local lines = data.lines or {}
+	local stepKey = tostring(data.section) .. "|" .. tostring(data.title) .. "|" .. #lines
+	local sameStep = block.guideStepKey == stepKey
+	-- (the lines' state at the last fill, kept in one table: a step's key holds its line count, so a line read from
+	-- it under the same key is that step's own)
+	block.guideWasDone = block.guideWasDone or {}
+	block.guideHand = block.guideHand or {}
+	local wasDone = block.guideWasDone
+	if not sameStep then
+		wipe(block.guideHand)
+	end
+	block.guideStepKey = stepKey
+	local flash = nil
+	for _, line in ipairs(lines) do
 		n = n + 1
+		block.guideQuest[n] = tonumber(line.quest)
+		block.guideDone[n] = line.done and true or nil
+		local before = wasDone[n]
+		wasDone[n] = line.done and true or false
+		if line.done and sameStep and before == false and not line.skip and not block.guideHand[n] and not flash then
+			flash = n
+		end
 		local shade = line.done and 0.55 or 0.95
 		local top = y
-		y = PutLine(block, n, GuideText(block, line), y, width, false, shade, shade, shade, true)
+		-- (a goal's words in the quest titles' column, its box in the marks' column left of it)
+		y = PutLine(block, n, GuideText(block, line), y, textWidth, false, shade, shade, shade, false)
 		if line.box then
 			boxes = boxes + 1
 			local b = GuideBox(block, boxes)
-			b.line = line
+			b.line, b.n = line, n
 			b.tick:SetShown(line.done and true or false)
 			b:ClearAllPoints()
-			b:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + COLUMNS.bullet, -top - 1)
+			b:SetPoint("TOP", block, "TOPLEFT", TEXT_X / 2 - 1, -top - 1)
 			b:SetFrameLevel(layer:GetFrameLevel() + 1)   -- (over the link layer: its tick its own)
 			b:Show()
 		end
@@ -4184,10 +4492,13 @@ local function FillGuideBlock(block, data, width)
 			n = n + 1
 			local text = type(line) == "table" and GuideText(block, line) or tostring(line)
 			local shown = j == 1 and (tostring(step.n) .. "  " .. text) or text
-			y = PutLine(block, n, shown, y, width, false, 0.55, 0.55, 0.55, true)
+			y = PutLine(block, n, shown, y, width, false, 0.55, 0.55, 0.55, false)
 		end
 	end
 	-- (its lines the layer's, so their links answer; a quest's block later keeps them there, the layer mouse-off)
+	if t:GetParent() ~= layer then
+		t:SetParent(layer)   -- (the title too: its step count's link, GUIDE.Title)
+	end
 	for i = 1, n do
 		local fs = block.lines[i]
 		if fs and fs:GetParent() ~= layer then
@@ -4195,8 +4506,12 @@ local function FillGuideBlock(block, data, width)
 			fs.dash:SetParent(layer)
 		end
 	end
+	if flash and block.lines[flash] then
+		Motion.Flash(block, block.lines[flash])
+	end
 	HideBoxes(block, boxes + 1)
 	HideLines(block, n + 1)
+	y = math.max(y, item.itemLink and ITEM_SIZE + 4 or 0)
 	block:SetHeight(y)
 	block:Show()
 	return y
@@ -4390,6 +4705,10 @@ local function Rebuild()
 	if followedID == nil or followedID == 0 then
 		followedID = RoutePinned() or followedID
 	end
+	-- (a quest focused from a guide's line, followed no longer or another since: the player's now, never let go by us)
+	if Act.guideFocus and followedID ~= Act.guideFocus then
+		Act.guideFocus = nil
+	end
 	local quests = aside and {} or WatchedQuests()
 	-- a block per quest (keyed by its ID) and per recipe ("r<id>/<recraft>"),
 	-- the same block for the same entry across rebuilds
@@ -4401,9 +4720,9 @@ local function Rebuild()
 	local recipesOpen = not SectionCollapsed("professions")
 	-- the followed quest on top, then the nearest (Nearest first, above; the
 	-- watch order while it is off or no place is known)
-	Near.Order(quests, followedID, questsOpen)
 	local guide = GUIDE.data
 	local guideOpen = guide and not SectionCollapsed("guide")
+	Near.Order(quests, followedID, questsOpen, guideOpen and guide or nil)
 	local keep = { guide = guideOpen or nil }
 	for _, id in ipairs(quests) do
 		keep[id] = questsOpen or nil
@@ -4428,6 +4747,23 @@ local function Rebuild()
 		local row = Section(key, label, count)
 		SectionCog(row, cog)
 		GUIDE.Nav(row, nav)
+		-- (the heading's name stops before its buttons, cut short on one line: the fold button, the cog, the step
+		-- arrows each keep their own room)
+		local room = width - 14 - 6
+		if row.cog and row.cog:IsShown() then
+			room = room - 20
+		end
+		if row.navBack and (row.navBack:IsShown() or row.navSkip:IsShown()) then
+			room = room - 36
+		end
+		if row.count:IsShown() then
+			room = room - 6 - (MelloUI.Safe.Number(row.count:GetStringWidth()) or 0)
+		end
+		row.text:SetWordWrap(false)
+		row.text:SetJustifyH("LEFT")
+		row.text:SetWidth(0)
+		local natural = MelloUI.Safe.Number(row.text:GetStringWidth()) or 0
+		row.text:SetWidth(math.max(1, math.min(natural + 1, room)))
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 		row:SetWidth(width)
@@ -4497,6 +4833,30 @@ local function Rebuild()
 	-- the view stays where it was (clamped to the new length), or at the
 	-- end when it was there
 	SetOffset(atEnd and math.huge or scrollOffset)
+	-- (2026-11-17: the guide section scrolled off the top and left there) a guide's new step, or the guide section
+	-- newly shown: back to the top, unless the player scrolled by hand in the last few seconds
+	if GUIDE.toTop then
+		GUIDE.toTop = nil
+		if guide and not (M.handScrolled and GetTime() - M.handScrolled < 5) then
+			SetOffset(0)
+		end
+	end
+	-- (Act.Reveal) a quest focused from a guide's line: scrolled to when out of view, its title lit; the guide section
+	-- kept in view (the top) whenever the quest fits below it
+	local reveal = GUIDE.reveal
+	GUIDE.reveal = nil
+	local shown = reveal and blocks[reveal]
+	local at = shown and Motion.listPrev[reveal]
+	if at and not collapsed then
+		local visible = clip:GetHeight() or 0
+		local h = shown:GetHeight() or 0
+		if at + h <= visible then
+			SetOffset(0)
+		elseif at < scrollOffset or at + h > scrollOffset + visible then
+			SetOffset(at - SECTION_H - 4)
+		end
+		Motion.Flash(shown)
+	end
 	-- a quest done or further on since its places were found: found again;
 	-- Route's 'where' asked for while the tracker shows quests (Nearest first)
 	Near.AfterFill()
@@ -4536,11 +4896,62 @@ M.SlashWords = { progress = Motion.Preview }   -- (0.21.3: /mello tracker progre
 M.Plays = { progress = function() return Motion.Preview(), Motion.PREVIEW.AFTER end }   -- (2.1.20, the Animations page)
 M.Motion = Motion   -- (the tests')
 
+-- a guide's step items published, or none (nil): the guide block's item button laid again (GUIDE.Item)
+MelloUI:On("guideitem", function(data)
+	GUIDE.items = type(data) == "table" and data or nil
+	MarkDirty()
+end)
+
 -- a guide's steps published, or taken away (nil): the list rebuilt (GUIDE)
 MelloUI:On("guide", function(data)
+	local was = GUIDE.data
 	GUIDE.data = type(data) == "table" and data or nil
+	if GUIDE.data and not (was and was.title == GUIDE.data.title) then
+		GUIDE.toTop = true   -- (the guide section shown, or its step changed: Rebuild scrolls to the top)
+	end
+	-- (a quest focused from a guide's line: let go once the guide moves on to another step, only while it is still
+	-- the one followed -- the step's pin leads again; a quest the player followed since is theirs)
+	local id = Act.guideFocus
+	if id and not (was and GUIDE.data and was.title == GUIDE.data.title) then
+		Act.guideFocus = nil
+		-- (only while the game itself still follows it: let go as a click on its mark lets go, Act.Follow, and the
+		-- step's pin followed again. A quest Route holds through its own pin is left alone: letting go of that would
+		-- take the pin the guide just laid for its new step with it)
+		local ST = C_SuperTrack
+		local okC, current = pcall(ST and ST.GetSuperTrackedQuestID)
+		if okC and Plain(current) == id then
+			Act.Follow(id)
+			local okH, has = pcall(C_Map.HasUserWaypoint)
+			if okH and Plain(has) and ST.SetSuperTrackedUserWaypoint then
+				pcall(ST.SetSuperTrackedUserWaypoint, true)
+			end
+		end
+	end
 	MarkDirty()
 end, "Quest Tracker guide")
+
+-- (/route guide dump) the guide section as the tracker holds it: its lines published (nil: none), shown, the offset
+function M.GuideState()
+	local data = GUIDE.data
+	local row = sections and sections.guide
+	return data and #(data.lines or {}) or nil, (row and row:IsVisible()) and true or false, scrollOffset
+end
+
+-- (Act.FocusFromGuide) the quest's block brought into view: the Quests section and the tracker unfolded, the list
+-- scrolled to it and its title lit at the next rebuild
+function Act.Reveal(id)
+	local c = M.db and M.db.collapsedSections
+	if type(c) == "table" and c.quests then
+		c.quests = nil
+		MelloUI:NotifySettingChanged(M.name, "collapsedSections", c)
+	end
+	if M.db and M.db.collapsed then
+		M.db.collapsed = false
+		MelloUI:NotifySettingChanged(M.name, "collapsed", false)
+	end
+	GUIDE.reveal = id
+	MarkDirty()
+end
 
 --------------------------------------------------------------------------------
 -- Building the frame
@@ -4773,7 +5184,7 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "BAG_UPDATE_COOLDOWN" then
 		for _, block in pairs(blocks) do
 			local item = block.item
-			if item and item.logIndex and item:IsShown() then
+			if item and (item.logIndex or item.itemID) and item:IsShown() then
 				ItemCooldown(item)
 			end
 		end

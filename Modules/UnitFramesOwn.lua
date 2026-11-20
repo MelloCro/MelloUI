@@ -796,6 +796,7 @@ local ART = {
 	vehicle = "UI-HUD-UnitFrame-Player-PortraitOn-Vehicle",
 	res = "UI-HUD-UnitFrame-Player-PortraitOn-ClassResource",
 	flash = "UI-HUD-UnitFrame-Player-PortraitOn-InCombat",
+	resFlash = "UI-HUD-UnitFrame-Player-PortraitOn-ClassResource-InCombat",
 	status = "UI-HUD-UnitFrame-Player-PortraitOn-Status",
 	mask = "UI-HUD-UnitFrame-Player-Portrait-Mask",
 	health = "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health",
@@ -1266,50 +1267,344 @@ function P.Power(f)
 	pcall(mb.SetMinMaxValues, mb, 0, UnitPowerMax("player"))
 	pcall(mb.SetValue, mb, U.Value("player", UnitPower("player")))
 	U.Texts(f)
+	P.Forms.Update(f)   -- (2.1.61, Druid Forms: the two halves of its row, while it shows)
 end
 
--- the power's picture (UnitFrameManaBar_UpdateType: "UI-HUD-UnitFrame-Player-PortraitOn-Bar-<Mana|Rage|...>", the
--- dead or a ghost's grey at half)
-function P.PowerType(f)
-	local mb = f.manabar
-	local okT, powerType, token, altR, altG, altB = pcall(UnitPowerType, "player")
-	token = okT and Text(token) or nil
+-- a power bar in a power's picture (UnitFrameManaBar_UpdateType: "UI-HUD-UnitFrame-Player-PortraitOn-Bar-<Mana|Rage|
+-- ...>", the dead or a ghost's grey at half) under `mask`; returns nothing. The power bar's own and, 2.1.61, each half
+-- of Druid Forms' row
+function P.PowerLook(bar, token, mask, altR, altG, altB)
 	local colours = rawget(_G, "PowerBarColor")
 	local info = token and type(colours) == "table" and colours[token] or nil
 	-- (2.1.9: a colour picked on Look > Colours, on the colourable fill)
 	local pr, pg, pb = MelloUI.Colours.PowerPicked(token)
 	if pr then
-		mb:SetStatusBarTexture(ART.mana .. "-Status")
-		mb:SetStatusBarColor(pr, pg, pb)
+		bar:SetStatusBarTexture(ART.mana .. "-Status")
+		bar:SetStatusBarColor(pr, pg, pb)
 	elseif type(info) == "table" and info.atlasElementName then
-		mb:SetStatusBarTexture("UI-HUD-UnitFrame-Player-PortraitOn-Bar-" .. info.atlasElementName)
-		mb:SetStatusBarColor(1, 1, 1)
+		bar:SetStatusBarTexture("UI-HUD-UnitFrame-Player-PortraitOn-Bar-" .. info.atlasElementName)
+		bar:SetStatusBarColor(1, 1, 1)
 	elseif type(info) == "table" and info.atlas then
-		mb:SetStatusBarTexture(info.atlas)
-		mb:SetStatusBarColor(1, 1, 1)
+		bar:SetStatusBarTexture(info.atlas)
+		bar:SetStatusBarColor(1, 1, 1)
 	else
-		mb:SetStatusBarColor(1, 1, 1)
+		bar:SetStatusBarColor(1, 1, 1)
 		if Num(altR) then
-			mb:SetStatusBarTexture(ART.mana .. "-Status")
-			mb:SetStatusBarColor(altR, altG, altB)
+			bar:SetStatusBarTexture(ART.mana .. "-Status")
+			bar:SetStatusBarColor(altR, altG, altB)
 		else
-			mb:SetStatusBarTexture(ART.mana)
+			bar:SetStatusBarTexture(ART.mana)
 		end
 	end
-	local fill = FillOf(mb)
+	local fill = FillOf(bar)
 	Crisp(fill)
 	-- (a new picture keeps the mask)
-	Masked(fill, mb.ManaBarMask)
+	Masked(fill, mask)
 	local gone = Yes(UnitIsDead, "player") or Yes(UnitIsGhost, "player")
 	if fill then
 		fill:SetDesaturated(gone)
 		fill:SetAlpha(gone and 0.5 or 1)
 	end
+end
+
+function P.PowerType(f)
+	local mb = f.manabar
+	local okT, powerType, token, altR, altG, altB = pcall(UnitPowerType, "player")
+	token = okT and Text(token) or nil
+	P.PowerLook(mb, token, mb.ManaBarMask, altR, altG, altB)
 	if okT and not Secret(powerType) then
 		mb.powerType, mb.powerToken = powerType, token
 	end
 	U.Notify("UnitFrameManaBar_UpdateType", mb)
+	P.Forms.Look(f)   -- (2.1.61: the other two powers changed places with it; the dead's grey)
 	P.Power(f)
+end
+
+--------------------------------------------------------------------------------
+-- Druid Forms on the player frame (2.1.61; a player: "could we also have rage & energy bar on the player unit frames
+-- with numbers?"; the user's pick of druid_bars_sketch, "A for both": one row, split in two, a number in each half).
+-- The two of mana, energy and rage the power bar does not show -- energy and rage in caster form, mana and rage in
+-- cat form, mana and energy in bear form -- in the game's own place for a class bar: PlayerFrame's AlternatePowerBar
+-- (PlayerFrameAlternatePowerBarBaseTemplate: 124 x 9, 73 down, at the bars' x, in the frame's AlternatePowerBarArea,
+-- its fill under the mana bar's mask picture at -2,3), with the frame's class-resource picture -- the plain one with
+-- a third slot -- shown in its place, as PlayerFrame_ToPlayerArt shows it for a class bar (P.Art). The row is that
+-- bar's rect; its halves are a StatusBar each with a gap between them, handed their amounts as the client gives them
+-- (secret or plain: the bars take them, nothing is read or compared). Each half carries its power's token and type
+-- and is told as the mana bar is (Units.Notify "UnitFrameManaBar_UpdateType"), so Bar Textures dresses it and Bar
+-- Values writes its number in the middle (Units.FormBars: both ask for them). Only for a druid with Druid Forms on
+-- (Unit Frames' own switch): nothing is made for anyone else, nothing is made or laid in a fight.
+-- Under the painted reskin (Kit:IsCovered "unitframes") the frame's picture is the set's painting, which has two
+-- holes: the plain picture stays, and the painting's own power row -- the rail over its power hole, the hole, its
+-- foot -- is drawn once more one row further down, under the painting (a frame a level under the bars': the
+-- painting's own foot lies over the copy's top rail), so the frame reads as one border with a third row in it (the
+-- user, 2026-11-20: "1 main border with separators in the middle, depending on how many bars we have active"; the
+-- first build hung the set's bar under the painting). The row is the copy's hole.
+--   Units.FormBars() -> { bar, bar } | nil   the halves while the row shows
+--   Units.FormsTest(on)                      (/mello personal druid) the row with sample amounts, for any class
+--------------------------------------------------------------------------------
+do
+	local Forms = { POWERS = { "MANA", "ENERGY", "RAGE" }, TYPE = { MANA = 0, RAGE = 1, ENERGY = 3 },
+		W = 124, H = 9, X = 87, Y = -73, GAP = 2,
+		LEFT = 4,   -- (the painted reskin: the copy of the painting's power row starts this far left of its hole)
+		SAMPLE = { MANA = { 1840, 2130 }, ENERGY = { 100, 100 }, RAGE = { 35, 100 } } }
+	P.Forms = Forms
+
+	local function Db()
+		local uf = MelloUI.modules and MelloUI.modules.UnitFrames
+		return uf and uf.db or nil
+	end
+
+	-- a druid with Druid Forms on (the class asked until it answers plainly: it never changes), or the test's look
+	function Forms.Want()
+		if Forms.test then
+			return true
+		end
+		local db = Db()
+		if db and db.druidForms == false then
+			return false
+		end
+		if Forms.druid == nil then
+			local ok, _, class = pcall(UnitClass, "player")
+			if ok and type(class) == "string" and not Secret(class) then
+				Forms.druid = class == "DRUID"
+			end
+		end
+		return Forms.druid == true
+	end
+
+	-- the painted reskin dresses the unit frames: its painting stands on the plain picture
+	function Forms.Painted()
+		local Kit = MelloUI.Kit
+		return (Kit and Kit.IsCovered and Kit:IsCovered("unitframes")) and true or false
+	end
+
+	-- the class-resource picture wanted for our row (P.Art)
+	function Forms.Res(f)
+		local row = f.formRow
+		return (row and row.on and not Forms.Painted()) and true or false
+	end
+
+	function Forms.Build(f)
+		if f.formRow or InCombatLockdown() then
+			return f.formRow
+		end
+		local area = Main(f).AlternatePowerBarArea
+		local row = CreateFrame("Frame", nil, area)
+		row:SetFrameLevel(area:GetFrameLevel())
+		row:SetSize(Forms.W, Forms.H)
+		row:SetPoint("TOPLEFT", area, "TOPLEFT", Forms.X, Forms.Y)
+		local mask = row:CreateMaskTexture()
+		Atlas(mask, ART.manaMask, true)
+		mask:SetPoint("TOPLEFT", row, "TOPLEFT", -2, 3)
+		row.mask = mask
+		row.bars = {}
+		for i = 1, 2 do
+			local b = Bar(row, 1, Forms.H)
+			b:SetStatusBarTexture(ART.mana)
+			Crisp(FillOf(b))
+			b.unit, b.unitFrame, b.lockColor, b.capNumericDisplay = "player", f, true, true
+			b.formHalf = i
+			row.bars[i] = b
+		end
+		row.on = false
+		row:Hide()
+		f.formRow = row
+		return row
+	end
+
+	-- the row's place and its halves' lengths: the class bar's own, or under the painted reskin's painting -- as long
+	-- as its power hole, the set's bar round it (out of a fight: Forms.Lay)
+	function Forms.Place(f)
+		local row = f.formRow
+		local area = Main(f).AlternatePowerBarArea
+		local w, h = Forms.W, Forms.H
+		local Kit = MelloUI.Kit
+		local Sets = Forms.Painted() and Kit.Sets or nil
+		local set = Sets and Sets.Data and Sets.Data() or nil
+		local u = set and set.unit and set.unit.player or nil
+		local region = f.PlayerFrameContainer.FrameTexture
+		local okW, rw = pcall(region.GetWidth, region)
+		row:ClearAllPoints()
+		local painted = false
+		if u and u.power and u.health and u.w and u.h and u.u and u.v and okW and Num(rw) and rw > 0 and u.rw and u.rh
+			and Sets.File then
+			-- (the painting's numbers are for a picture u.rw x u.rh, laid from the game picture's middle: Sets.LayUnit)
+			local k = rw / u.rw
+			local cx, cy = u.rw / 2, u.rh / 2
+			local hole = u.power
+			-- (one row further down: the rail between the two holes and a hole's depth)
+			local pitch = hole[4] - u.health[4]
+			w = (hole[3] - hole[1]) * k
+			h = (hole[4] - hole[2]) * k
+			row:SetPoint("TOPLEFT", region, "CENTER", (hole[1] - cx) * k, -(hole[2] + pitch - cy) * k)
+			-- the copy: from the rail over the power hole down to the painting's foot, from a little left of the hole to
+			-- the painting's right edge -- that part of the painting's file, its ground under the hole
+			if not row.under then
+				row.under = CreateFrame("Frame", nil, row)
+				row.under:SetAllPoints(row)
+				row.art = row.under:CreateTexture(nil, "ARTWORK", nil, 0)
+				row.ground = row.under:CreateTexture(nil, "BACKGROUND", nil, 0)
+				if Kit.RegisterTexture then
+					Kit:RegisterTexture(row.art)   -- (Dark Mode's unit frames brightness, as the painting's)
+				end
+			end
+			row.under:SetFrameLevel(math.max(0, Main(f):GetFrameLevel() - 1))
+			local x0, y0, x1, y1 = hole[1] - Forms.LEFT, u.health[4], u.x + u.w, u.y + u.h
+			row.art:SetTexture(Sets.File(set, "player"))
+			row.art:SetTexCoord((x0 - u.x) / u.w * u.u, (x1 - u.x) / u.w * u.u, (y0 - u.y) / u.h * u.v,
+				(y1 - u.y) / u.h * u.v)
+			row.art:ClearAllPoints()
+			row.art:SetPoint("TOPLEFT", region, "CENTER", (x0 - cx) * k, -(y0 + pitch - cy) * k)
+			row.art:SetSize(math.max((x1 - x0) * k, 0.01), math.max((y1 - y0) * k, 0.01))
+			local pad = Sets.GROUND_PAD or 0
+			row.ground:ClearAllPoints()
+			row.ground:SetPoint("TOPLEFT", row, "TOPLEFT", -pad, pad)
+			row.ground:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", pad, -pad)
+			local e = Sets.byRegion and Sets.byRegion[region]
+			if Sets.Ground then
+				Sets.Ground(row.ground, e and e.paintGround or nil)
+			end
+			row.under:Show()
+			painted = true
+		else
+			row:SetPoint("TOPLEFT", area, "TOPLEFT", Forms.X, Forms.Y)
+			if row.under then
+				row.under:Hide()
+			end
+		end
+		row:SetSize(w, h)
+		local half = math.max(1, (w - Forms.GAP) / 2)
+		for i, b in ipairs(row.bars) do
+			b:ClearAllPoints()
+			b:SetSize(half, h)
+			b:SetPoint(i == 1 and "TOPLEFT" or "TOPRIGHT", row, i == 1 and "TOPLEFT" or "TOPRIGHT", 0, 0)
+			-- (the game's mask picture cuts the class bar's slot; the set's bar is the fill's edge: none there)
+			local fill = FillOf(b)
+			if painted then
+				if fill and b.formMasked and fill.RemoveMaskTexture then
+					fill:RemoveMaskTexture(row.mask)
+				end
+				b.formMasked = nil
+			else
+				Masked(fill, row.mask)
+				b.formMasked = true
+			end
+		end
+		row.masked = not painted
+	end
+
+	-- each half in its power's picture, as the power bar wears its own; told as the mana bar is (its dressers)
+	function Forms.Look(f)
+		local row = f.formRow
+		if not (row and row.on) then
+			return
+		end
+		local main = f.manabar.powerToken
+		local E = rawget(_G, "Enum")
+		E = type(E) == "table" and E.PowerType or nil
+		local i = 0
+		for _, token in ipairs(Forms.POWERS) do
+			if token ~= main and i < 2 then
+				i = i + 1
+				local b = row.bars[i]
+				b.powerToken = token
+				b.powerType = E and E[token:sub(1, 1) .. token:sub(2):lower()] or Forms.TYPE[token]
+				P.PowerLook(b, token, row.masked and row.mask or nil)
+				U.Notify("UnitFrameManaBar_UpdateType", b)
+			end
+		end
+	end
+
+	-- the halves' amounts against their most (every power event of yours, a shift's too: P.Power)
+	function Forms.Update(f)
+		local row = f.formRow
+		if not (row and row.on) then
+			return
+		end
+		for _, b in ipairs(row.bars) do
+			local sample = Forms.test and Forms.SAMPLE[b.powerToken]
+			if sample then
+				b:SetMinMaxValues(0, sample[2])
+				b:SetValue(sample[1])
+			elseif b.powerType then
+				local okM, max = pcall(UnitPowerMax, "player", b.powerType)
+				local okV, v = pcall(UnitPower, "player", b.powerType)
+				if okM and okV then
+					if not Secret(max) and (type(max) ~= "number" or max <= 0) then
+						max = 1
+					end
+					pcall(b.SetMinMaxValues, b, 0, max)
+					pcall(b.SetValue, b, U.Value("player", v))
+				end
+			end
+		end
+	end
+
+	-- the row made, shown and placed as wanted now, the frame's picture with it; `quiet`: the caller lays the art and
+	-- tells the dressers itself (Stand)
+	function Forms.Lay(f, quiet)
+		f = f or (P.standing and P.frame) or nil
+		if not f then
+			return
+		end
+		if InCombatLockdown() then
+			MelloUI.Schedule:WhenOutOfCombat(function()
+				Forms.Lay()
+			end, Forms)
+			return
+		end
+		local want = Forms.Want()
+		local row = f.formRow
+		if want and not row then
+			row = Forms.Build(f)
+		end
+		if not row then
+			return
+		end
+		local was = row.on
+		row.on = want
+		Main(f).AlternatePowerBarArea:SetShown(want)
+		row:SetShown(want)
+		if want then
+			Forms.Place(f)
+		end
+		if quiet then
+			return
+		end
+		P.Art(f)
+		Forms.Look(f)
+		Forms.Update(f)
+		if was ~= want then
+			MelloUI:Fire("units", "player", true)   -- (the bars' dressers: the halves come or gone)
+		end
+	end
+
+	function U.FormBars()
+		local f = P.standing and P.frame
+		local row = f and f.formRow
+		return row and row.on and row.bars or nil
+	end
+
+	function U.FormsTest(on)
+		Forms.test = on and true or nil
+		Forms.Lay()
+	end
+
+	-- the painted reskin come or gone, its frame set changed, the skin switched: the row's place and picture again
+	local function Again()
+		local f = P.standing and P.frame
+		if f and f.formRow then
+			Forms.Lay(f)
+		end
+	end
+	MelloUI:On("cover", Again, Forms)
+	MelloUI:On("skin", Again, Forms)
+	MelloUI:On("border", Again, Forms)
+	MelloUI:On("setting", function(name, key)
+		if name == "UnitFrames" and key == "druidForms" then
+			Forms.Lay()
+		end
+	end, Forms)
 end
 
 -- the level (Camelot: white; green while it is scaled to another), shown where the role icon is not
@@ -1582,10 +1877,22 @@ end
 function P.Art(f)
 	local c = f.PlayerFrameContainer
 	local altBar = Ask(rawget(_G, "PlayerFrame_GetAlternatePowerBar") or function() return nil end)
+	-- (2.1.61, Druid Forms: our own row stands in the class bar's place, so the class-resource picture shows for it
+	-- too, with what the game changes for that picture -- the mana bar's mask the plain one, the flash its own)
+	local res = altBar ~= nil or P.Forms.Res(f)
 	c.VehicleFrameTexture:Hide()
 	Atlas(c.FrameTexture, ART.frame)
-	c.FrameTexture:SetShown(altBar == nil)
-	c.AlternatePowerFrameTexture:SetShown(altBar ~= nil)
+	c.FrameTexture:SetShown(not res)
+	c.AlternatePowerFrameTexture:SetShown(res)
+	if f.resArt ~= res then
+		f.resArt = res
+		local mask = f.manabar.ManaBarMask
+		Atlas(mask, res and "Unit_BarMask" or ART.manaMask, true)
+		mask:SetWidth(128)
+		Atlas(c.FrameFlash, res and ART.resFlash or ART.flash, true)
+		c.FrameFlash:ClearAllPoints()
+		c.FrameFlash:SetPoint("CENTER", c, "CENTER", res and -0.5 or 0, res and -0.5 or 0)
+	end
 	U.Notify("PlayerFrame_ToPlayerArt", f)
 	U.Notify("PlayerFrame_UpdateArt", f)
 	U.Notify("PlayerFrame_UpdatePlayerNameTextAnchor")
@@ -1890,6 +2197,7 @@ local function Stand()
 	P.QuietGame()
 	Listen(f, true)
 	f:Show()
+	P.Forms.Lay(f, true)   -- (2.1.61, Druid Forms: its row before the art, which follows it)
 	P.Art(f)
 	f.inCombat, f.onHateList = nil, Yes(UnitAffectingCombat, "player") or nil
 	P.Update(f)

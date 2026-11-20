@@ -67,7 +67,8 @@ end
 -- (a step's buttons in its signatures: one shown or gone, or Skip turned into a walk forward, is a change)
 local function NavSig(steps)
 	local nav = steps and steps.nav
-	return nav and ((nav.Back and "<" or "") .. (nav.Skip and (nav.ahead and ">" or ">>") or "")) or ""
+	return nav and ((nav.Back and "<" or "") .. (nav.Skip and (nav.ahead and ">" or ">>") or "")
+		.. (nav.tabTip and ("|" .. nav.tabTip) or "")) or ""
 end
 
 local function Following()
@@ -368,9 +369,14 @@ function Guide.Changed(reader)
 		return
 	end
 	local sig = Read(reader)
-	if sig == reader.sig and reader ~= Guide.active then
+	-- (2026-11-17: Polestar's step left unpublished behind a bare arrow until its step changed) a guide with a step's
+	-- lines wins back over a followed guide without lines (a bare arrow, TomTom) on its next message
+	local active = Guide.active
+	local wins = reader.runs and reader.Steps and reader.steps
+		and not (active and active.runs and active.Steps and active.steps and Allowed(active)) and true or false
+	if sig == reader.sig and reader ~= Guide.active and not wins then
 		return   -- (a guide not followed, its step as it was: RestedXP's update runs a few times a second)
-	elseif sig == reader.sig then
+	elseif sig == reader.sig and not (wins and reader ~= Guide.active) then
 		Guide.Veil()   -- (the followed guide's step as it was: a frame it made late veiled, its items' counts)
 		Guide.PublishItems()
 		return
@@ -380,8 +386,7 @@ function Guide.Changed(reader)
 	-- took over in turn; a new step takes over, progress only updates the followed guide's lines)
 	local moved = reader.stepKey ~= reader.lastKey
 	reader.lastKey = reader.stepKey
-	local active = Guide.active
-	if reader.runs and (not (active and active.runs) or moved and (reader.Steps or not active.Steps)) then
+	if wins or reader.runs and (not (active and active.runs) or moved and (reader.Steps or not active.Steps)) then
 		Guide.active = reader
 	end
 	local before = Guide.active
@@ -529,6 +534,16 @@ function Guide.Dump(say)
 		say("   its step: %s", tostring(active.steps and active.steps.title or "-"))
 		say("   its spot: %s", Spot(active.mapID, active.x, active.y))
 	end
+	-- (2026-11-17: the guide section gone from the tracker) what was published and what the tracker holds of it
+	say("   published: %s", Guide.sig and Guide.sig ~= "" and tostring(Guide.title) or "nothing")
+	local qt = MelloUI.GetModule and MelloUI:GetModule("QuestTracker")
+	if type(qt) == "table" and type(qt.GuideState) == "function" then
+		local ok, lines, shown, offset = pcall(qt.GuideState)
+		if ok then
+			say("   the tracker's guide section: lines %s, shown %s, scroll offset %s", tostring(lines), tostring(shown),
+				tostring(Finite(offset)))
+		end
+	end
 	-- (2.1.51; the user: "I have enabled the Rested XP arrow, but its not showing ingame") each hooked guide's own
 	-- arrow: its Show its own arrow too switch, shown by the guide or not, its alpha, scale and place, MelloUI's veil
 	for _, r in ipairs(Guide.readers) do
@@ -588,6 +603,7 @@ function Guide.Publish()
 	local parts = { (reader and reader.key or "") .. "|" .. tostring(steps and steps.title) }
 	for _, line in ipairs(steps and steps.lines or {}) do
 		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "")
+			.. "q" .. tostring(line.quest)
 	end
 	for _, s in ipairs(steps and steps.upcoming or {}) do
 		parts[#parts + 1] = "#" .. tostring(s.n)
@@ -596,6 +612,8 @@ function Guide.Publish()
 		end
 	end
 	parts[#parts + 1] = NavSig(steps)
+	-- (its spot too: the Quest Tracker's distance to it)
+	parts[#parts + 1] = reader and reader.mapID and string.format("@%d:%.4f:%.4f", reader.mapID, reader.x, reader.y) or "@"
 	local sig = steps and table.concat(parts, "\n") or ""
 	if sig == Guide.sig then
 		return
@@ -610,12 +628,12 @@ function Guide.Publish()
 	Guide.stepText = nil
 	for _, line in ipairs(steps.lines) do
 		if not line.done and not line.skip then
-			Guide.stepText = line.text
-			break
+			Guide.stepText = Guide.stepText or line.text
 		end
 	end
 	MelloUI:Fire("guide", { section = reader.section or reader.name, lines = steps.lines, Repin = Guide.Repin,
-		Unpin = Guide.Unpin, title = Guide.title, cog = steps.cog, nav = steps.nav, upcoming = steps.upcoming })
+		Unpin = Guide.Unpin, title = Guide.title, cog = steps.cog, nav = steps.nav, away = steps.away, upcoming = steps.upcoming,
+		mapID = reader.mapID, x = reader.x, y = reader.y })
 end
 
 -- the followed guide's items for its step on the bus's "guideitem" (the user, 2026-10-18: "when you need to use an
@@ -636,7 +654,7 @@ function Guide.PublishItems()
 				local have = tonumber(Pcall(count, id)) or 0
 				if have > 0 then
 					items[#items + 1] = { kind = "item", id = id, count = have, name = Pcall(CI and CI.GetItemNameByID, id),
-						icon = Pcall(CI and CI.GetItemIconByID, id) }
+						icon = Pcall(CI and CI.GetItemIconByID, id), quest = e.quest and true or nil }
 				end
 			elseif id and e.kind == "spell" and (e.known or Pcall(known, id)) and CS and CS.GetSpellInfo then
 				local okI, info = pcall(CS.GetSpellInfo, id)
@@ -1626,7 +1644,7 @@ end
 -- or TomTom's while it hands the arrow to TomTom.
 do
 	local polestar = { key = "polestar", name = "Polestar", section = "Polestar" }
-	local MESSAGES = { "STEP_CHANGED", "STEP_UPDATED", "WAYPOINT_CHANGED", "GUIDE_CHANGED", "SETTING_CHANGED" }
+	local MESSAGES = { "STEP_CHANGED", "STEP_UPDATED", "WAYPOINT_CHANGED", "GUIDE_CHANGED", "SETTING_CHANGED", "TABS_CHANGED" }
 
 	local function P()
 		local t = rawget(_G, "Polestar")
@@ -1714,6 +1732,7 @@ do
 					local g = tonumber(gv.index)
 					lines[#lines + 1] = { text = n and (text .. " (" .. n .. ")") or text,
 						done = (gv.status == "done" or gv.status == "skipped") and true or false,
+						quest = tonumber(Plain(gv.quest)),   -- (its quest: a click on the line in the tracker follows it)
 						box = gv.tickable and g and true or false, Toggle = function(tick)
 							-- (its window's tick: on for a goal not done, off for one the player ticked)
 							if tick ~= (gv.status == "done") and (tick or gv.ticked) then
@@ -1723,10 +1742,35 @@ do
 				end
 			end
 		end
+		-- (a step whose only lines are headings, a lone "Go to ..." goto: its first heading as the one line)
+		if #lines == 0 then
+			for _, gv in ipairs(view.goals) do
+				if type(gv) == "table" and gv.header and gv.status ~= "na" then
+					local text = Text(Pcall(word, gv)) or Text(gv.text)
+					if text and text ~= "" then
+						lines[1] = { text = text, done = gv.status == "done" and true or false, box = false }
+						break
+					end
+				end
+			end
+		end
+		local live = tonumber(Pcall(e.GetLiveStep))
+		-- (a step every goal of which reads "na" -- an earlier step looked at, whose goals no longer apply: its goals
+		-- dimmed, as done, so the guide section stays while its arrows walk past it; "na" goals stay hidden on a step
+		-- that has others)
+		if #lines == 0 then
+			for _, gv in ipairs(view.goals) do
+				if type(gv) == "table" and gv.status == "na" and not gv.folded then
+					local text = Text(Pcall(word, gv)) or Text(gv.text)
+					if text and text ~= "" then
+						lines[#lines + 1] = { text = text, done = true, quest = tonumber(Plain(gv.quest)), box = false }
+					end
+				end
+			end
+		end
 		if #lines == 0 then
 			return nil
 		end
-		local live = tonumber(Pcall(e.GetLiveStep))
 		local function Behind()
 			local at, now = tonumber(Pcall(e.GetStepIndex)), tonumber(Pcall(e.GetLiveStep))
 			return at and now and at < now or false
@@ -1739,9 +1783,35 @@ do
 					e.Skip()
 				end
 			end, live and i < live)
+		-- (its open guide tabs, two or more: a tab button in the heading switches to the next, round to the first --
+		-- Engine.GetTabs, Engine.SelectTab, as its own tab strip does)
+		if type(e.GetTabs) == "function" and type(e.SelectTab) == "function" then
+			local okT, tabs, active = pcall(e.GetTabs)
+			local n = okT and type(tabs) == "table" and #tabs or 0
+			active = tonumber(active)
+			if n >= 2 and active then
+				local nextI = active % n + 1
+				local nt = type(tabs[nextI]) == "table" and tabs[nextI] or {}
+				local tabName = Text(nt.title) or Text(nt.guideId) or "?"
+				nav = nav or { name = polestar.name }
+				nav.Tab = function()
+					pcall(e.SelectTab, nextI)
+					C_Timer.After(0, function() Guide.Changed(polestar) end)
+				end
+				nav.tabTip = W.Tr("Next guide tab: %s (%d/%d)"):format(tabName, nextI, n)
+			end
+		end
 		local guide = Pcall(e.GetGuide)
 		local name = type(guide) == "table" and Text(guide.title) or nil
-		local total = tonumber(Pcall(e.GetStepCount))
+		-- (its steps as the player counts them, as its window does: Engine.StepNumber / StepTotal leave out the steps of
+		-- another class or race; its raw index where it has none)
+		local function No(s)
+			return s and tonumber(Pcall(e.StepNumber, s)) or s
+		end
+		local total = tonumber(Pcall(e.StepTotal)) or tonumber(Pcall(e.GetStepCount))
+		if total and total <= 0 then
+			total = nil
+		end
 		-- (the cog: its guide picker and its settings, as /polestar guides and /polestar options open them)
 		local function Picker()
 			pcall(t.Fire, "SHOW_PICKER")
@@ -1749,8 +1819,18 @@ do
 		local function Settings()
 			pcall(t.Fire, "SHOW_OPTIONS")
 		end
-		return { title = W.Tr("%s - step %s%s"):format(name or "Polestar", i, total and ("/" .. total) or ""), lines = lines,
-			nav = nav, cog = { Left = Picker, Right = Settings, tip = "Polestar",
+		-- (looking at another step than its live one: the count tinted in the tracker, a click on it back to the live
+		-- step -- Engine.Goto, as its window's "Back to step N" does)
+		local away
+		if live and i ~= live and type(e.Goto) == "function" then
+			away = { count = No(i) .. (total and ("/" .. total) or ""),
+				tip = W.Tr("Viewing step %s. Click: back to step %s."):format(No(i), No(live)), Back = function()
+					pcall(e.Goto, live)
+					C_Timer.After(0, function() Guide.Changed(polestar) end)
+				end }
+		end
+		return { title = W.Tr("%s - step %s%s"):format(name or "Polestar", No(i), total and ("/" .. total) or ""), lines = lines,
+			nav = nav, away = away, cog = { Left = Picker, Right = Settings, tip = "Polestar",
 				hint = W.Tr("Click: its guides  -  Right-click: its settings") } }
 	end
 
@@ -1765,7 +1845,7 @@ do
 		local list = {}
 		local item = tonumber(Pcall(buttons.ChooseQuestItem))
 		if item then
-			list[#list + 1] = { kind = "item", id = item }
+			list[#list + 1] = { kind = "item", id = item, quest = true }   -- (quest: the guide block's item button too)
 		end
 		local client = rawget(qol, "Client")
 		local hearth = type(client) == "table" and tonumber(client.HEARTHSTONE)
@@ -1800,8 +1880,8 @@ do
 		local ui = rawget(t, "UI")
 		local word = type(ui) == "table" and ui.PlainGoalText
 		local count = type(ui) == "table" and ui.GoalProgress
-		local total = tonumber(Pcall(e.GetStepCount))
-		local head = "Polestar, step " .. i .. (total and ("/" .. total) or "")
+		local total = tonumber(Pcall(e.StepTotal)) or tonumber(Pcall(e.GetStepCount))
+		local head = "Polestar, step " .. (tonumber(Pcall(e.StepNumber, i)) or i) .. (total and ("/" .. total) or "")
 		local out = {}
 		for _, gv in ipairs(view.goals) do
 			local g = type(gv) == "table" and tonumber(gv.index)

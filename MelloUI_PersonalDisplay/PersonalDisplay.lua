@@ -49,7 +49,9 @@ local PREVIEW_PART = "personal"
 -- sizes in UI units (the sketch's, at the game's scale) and the timings
 local T = {
 	power = 0.7, cast = 0.9,             -- the power and cast fills' heights, shares of the health fill's (Height)
-	druid = 0.4,                         -- (2.1.60, Druid Forms) the other forms' two slim bars, the same share
+	-- (2.1.61, Druid Forms; the user's pick A of druid_bars_sketch) the other forms' row: as high as the power fill,
+	-- split in two with this gap between its halves, their numbers this size
+	split = 2, formText = 9,
 	gap = 1,                             -- between two brackets' painted edges
 	colW = 7, colH = 70,                 -- the shield column's fill
 	text = 11,                           -- the percents' and the spell's size
@@ -136,7 +138,7 @@ local T = {
 	spendShare = 0.15, spendDrop = 6, spendTime = 0.45,
 	-- into a fight: the gold line (grown, held, faded), the bars opening from their middle; out of it the slim rest
 	-- (the fills' depths) and its percents out
-	openLine = 0.2, openHold = 0.25, openFade = 0.3, open = 0.25, openFrom = 0.02, restHealth = 3, restPower = 2, restDruid = 1.5,
+	openLine = 0.2, openHold = 0.25, openFade = 0.3, open = 0.25, openFrom = 0.02, restHealth = 3, restPower = 2,
 	-- death: the fills drained, greyed, folded (to this deep); back: unfolded, filled with the sweep
 	deathDrain = 0.4, deathGrey = 0.5, deathFold = 0.35, deathAt = 0.8, deathTo = 1.5, back = 0.3, backFill = 0.6,
 	-- (the shield crack) its shards: how many, how long, how far out
@@ -238,6 +240,8 @@ local Gilded = {}   -- (1.2.0: the modern look's gold rims; its section after th
 local CastFX = {}   -- (1.2.0, Cast Motion: the cast bar's moments; in the cast bar's section)
 local Click = {}    -- (2.1.21, click-casting on the display; its section after the placing)
 local Druid = {}    -- (2.1.60, Druid Forms: the other forms' powers; its section after the power bar)
+local Block = {}    -- (2.1.61: health, power and a druid's form row in ONE border; its section before Gilded)
+Druid.outlined = setmetatable({}, { __mode = "k" })   -- (2.1.61: its numbers, on the fills: outlined -- StyleText)
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -256,8 +260,7 @@ end
 local function Heights()
 	local h = Num(Db().height) or 10
 	h = math.floor(h + 0.5)
-	return h, math.max(3, math.floor(h * T.power + 0.5)), math.max(3, math.floor(h * T.cast + 0.5)),
-		math.max(2, math.floor(h * T.druid + 0.5))
+	return h, math.max(3, math.floor(h * T.power + 0.5)), math.max(3, math.floor(h * T.cast + 0.5))
 end
 
 local function Paint(bar, key)
@@ -313,7 +316,8 @@ end
 local function StyleText(fs, size)
 	-- (one look C11: their own face, Text Font; Shared the Interface text's)
 	S.texts[fs] = size
-	MelloUI.Look.Text(fs, "text", size, { face = Db().textFont })
+	-- (2.1.61: a number on a fill -- Druid Forms' halves -- outlined, so it reads on a bright power's colour)
+	MelloUI.Look.Text(fs, "text", size, { face = Db().textFont, outline = Druid.outlined[fs] })
 	fs:SetShadowOffset(1, -1)
 end
 
@@ -584,8 +588,10 @@ end
 -- a bar's painted reach past its fill, over and under
 function Dress.Reach(b)
 	if b.set then
-		local over, under = Dress.SetReach("plate", b.h)
-		return over, under
+		-- (2.1.61: a bar of the block wears the block's one piece, at the health fill's depth)
+		local ui = S.ui
+		local over, under = Dress.SetReach("plate", Block.Index(ui, b) and ui.health.h or b.h)
+		return Block.Reach(ui, b, over, under)
 	elseif b.gilded then
 		return Gilded.Reach(b)
 	elseif b.style and b.border then
@@ -605,7 +611,8 @@ end
 -- its painted width past the fill's, both sides together
 function Dress.Side(b)
 	if b.set then
-		local _, _, before, after = Dress.SetReach("plate", b.h)
+		local ui = S.ui
+		local _, _, before, after = Dress.SetReach("plate", Block.Index(ui, b) and ui.health.h or b.h)
 		return before + after
 	elseif b.gilded then
 		return 2 * T.rim
@@ -626,16 +633,123 @@ end
 -- engine), kept; laid again with the stack (LayStack)
 --------------------------------------------------------------------------------
 
--- a bar's reach past its fill: the rim over and under; health and power one frame, the joint between them
-function Gilded.Reach(b)
-	local ui = S.ui
-	local half = (T.joint - T.gap) / 2
-	if ui and b == ui.health then
-		return T.rim, half
-	elseif ui and b == ui.power then
-		return half, T.rim
+--------------------------------------------------------------------------------
+-- The block (2.1.61; the user, 2026-11-20: "can we have those bars be more condense like we do in the modern version,
+-- like 1 main border with separators in the middle, depending on how many bars we have active at the same time"):
+-- health, power and -- for a druid with Druid Forms on -- the form row in ONE border, a dark joint with a hairline of
+-- trim between each two. In MelloUI's gold rims (the Modern and Default skins: health and power were so since 1.2.0,
+-- the form row had a rim of its own) and under the painted reskin's frame set (each bar had its own piece: now the
+-- set's one piece laid tall round all of them, Kit.Sets' strip). The cast bar and the shield column keep their own.
+-- Any other look: every bar as it was. Its pieces are made the first time a look joins them, laid with the stack.
+--------------------------------------------------------------------------------
+
+-- the bars it holds now, top down (LayStack, after Druid.Mark)
+function Block.Rows(ui)
+	local rows = { ui.health, ui.power }
+	local row = ui.druid and ui.druid[1]
+	if row and not row.off then
+		rows[#rows + 1] = row
 	end
-	return T.rim, T.rim
+	return rows
+end
+
+function Block.On(ui)
+	return ui.look == "gilded" or (ui.look == "set" and MelloUI.Kit.Sets ~= nil)
+end
+
+-- a bar's place in it and how many it holds, or nil (not one of its bars, a look that joins none, nothing laid yet)
+function Block.Index(ui, b)
+	if not (ui and ui.rows and Block.On(ui)) then
+		return nil
+	end
+	for i, r in ipairs(ui.rows) do
+		if r == b then
+			return i, #ui.rows
+		end
+	end
+	return nil
+end
+
+-- a bar's reach past its fill: the border's (`over`, `under`) over the first and under the last, half the joint
+-- between two of its bars; any other bar: the border's own
+function Block.Reach(ui, b, over, under)
+	local i, n = Block.Index(ui, b)
+	if not i then
+		return over, under
+	end
+	local half = (T.joint - T.gap) / 2
+	return i == 1 and over or half, i == n and under or half
+end
+
+-- its pieces (once): the dark joint under the fills (over the Motion rims), the hairlines, and a frame over the
+-- fills for the frame set's piece
+function Block.Make(ui)
+	local level = ui.float:GetFrameLevel()
+	local k = {}
+	k.back = CreateFrame("Frame", nil, ui.float)
+	k.back:SetFrameLevel(level + 1)
+	k.joint = W.Solid(k.back, "BACKGROUND", "innerPanel", 1)
+	k.joint:SetDrawLayer("BACKGROUND", -7)
+	k.joint:SetAllPoints(k.back)
+	k.hairs = {}
+	for i = 1, 2 do
+		local hair = W.Solid(k.back, "BACKGROUND", "trim", T.hairAlpha)
+		hair:SetDrawLayer("BACKGROUND", -6)
+		k.hairs[i] = hair
+	end
+	k.over = CreateFrame("Frame", nil, ui.float)
+	k.over:SetAllPoints(k.back)
+	k.over:SetFrameLevel(level + 6)
+	ui.blk = k
+	return k
+end
+
+-- (LayStack) round its bars as they are laid now: the joint from the first fill to the last, a hairline in each
+-- joint, the form row's own hair between its halves, the frame set's piece round all of it; put away in any other look
+function Block.Lay(ui)
+	local on = Block.On(ui)
+	local k = ui.blk
+	for _, b in ipairs(ui.druid) do
+		b.mid:SetShown(on)
+	end
+	if not on then
+		if k then
+			k.back:Hide()
+			k.over:Hide()
+		end
+		return
+	end
+	k = k or Block.Make(ui)
+	local rows = ui.rows
+	k.back:ClearAllPoints()
+	k.back:SetPoint("TOPLEFT", rows[1].strip.fill, "TOPLEFT")
+	k.back:SetPoint("BOTTOMRIGHT", rows[#rows].strip.fill, "BOTTOMRIGHT")
+	k.back:Show()
+	local y = -(T.joint - T.hair) / 2
+	for i, hair in ipairs(k.hairs) do
+		local above = rows[i + 1] and rows[i].strip.fill
+		hair:SetShown(above and true or false)
+		if above then
+			hair:ClearAllPoints()
+			hair:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, y)
+			hair:SetPoint("TOPRIGHT", above, "BOTTOMRIGHT", 0, y)
+			hair:SetHeight(T.hair)
+		end
+	end
+	local Sets = MelloUI.Kit.Sets
+	local set = ui.look == "set" and Sets and Sets.Data() or nil
+	k.over:SetShown(set ~= nil)
+	if set then
+		if not k.strip then
+			k.strip = Sets.Strip(k.over, "ARTWORK", 7)
+		end
+		k.strip:Lay(set, "plate", k.back, ui.health.h, Width(), false, true)
+	end
+end
+
+-- a bar's reach past its fill: the rim over and under; the block's bars one frame, a joint between each two
+function Gilded.Reach(b)
+	return Block.Reach(S.ui, b, T.rim, T.rim)
 end
 
 -- a rim on a frame of its own at `level` (laid by Gilded.Round), its shade on `under` (a frame under the fills)
@@ -673,7 +787,7 @@ function Gilded.Shade(ui)
 	local set = Kit.shadeSettings
 	local base = type(set) == "table" and tonumber(set.default) or Kit:ShadeStrength()
 	local alpha = math.min(1, T.shade * Kit:ShadeStrength() / base)
-	for _, f in ipairs({ g.block, g.cast, g.column, g.druid[1], g.druid[2] }) do
+	for _, f in ipairs({ g.block, g.cast, g.column }) do
 		if f.shade then
 			f.shade:SetStrength(alpha)
 			f.shade:SetShown(on)
@@ -681,22 +795,16 @@ function Gilded.Shade(ui)
 	end
 end
 
--- the pieces (once): the block's dark joint under the fills (over the Motion rims), its hairline, its rim over them;
--- the cast bar's rim and icon on its strip (its fades and folds theirs); the column's rim
+-- the pieces (once): the block's rim over its fills (its joint and hairlines are the block's own, Block.Make); the
+-- cast bar's rim and icon on its strip (its fades and folds theirs); the column's rim
 function Gilded.Make(ui)
 	if ui.gild then
 		return
 	end
 	local level = ui.float:GetFrameLevel()
 	local g = {}
-	g.back = CreateFrame("Frame", nil, ui.float)
-	g.back:SetFrameLevel(level + 1)
-	g.joint = W.Solid(g.back, "BACKGROUND", "innerPanel", 1)
-	g.joint:SetDrawLayer("BACKGROUND", -7)
-	g.joint:SetAllPoints(g.back)
-	g.hair = W.Solid(g.back, "BACKGROUND", "trim", T.hairAlpha)
-	g.hair:SetDrawLayer("BACKGROUND", -6)
-	g.block = Gilded.Rim(ui.float, level + 6, g.back)
+	local k = ui.blk or Block.Make(ui)
+	g.block = Gilded.Rim(ui.float, level + 6, k.back)
 	local cast = ui.cast
 	g.cast = Gilded.Rim(cast.strip, cast.bar:GetFrameLevel() + 2, cast.strip)
 	local icon = W.RoundIcon(cast.strip, 16, nil)
@@ -705,11 +813,7 @@ function Gilded.Make(ui)
 	g.icon = icon
 	local col = ui.column
 	g.column = Gilded.Rim(col.strip, col.bar:GetFrameLevel() + 3, col.strip)
-	-- (2.1.60) a druid's form bars each their own rim, as the cast bar (on its strip: hidden with it)
-	g.druid = {}
-	for i, b in ipairs(ui.druid) do
-		g.druid[i] = Gilded.Rim(b.strip, b.bar:GetFrameLevel() + 2, b.strip)
-	end
+	-- (2.1.61: a druid's form row had a rim of its own in 2.1.60; it is a bar of the block now, in the block's rim)
 	ui.gild = g
 	Gilded.Shade(ui)
 end
@@ -721,25 +825,15 @@ function Gilded.Lay(ui)
 		return
 	end
 	local on = ui.look == "gilded"
-	for _, f in ipairs({ g.back, g.block, g.cast, g.icon, g.column, g.druid[1], g.druid[2] }) do
+	for _, f in ipairs({ g.block, g.cast, g.icon, g.column }) do
 		f:SetShown(on)
 	end
 	if not on then
 		return
 	end
-	for i, b in ipairs(ui.druid) do
-		Gilded.Round(g.druid[i], b.strip.fill, b.strip.fill)
-	end
-	local hf, pf = ui.health.strip.fill, ui.power.strip.fill
-	g.back:ClearAllPoints()
-	g.back:SetPoint("TOPLEFT", hf, "TOPLEFT")
-	g.back:SetPoint("BOTTOMRIGHT", pf, "BOTTOMRIGHT")
-	local y = -(T.joint - T.hair) / 2
-	g.hair:ClearAllPoints()
-	g.hair:SetPoint("TOPLEFT", hf, "BOTTOMLEFT", 0, y)
-	g.hair:SetPoint("TOPRIGHT", hf, "BOTTOMRIGHT", 0, y)
-	g.hair:SetHeight(T.hair)
-	Gilded.Round(g.block, hf, pf)
+	-- (2.1.61: round the block's bars as they are laid now -- its joint and hairlines are Block.Lay's)
+	local rows = ui.rows or Block.Rows(ui)
+	Gilded.Round(g.block, rows[1].strip.fill, rows[#rows].strip.fill)
 	local cf = ui.cast.strip.fill
 	Gilded.Round(g.cast, cf, cf)
 	-- (the icon's ring over the rail's left end, its right edge on the fill's)
@@ -773,10 +867,10 @@ end
 
 -- the Height changed: each bar at its new depth, in its look (no frame made again)
 local function Refit(ui)
-	local hh, hp, hc, hd = Heights()
+	local hh, hp, hc = Heights()
 	ui.health.h, ui.power.h, ui.cast.h = hh, hp, hc
 	for _, b in ipairs(ui.druid) do
-		b.h = hd
+		b.h = hp
 	end
 	Dress.Apply(ui)
 end
@@ -818,6 +912,7 @@ local function LayStack(ui)
 	local y, prev, prevBelow = 0, nil, 0
 	-- (2.1.60) the bars laid: a druid's form bars only for a druid with Druid Forms on (Druid.Mark), no room kept else
 	Druid.Mark(ui)
+	ui.rows = Block.Rows(ui)   -- (2.1.61: the bars of the one border, as laid now)
 	local laid = {}
 	for _, b in ipairs(ui.stack) do
 		if not b.off then
@@ -852,9 +947,17 @@ local function LayStack(ui)
 		end
 	end
 	-- (2.1.58) the frame set's texture round each fill at its width now
+	-- (2.1.61: the block's bars wear the block's one piece, Block.Lay)
 	for _, b in ipairs(ui.stack) do
-		Dress.Set(b, b.strip, false, b.h, Width())
+		if b.set and Block.Index(ui, b) then
+			if b.setStrip then
+				b.setStrip:Hide()
+			end
+		else
+			Dress.Set(b, b.strip, false, b.h, Width())
+		end
 	end
+	Block.Lay(ui)
 	Gilded.Lay(ui)
 	if SwingOn() then
 		SB.Lay()
@@ -906,14 +1009,15 @@ local function Build()
 	local float = CreateFrame("Frame", nil, holder)
 	float:SetAllPoints(holder)
 	ui.float = float
-	local hh, hp, hc, hd = Heights()
+	local hh, hp, hc = Heights()
 	ui.health = NewBar(float, hh, "personal", true)
 	MelloUI.Shields.Attach(ui.health.bar)   -- (2.1.0: your shield on it, Core/Shields.lua)
 	ui.power = NewBar(float, hp, "personal", true)
-	-- (2.1.60, Druid Forms) the two powers the power bar does not show, under it; laid only for a druid (Druid.Mark)
-	ui.druid = { NewBar(float, hd, "personal"), NewBar(float, hd, "personal") }
+	-- (2.1.60, Druid Forms) the two powers the power bar does not show, under it; laid only for a druid (Druid.Mark).
+	-- (2.1.61: one row, split in two -- Druid.Row; the list keeps the one bar of the stack)
+	ui.druid = { Druid.Row(float, hp) }
 	ui.cast = NewBar(float, hc, "castbars")
-	ui.stack = { ui.health, ui.power, ui.druid[1], ui.druid[2], ui.cast }
+	ui.stack = { ui.health, ui.power, ui.druid[1], ui.cast }
 	PaintHealth(ui.health.bar)
 	Paint(ui.cast.bar, "personalCast")
 	Motion.Make(ui)
@@ -1101,10 +1205,15 @@ end
 --------------------------------------------------------------------------------
 -- Druid Forms (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you
 -- shift ... especially mana, while shifted"; the German player's pick: always the other two): under the power bar
--- two slim bars, the two of mana, energy and rage the power bar does not show -- energy and rage in caster form,
--- mana and rage in cat form, mana and energy in bear form. Their amounts handed to the bars as the client gives them
--- (secret or plain: the bars take them), each in its power's colour. Only for a druid with Druid Forms on; for
--- anyone else no room is kept (LayStack)
+-- the two of mana, energy and rage the power bar does not show -- energy and rage in caster form, mana and rage in
+-- cat form, mana and energy in bear form. Their amounts handed to the bars as the client gives them (secret or
+-- plain: the bars take them), each in its power's colour. Only for a druid with Druid Forms on; for anyone else no
+-- room is kept (LayStack).
+-- (2.1.61; a player: "could we also have rage & energy bar on the player unit frames with numbers?", the user's pick
+-- of druid_bars_sketch, "A for both") ONE row as high as the power fill, split in two: a bar of the stack as any
+-- other (its bracket, rim or set piece round the whole row), its fill holding two StatusBars with a gap between
+-- them, each with its amount as a short number in its middle (the client's own helper takes a secret as it is). The
+-- player frame's own row is Modules/UnitFramesOwn.lua's
 --------------------------------------------------------------------------------
 
 Druid.POWERS = { "MANA", "ENERGY", "RAGE" }
@@ -1147,12 +1256,68 @@ function Druid.Fill(bar, token, max, v)
 	bar:SetValue(v, EASE)
 end
 
+-- (2.1.61) the row: a bar of the stack whose fill holds two halves (b.halves, b.bar the left one) with T.split
+-- between them, a hair in the gap for the gilded look (b.mid, Gilded.Lay) and a number on each (b.nums), over the rims
+function Druid.Row(parent, h)
+	local b = NewBar(parent, h, "personal")
+	local fill = b.strip.fill
+	local left = b.bar
+	left:ClearAllPoints()
+	left:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, 0)
+	left:SetPoint("BOTTOMRIGHT", fill, "BOTTOM", -T.split / 2, 0)
+	local right = CreateFrame("StatusBar", nil, fill)
+	right:SetFrameLevel(left:GetFrameLevel())
+	right:SetPoint("TOPLEFT", fill, "TOP", T.split / 2, 0)
+	right:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", 0, 0)
+	right:SetStatusBarTexture(W.BarFill("personal"))
+	W.SoftEnds(right)
+	right:SetMinMaxValues(0, 1)
+	right:SetValue(1)
+	b.halves = { left, right }
+	b.mid = W.Solid(fill, "ARTWORK", "trim", T.hairAlpha)
+	b.mid:SetWidth(T.hair)
+	b.mid:SetPoint("TOP", fill, "TOP", 0, 0)
+	b.mid:SetPoint("BOTTOM", fill, "BOTTOM", 0, 0)
+	b.mid:Hide()
+	-- (over the block's rim, which stands six levels over the display's own: the Default skin's rim picture has a dark
+	-- inside edge that would cover the numbers' feet)
+	local over = CreateFrame("Frame", nil, b.strip)
+	over:SetAllPoints(fill)
+	over:SetFrameLevel(parent:GetFrameLevel() + 7)
+	b.nums = {}
+	for i, half in ipairs(b.halves) do
+		local fs = over:CreateFontString(nil, "OVERLAY")
+		Druid.outlined[fs] = true
+		StyleText(fs, T.formText)
+		fs:SetPoint("CENTER", half, "CENTER", 0, 0)
+		b.nums[i] = fs
+	end
+	return b
+end
+
+-- a half's amount as a short number (the client's helper takes a secret as it is: nothing is read or compared)
+function Druid.Number(fs, v)
+	local short = rawget(_G, "AbbreviateNumbers")
+	if short then
+		local ok, text = pcall(short, v)
+		if ok and (Secret(text) or type(text) == "string") then
+			fs:SetText(text)
+			return
+		end
+	end
+	-- (no helper in this client: the amount as it is -- a font string takes a number, secret or plain)
+	if not pcall(fs.SetText, fs, v) then
+		fs:SetText("")
+	end
+end
+
 -- the two the power bar does not show, read (Power: every power event of yours, a shift's too)
 function Druid.Update()
 	local ui = S.ui
 	if not (ui and ui.druid and Druid.Want()) or S.druidTest then
 		return
 	end
+	local row = ui.druid[1]
 	local E = Enum and Enum.PowerType
 	local i = 0
 	for _, token in ipairs(Druid.POWERS) do
@@ -1162,7 +1327,8 @@ function Druid.Update()
 			local okM, max = pcall(UnitPowerMax, "player", kind)
 			local okV, v = pcall(UnitPower, "player", kind)
 			if okM and okV and Usable(max) and Usable(v) then
-				Druid.Fill(ui.druid[i].bar, token, max, v)
+				Druid.Fill(row.halves[i], token, max, v)
+				Druid.Number(row.nums[i], v)
 			end
 		end
 	end
@@ -3156,7 +3322,7 @@ function Motion.LayLine()
 	if not line then
 		return
 	end
-	local b = S.casting and ui.cast or (ui.druid and not ui.druid[2].off and ui.druid[2]) or ui.power   -- (2.1.60: under a druid's form bars)
+	local b = S.casting and ui.cast or (ui.druid and not ui.druid[1].off and ui.druid[1]) or ui.power   -- (2.1.60: under a druid's form row)
 	local _, below = Dress.Reach(b)
 	local fill = b.strip.fill
 	local y = -(below + T.gap + 1)
@@ -3791,13 +3957,17 @@ function Motion.FormApply()
 			b.text:SetAlpha(1 - math.max(rest, dead))
 		end
 	end
-	-- (2.1.60) a druid's form bars slim at rest, fold and open from the middle with them (the German player's
-	-- screenshots: out of a fight they stood thicker than the slimmed health and power)
+	-- (2.1.60) a druid's form row slim at rest, folds and opens from the middle with them (the German player's
+	-- screenshots: out of a fight it stood thicker than the slimmed health and power); 2.1.61: as slim as the power
+	-- bar there, its numbers gone with the bars' own texts
 	for _, b in ipairs(ui.druid) do
 		if b.strip.plain then
-			local h = Lerp(Lerp(b.h, T.restDruid, rest), 0.5, dead)
+			local h = Lerp(Lerp(b.h, T.restPower, rest), 0.5, dead)
 			b.strip:SetHeight(h + 2)
 			b.strip:SetWidth(Lerp(T.unfoldFrom, w, S.openK or 1) + b.arms)
+		end
+		for _, fs in ipairs(b.nums) do
+			fs:SetAlpha(1 - math.max(rest, dead))
 		end
 	end
 end
@@ -5564,7 +5734,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		-- (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
 		{ type = "toggle", key = "druidForms", name = "Druid Forms", new = "2.1.60",
 		  search = "druid form forms shapeshift cat bear mana energy rage",
-		  desc = "For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form." },
+		  desc = "For a druid: one more row under the power bar, split in two, shows the two powers it does not show right now, each with its number. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form." },
 		{ type = "toggle", key = "classColour", name = "Class Colours",
 		  desc = "The health bar in your class colour instead of green." },
 		{ type = "slider", key = "width", name = "Width", min = 100, max = 260, step = 5,
@@ -5826,6 +5996,10 @@ function Druid.Test()
 	S.druidTest, S.preview, S.druidStep = true, true, 0
 	LayStack(ui)
 	Place()
+	-- (2.1.61) the player frame's own row with it, for any class (Modules/UnitFramesOwn.lua)
+	if MelloUI.Units and MelloUI.Units.FormsTest then
+		MelloUI.Units.FormsTest(true)
+	end
 	Druid.TestStep()
 end
 
@@ -5839,6 +6013,9 @@ function Druid.TestStep()
 	if not step then
 		S.druidTest, S.preview, S.druidStep = false, false, nil
 		S.powerToken, S.powerLast = nil, nil
+		if MelloUI.Units and MelloUI.Units.FormsTest then
+			MelloUI.Units.FormsTest(false)
+		end
 		LayStack(ui)
 		Place()
 		Refresh()
@@ -5852,7 +6029,8 @@ function Druid.TestStep()
 	for _, other in ipairs(Druid.POWERS) do
 		if other ~= token and i < 2 then
 			i = i + 1
-			Druid.Fill(ui.druid[i].bar, other, 100, step[2 + i])
+			Druid.Fill(ui.druid[1].halves[i], other, 100, step[2 + i])
+			Druid.Number(ui.druid[1].nums[i], step[2 + i])
 		end
 	end
 	C_Timer.After(Druid.STEP, Druid.TestStep)
@@ -5884,6 +6062,9 @@ local function UnitFill()
 		local fill = W.BarFill("personal")
 		ui.health.bar:SetStatusBarTexture(fill)
 		ui.power.bar:SetStatusBarTexture(fill)
+		for _, half in ipairs(ui.druid[1].halves) do   -- (2.1.61: Druid Forms' row)
+			half:SetStatusBarTexture(fill)
+		end
 		ui.column.bar:SetStatusBarTexture(fill)
 		ui.column.loss:SetStatusBarTexture(fill)
 		Parts.Fill(fill)

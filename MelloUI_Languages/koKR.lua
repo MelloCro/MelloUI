@@ -2496,6 +2496,8 @@ Lang:Add("koKR", {
 	["its main screen"] = "그 주 화면", -- draft
 	["Its finds in MelloUI's look, and on Rare Alert"] = "찾은 것을 MelloUI 모습으로, 희귀 경보에도 표시", -- draft
 	["Its gathering nodes on MelloUI's map"] = "채집 지점을 MelloUI 지도에 표시", -- draft
+	["Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons, one a kind: herbs, veins, fishing pools and treasures."] = "이 애드온의 채집 지점이 MelloUI 지도와 자체 미니맵 핀에 MelloUI 아이콘으로 표시됩니다. 종류마다 하나씩: 약초, 광맥, 낚시 물고기 떼, 보물.", -- draft
+	["Its gathering nodes in MelloUI's icons"] = "MelloUI 아이콘으로 표시되는 채집 지점", -- draft
 	["Its notes on MelloUI's map"] = "메모를 MelloUI 지도에 표시", -- draft
 	["The minimap stays in place while it scans"] = "훑는 동안 미니맵이 제자리에 있음", -- draft
 	["Click-casting on MelloUI's frames"] = "MelloUI 프레임에서 클릭 시전", -- draft
@@ -2995,12 +2997,19 @@ Lang:Add("koKR", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "가방 창: 착용 중인 장비를 + 칸에 놓으면 빈 칸으로 들어갑니다. 전에는 다시 착용되었습니다.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "던전 정보: 던전, 지역, 우두머리 이름이 클라이언트 언어로 표시되고, 우두머리 줄의 전리품에 아이템 툴팁이 나옵니다.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "언어: 독일어를 독일 플레이어가 한 줄씩 검수했고, 대화창과 지도, 메뉴의 프랑스어가 늘었습니다.", -- draft
+	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "주사위 굴림 전용 창: 모든 선택과 숫자가 표시되고, 아이템이 승자에게 날아갑니다.", -- draft
+	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "퀘스트 추적기의 Polestar: 목표 줄을 클릭하면 해당 퀘스트를 따라갑니다. 단계에 거리, 퀘스트 아이템, 그리고 Polestar의 열린 가이드 탭을 넘기는 버튼이 표시됩니다.", -- draft
+	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "퀘스트 추적기의 Polestar: 단계 번호가 Polestar 창과 일치하고, 일부 단계에서 가이드 구역이 더는 사라지지 않습니다.", -- draft
+	["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "정신 지배와 그 밖의 빙의: 조종하는 대상의 기술이 있는 소환수 바가 화면에 그대로 남습니다.", -- draft
+	["GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap."] = "GatherMate2: 약초, 광맥, 낚시 물고기 떼, 보물이 지도와 미니맵에 MelloUI 자체 아이콘으로 표시됩니다.", -- draft
+	["Druid Forms on the player frame too: your other two powers in one row under the power bar, split in two, each with its number. The Personal Display shows them the same way."] = "드루이드 변신이 이제 플레이어 프레임에도 표시됩니다. 나머지 두 자원이 자원 바 아래 한 줄에 둘로 나뉘어 각각 숫자와 함께 표시됩니다. 개인 표시기도 같은 방식으로 보여 줍니다.", -- draft
 	["Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished."] = "Questie와 함께하는 퀘스트: 아이템을 줍거나 처치가 집계되거나 퀘스트를 끝낼 때마다 생기던 끊김이 사라졌습니다.", -- draft
 	-- the options new in 2.1.60 (the Personal Display's Mana Regen Pause and Druid Forms, Restock's Shopping List Below)
 	["Mana Regen Pause"] = "마나 재생 멈춤", -- draft
 	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "주문에 마나를 쓰면 정신력에 의한 마나 재생이 5초 동안 멈춥니다. 그동안 자원 바를 따라 빛이 흐르고, 재생이 다시 시작되면 바가 밝게 빛납니다.", -- draft
 	["Druid Forms"] = "드루이드 변신", -- draft
-	["For a druid: two slim bars under the power bar show the powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "드루이드용: 자원 바 아래의 가는 바 두 개가 지금 표시되지 않는 자원을 보여 줍니다. 기본 형태에서는 기력과 분노, 표범 변신에서는 마나와 분노, 곰 변신에서는 마나와 기력.", -- draft
+	["For a druid: one more row under the power bar, split in two, shows the two powers it does not show right now, each with its number. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "드루이드용: 자원 바 아래에 둘로 나뉜 줄이 하나 더 생겨, 지금 표시되지 않는 두 자원을 각각 숫자와 함께 보여 줍니다. 기본 형태에서는 기력과 분노, 표범 변신에서는 마나와 분노, 곰 변신에서는 마나와 기력.", -- draft
+	["For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values."] = "드루이드용: 자원 바 아래에 둘로 나뉜 줄이 하나 더 생겨, 지금 표시되지 않는 두 자원을 보여 줍니다. 기본 형태에서는 기력과 분노, 표범 변신에서는 마나와 분노, 곰 변신에서는 마나와 기력. 숫자는 바 수치 설정을 따릅니다.", -- draft
 	["Shopping List Below"] = "구매 목록 기준 미만", -- draft
 	["The shopping list opens when an item the merchant sells is below this share of its amount. At 100% it opens whenever anything is missing. An item you are reminded of always opens it."] = "상인이 파는 아이템이 정해 둔 수량의 이 비율 아래로 떨어지면 구매 목록이 열립니다. 100%로 두면 하나라도 모자랄 때마다 열립니다. 알림이 뜬 아이템은 언제나 목록을 엽니다.", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)

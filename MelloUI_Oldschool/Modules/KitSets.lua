@@ -881,13 +881,19 @@ local StripMixin = {}
 local STRETCHED = (Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Stretched) or 0
 
 -- the piece on `t`, cut by the client at scale `s` (units a piece px); a texture without the calls (a test world) shows
--- the piece whole
-local function Cut9(t, file, p, s)
+-- the piece whole. `tall` (2.1.61: several bars in one piece -- the Personal Display's): the piece's upper and lower
+-- halves whole, its middle row stretched down the sides, so the ends' ornament keeps its shape at any depth
+local function Cut9(t, file, p, s, tall)
 	t:SetTexture(file)
 	t:SetTexCoord(0, p.u, 0, p.v)
 	if t.SetTextureSliceMargins and t.SetTextureSliceMode and t.SetScale then
 		local m = p.margins
-		t:SetTextureSliceMargins(m[1], m[2], m[3], m[4])
+		local top, bottom = m[2], m[4]
+		if tall and p.hole then
+			top = math.floor((p.hole[2] + p.hole[4]) / 2)
+			bottom = p.h - top - 1
+		end
+		t:SetTextureSliceMargins(m[1], top, m[3], bottom)
 		t:SetTextureSliceMode(STRETCHED)
 		t:SetScale(s)
 	end
@@ -929,8 +935,11 @@ function StripMixin:Hide()
 end
 
 -- the set's `kind` ("plate" | "cast" | "shield" | "np") round `fill` (a region), the hole `depth` units across (the
--- fill's height; the upright shield's width), `length` units along (its width; the shield's height)
-function StripMixin:Lay(set, kind, fill, depth, length, vertical)
+-- fill's height; the upright shield's width), `length` units along (its width; the shield's height).
+-- `tall` (2.1.61; the user, 2026-11-20: "1 main border with separators in the middle, depending on how many bars we
+-- have active"): `fill` holds several bars -- the piece at the scale of ONE bar `depth` deep, round the whole of
+-- `fill` however deep it is (Cut9's tall cut); a lying piece only
+function StripMixin:Lay(set, kind, fill, depth, length, vertical, tall)
 	local p = set and set[kind]
 	if not (p and p.margins and fill and depth and depth > 0 and length and length > 0) then
 		self:Hide()
@@ -954,7 +963,8 @@ function StripMixin:Lay(set, kind, fill, depth, length, vertical)
 	self.piece, self.s, self.vertical, self.fill = p, s, vertical and true or false, fill
 	-- (the fill's own depth at a scaled-down piece: the piece centred across it)
 	local across = vertical and (hole[3] - hole[1]) or (hole[4] - hole[2])
-	local slack = (depth - across * s) / 2
+	tall = tall and not vertical and true or false
+	local slack = tall and 0 or (depth - across * s) / 2
 	self.slack = slack
 	local box = self.box
 	box:ClearAllPoints()
@@ -967,7 +977,7 @@ function StripMixin:Lay(set, kind, fill, depth, length, vertical)
 		box:SetPoint("TOPLEFT", fill, "TOPLEFT", -before * s, over * s + slack)
 		box:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", after * s, -(under * s + slack))
 	end
-	Cut9(self.t, Sets.File(set, kind), p, s)
+	Cut9(self.t, Sets.File(set, kind), p, s, tall)
 	self.set, self.kind = set, kind
 	if self.glows then
 		for i = 1, #self.glows do

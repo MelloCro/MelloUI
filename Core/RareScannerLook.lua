@@ -14,7 +14,9 @@
 --   RL.Kind(POI), RL.State(POI)  "rare" / "treasure" / "event"; "seen" (just now) / "notfound" (not found yet) /
 --                              "found" / "done" (killed or opened): its own picture says which (its colours' meanings)
 --   RL.Seal(POI, size) -> spec  look B: MelloUI's icon on a plate, the plate's rim the state's (gold, red, steel),
---                              the whole pin faded once done -- a pin spec of MelloUI_Map's Pins (its seals)
+--                              the whole pin faded once done -- a pin spec of MelloUI_Map's Pins (its seals).
+--                              (2.1.61) a rare is its skull alone, no plate (T.BARE; the user's word): the map's and
+--                              the minimap's alike
 --   the minimap: RareScanner's own icons (HereBeDragons-Pins, its frames) wear the same plate as they are added
 --   RL.MapLook() -> bool       (2.1.50) the big map wears the seals (MelloUI's map on): the minimap follows it --
 --                              its icons dressed exactly then, RareScanner's own pictures while not (RL.Relay())
@@ -46,6 +48,11 @@ local T = {
 	HALO = 3,             -- px of gold round a pin seen just now
 	SIZE = 26,            -- a pin on the map (the sketch's plate: 1.25 times its 21 px icon)
 	MINI = 17,            -- on the minimap (the sketch's)
+	-- (2.1.61; the user, 2026-11-20: "Rare mob icons on the map are a bit too thich, can you remove the background and
+	-- round border and just leave the Skull icons like that?") the kinds drawn as their icon alone -- no plate, no core:
+	-- the skull as big as it stood in the plate, with the shade the map's other bare marks wear; a killed one still
+	-- faded. The big map and the minimap from this one table (the minimap wears what the big map wears).
+	BARE = { rare = true },
 	CACHE = 10,           -- s a map's POIs are kept before RareScanner is asked again
 	TEMPLATES = { RSEntityPinTemplate = true, RSGroupPinTemplate = true },
 	PARTS = { "Texture", "IconTexture" },   -- (2.1.50) its minimap pin's own pictures (RSMinimapPinTemplate)
@@ -214,9 +221,15 @@ function RL.Seal(POI, size)
 	local key, rgb = Rim(state)
 	size = size or T.SIZE
 	local seen = state == "seen"
+	local rim = math.max(1, math.floor(T.RIM_PX * size / T.SIZE + 0.5))
+	if T.BARE[kind] then
+		-- (2.1.61) the icon alone, the size it had in the plate (MapPins' emblem: the pin less its rim and 1 px each side)
+		return { icon = T.ICONS .. T.EMBLEM[kind], size = size - 2 * rim - 2, lift = T.EMBLEM[kind],
+			alpha = state == "done" and T.DONE or nil }
+	end
 	return {
 		icon = T.ICONS .. T.PLATE, size = size, tint = key, rgb = rgb and { rgb[1], rgb[2], rgb[3] } or nil,
-		core = T.CORE, rim = math.max(1, math.floor(T.RIM_PX * size / T.SIZE + 0.5)),
+		core = T.CORE, rim = rim,
 		disc = seen and T.RIM.seen or T.CORE, edge = seen and T.HALO or 1,
 		emblem = T.ICONS .. T.EMBLEM[kind], alpha = state == "done" and T.DONE or nil,
 	}
@@ -318,6 +331,7 @@ local function Dress(icon, POI)
 	local s = T.MINI
 	local state, kind = RL.State(POI), RL.Kind(POI)
 	local key, rgb = Rim(state)
+	local bare = T.BARE[kind] and true or false   -- (2.1.61: the icon alone, as on the big map)
 	d.plate:SetSize(s, s)
 	MelloUI.Icons.Set(d.plate, T.PLATE, s)
 	if key then
@@ -336,10 +350,13 @@ local function Dress(icon, POI)
 	d.emblem:SetSize(s - 2 * r, s - 2 * r)   -- (as the sketch: the icon as big as the core)
 	MelloUI.Icons.Set(d.emblem, T.EMBLEM[kind], s - 2 * r)
 	local a = state == "done" and T.DONE or 1
-	for _, t in ipairs({ d.plate, d.core, d.emblem }) do
-		t:SetAlpha(a)
-		t:Show()
-	end
+	d.on = true
+	d.plate:SetAlpha(a)
+	d.core:SetAlpha(a)
+	d.emblem:SetAlpha(a)
+	d.plate:SetShown(not bare)
+	d.core:SetShown(not bare)
+	d.emblem:Show()
 	-- (its own pictures out of sight, its frame -- its tooltip and click -- as it is)
 	for _, part in ipairs(T.PARTS) do
 		local p = rawget(icon, part)
@@ -352,12 +369,13 @@ end
 -- (2.1.50) RareScanner's own pictures back: the big map shows its own (MelloUI's map off)
 local function Undress(icon)
 	local d = S.dressed[icon]
-	if not (d and d.plate:IsShown()) then
+	if not (d and d.on) then
 		return
 	end
-	for _, t in ipairs({ d.plate, d.core, d.emblem }) do
-		t:Hide()
-	end
+	d.on = nil
+	d.plate:Hide()
+	d.core:Hide()
+	d.emblem:Hide()
 	for _, part in ipairs(T.PARTS) do
 		local p = rawget(icon, part)
 		if p and p.SetAlpha then

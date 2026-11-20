@@ -140,10 +140,15 @@ end
 local FORMAT = { max = { shortmax = true, fullmax = true, bothmax = true }, pct = { both = true, bothmax = true },
 	full = { full = true, fullmax = true } }
 
+-- (2.1.61, Druid Forms: a half of its row is half a bar long) the format's short form: the percent alone, else the
+-- number alone -- no maximum, no added percent
+local function Brief(fmt)
+	return fmt == "percent" and "percent" or (FORMAT.full[fmt] and "full" or "short")
+end
+
 -- May raise for secret values; always called through pcall.
-local function FormatText(value, max)
-	local db = M.db
-	local fmt = db.format
+local function FormatText(value, max, fmt)
+	fmt = fmt or M.db.format
 	if fmt == "percent" then
 		return Percent(value, max)
 	end
@@ -198,6 +203,16 @@ local function BarList()
 			Add("player",
 				main.HealthBarsContainer and main.HealthBarsContainer.HealthBar,
 				main.ManaBarArea and main.ManaBarArea.ManaBar)
+		end
+		-- (2.1.61, Druid Forms: the two halves of its row on MelloUI's own player frame, each with its power's value in
+		-- its middle -- `form`: its power's type, its own percent; never a place of the designer's stage)
+		local U = MelloUI.Units
+		local forms = U and U.FormBars and U.FormBars()
+		if forms and db.player and db.power then
+			for _, bar in ipairs(forms) do
+				list[#list + 1] = bar
+				barUnit[bar] = { unit = "player", power = true, form = true }
+			end
 		end
 	end
 	local function TargetLike(frameKey, frame)
@@ -273,6 +288,17 @@ local function ApplyPosition(fs, bar, frameKey, power)
 		frameKey, power = unit.unit, unit.power
 	end
 	local uf = MelloUI.modules.UnitFrames
+	-- (2.1.61, Druid Forms) a half of its row: its value in its own middle, whatever the rows or the stage say of the
+	-- power bar's
+	if unit and unit.form then
+		if uf and uf.UnlayPlace then
+			uf.UnlayPlace(fs)
+		end
+		fs:ClearAllPoints()
+		fs:SetPoint("CENTER", bar, "CENTER", 0, 0)
+		fs:SetJustifyH("CENTER")
+		return
+	end
 	local place = PlaceOf(frameKey, power)
 	-- (a place with a spot: the stage's; one without -- its spot given way to the rows, UnitFrames' DropPartSpots --
 	-- at the rows' position with its size and shown, below)
@@ -325,7 +351,8 @@ local function SecretPercent(bar)
 		if not UnitPowerPercent then
 			return nil
 		end
-		pct = UnitPowerPercent(info.unit, nil, true, CurveConstants.ScaleTo100)
+		-- (a half of Druid Forms' row: its own power's -- the bar's type, as the frame set it)
+		pct = UnitPowerPercent(info.unit, info.form and bar.powerType or nil, true, CurveConstants.ScaleTo100)
 	else
 		if not UnitHealthPercent then
 			return nil
@@ -341,8 +368,8 @@ local function SecretPercent(bar)
 	return string.format("%d%%", pct)
 end
 
-local function SecretNumber(n)
-	if FORMAT.full[M.db.format] then
+local function SecretNumber(n, fmt)
+	if FORMAT.full[fmt or M.db.format] then
 		-- 8,234 where the client can group a secret, else 8234
 		local ok, text = pcall(BreakUpLargeNumbers, n)
 		if ok and (Secret(text) or text) then
@@ -353,8 +380,8 @@ local function SecretNumber(n)
 	return AbbreviateNumbers(n)
 end
 
-local function SecretText(bar, value, max)
-	local fmt = M.db.format
+local function SecretText(bar, value, max, fmt)
+	fmt = fmt or M.db.format
 	if fmt == "percent" then
 		-- a unit with no percentage to read (a power type the client does not
 		-- give one for): the short number rather than nothing
@@ -364,9 +391,9 @@ local function SecretText(bar, value, max)
 		end
 		return AbbreviateNumbers(value)
 	end
-	local text = SecretNumber(value)
+	local text = SecretNumber(value, fmt)
 	if FORMAT.max[fmt] then
-		text = text .. " / " .. SecretNumber(max)
+		text = text .. " / " .. SecretNumber(max, fmt)
 	end
 	if FORMAT.pct[fmt] then
 		local okP, pct = pcall(SecretPercent, bar)
@@ -386,13 +413,15 @@ end
 local function ReadBar(bar)
 	local value = bar:GetValue()
 	local _, max = bar:GetMinMaxValues()
+	local info = barUnit[bar]
+	local fmt = info and info.form and Brief(M.db.format) or nil
 	if Secret(value) or Secret(max) then
-		return SecretText(bar, value, max)
+		return SecretText(bar, value, max, fmt)
 	end
 	if not max or max <= 0 then
 		return nil
 	end
-	return FormatText(value, max)
+	return FormatText(value, max, fmt)
 end
 
 local function SetRawValue(fs, bar)

@@ -177,6 +177,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.61", lines = {
+		"Loot rolls in a window of their own: every pick and number, and the item flies to the winner.",
+		"Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs.",
+		"Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps.",
+		"Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen.",
+		"GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap.",
+		"Druid Forms on the player frame too: your other two powers in one row under the power bar, split in two, each with its number. The Personal Display shows them the same way.",
+	} },
 	{ version = "2.1.60", lines = {
 		"Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished.",
 		"Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate.",
@@ -204,10 +212,6 @@ local CHANGELOG = {
 	{ version = "2.1.57", lines = {
 		"Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap.",
 		"Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap.",
-	} },
-	{ version = "2.1.56", lines = {
-		"Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there.",
-		"Questie: every version of its database is read now, older and newer ones too.",
 	} },
 }
 local LINKS = {

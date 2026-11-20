@@ -56,6 +56,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		nameFont = "shared",
 		frames = true,
 		partyFlip = false,
+		druidForms = true,
 	},
 	options = {
 		-- (2026-10-20, the user: the game's frames as they are, in the set's borders, one picture each; the Frames section)
@@ -68,6 +69,11 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		-- on the right side of the screen and not the left side") Party.Flip
 		{ type = "toggle", key = "partyFlip", name = "Flip Horizontally",
 		  desc = "Mirrors the party frames for a party on the right of the screen: portraits on the right." },
+		-- (2.1.61; a player: "could we also have rage & energy bar on the player unit frames with numbers?", the user's
+		-- pick A of druid_bars_sketch: one row, split in two) Modules/UnitFramesOwn.lua's Forms
+		{ type = "toggle", key = "druidForms", name = "Druid Forms", new = "2.1.61",
+		  search = "druid form forms shapeshift cat bear mana energy rage",
+		  desc = "For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values." },
 		{ type = "header", name = "Names" },
 		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces,
 		  desc = "The font of names on the unit frames and party portraits. Shared: the interface font." },

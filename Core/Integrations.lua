@@ -267,8 +267,8 @@ I.LIST = {
 	  end },
 	{ key = "GatherMate2", name = "GatherMate2", folders = { "GatherMate2" }, group = "map",
 	  url = "https://www.curseforge.com/wow/addons/gathermate2",
-	  does = { "Its gathering nodes on MelloUI's map." },
-	  short = "Its gathering nodes on MelloUI's map",
+	  does = { "Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons, one a kind: herbs, veins, fishing pools and treasures." },
+	  short = "Its gathering nodes in MelloUI's icons",
 	  links = { { "Map layers", map = true } },
 	  parts = { { "its nodes", function()
 		local gm = Ace("GatherMate2")

@@ -888,6 +888,13 @@ local function CollectUnitFrameBars(list)
 				AddPower(list, main.ManaBarArea.ManaBar)
 			end
 		end
+		-- (2.1.61, Druid Forms: the two halves of its row on MelloUI's own player frame, a power bar each)
+		local U = MelloUI.Units
+		local forms = U and U.FormBars and U.FormBars()
+		if forms then
+			AddPower(list, forms[1])
+			AddPower(list, forms[2])
+		end
 	end
 	for _, frame in ipairs(TargetLikeFrames()) do
 		if frame and frame.TargetFrameContent then

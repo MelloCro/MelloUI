@@ -33,6 +33,11 @@ OUT = ("Textures", "Icons")
 SET = []
 for n in ("kill", "kill_elite", "kill_rare", "quest_mark", "turnin_mark", "loot"):
     SET.append(("marks", n, n, 64))
+# (2.1.61, Batch 37: GatherMate2's nodes, one icon a kind -- MelloUI_Map/MapAddonPins.lua's Gather; the user's pick
+# "B A A" of gather_icons_sketch, 2026-11-20: the single leaf (take B), the boulder with nuggets and the leaping fish
+# (take A). Standalone marks, with the marks' shade)
+for art, n in (("gather_herb_b", "gather_herb"), ("gather_ore", "gather_ore"), ("gather_fish", "gather_fish")):
+    SET.append(("gather", art, n, 64))
 for n in ("pin_collect", "pin_portal", "pin_dungeon", "pin_raid", "pin_boat", "pin_zeppelin", "pin_tram"):
     SET.append(("pins", n, n, 64))
 for n in ("track_todo", "track_handin", "svc_repair", "svc_mail", "svc_inn", "svc_flight", "svc_auction", "svc_bank",
@@ -116,7 +121,7 @@ CLASSES = ("WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", 
 # Shade.lua): a soft white copy of its outline, grown and blurred, on a canvas reaching HALO_PAD of the icon past each
 # side; the game tints it -- the set's disc pins (HALO_DISCS, Shade.lua's DISCS) a gold glow reaching well out, the
 # standalone marks a dark shade hugging their shape. (grow, blur, gain): the first two as shares of the icon's size
-HALO_GROUPS = ("marks", "pins", "route", "questlist")
+HALO_GROUPS = ("marks", "pins", "route", "questlist", "gather")
 HALO_DISCS = ("pin_", "goal_", "obj_", "class_")
 HALO_PAD, HALO_SIZE, HALO_WORK = 0.25, 64, 128   # (HALO_WORK: the icon's size while it is made, the canvas half again)
 HALO_GLOW, HALO_SHADE = (0.05, 0.08, 2.6), (0.035, 0.04, 2.2)
