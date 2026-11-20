@@ -2,7 +2,7 @@
 
 ## 2.1.61
 
-- Loot rolls have a window of their own in every look: what dropped, everyone's pick and number, your Need, Greed and Pass, and a raid's forty in a scrolling table. A favourite from your Dungeon Info list stands out, and the item flies to the winner's frame.
+- Loot rolls have a window of their own in every look: what dropped, everyone's pick and number, your Need, Greed and Pass, and a raid's forty in a scrolling table. A favourite from your Dungeon Info list stands out, and the item flies to the winner's frame. Under Master Loot it shows what the loot master hands out, and the loot master gets Roll and Assign for each item on the boss.
 - Quest Tracker with Polestar: click a goal line, or the guide's title, to follow that quest, and hover it for the quest's tooltip. The guide's next step lets the quest go again.
 - Quest Tracker with Polestar: the guide's step shows the distance to its spot and its quest item button, a goal line lights up once when it is done, and a tab button in the heading switches between Polestar's open guide tabs.
 - Quest Tracker with Polestar: step numbers match Polestar's window. While you look at another step its count is greyed, and a click on it goes back to the live step.
