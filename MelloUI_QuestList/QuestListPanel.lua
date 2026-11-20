@@ -173,7 +173,7 @@ local function RowEnter(self)
 	tip:SetOwner(self, "ANCHOR_LEFT")
 	local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
 	tip:SetText(row[QL.F_TITLE], r, g, b)
-	tip:AddLine(string.format("Requires level %d", row[QL.F_REQ]), QL.DifficultyColor(row[QL.F_REQ]))
+	tip:AddLine(MelloUI.Widgets.Tr("Requires level %d"):format(row[QL.F_REQ]), QL.DifficultyColor(row[QL.F_REQ]))
 	local begins = BeginsAt(row)
 	if begins then
 		Line(tip, begins, "text", true)
@@ -995,9 +995,9 @@ local Swallow = Perf.Shared("OnMouseWheel on the Quest List's page", function() 
 -- too), and the two hides that stood as check boxes beside the side window's
 -- Filter button (user, 2026-09-23)
 local function MenuSetup(_, root)
-	root:CreateTitle("Quests that start from")
+	root:CreateTitle(MelloUI.Widgets.Tr("Quests that start from"))
 	for _, k in ipairs(QL.START_KINDS) do
-		root:CreateCheckbox(QL.StarterIconMarkup(k.key, 18) .. " " .. k.label,
+		root:CreateCheckbox(QL.StarterIconMarkup(k.key, 18) .. " " .. MelloUI.Widgets.Tr(k.label),
 			function() return M.db[k.setting] ~= false end,
 			function()
 				MelloUI:NotifySettingChanged(M.name, k.setting, M.db[k.setting] == false)
@@ -1006,18 +1006,18 @@ local function MenuSetup(_, root)
 	root:CreateDivider()
 	-- the "Hide Quests More Than N Levels Above Me" setting at +4 (the red
 	-- ones); off puts it back to no limit, any other value reads as off
-	root:CreateCheckbox("Hide quests 5+ levels above me",
+	root:CreateCheckbox(MelloUI.Widgets.Tr("Hide quests 5+ levels above me"),
 		function() return tonumber(M.db.levelAbove) == LEVEL_SHORTCUT end,
 		function()
 			MelloUI:NotifySettingChanged(M.name, "levelAbove", tonumber(M.db.levelAbove) ~= LEVEL_SHORTCUT and LEVEL_SHORTCUT or 0)
 		end)
-	root:CreateCheckbox("Hide completed quests",
+	root:CreateCheckbox(MelloUI.Widgets.Tr("Hide completed quests"),
 		function() return M.db.hideCompleted and true or false end,
 		function()
 			MelloUI:NotifySettingChanged(M.name, "hideCompleted", not M.db.hideCompleted)
 		end)
 	-- (0.19.5) the quests hidden by hand, listed dimmed to Alt-click back
-	root:CreateCheckbox(string.format("Show hidden quests (%d)", QL.HiddenCount()),
+	root:CreateCheckbox(MelloUI.Widgets.Tr("Show hidden quests (%d)"):format(QL.HiddenCount()),
 		function() return M.db.showHidden and true or false end,
 		function()
 			MelloUI:NotifySettingChanged(M.name, "showHidden", not M.db.showHidden)
@@ -1027,7 +1027,7 @@ end
 -- the group dropdown's list: the module's Show Quests For
 local function GroupSetup(_, root)
 	for _, f in ipairs(FILTERS) do
-		root:CreateRadio(f.label, function() return M.db.filter == f.key end, function()
+		root:CreateRadio(MelloUI.Widgets.Tr(f.label), function() return M.db.filter == f.key end, function()
 			MelloUI:NotifySettingChanged(M.name, "filter", f.key)
 		end)
 	end
@@ -1674,8 +1674,9 @@ function QL.Panel:Update(quiet)
 		for _, k in ipairs(QL.START_KINDS) do
 			filtered = filtered or db[k.setting] == false
 		end
-		frame.empty:SetText(term ~= "" and "Nothing found." or (total == 0 and (filtered and "No quests match the filter."
-			or "No quests known for this zone.") or "All completed."))
+		frame.empty:SetText(term ~= "" and MelloUI.Widgets.Tr("Nothing found.") or (total == 0 and (filtered
+			and MelloUI.Widgets.Tr("No quests match the filter.") or MelloUI.Widgets.Tr("No quests known for this zone."))
+			or MelloUI.Widgets.Tr("All completed.")))
 		frame.empty:Show()
 	else
 		frame.empty:Hide()
