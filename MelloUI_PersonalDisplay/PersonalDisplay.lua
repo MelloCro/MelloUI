@@ -5732,7 +5732,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces,
 		  desc = "The font of the display's text. Shared: the interface font." },
 		-- (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
-		{ type = "toggle", key = "druidForms", name = "Druid Forms", new = "2.1.60",
+		{ type = "toggle", key = "druidForms", name = "Druid Forms",
 		  search = "druid form forms shapeshift cat bear mana energy rage",
 		  desc = "For a druid: one more row under the power bar, split in two, shows the two powers it does not show right now, each with its number. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form." },
 		{ type = "toggle", key = "classColour", name = "Class Colours",
@@ -5759,7 +5759,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "New power lights up ahead of the bar before it fills." },
 		-- (2.1.60; a German player: "in WoW Forever there is the five-second rule ... can we fit it into the resource
 		-- bar?"; its name theirs: "Mana Regen Pause" -- the five-second rule a players' word, kept for the search)
-		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause", new = "2.1.60",
+		{ type = "toggle", key = "fiveSecond", name = "Mana Regen Pause",
 		  search = "five second rule 5sr fsr mana regeneration regen spirit pause",
 		  desc = "After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again." },
 		{ type = "toggle", key = "avoid", name = "Dodge, Parry, Block", play = "avoid",
