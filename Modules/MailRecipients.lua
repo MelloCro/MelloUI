@@ -3,27 +3,30 @@
 -- mailbox, so you only click which one and the name is filled in", and "the same with Battle.net friends, a tab of
 -- its own: I can't remember my friends' characters")
 --
--- A small button at the right of the mailbox's To field (Send Mail) opens a menu:
+-- (2.1.61: a panel of its own replaced the button and its menu at the To field -- the German player: "can't we take
+-- an approach that fits MelloUI and build it in to the right of the mail window?") Beside the Send Mail page, a list:
 --   Your Characters      your other characters, each in its class colour with its level where that is known; a click
 --                        puts the full name in the To field and moves on to Subject. Every other character of the
 --                        account is there at once: the game's own name list is asked for them (FromGame), so an alt
 --                        need not have logged in with MelloUI first (the user: "i dont see my Alts on the list")
 --   Battle.net Friends   a friend a row (their BattleTag's name, "online" while they play), their characters under it
---                        as a submenu; every character the game has shown of them while they played, so the ones you
+--                        when it is unfolded (a click on its row); every character the game has shown of them while they played, so the ones you
 --                        cannot remember are there while they are offline too. One on ANOTHER realm shows its
 --                        realm, and the To field gets the game's own address for it (R.Address, below): a bare
---                        name there would go to whoever bears that name on your realm
+--                        name there would go to whoever bears that name on your realm. (2.1.61) Another realm is
+--                        another server: WoW Forever names its layers as realms ("CAMWOW EU5 Realm 5 PvE" and
+--                        "CAMWOW EU4 Realm 1 PvE": one EU server), and the layer is left out of the comparison
+--                        (R.ServerKey)
 -- What it keeps, account-wide in its own settings (`keep`: never in a profile or a share string, as Services' learned
 -- services), only on this computer:
 --   alts       ["Name-Realm"] = { name (the full name, first name and surname), realm, class (the class's token),
 --              level, faction, seen } -- this character as it logs in and levels
 --   bnetChars  [BattleTag] = { ["Name-Realm"] = { name, realm, class, level, faction, seen } } -- read from the game's
 --              friend list while a friend plays this game, a moment after it changes (its events come in bursts)
--- Nothing of the game's is replaced: the button is MelloUI's own frame on the Send Mail page, the menu the game's
--- (MenuUtil), the click the To field's own SetText. Not with the Gamepad UI (the game's menu opened from MelloUI's
--- code blocks its bindings: Services.lua's note), and nothing at all while the module is off.
+-- Nothing of the game's is replaced: the panel is MelloUI's own frame on the Send Mail page (W.TrayBox, the Restock
+-- panel's box), the click the To field's own SetText; nothing at all while the module is off.
 -- On by default (the user, 2026-11-17: "that should be enabled by default"); its switch is Quality of Life > Mail.
--- All it puts on the screen is that one button, on the Send Mail page.
+-- All it puts on the screen is that panel, with the Send Mail page.
 -- A list of its own, not the Quest List's record of your characters: that one keeps the first name alone, and the
 -- Quest List is a feature addon that may not be loaded.
 -- With Battle.net Friends' Characters switched off, what was noted of friends is forgotten; a friend taken off your
@@ -38,8 +41,7 @@ local Text, Num, Secret = Safe.Text, Safe.Number, Safe.IsSecret
 
 -- (every text a window draws: Tools/languages/strings.py reads this table)
 local TEXT = {
-	button = "Recipients",
-	tip = "Pick one of your characters or a Battle.net friend's character to send this letter to.",
+	button = "Recipients",   -- (the panel's title)
 	alts = "Your Characters",
 	friends = "Battle.net Friends",
 	noAlts = "No other characters.",
@@ -49,7 +51,7 @@ local TEXT = {
 
 local M = MelloUI:RegisterModule("MailRecipients", {
 	title = "Mail Recipients",
-	desc = "A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in.",
+	desc = "Beside the mailbox's Send Mail page, a list of your characters and your Battle.net friends' characters: click one and its name is filled in.",
 	icon = "Interface\\Icons\\INV_Letter_15",
 	flavour = "Who was that again? One click and the letter has its name.",
 	enabledByDefault = true,   -- (the user, 2026-11-17: "that should be enabled by default")
@@ -60,14 +62,12 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 	},
 	options = {
 		{ type = "toggle", key = "bnet", name = "Battle.net Friends' Characters",
-		  desc = "The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted." },
+		  desc = "The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted." },
 	},
 })
 MelloUI.MailRecipients = M
 
 local R = {
-	SIZE = 18,       -- the button
-	GAP = 4,         -- from the To field's right edge
 	SETTLE = 2,      -- seconds: the friend list read once its events have stopped coming
 	MAX = 100,       -- the most characters asked of the game's own name list (FromGame)
 	onList = {},     -- [BattleTag] = true: on the friend list at the last read (reused)
@@ -112,6 +112,24 @@ end
 -- as a Battle.net friend's realmName reads)
 local function RealmKey(realm)
 	return type(realm) == "string" and (realm:gsub("%s", "")) or nil
+end
+
+-- (2.1.61) a realm without its layer: WoW Forever names each layer of its server a realm of its own -- the German
+-- player's /mello mail names had a friend's character on "CAMWOW EU5 Realm 7 PvE", their screenshot a day later the same
+-- character on "CAMWOW EU5 Realm 5 PvE"; and "CAMWOW EU4 Realm 1 PvE" is one more (the player: "my Battle.net friends
+-- and I play on one and the same EU mega server; the layers are shown nowhere", a letter to "Lilei Lilei-CAMWOW..."
+-- refused, to "Lilei Lilei" sent). So the layer and the shard's number, "Realm <n>" and the "<n>" of "EU<n>", are
+-- left out: "CAMWOW EU PvE". The region stays: the player could write to a stranger of the EU server by the name
+-- alone, to one of the American realm not.
+-- Characters of one server get a letter by their bare name; the realm shown and put in the address only for a realm
+-- that differs past those
+function R.ServerKey(realm)
+	if type(realm) ~= "string" then
+		return nil
+	end
+	local server = realm:gsub("%s+[Rr]ealm%s+%d+", "")
+	server = server:gsub("%s+(%a%a)%d+", " %1")   -- (the region kept: "EU5" -> "EU", an American one stays apart)
+	return RealmKey(server)
 end
 
 local function Me()
@@ -195,7 +213,7 @@ local function ReadFriends()
 						chars = {}
 						known[tag] = chars
 					end
-					local key = name .. "-" .. RealmKey(realm)
+					local key = name .. "-" .. R.ServerKey(realm)   -- (2.1.61: one record whatever layer they play on)
 					local rec = chars[key]
 					if type(rec) ~= "table" then
 						rec = {}
@@ -238,8 +256,9 @@ end
 -- a character's line: its name in its class colour, its level after it dimmed (a friend's on another realm of this
 -- server is written to as well: the user, "same faction, I can still send", the game's own name list offering it)
 local function OtherRealm(c)
-	local mine, theirs = RealmKey(Text(Call(GetRealmName))), RealmKey(c.realm)
-	return (mine and theirs and mine ~= theirs) and theirs or nil
+	-- (2.1.61: another SERVER, R.ServerKey -- another layer of yours is no other realm; the address keeps the realm whole)
+	local mine, theirs = R.ServerKey(Text(Call(GetRealmName))), R.ServerKey(c.realm)
+	return (mine and theirs and mine ~= theirs) and RealmKey(c.realm) or nil
 end
 
 local function Line(c)
@@ -274,11 +293,6 @@ function R.Address(c)
 	return c.name .. "-" .. theirs
 end
 
--- a character's entry in the menu: a click writes to it
-local function Entry(menu, c, Put)
-	menu:CreateButton(Line(c), function() Put(c) end)
-end
-
 -- the characters of a list you can write to: your faction (or not known yet), you yourself left out, and only the ones
 -- noted with their full name (`full`: an early build of this module took the Quest List's record, first names alone
 -- -- "Sovari" where the letter needs "Sovari Mara" -- and those wait till that character logs in); highest level first
@@ -290,12 +304,21 @@ local function ByLevel(a, b)
 end
 
 local function Writable(list, me, faction, needFull)
-	local out = {}
+	local out, one = {}, {}
 	for key, c in pairs(type(list) == "table" and list or {}) do
 		if key ~= me and type(c) == "table" and type(c.name) == "string" and (c.full or not needFull)
 			and (c.faction == nil or faction == nil or c.faction == faction) then
-			out[#out + 1] = c
+			-- (2.1.61) a character noted on two layers of its server (before R.ServerKey, or this character's own
+			-- record by its layer): once, as last seen
+			local id = c.name .. "-" .. (R.ServerKey(c.realm) or "")
+			local had = one[id]
+			if not had or (c.seen or 0) > (had.seen or 0) then
+				one[id] = c
+			end
 		end
+	end
+	for _, c in pairs(one) do
+		out[#out + 1] = c
 	end
 	table.sort(out, ByLevel)
 	return out
@@ -333,16 +356,22 @@ end
 -- its level where the Quest List has met it. A noted character the menu leaves out (the other faction's) stays out.
 local function Alts(me, myName, faction)
 	local noted = Store("alts")
-	local out = Writable(noted, me, faction, true)
 	local realm = Text(Call(GetRealmName))
-	local here = RealmKey(realm)
+	local here = R.ServerKey(realm)   -- (2.1.61: the server, not the layer)
+	-- (2.1.61) you yourself left out by name too: your record of another layer bears another key than `me`
+	local out = {}
+	for _, c in ipairs(Writable(noted, me, faction, true)) do
+		if not (c.name == myName and R.ServerKey(c.realm) == here) then
+			out[#out + 1] = c
+		end
+	end
 	local known = {}
 	if myName then
 		known[myName] = true
 	end
 	for _, c in pairs(noted) do
 		if type(c) == "table" and type(c.name) == "string" then
-			local theirs = RealmKey(c.realm)
+			local theirs = R.ServerKey(c.realm)
 			known[c.name .. "-" .. (theirs or "")] = true
 			if theirs == nil or theirs == here then
 				known[c.name] = true
@@ -396,100 +425,234 @@ local function FriendNames()
 	return online
 end
 
-local function Menu(owner)
-	if not (MenuUtil and MenuUtil.CreateContextMenu) then
-		return
+--------------------------------------------------------------------------------
+-- The panel beside Send Mail (2.1.61; the German player: "I'm not happy with the icon at Send Mail -- can't we take an
+-- approach that fits MelloUI and build it in to the right of the mail window?", their pick: always open). A list box
+-- of MelloUI's own (W.TrayBox, the Restock panel's box beside the shop: the kit's list box while the reskin's look is
+-- on, the palette's plain box else) hung on the mail window's right while the Send Mail page shows -- a child of that
+-- page, so it comes and goes with it. Your characters, then your Battle.net friends, each friend a row that unfolds
+-- their characters under it (this session); a click on a character fills the To field (Put). More rows than room:
+-- the mouse wheel scrolls them. Made the first time the page shows
+--------------------------------------------------------------------------------
+
+R.PANEL_W, R.PAD, R.HEAD, R.ROW_H = 210, 10, 34, 18
+R.AREA = "config"   -- the box's look: the reskin's, as MelloUI's own windows (Kit.Areas), as the Restock panel's
+R.open = {}          -- [BattleTag] = true: that friend's characters unfolded (this session)
+R.first = 1          -- the first entry shown (the wheel's)
+R.list = {}          -- the entries in order: { kind = "title" | "char" | "friend" | "none", text, c, tag }
+R.rows = {}          -- the panel's rows (reused)
+R.MORE = { kind = "none", text = "..." }   -- (the rows' hint: more above or below, the wheel's)
+
+local panel
+
+local function Style(fs, role, object, size)
+	if MelloUI.StyleFont then
+		MelloUI:StyleFont(fs, role, object, size)
 	end
-	WriteMe()
-	ReadFriends()
-	local me, myName, _, faction = Me()
-	MenuUtil.CreateContextMenu(owner, function(_, root)
-		root:CreateTitle(Tr(TEXT.alts))
-		local alts = Alts(me, myName, faction)
-		for _, c in ipairs(alts) do
-			Entry(root, c, Put)
-		end
-		if #alts == 0 then
-			root:CreateTitle("|cff9d9d9d" .. Tr(TEXT.noAlts) .. "|r")
-		end
-		if not M.db.bnet then
-			return
-		end
-		root:CreateDivider()
-		root:CreateTitle(Tr(TEXT.friends))
-		local known, shown = Store("bnetChars"), 0
-		local friends = FriendNames()
-		local tags = {}
-		for tag in pairs(friends) do
-			tags[#tags + 1] = tag
-		end
-		table.sort(tags, function(a, b) return a:lower() < b:lower() end)
-		for _, tag in ipairs(tags) do
-			local chars = Writable(known[tag], nil, faction)
-			if #chars > 0 then
-				local label = tag:match("^[^#]+") or tag
-				if friends[tag] then
-					label = label .. "  |cff40ff40" .. Tr(TEXT.online) .. "|r"
-				end
-				local sub = root:CreateButton(label)
-				for _, c in ipairs(chars) do
-					Entry(sub, c, Put)
-				end
-				shown = shown + 1
-			end
-		end
-		if shown == 0 then
-			root:CreateTitle("|cff9d9d9d" .. Tr(TEXT.noFriends) .. "|r")
-		end
-	end)
+	return fs
 end
 
---------------------------------------------------------------------------------
--- The button on the Send Mail page
---------------------------------------------------------------------------------
-
-local button
-
-local Click = Perf.Shared("OnClick on the mailbox's recipients button", function(self)
-	MelloUI:PlayUISound("click")
-	Menu(self)
-end, "script")
-
-local Enter = Perf.Shared("OnEnter on the mailbox's recipients button", function(self)
-	MelloUI.Widgets.ShowTooltip(self, TEXT.button, TEXT.tip)
-end, "script")
-
-local function Button()
-	if button then
-		return button
+-- the box in the look of the moment (the Restock panel's way: its shade with it, the windows' area, once)
+local function PanelLook(f)
+	local Kit = MelloUI.Kit
+	local on = Kit and Kit.IsOn and Kit:IsOn(R.AREA) and true or false
+	if f:SetKit(on and Kit or false) and not f.shaded then
+		f.shaded = true
+		local rep = f.kitBox
+		if rep and rep.skin and Kit.ShadeElement then
+			local ok, el = pcall(Kit.ShadeElement, Kit, f, "windows", { host = rep.skin })
+			if ok and type(el) == "table" and type(el.Add) == "function" then
+				el:Add(rep)
+			end
+		end
 	end
-	local to, page = rawget(_G, "SendMailNameEditBox"), rawget(_G, "SendMailFrame")
-	if not (to and page) then
+end
+
+local function Add(kind, text, c, tag)
+	local list = R.list
+	local e = list[#list + 1] or {}
+	list[#list + 1] = e
+	e.kind, e.text, e.c, e.tag = kind, text, c, tag
+end
+
+-- the entries, read again (your characters and your friends' as noted now)
+function R.Entries()
+	for i = #R.list, 1, -1 do
+		R.list[i] = nil
+	end
+	local me, myName, _, faction = Me()
+	Add("title", Tr(TEXT.alts))
+	local alts = Alts(me, myName, faction)
+	for _, c in ipairs(alts) do
+		Add("char", Line(c), c)
+	end
+	if #alts == 0 then
+		Add("none", Tr(TEXT.noAlts))
+	end
+	if not (M.db and M.db.bnet) then
+		return
+	end
+	Add("title", Tr(TEXT.friends))
+	local known, shown = Store("bnetChars"), 0
+	local friends = FriendNames()
+	local tags = {}
+	for tag in pairs(friends) do
+		tags[#tags + 1] = tag
+	end
+	table.sort(tags, function(a, b) return a:lower() < b:lower() end)
+	for _, tag in ipairs(tags) do
+		local chars = Writable(known[tag], nil, faction)
+		if #chars > 0 then
+			local open = R.open[tag]
+			local label = (open and "\226\128\147 " or "+ ") .. (tag:match("^[^#]+") or tag)
+			if friends[tag] then
+				label = label .. "  |cff40ff40" .. Tr(TEXT.online) .. "|r"
+			end
+			Add("friend", label, nil, tag)
+			if open then
+				for _, c in ipairs(chars) do
+					Add("char", "    " .. Line(c), c)
+				end
+			end
+			shown = shown + 1
+		end
+	end
+	if shown == 0 then
+		Add("none", Tr(TEXT.noFriends))
+	end
+end
+
+-- a click: a character's address into the To field; a friend's row folds or unfolds their characters
+local RowClick = Perf.Shared("OnClick on a mail recipients row", function(row)
+	local e = row.entry
+	if not e then
+		return
+	elseif e.kind == "char" and e.c then
+		Put(e.c)
+	elseif e.kind == "friend" and e.tag then
+		R.open[e.tag] = not R.open[e.tag] or nil
+		MelloUI:PlayUISound("click")
+		R.Entries()
+		R.Fill()
+	end
+end, "script")
+
+local Wheel = Perf.Shared("OnMouseWheel on the mail recipients panel", function(_, delta)
+	R.first = R.first - (delta > 0 and 1 or -1) * 3
+	R.Fill()
+end, "script")
+
+local function NewRow(f, i)
+	local W = MelloUI.Widgets
+	local row = CreateFrame("Button", nil, f)
+	row:SetHeight(R.ROW_H)
+	row:SetPoint("TOPLEFT", f, "TOPLEFT", R.PAD, -(R.HEAD + (i - 1) * R.ROW_H))
+	row:SetPoint("RIGHT", f, "RIGHT", -R.PAD, 0)
+	row.text = Style(W.Text(row, "GameFontHighlight", nil, "text"), "fontText", _G.GameFontHighlight)
+	row.text:SetPoint("LEFT", row, "LEFT", 4, 0)
+	row.text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+	row.text:SetJustifyH("LEFT")
+	row.text:SetWordWrap(false)
+	W.RowPlate(row)
+	row:RegisterForClicks("LeftButtonUp")
+	Perf.SetScript(row, "OnClick", RowClick)
+	R.rows[i] = row
+	return row
+end
+
+-- the rows from the entries, as many as the box holds from the wheel's first
+function R.Fill()
+	local f = panel
+	if not f then
+		return
+	end
+	local room = math.max(1, math.floor((f:GetHeight() - R.HEAD - R.PAD) / R.ROW_H))
+	local n = #R.list
+	R.first = math.max(1, math.min(R.first, math.max(1, n - room + 1)))
+	local W = MelloUI.Widgets
+	-- (2.1.61; the German player's screenshot: four friends under the box's foot, nothing to say so) a dim "..." in the
+	-- first row while some are scrolled away above, in the last while some wait below; the wheel brings them
+	local up, down = R.first > 1, R.first + room - 1 < n
+	for i = 1, room do
+		local row = R.rows[i] or NewRow(f, i)
+		local e = R.list[R.first + i - 1]
+		if (i == 1 and up) or (i == room and down) then
+			e = R.MORE
+		end
+		row.entry = e
+		if e then
+			row.text:SetText(e.kind == "none" and ("|cff9d9d9d" .. e.text .. "|r") or e.text)
+			if e.kind == "title" then
+				W.Paint(row.text, "selectedTrim", "text")
+			else
+				W.Paint(row.text, "text", "text")
+			end
+			row:EnableMouse(e.kind == "char" or e.kind == "friend")
+			row:Show()
+		else
+			row.entry = nil
+			row:Hide()
+		end
+	end
+	for i = room + 1, #R.rows do
+		R.rows[i]:Hide()
+	end
+end
+
+-- the Send Mail page shown again (back from the inbox): the list read again; the box resized: its rows laid again
+local PageShown = Perf.Shared("OnShow on the Send Mail page (mail recipients)", function()
+	if M.isEnabled and panel then
+		WriteMe()
+		ReadFriends()
+		R.Entries()
+		R.Fill()
+	end
+end, "script")
+
+local Sized = Perf.Shared("OnSizeChanged on the mail recipients panel", function()
+	R.Fill()
+end, "script")
+
+local function Panel()
+	if panel then
+		return panel
+	end
+	local page, mail = rawget(_G, "SendMailFrame"), rawget(_G, "MailFrame")
+	if not (page and mail) then
 		return nil
 	end
 	local W = MelloUI.Widgets
-	button = Safe.CreateFrame("Button", nil, page)
-	button:SetSize(R.SIZE, R.SIZE)
-	button:SetPoint("LEFT", to, "RIGHT", R.GAP, 0)
-	button.icon = button:CreateTexture(nil, "ARTWORK")
-	button.icon:SetAllPoints()
-	W.Icon(button.icon, "chat_friends", R.SIZE)
-	button.glow = button:CreateTexture(nil, "HIGHLIGHT")
-	button.glow:SetAllPoints()
-	W.Icon(button.glow, "chat_friends", R.SIZE)
-	button.glow:SetBlendMode("ADD")
-	button.glow:SetAlpha(0.35)
-	button:RegisterForClicks("LeftButtonUp")
-	Perf.SetScript(button, "OnClick", Click)
-	Perf.SetScript(button, "OnEnter", Enter)
-	Perf.SetScript(button, "OnLeave", W.TipLeave)
-	return button
+	local f = W.TrayBox(page, { name = "MelloUIMailRecipients" })
+	f:SetWidth(R.PANEL_W)
+	f:SetPoint("TOPLEFT", mail, "TOPRIGHT", 12, 0)
+	f:SetPoint("BOTTOMLEFT", mail, "BOTTOMRIGHT", 12, 0)
+	f:EnableMouse(true)
+	f:EnableMouseWheel(true)
+	Perf.SetScript(f, "OnMouseWheel", Wheel)
+	Perf.SetScript(f, "OnSizeChanged", Sized)
+	Perf.HookScript(page, "OnShow", PageShown)
+	PanelLook(f)
+	MelloUI:On("look:" .. R.AREA, function()
+		PanelLook(f)
+	end, "Mail recipients panel")
+	f.title = Style(W.Text(f, "GameFontNormal", Tr(TEXT.button), "selectedTrim"), "fontTitle", _G.GameFontNormal, 15)
+	f.title:SetPoint("TOPLEFT", f, "TOPLEFT", R.PAD + 4, -12)
+	panel = f
+	return f
 end
 
+-- the panel shown with the Send Mail page while the module is on, its list read again
 local function Show()
-	local b = (M.isEnabled and not Safe.GamepadUI()) and Button() or button
-	if b then
-		b:SetShown(M.isEnabled and not Safe.GamepadUI())
+	local f = (M.isEnabled and Panel()) or panel
+	if not f then
+		return
+	end
+	f:SetShown(M.isEnabled)
+	if M.isEnabled then
+		WriteMe()
+		ReadFriends()
+		R.Entries()
+		R.Fill()
 	end
 end
 
