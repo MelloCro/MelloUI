@@ -195,7 +195,10 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              # (2.1.58: Oldschool's Frame Set took the place of Unit Frame Border, Cast Bar Border, Personal Display
              # Border and Portrait Ring; a saved value of any is simply not read)
              "UIModifications.unitFrameBorder", "UIModifications.castBarBorder", "UIModifications.personalBarBorder",
-             "UIModifications.portraitRing"]
+             "UIModifications.portraitRing",
+             # (2.1.62, the race bar in rows: the one Race Bar Shows of before, read once at the login into the new
+             # choice and its ticks -- LOGIN_STEPS, below -- and not read again)
+             "Meter.metric"]
 # The same for entries inside a table setting: {setting: the entry keys' pattern}, those entries taken out of the
 # bake's copy (a player's own saved copy keeps them). (1.2.4, fr-02: the party's own spell groups and their marks,
 # gparty@<spec>, are no longer read by the frames)
@@ -578,6 +581,10 @@ LOGIN_STEPS |= {m + "." + k for m in ("ActionBarPanel", "ActionBars") for k in [
 # (one look, stage D3: Quality Gems and Grey Out Junk moved from BackpackPanel to Tweaks; the login's merge removes the
 # old keys and carries a saved off, so both spellings may change)
 LOGIN_STEPS |= {m + "." + k for m in ("BackpackPanel", "Tweaks") for k in ("qualityGems", "greyJunk")}
+# (2.1.62, the race bar in rows: the one Race Bar Shows of before, Meter.metric, is read once into Race Bar Shows'
+# new choice and its ticks by the meter's own step, MeterBar.lua's Bar.Migrate -- a saved Damage or Healing becomes
+# Your Pick with that row)
+LOGIN_STEPS |= {"Meter.raceShows", "Meter.raceDps", "Meter.raceHps"}
 # store entries the login takes out (0.16.0: VoiceOver's OnInit forgets the old overlay's place)
 LOGIN_DROPS = {"voiceOverlay"}
 
