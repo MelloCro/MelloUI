@@ -6046,11 +6046,12 @@ do
 	-- (`whole`: the marker's whole label, a quest's own place's; `spot`:
 	-- the quest's own place; `step`: either, the quest's step's own place, not
 	-- a dock; `key`: what it stands for, Update's -- dismissed as that)
-	local function PlaceStandIn(dock, label, whole, spot, step, key)
+	local function PlaceStandIn(dock, label, whole, spot, step, key, labelKey, labelPrefix)
 		local mapID, mx, my = MapPointOfYards(dock[1], dock[2], dock[3])
 		local before = standIn
 		local s = { cont = dock[1], x = dock[2], y = dock[3], spot = spot, step = step, key = key,
-			label = whole or (M.IconMark("goal_pin", 16) .. " " .. (label or "the boat")) }
+			label = whole, labelKey = labelKey or (not whole and label),
+			labelPrefix = labelPrefix or (not whole and (M.IconMark("goal_pin", 16) .. " ")) }
 		if before then
 			s.pin, s.questID = before.pin, before.questID
 			-- (2026-10-04) another quest meanwhile: the one to give back is that one,
@@ -6198,10 +6199,10 @@ do
 		end
 		if want and atSpot then
 			if standIn and standIn.cont == d.cont and Dist(standIn.x, standIn.y, d.x, d.y) < SPOT_MOVE and standIn.spot then
-				standIn.label, standIn.key = d.label, key
+				standIn.label, standIn.labelKey, standIn.labelPrefix, standIn.key = d.label, d.labelKey, d.labelPrefix, key
 				return
 			end
-			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, true, true, key)
+			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, true, true, key, d.labelKey, d.labelPrefix)
 			return
 		end
 		local dock, label
@@ -10085,7 +10086,7 @@ UpdateMarker = function()
 	end
 	-- the tick places it: over the destination or on the ring round the character
 	marker.nav = nav
-	marker.label:SetText((standIn and standIn.label) or DestinationLabel(destination) or "")
+	marker.label:SetText((standIn and (DestinationLabel(standIn) or standIn.label)) or DestinationLabel(destination) or "")
 	-- a new destination (another quest, another place: not the next spot of
 	-- the same quest) while it shows (0.18.4, the user's video: it jumped
 	-- there): it comes up afresh there, its way in played as on its first show.
