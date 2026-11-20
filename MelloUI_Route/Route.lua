@@ -135,6 +135,16 @@ function M.Language()
 	return Lang and Lang.code or "enUS"
 end
 
+local function DestinationLabel(d)
+	if not d then
+		return nil
+	end
+	if d.labelKey then
+		return (d.labelPrefix or "") .. M.Tr(d.labelKey)
+	end
+	return d.label
+end
+
 --------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------
@@ -5085,11 +5095,11 @@ local function Announce(text)
 			text = text:gsub("{dist}", distance)
 		end
 	elseif time then
-		text = M.F("Tracking %s: %s, %s", destination.label or M.Tr("map pin"), Yards(d), time)
+		text = M.F("Tracking %s: %s, %s", DestinationLabel(destination) or M.Tr("map pin"), Yards(d), time)
 	elseif d then
-		text = M.F("Tracking %s, %s away", destination.label or M.Tr("map pin"), Yards(d))
+		text = M.F("Tracking %s, %s away", DestinationLabel(destination) or M.Tr("map pin"), Yards(d))
 	else
-		text = M.F("Tracking %s", destination.label or M.Tr("map pin"))
+		text = M.F("Tracking %s", DestinationLabel(destination) or M.Tr("map pin"))
 	end
 	-- (0.19.4) one sound for a new destination: no chime while the World
 	-- Marker's own sound stands for it (M.TrackMute, by the marker below)
@@ -6236,7 +6246,7 @@ end
 
 -- Route to a candidate; with `pin`, also place the map waypoint there so the
 -- map and the waypoint arrow show it (removing the pin ends the route).
-function M:SetDestinationTo(candidate, label, pin, noticeText)
+function M:SetDestinationTo(candidate, label, pin, noticeText, labelKey, labelPrefix)
 	local cont, x, y = CandidateYards(candidate)
 	if not cont then
 		-- (a point on a map with no place: said once; its caller falls back)
@@ -6250,7 +6260,8 @@ function M:SetDestinationTo(candidate, label, pin, noticeText)
 		mapID, mx, my = MapPointOfYards(cont, x, y)
 	end
 	M.stopped = nil   -- (a destination chosen: the player's pick, M.StopRoute)
-	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = mx, my = my, label = label }
+	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = mx, my = my, label = label,
+		labelKey = labelKey, labelPrefix = labelPrefix }
 	if pin and mapID and C_Map.SetUserWaypoint and UiMapPoint then
 		local okCan, can = pcall(C_Map.CanSetUserWaypointOnMap, mapID)
 		if not (okCan and can == false) then
@@ -10074,7 +10085,7 @@ UpdateMarker = function()
 	end
 	-- the tick places it: over the destination or on the ring round the character
 	marker.nav = nav
-	marker.label:SetText((standIn and standIn.label) or destination.label or "")
+	marker.label:SetText((standIn and standIn.label) or DestinationLabel(destination) or "")
 	-- a new destination (another quest, another place: not the next spot of
 	-- the same quest) while it shows (0.18.4, the user's video: it jumped
 	-- there): it comes up afresh there, its way in played as on its first show.
@@ -10502,7 +10513,7 @@ function M.MinimapLine(aimed)
 		return
 	end
 	local remaining = route.length or 0
-	local label = destination and destination.label
+	local label = DestinationLabel(destination)
 	local secret = MelloUI.Safe.IsSecret(label)
 	if secret or remaining ~= mm.lineLength or label ~= mm.lineLabel then
 		mm.lineLength, mm.lineLabel = remaining, secret and mm or label
