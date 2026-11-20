@@ -2138,13 +2138,13 @@ end
 
 -- Route to a point on a map (entrance, dock, flight master): the Route
 -- module when it is on, else a plain user waypoint.
-function QL.RouteToPoint(mapID, x, y, label, notice)
+function QL.RouteToPoint(mapID, x, y, label, notice, labelKey, labelPrefix)
 	if not (mapID and x and y) then
 		return false
 	end
 	local R = MelloUI.Route
 	if R and R.isEnabled and R.SetDestinationTo then
-		if R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, notice) then
+		if R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, notice, labelKey, labelPrefix) then
 			return true, R.AnnounceSounds ~= nil and R:AnnounceSounds()
 		end
 		return false
