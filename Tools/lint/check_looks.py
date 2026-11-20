@@ -279,7 +279,7 @@ CEILINGS = {
     "hygiene:MelloUI_Route/Route.lua": 4,
     "hygiene:MelloUI_VoiceOver/VoiceOver.lua": 1,
     "hygiene:Modules/AuraProbe.lua": 1,
-    "hygiene:Modules/BagWindow.lua": 1,
+    "hygiene:Modules/BagWindow.lua": 0,   # (2.1.61: its quality colour moved to FrameFX.LootTint)
     "hygiene:Modules/Gains.lua": 0,
     "hygiene:Modules/HealProbe.lua": 2,
     "hygiene:Modules/MeterBar.lua": 2,

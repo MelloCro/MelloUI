@@ -709,6 +709,98 @@ do
 			end
 		end
 	end
+
+	-- (2.1.61, Oldschool's loot roll window: MelloUI.LootRolls below) the drop the game keeps for a roll in its loot
+	-- history: found by the roll's item among the drops still unwon (one no other roll holds), its place (encounter,
+	-- list key) kept, so it is read again by that place once the roll has ended -- its winner. The game's own table,
+	-- read only; nil while the history has no such drop
+	loot.dropAt = {}   -- [roll ID] = { encounter ID, list key }
+	local function Held(enc, key, rollID)
+		for id, at in pairs(loot.dropAt) do
+			if id ~= rollID and at[1] == enc and at[2] == key then
+				return true
+			end
+		end
+		return false
+	end
+	-- (rollID: a roll's, or any key of the caller's with the item's `link` -- the loot master's item on the boss, its
+	-- roll asked for: the window's slot rows)
+	function loot.Drop(rollID, link)
+		if not (type(LH) == "table" and type(LH.GetSortedInfoForDrop) == "function") then
+			return nil
+		end
+		local at = loot.dropAt[rollID]
+		if at then
+			local d = Ask(LH.GetSortedInfoForDrop, at[1], at[2])
+			return type(d) == "table" and d or nil
+		end
+		link = link or Text((Ask(_G.GetLootRollItemLink, rollID)))
+		if not (link and type(LH.GetAllEncounterInfos) == "function" and type(LH.GetSortedDropsForEncounter) == "function") then
+			return nil
+		end
+		local encounters = Ask(LH.GetAllEncounterInfos)
+		if type(encounters) ~= "table" then
+			return nil
+		end
+		for e = #encounters, 1, -1 do
+			local enc = encounters[e]
+			local encID = type(enc) == "table" and Num(enc.encounterID)
+			local drops = encID and Ask(LH.GetSortedDropsForEncounter, encID)
+			if type(drops) == "table" then
+				for k = 1, #drops do
+					local d = drops[k]
+					local key = type(d) == "table" and Num(d.lootListKey)
+					if key and Text(d.itemHyperlink) == link and not Secret(d.winner) and d.winner == nil
+						and not Held(encID, key, rollID) then
+						loot.dropAt[rollID] = { encID, key }
+						return d
+					end
+				end
+			end
+		end
+		return nil
+	end
+
+	-- the newest encounter's drops in the history (the game's own tables, read only) and its ID; nil while none
+	function loot.Latest()
+		if not (type(LH) == "table" and type(LH.GetAllEncounterInfos) == "function"
+			and type(LH.GetSortedDropsForEncounter) == "function") then
+			return nil
+		end
+		local encounters = Ask(LH.GetAllEncounterInfos)
+		local enc = type(encounters) == "table" and encounters[#encounters]
+		local id = type(enc) == "table" and Num(enc.encounterID)
+		local drops = id and Ask(LH.GetSortedDropsForEncounter, id)
+		return type(drops) == "table" and drops or nil, id
+	end
+
+	-- a drop's place held by a roll (or a key of the caller's)
+	function loot.Holds(enc, key)
+		return Held(enc, key, nil)
+	end
+
+	-- a drop's picks into `list` (reused): list[1..n] = { name, class, kind = "need" | "greed" | "pass" | "wait", roll,
+	-- self, winner }, each value tested for a secret first (a secret one left out)
+	function loot.Picks(d, list)
+		list.n = 0
+		if type(d) ~= "table" or type(d.rollInfos) ~= "table" then
+			return list
+		end
+		for k = 1, #d.rollInfos do
+			local ri = d.rollInfos[k]
+			local name = type(ri) == "table" and Text(ri.playerName)
+			if name then
+				local n = list.n + 1
+				local e = list[n] or {}
+				list[n] = e
+				e.name, e.class, e.kind, e.roll = name, Text(ri.playerClass), KindOfState(Num(ri.state)), Num(ri.roll)
+				e.self = not Secret(ri.isSelf) and ri.isSelf == true
+				e.winner = not Secret(ri.isWinner) and ri.isWinner == true
+				list.n = n
+			end
+		end
+		return list
+	end
 end
 
 -- slot i's row: one roll, its item in its quality colour, the ring its time, Need / Greed / Pass
@@ -722,7 +814,7 @@ local function LootSpec(i)
 	return {
 		key = loot.KEYS[i], column = true, label = TEXT.loot, priority = "now",
 		check = function()
-			return R() ~= nil
+			return R() ~= nil and not loot.Elsewhere()
 		end,
 		title = function()
 			local _, _, name, count, quality = LootInfo(R())
@@ -795,6 +887,57 @@ local function LootSpec(i)
 end
 
 local LOOT = LootSpec(1)
+
+-- (2.1.61; the user, 2026-11-20: "We need a redesign of the OldSchool Loot Roll Window, currently its attached by the
+-- Widget, but i need to see this data, Which Loot Dropped, who has rolled what and what roll they got") the rolls for
+-- a look's own display -- Oldschool's loot roll window (MelloUI_Oldschool/Modules/LootRollWindow.lua) -- read through
+-- this one reader, never a second copy of it; the bus's 'lootrolls' (event, roll ID) tells it what changed. While
+-- its Display() answers true the column shows no loot rows (the game's four roll frames stay out of sight as before)
+MelloUI.LootRolls = {
+	-- the rolls are MelloUI's to show: Loot Rolls on, the column there, not the game's Gamepad UI (its D-pad keeps the
+	-- game's boxes)
+	On = function()
+		return On("loot") and Rem() ~= nil and not MelloUI.Safe.GamepadUI()
+	end,
+	-- the rolls waiting for your answer: rolls[1..n] = { id, startAt, total }, the soonest to end first (read only)
+	List = function()
+		return loot.rolls, loot.n
+	end,
+	-- a roll's item: texture, name, count, quality, canNeed, canGreed, link (nil where secret or gone)
+	Info = function(id)
+		local _, texture, name, count, quality, canNeed, canGreed = LootInfo({ id = id })
+		return (not Secret(texture)) and texture or nil, Text(name), Num(count), Num(quality), canNeed == true,
+			canGreed ~= false, Text((Ask(_G.GetLootRollItemLink, id)))
+	end,
+	Drop = loot.Drop,
+	Picks = loot.Picks,
+	-- (Master Loot: the items handed out) the newest encounter's drops and its ID; a drop's place held by a roll
+	Latest = loot.Latest,
+	Holds = loot.Holds,
+	-- (Dungeon Info's list: the item is one you track)
+	Mine = function(id)
+		return LootMine({ id = id })
+	end,
+	-- your answer: 1 Need, 2 Greed, 0 Pass (the roll then leaves the list: you answered it)
+	Roll = function(id, kind)
+		Roll({ id = id }, kind)
+	end,
+	-- a roll the display is done with: its drop's place let go
+	Forget = function(id)
+		loot.dropAt[id] = nil
+	end,
+	-- the display's claim (set by it): function() -> true while it shows the rolls
+	Display = nil,
+	-- the display came or went: the column's loot rows looked at again
+	Changed = function()
+		RefreshLoot()
+	end,
+}
+
+function loot.Elsewhere()
+	local D = MelloUI.LootRolls.Display
+	return type(D) == "function" and D() == true
+end
 
 --------------------------------------------------------------------------------
 -- Corpse run
@@ -3382,24 +3525,29 @@ local function OnEvent(_, event, a1, a2, a3)
 			Refresh("healer")
 		end
 	end
+	-- (2.1.61: each also told on the bus's 'lootrolls', for a look's own display: MelloUI.LootRolls)
 	if event == "START_LOOT_ROLL" then
 		LootAdd(a1, a2)
 		RefreshLoot()
+		MelloUI:Fire("lootrolls", event, Num(a1))
 	elseif event == "CANCEL_LOOT_ROLL" then
 		local id = Num(a1)
 		if id then
 			LootDrop(id)
 			RefreshLoot()
+			MelloUI:Fire("lootrolls", event, id)
 		end
 	elseif event == "CANCEL_ALL_LOOT_ROLLS" then
 		loot.n = 0
 		wipe(loot.rolls)
 		RefreshLoot()
+		MelloUI:Fire("lootrolls", event)
 	elseif event == "LOOT_HISTORY_ROLL_CHANGED" or event == "LOOT_HISTORY_ROLL_COMPLETE" or event == "LOOT_HISTORY_FULL_UPDATE"
 		or event == "LOOT_HISTORY_UPDATE_DROP" or event == "LOOT_HISTORY_UPDATE_ENCOUNTER" then
 		if loot.n > 0 then
 			loot.WhoChanged()
 		end
+		MelloUI:Fire("lootrolls", event)
 	elseif event == "CORPSE_IN_RANGE" or event == "CORPSE_OUT_OF_RANGE" then
 		corpse.near = event == "CORPSE_IN_RANGE" and corpse.ghost
 		Refresh("corpse", corpse.near)
@@ -3702,6 +3850,7 @@ local function Read(key)
 	if key == "loot" then
 		LootRead()
 		RefreshLoot()
+		MelloUI:Fire("lootrolls", "READ")   -- (2.1.61: a reload in a group -- a look's own display reads them too)
 		return
 	elseif key == "corpse" then
 		CorpseState()

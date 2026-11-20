@@ -2292,6 +2292,40 @@ function FX.Loot(x0, y0, target, tier, icon, tint, spill, coin)
 	return layer
 end
 
+-- (2.1.61; lifted from the bag window's loot flight, for the loot roll window's too: one copy) an item quality's tier
+-- for FX.Loot: 0 poor and common .. 4 legendary and up
+function FX.LootTier(quality)
+	quality = Num(quality) or 1
+	return quality <= 1 and 0 or min(4, quality - 1)
+end
+
+-- the quality's colour, the game's (a meaning colour): { r, g, b, hex = "#rrggbb" }, read once; nil when unknown
+local lootTints = {}
+function FX.LootTint(quality)
+	quality = Num(quality) or 1
+	local t = lootTints[quality]
+	if t then
+		return t
+	end
+	local r, g, b
+	if C_Item and C_Item.GetItemQualityColor then
+		local ok, r1, g1, b1 = pcall(C_Item.GetItemQualityColor, quality)
+		if ok then
+			r, g, b = Num(r1), Num(g1), Num(b1)
+		end
+	end
+	if not (r and g and b) then
+		local c = type(ITEM_QUALITY_COLORS) == "table" and ITEM_QUALITY_COLORS[quality]   -- onelook-allow: the game's quality colours, a meaning colour in every look
+		r, g, b = c and Num(c.r), c and Num(c.g), c and Num(c.b)
+	end
+	if not (r and g and b) then
+		return nil
+	end
+	t = { r, g, b, hex = string.format("#%02x%02x%02x", floor(r * 255 + 0.5), floor(g * 255 + 0.5), floor(b * 255 + 0.5)) }
+	lootTints[quality] = t
+	return t
+end
+
 -- a kind's landing on the unit's frame, at once, as long as `dur` (a lasting
 -- one's); the layer, or nil when no frame of the unit's is shown. (1.2.4, Buff
 -- Landings) `from`: the frame a wave runs out of (its caster's); `frame`: the

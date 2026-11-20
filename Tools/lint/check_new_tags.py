@@ -97,6 +97,8 @@ CONTROL_TYPES = ("Button", "CheckButton", "EditBox", "Slider", "DropdownButton")
 # the other files that build controls with the widget set, and why theirs are not the configurator's options
 NOT_CONFIGURATOR = {
     "Core/Widgets.lua": "the builders themselves",
+    "Modules/LootRollWindow.lua": "the loot roll window (2.1.61): its buttons roll, hand out (Master Loot's Roll and "
+                                  "Assign) and pick a list's order -- actions on the game's rolls, no option",
     "MelloUI_Map/MapDungeon.lua": "the dungeon map's World map button and its wings' chips, on the map window (its "
                                   "one option, Map.dungeonMaps, is tagged in Map.lua)",
     "MelloUI_Map/MapQuestLog.lua": "the map window's layers page (2.1.0, the rail's gear): its switches are the map's "

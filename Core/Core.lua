@@ -1268,6 +1268,9 @@ end
 --                                          needs changed (Group Frames lay the party again)
 --   "whisperwindow" window                 (2.1.58) MelloUI_Chat's whisper window
 --                                          built (once, at its first open)
+--   "lootrolls"    event, rollID           (2.1.61) a group loot roll began or ended,
+--                                          or the loot history changed (Widgets'
+--                                          loot events: MelloUI.LootRolls reads them)
 --   "where"        cont, x, y              the player's place for Route:WantWhere's
 --                                          owners, from Route's tick every 2 s while
 --                                          wanted, after 10 yd moved or a continent

@@ -35,6 +35,8 @@ Modules\DarkModePainted.lua
 Modules\QuestInkPainted.lua
 # (2.1.59) the quest moments in the frame set: its ring, its plaque and its plate (MelloUI.QuestMoments' provider)
 Modules\QuestMomentsPainted.lua
+# (2.1.61) the loot roll window in the frame set: its window frame, its rings (MelloUI.LootRollWindow's dress)
+Modules\LootRollWindowPainted.lua
 Modules\CharacterPanel.lua
 Modules\DialogPanel.lua
 Modules\MacroPanel.lua

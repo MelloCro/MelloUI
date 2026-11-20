@@ -4181,44 +4181,21 @@ end
 local Fly = { AFTER = 0.05, FALLBACK = 0.4, STAGGER = 0.08, LINGER = 1.5, MAX = 8, SPILL = 3, COINS = 6, COIN_GAP = 0.08,
 	COIN_ICONS = { "Interface\\MoneyFrame\\UI-SilverIcon", "Interface\\MoneyFrame\\UI-CopperIcon" },
 	coin = { sum = 0, from = 0, landed = 0 },
-	open = false, closedAt = -100, n = 0, pushes = {}, queue = {}, q = 0, due = false, tints = {}, spill = {},
+	open = false, closedAt = -100, n = 0, pushes = {}, queue = {}, q = 0, due = false, spill = {},
 	taken = {} }
 
 function Fly.On()
 	return M.isEnabled and M.db ~= nil and M.db.lootFlight ~= false
 end
 
--- the quality's tier: 0 poor and common .. 4 legendary and up
+-- the quality's tier (0 poor and common .. 4 legendary and up) and its colour ({ r, g, b, hex }): the loot flight's own
+-- (2.1.61: MelloUI.FrameFX's, one copy for every item flight)
 function Fly.Tier(quality)
-	quality = Num(quality) or 1
-	return quality <= 1 and 0 or math.min(4, quality - 1)
+	return MelloUI.FrameFX.LootTier(quality)
 end
 
--- the quality's colour, the game's (a meaning colour): { r, g, b, hex = "#rrggbb" }, read once
 function Fly.Tint(quality)
-	quality = Num(quality) or 1
-	local t = Fly.tints[quality]
-	if t then
-		return t
-	end
-	local r, g, b
-	if C_Item and C_Item.GetItemQualityColor then
-		local ok, r1, g1, b1 = pcall(C_Item.GetItemQualityColor, quality)
-		if ok then
-			r, g, b = Num(r1), Num(g1), Num(b1)
-		end
-	end
-	if not (r and g and b) then
-		local c = type(ITEM_QUALITY_COLORS) == "table" and ITEM_QUALITY_COLORS[quality]   -- look-ok: the game's quality colours
-		r, g, b = c and Num(c.r), c and Num(c.g), c and Num(c.b)
-	end
-	if not (r and g and b) then
-		return nil
-	end
-	t = { r, g, b, hex = string.format("#%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5),
-		math.floor(b * 255 + 0.5)) }
-	Fly.tints[quality] = t
-	return t
+	return MelloUI.FrameFX.LootTint(quality)
 end
 
 -- the pointer in UIParent's units (nil when it cannot be read)
