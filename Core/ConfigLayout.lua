@@ -778,8 +778,10 @@ function L.Define(R, Link)
 	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF })
 	-- (1.2.4, fr-05; the user, 2026-10-28: "the option to hide the incoming heals numbers on my own Player Unitframe")
 	UGF({ "player:portrait" }, "Look", "UnitFrames.hideHealNumbers", { when = UF })
-	-- (2.1.61: Druid Forms on the player frame -- in every look, the painted unit frames too)
-	R("UnitGroupFrames", "player:element", "Look", "UnitFrames.druidForms")
+	-- (2.1.61: Druid Forms on the player frame -- in every look, the painted unit frames too. In General, not beside
+	-- the Personal Display's row of the same name in Look: the designer offers Copy from between two elements that
+	-- keep a setting of one name in one section, and one switch is no reason to list the Personal Display there)
+	R("UnitGroupFrames", "player:element", "General", "UnitFrames.druidForms")
 	-- (the configurator walk, 2026-11-04: two rows named "Elite and Rare Marks", one "UI Shade" beside "UI Shade: Action
 	-- Bars": each says whose it is)
 	R("Oldschool", "Frame Art", "Look", "UnitFramePanel.marks", { name = "Elite and Rare Marks: Unit Frames" })
