@@ -123,7 +123,7 @@ local function PetSpells()
 				out[#out + 1] = { name = Text(name), sub = sub }
 			end
 		end
-		return out
+		return out, n
 	end
 	local has, getName = rawget(_G, "HasPetSpells"), rawget(_G, "GetSpellBookItemName") or rawget(_G, "GetSpellName")
 	local getInfo, book = rawget(_G, "GetSpellBookItemInfo"), rawget(_G, "BOOKTYPE_PET") or "pet"
@@ -134,7 +134,7 @@ local function PetSpells()
 			out[#out + 1] = { name = Text(name), sub = sub }
 		end
 	end
-	return out
+	return out, n
 end
 
 -- what the demon out now knows, noted (its highest rank of each ability)
@@ -148,7 +148,8 @@ function G.Note()
 		return
 	end
 	local known = {}
-	for _, s in ipairs(PetSpells()) do
+	local spells, read = PetSpells()
+	for _, s in ipairs(spells) do
 		if s.name and s.name ~= "" then
 			local rank = RankOf(s.sub)
 			if rank >= (known[s.name] or -1) then
@@ -156,7 +157,9 @@ function G.Note()
 			end
 		end
 	end
-	if next(known) then
+	-- (a demon that knows only its commands -- a Felhunter just learned, the player: "it can do nothing yet" -- is
+	-- noted with none, so its grimoires read New; an empty book, not loaded yet, overwrites nothing)
+	if read > 0 then
 		mine[family] = known
 	end
 	G.Refresh()
