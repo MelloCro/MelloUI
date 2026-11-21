@@ -179,9 +179,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "2.1.63", lines = {
 		"Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both.",
+		"Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals.",
 		"World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill.",
 		"Leveling guides: a step whose quest is in your log puts the World Marker on the game's own point for it too.",
-		"World Marker: off screen, the mark and its arrow ride an oval round the middle of the screen, as the game's own focus marker.",
+		"World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does.",
 		"Action bars: the range colour no longer sticks after a vehicle or form bar, and cooldown numbers keep showing when the game hides cooldown times.",
 	} },
 	{ version = "2.1.62", lines = {

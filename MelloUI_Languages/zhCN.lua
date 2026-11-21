@@ -3011,9 +3011,10 @@ Lang:Add("zhCN", {
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "地下城信息：地下城、区域和首领以客户端语言命名，首领行里的掉落会显示物品提示。", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "语言：德语已由一位德国玩家逐行检查，聊天、地图和菜单有了更多法语。", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "指南：在插件页面中，每个指南的卡片可选择其步骤的显示位置：MelloUI 的任务追踪器、指南自己的窗口，或两者。", -- draft
+	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "任务追踪器中的 Polestar：每一步都会显示对象或地点，并在目标下方显示 Polestar 的备注。", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "世界标记：任务的标记会立在游戏自己的点上，处于真实高度，即使你从山丘上往下看也是如此。", -- draft
 	["Leveling guides: a step whose quest is in your log puts the World Marker on the game's own point for it too."] = "升级指南：任务已在任务日志中的步骤，也会把世界标记放在游戏自己的点上。", -- draft
-	["World Marker: off screen, the mark and its arrow ride an oval round the middle of the screen, as the game's own focus marker."] = "世界标记：目标在屏幕外时，标记和箭头会沿着屏幕中央周围的椭圆移动，与游戏自己的焦点标记相同。", -- draft
+	["World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does."] = "世界标记：目标在屏幕外时，箭头会沿着屏幕中央周围的椭圆移动，与游戏自己的焦点标记相同。", -- draft
 	["Action bars: the range colour no longer sticks after a vehicle or form bar, and cooldown numbers keep showing when the game hides cooldown times."] = "动作条：在载具或形态动作条之后，距离颜色不再卡住；游戏隐藏冷却时间时，冷却数字也会继续显示。", -- draft
 	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "竞速条：新增“自选”，可将伤害、治疗和仇恨分行上下显示。“自动”仍是默认设置，仍为一行。", -- draft
 	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "邮件收件人：收件人栏旁的按钮会在发送邮件窗口旁打开一个列表。好友的角色就地展开，列表会保持你上次的打开或关闭状态。", -- draft
