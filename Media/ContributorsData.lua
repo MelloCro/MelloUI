@@ -3,7 +3,7 @@
 -- (Core/SupportersHall.lua). Do not edit by hand: a name to leave out goes in Tools/contributors-exclude.txt.
 MelloUI_Contributors = {
 	updated = "2026-11-21",
-	{ name = "Glockta-code", what = "code", merged = 18 },
+	{ name = "Glockta-code", what = "code", merged = 22 },
 	{ name = "woofix", what = "code and translations", merged = 15 },
 	{ name = "pmyszczynski", what = "code", merged = 6 },
 	{ name = "TribalInstincts", what = "code", merged = 3 },
