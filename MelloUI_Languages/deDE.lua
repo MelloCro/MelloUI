@@ -3881,6 +3881,8 @@ Lang:Add("deDE", {
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Ein Knopf neben dem An-Feld des Briefkastens listet deine Charaktere und die Charaktere deiner Battle.net-Freunde: Klicke einen an, und sein Name wird eingetragen.", -- draft
 	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Wähle einen deiner Charaktere oder den Charakter eines Battle.net-Freundes, an den dieser Brief gehen soll.", -- draft
 	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "Die Liste zeigt auch deine Battle.net-Freunde, jeden mit den Charakteren, die das Spiel von ihnen gezeigt hat, während sie spielten. Aus: nur deine eigenen Charaktere, und keine ihrer Charaktere werden gemerkt.", -- draft
+	["Subject from the First Item"] = "Betreff vom ersten Gegenstand", -- draft
+	["An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays."] = "Ein leerer Betreff bekommt den Namen des ersten angehängten Gegenstands, bei einem Stapel mit Anzahl. Was du selbst eintippst, bleibt stehen.", -- draft
 	["Recipients"] = "Empfänger", -- draft
 	["Your Characters"] = "Deine Charaktere", -- draft
 	["Battle.net Friends"] = "Battle.net-Freunde", -- draft
