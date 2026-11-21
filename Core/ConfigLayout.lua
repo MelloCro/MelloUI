@@ -284,7 +284,7 @@ L.pages = {
 			{ key = "menubags", label = "Menu & Bags", line = "The micro menu and the bag bar",
 				parts = { { key = "micro", label = "Micro menu" }, { key = "bags", label = "Bag bar" } } },
 			{ key = "castbar", label = "Cast Bar", line = "Your cast bar (size and place: Edit Mode)",
-				parts = { { key = "bar", label = "Bar", locked = "Nothing to set yet" },
+				parts = { { key = "bar", label = "Bar" },   -- (Cast Marks: latency and channel ticks)
 				{ key = "icon", label = "Icon", locked = "Nothing to set yet" },
 				{ key = "spell", label = "Spell text", locked = "Nothing to set yet (its size: Interface Text, Look > Fonts)" },
 				{ key = "timer", label = "Timer", locked = "Nothing to set yet" } } },
@@ -994,6 +994,10 @@ function L.Define(R, Link)
 	-- (the Bars audit's point 1: On Action Bars is Cooldown Timers' switch here)
 	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.actionBars", { name = "Cooldown Timers", gate = AB_AREA })
 	R("ActionBars", "actionbars:caps", "General", "ActionBars.hideBarArt")
+	R("ActionBars", "castbar:bar", "General", "CastMarks.!enabled", { name = "Cast Marks" })
+	R("ActionBars", "castbar:bar", "General", "CastMarks.latency")
+	R("ActionBars", "castbar:bar", "General", "CastMarks.latencyText")
+	R("ActionBars", "castbar:bar", "General", "CastMarks.ticks")
 	R("ActionBars", "actionbars:arrows", "General", "ActionBars.hidePageArrows")
 	-- Menu & Bags: each bar a part (Hide This Bar, its backdrop; the bag bar's fold), Dark Mode for both
 	R("ActionBars", "menubags:micro", "General", "Tweaks.hideMicroMenu", { name = "Hide This Bar" })
