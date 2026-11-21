@@ -4874,7 +4874,6 @@ function GUIDE.BeginBlock(block, data, width)
 		item.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 		item:ClearAllPoints()
 		item:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, -2)
-		item:SetFrameLevel(layer:GetFrameLevel() + 1)   -- (over the link layer: its mouse its own)
 		item:Show()
 		local tray = Art.ItemTray(item)
 		if tray then
@@ -4951,6 +4950,9 @@ end
 
 function GUIDE.FinishBlock(block, layer, y, n, boxes, flash)
 	local t, item = block.title, block.item
+	-- A presentation can raise the full-area link layer during layout. Finalize the item's
+	-- level afterwards so its OnEnter can attach the secure use-button over that layer.
+	if item.itemLink then item:SetFrameLevel(layer:GetFrameLevel() + 1) end
 	-- (its lines the layer's, so their links answer; a quest's block later keeps them there, the layer mouse-off)
 	if t:GetParent() ~= layer then
 		t:SetParent(layer)   -- (the title too: its step count's link, GUIDE.Title)

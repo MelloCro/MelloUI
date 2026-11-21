@@ -760,7 +760,7 @@ render.execute(r'''
     function methods:EnableMouseWheel(v) self.wheel=v end
     function methods:CreateTexture() local r=MakeArt();r.parent=self;return r end
     function methods:CreateFontString() local r=MakeArt();r.parent=self;return r end
-    function CreateFrame(kind,_,parent) local f=MakeArt();f.kind=kind;f.parent=parent;f.scripts={};return f end
+    function CreateFrame(kind,_,parent,template) local f=MakeArt();f.kind=kind;f.parent=parent;f.template=template;f.scripts={};return f end
     Perf={SetScript=function(frame,key,fn) frame.scripts[key]=fn end}
     function Scroll() end
     function Tr(text) return text end
@@ -814,7 +814,10 @@ render.execute('Motion={Stop=function() end,Flash=function(block) block.flashes=
 render.execute(tracker[hide_start:hide_end].replace('local function HideLines(', 'function RealHideLines(', 1))
 
 render.execute(r'''
-    function GuideLayer(block) return block.linkLayer end
+    function GuideLayer(block)
+        block.linkLayer:SetFrameLevel(block:GetFrameLevel()+1)
+        return block.linkLayer
+    end
     function wipe(t) for k in pairs(t) do t[k]=nil end end
     function Inked() return false end
     function InkLine() end
@@ -894,6 +897,8 @@ render.execute(r'''
         FillActualGuideBlock(native,content,340)
         assert(measures==before+1 and native.item.shown and native.item.itemLink=='item:6948')
         assert(native.item.itemID==6948 and native.dist.shown and native.guideQuest[1]==123)
+        assert(native.item:GetFrameLevel()>native.linkLayer:GetFrameLevel(),
+            'the item must receive mouse hover above the full-area hyperlink layer')
         assert(native.guideAway==content.away and native.boxes[1].n==1)
         if presentation=='polestar' then
             assert(native.polestarSurface.count.text:find('|Hmellouistep|h2 / 3|h',1,true))
@@ -925,6 +930,51 @@ render.execute(r'''
     assert(not native.item.shown and not native.item.itemLink and not native.item.itemID)
     M.db.itemButtons=nil
     Near.Lay=oldNear
+''')
+# Exercise the production hover handler and secure-overlay setup, not just the displayed item.
+overlay_start = tracker.index('local itemOverlay\n')
+overlay_end = tracker.index('-- a fight is starting:', overlay_start)
+hover_start = tracker.index('\tPerf.SetScript(item, "OnEnter", function(self)', tracker.index('local function NewBlock('))
+hover_body = tracker.index('\n', hover_start) + 1
+hover_end = tracker.index('\n\tend)', hover_body)
+render.execute(r'''
+    local methods=getmetatable(MakeArt()).__index
+    function methods:GetFrameStrata() return self.strata or 'MEDIUM' end
+    function methods:SetFrameStrata(value) self.strata=value end
+    function methods:SetAttribute(key,value) self.attributes=self.attributes or {};self.attributes[key]=value end
+    function methods:RegisterForClicks(...) self.clicks={...} end
+    UIParent=MakeArt()
+    function InCombatLockdown() return overlayCombat==true end
+    Art.ItemLit=function() end
+''')
+render.execute('do\n'+tracker[overlay_start:overlay_end]
+               +'\nfunction HoverActualGuideItem(self)\n'+tracker[hover_body:hover_end]+'\nend\n'
+               +'function CurrentSecureOverlay() return itemOverlay end\n'
+               +'function AttachActualGuideItem(button) AttachOverlay(button) end\nend')
+render.execute(r'''
+    local function itemContent(presentation)
+        return {presentation=presentation,title='Item step',counter='1 / 2',lines={{text='Use item',role='objective'}}}
+    end
+    GUIDE.items={items={{kind='item',quest=true,id=6948,icon='hearth'}}}
+    M.db.itemButtons=true
+    for _,presentation in ipairs({'polestar','standard','polestar'}) do
+        FillActualGuideBlock(native,itemContent(presentation),340)
+        assert(native.item:GetFrameLevel()>native.linkLayer:GetFrameLevel())
+        HoverActualGuideItem(native.item)
+        local overlay=CurrentSecureOverlay()
+        assert(overlay.shown and overlay.over==native.item and overlay.template=='SecureActionButtonTemplate')
+        assert(overlay.attributes.type=='item' and overlay.attributes.item=='item:6948')
+        assert(overlay.allPoints==native.item and overlay:GetFrameLevel()>native.item:GetFrameLevel())
+        assert(overlay.clicks[1]=='AnyUp' and overlay.clicks[2]=='AnyDown')
+    end
+    -- Existing combat restriction: hovering may not rebind the protected overlay in combat.
+    local overlay=CurrentSecureOverlay()
+    overlayCombat=true
+    AttachActualGuideItem({itemLink='item:999'})
+    assert(overlay.attributes.item=='item:6948')
+    overlayCombat=false
+    GUIDE.items=nil
+    M.db.itemButtons=nil
 ''')
 # Visibility is reconciled through real guide/setting lifecycle entry points.
 visibility_start = tracker.index('function GUIDE.SyncVisibility(')
