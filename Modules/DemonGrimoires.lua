@@ -237,7 +237,11 @@ function G.Judge(text)
 		end
 	end
 	if best then
-		local teaches = tonumber(text:match("%d+", best.at + #best.name)) or 0
+		-- the rank in the brackets right after the name ("'Lash of Pain' (Rank 3)"): only quotes and spaces between.
+		-- (Any first number after it read "Requires Level 26" as the rank of Seduction, which has none -- the player's
+		-- screenshot: New beside the game's Already Known)
+		local rest = text:sub(best.at + #best.name)
+		local teaches = tonumber(rest:match("^[^%a%d\n]-%(%D-(%d+)%)")) or 0
 		local state = (best.known >= teaches) and "known" or "lower"
 		return best.family, state, teaches, best.known
 	end
