@@ -5632,6 +5632,7 @@ local function ObjectiveSpot(questID)
 	return pick.cont, pick.x, pick.y, pick.name, nil, pick.area
 end
 
+local QuestPointDestination   -- (below: the quest's destination at the game's own point for it)
 local function ReadTrackedQuest()
 	if destination and not destination.fromQuest and not destination.fromWaypoint then
 		return
@@ -5670,6 +5671,12 @@ local function ReadTrackedQuest()
 		if Build.ready then
 			Search.RepickSoon()
 		end
+		-- (2.1.63; the user, 2026-11-21: a guide's step handed to its quest while the roads loaded, "the look of the
+		-- arrow and the world marker changed to default", back "after about 15 seconds") a quest not followed yet: the
+		-- game's own point stands for it meanwhile, so the World Marker hangs on it at once; the route waits for the roads
+		if not (destination and destination.fromQuest and destination.questID == questID) then
+			QuestPointDestination(questID)
+		end
 		return
 	end
 	if ocont then
@@ -5696,6 +5703,12 @@ local function ReadTrackedQuest()
 		Plan(true, not same, M.IconMark("quest_mark", 22) .. "  " .. notice)
 		return
 	end
+	QuestPointDestination(questID)
+end
+
+-- (the quest's destination at the game's own point for it, when the data knows no place of its own -- and, 2.1.63,
+-- while the data's places wait for the roads to choose one: ReadTrackedQuest)
+QuestPointDestination = function(questID)
 	local mapID, px, py = QuestObjectivePoint(questID)
 	if not mapID then
 		if destination and destination.fromQuest and destination.questID == questID then
@@ -5862,6 +5875,8 @@ end
 -- Kept in the saved settings, so a reload on the way still gives it back.
 -- (Until 2.1.52 the same pin stood on a needed item's source too; that went
 -- with MelloUI's own quest data.)
+-- (2.1.63: only on Route's own pin, /route gamepoint -- by default the game's own point stands, its height right on
+-- the client of 2026-11 and a hill above it no longer read as the point off the ground: QuestPointOffGround)
 -- The same pin stands on a followed quest's own place once the game's point for quests is
 -- seen off the ground (2026-10-04, the user's video and /route pin: this
 -- client puts a quest's point at height 0 -- 166 yd under Thunder Bluff's
@@ -5991,6 +6006,21 @@ do
 			pcall(C_SuperTrack.SetSuperTrackedQuestID, questID)
 		end
 	end
+	-- (2.1.63) for a guide's step whose quest is in the log (Guides.lua's Guide.Step: the game's own point, not a pin)
+	M.TrackQuest = TrackQuest
+	-- (2.1.63) the game's tracking of that quest let go again (the step's right-click, Guide.Unpin): only while it
+	-- still tracks that one
+	M.UntrackQuest = function(questID)
+		local quest = SuperTrackState()
+		if not (quest and quest == questID and C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID) then
+			return
+		end
+		if securecallfunction then
+			securecallfunction(C_SuperTrack.SetSuperTrackedQuestID, 0)
+		else
+			pcall(C_SuperTrack.SetSuperTrackedQuestID, 0)
+		end
+	end
 
 	-- The stand-in off; with `giveBack`, the pin or the quest that was tracked
 	-- before is tracked again (only while the pin is still the stand-in)
@@ -6018,6 +6048,15 @@ do
 	-- Whether the game's point for the followed quest is off the ground (see
 	-- the top): measured while the game tracks the quest, kept once seen
 	local function QuestPointOffGround(d)
+		-- (2.1.63; the user, 2026-11-21, two pictures from a hill in Tirisfal: "its place at our character height",
+		-- the game's own marker on the turn-in; the test: "works like a charm", then "Can we make it ... automatically
+		-- enable this for all users") the game's own point for a quest kept by default, its height too -- the check below
+		-- also measures how far the player stands above or below the point (a hill trips it; the client gives the player
+		-- no height to tell them apart), and the pin put up then is drawn at the player's height. /route gamepoint
+		-- switches back to Route's own pin (questOwnPin), for a place where the game's point lies under the ground
+		if not (M.db and M.db.questOwnPin) then
+			return false
+		end
 		if StandIn.offGround then
 			return true
 		end
@@ -6222,6 +6261,16 @@ do
 			return
 		end
 		PlaceStandIn(dock, label, nil, nil, nil, key)
+	end
+
+	-- (2.1.63) the game's own point for a quest (the default) or Route's own pin where it seems off the ground
+	-- (/route gamepoint, saved as questOwnPin): a stand-in up on a quest's own place given back at once (the game tracks
+	-- the quest again, the marker on its point); measured anew on Route's own pin
+	StandIn.SetGamePoint = function(on)
+		M.db.questOwnPin = not on or nil
+		M.db.questGamePoint = nil   -- (the test's key before it was the default)
+		StandIn.offGround = nil
+		StandIn.Update()
 	end
 
 	-- The route cleared: the stand-in on the dock goes with it. A quest it
@@ -7905,8 +7954,10 @@ end
 --   pin       under 100 yards: the beam gone (faded out on the way in), the
 --             mark lands on the place with its pop, never faint. It stays on
 --             top of an NPC, an object or an item's source until it is done.
---   edge      off screen: the arrow on the ring round the character,
---             easing round it, pointing the way to turn.
+--   edge      off screen: the mark on the game's own oval round the world's
+--             middle with its arrow on its rim, pointing the way to turn
+--             (2.1.63, as the game's focus marker; before: the arrow on a
+--             ring round the character).
 --   hidden    inside a quest's objective AREA (the game's quest blob, where
 --             the client can say so: Beacon.InArea) -- killing about a camp
 --             needs no mark over one of its spots; back when the player
@@ -8022,10 +8073,12 @@ local Beacon = {
 local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"   -- look-ok: the beam, the painted look's only (Beacon.painted)
 local BEAM_W, BEAM_H = 20, 230   -- (look A, 0.21.3: 48 x 420 with rising streaks before)
 local EDGE_MARGIN = 0.07        -- the navigation frame this near a screen edge (share of the screen) = off screen
--- off screen, the arrow goes round the character on this ring (UI units from
--- the screen's centre, the character stands about there) instead of sitting
--- at the screen's edge (user, 2026-09-23: "its too far off the character")
-local RING_X, RING_Y, RING_DY = 230, 170, -20
+-- (2.1.63; the user, 2026-11-21: "match our own direction arrow with the same behaviour" as the game's focus marker,
+-- then "Yes, match it exactly") off screen, the mark rides the game's own oval round the world's middle -- its
+-- SuperTrackedFrame:SetEllipticalRadii(500, 200), in UIParent's units -- with its arrow on the mark's outer side.
+-- (Before: the arrow alone on a 230 x 170 ring round the character, at the camera's zoom -- 2026-09-23, "its too far
+-- off the character" of an arrow at the screen's very edge.) EDGE_GAP: the arrow's middle past the mark's rim
+local OVAL_X, OVAL_Y, EDGE_GAP = 500, 200, 16
 local gameMarkerFaded = false
 local gameMarkerHooked = false
 
@@ -8330,6 +8383,9 @@ function M.PinReport()
 	local quest, pin = SuperTrackState()
 	MelloUI:Print("World Marker: the game tracks %s; the marker hangs on it: %s",
 		quest and ("quest " .. quest) or pin and "the map pin" or "nothing", tostring(NavIsOurs()))
+	-- (2.1.63) the test of the game's own point, and whether a quest's point was judged off the ground this session
+	print(string.format("   a quest's marker on: %s (/route gamepoint); a quest's point judged off the ground this "
+		.. "session: %s", M.db.questOwnPin and "Route's own pin" or "the game's own point", StandIn.offGround and "yes" or "no"))
 	local d = Beacon.Distance()
 	local pcont, px, py = PlayerYards()
 	local function Flat(label, mapID, x, y, z)
@@ -8428,7 +8484,8 @@ function Beacon.Resize(f, d, pin)
 		-- (2026-10-21, the user: "keep its size big enough to not get shrunk down") never under MARK_PX screen px at
 		-- the UI's scale, its picture the copy made for its size (MelloUI.Icons)
 		local least = MelloUI.Icons.FloorScale(f, TextShade.GEM, Beacon.MARK_PX)
-		f.core:SetScale(math.min(1, math.max(s, Beacon.MARK_MIN, least)))
+		f.coreScale = math.min(1, math.max(s, Beacon.MARK_MIN, least))   -- (kept: the edge arrow beside it, off screen)
+		f.core:SetScale(f.coreScale)
 		if f.gem then
 			MelloUI.Icons.Fit(f.gem)
 		end
@@ -8445,8 +8502,8 @@ MelloUI:On("scale", function()
 	end
 end, "the World Marker's floor")
 
--- How much larger or smaller the ring round the character is at the camera's
--- zoom now (see Beacon's RING_*)
+-- How much larger or smaller the wisp's start round the character is at the camera's
+-- zoom now (see Beacon's RING_*; 2.1.63: the off-screen mark rides the game's oval, its size fixed)
 function Beacon.RingScale()
 	local zoom = GetCameraZoom and GetCameraZoom()
 	zoom = Plain(zoom)
@@ -8852,10 +8909,11 @@ function Beacon.WispTo()
 	end
 	local ui = UIParent:GetEffectiveScale()
 	if f.off then
-		local k = f.ringK or Beacon.RingScale()
-		local l, b, w, h = Beacon.Area()   -- (2.1.51: the ring's middle, as the tick laid it)
-		return l + w / 2 + math.cos(f.angle) * RING_X * k,
-			b + h / 2 + (math.sin(f.angle) * RING_Y + RING_DY) * k, true
+		-- (2.1.63: the mark on the game's oval, as the tick laid it)
+		if not (f.ovalX and f.ovalY) then
+			return nil
+		end
+		return f.ovalX, f.ovalY, true
 	end
 	if not (f.lastX and f.lastY) then
 		return nil
@@ -9764,11 +9822,10 @@ function Beacon.InArea()
 	return a.inside
 end
 
-local function MarkerTick(self, elapsed)
+local function MarkerTick(self)
 	-- every frame (2026-10-04: at most 60 a second made it judder on a faster
 	-- screen -- the user's 90 fps video: every other frame or so, unevenly);
-	-- a still frame stops at the check below
-	local dt = elapsed
+	-- a still frame stops at the check below (2.1.63: no easing off screen -- the frame's time unused)
 	-- (0.21.3) arriving: the motion engine plays it where it stands (Beacon.Arrive)
 	if self.arriving then
 		return
@@ -9783,15 +9840,14 @@ local function MarkerTick(self, elapsed)
 	end
 	local beam = self.beam
 	-- where the game has the place, and how far. Neither moved since the
-	-- last tick (the player and the camera still), the edge arrow eased
-	-- round, the gem on this navigation frame and the travel time as its
+	-- last tick (the player and the camera still), the gem on this
+	-- navigation frame or the oval and the travel time as its
 	-- line says: nothing more to do
 	local okC, x, y = pcall(nav.GetCenter, nav)
 	x, y = okC and Plain(x) or nil, okC and Plain(y) or nil
 	local d = Beacon.Distance()
-	if x == self.lastX and y == self.lastY and d == self.lastD and not self.easing and not self.glideAt
-		and (self.off or self.anchoredTo == nav) and Travel.suffix == self.lineSuffix
-		and not (self.off and Beacon.RingScale() ~= self.ringK) then
+	if x == self.lastX and y == self.lastY and d == self.lastD and not self.glideAt
+		and (self.off or self.anchoredTo == nav) and Travel.suffix == self.lineSuffix then
 		return
 	end
 	self.lastX, self.lastY, self.lastD = x, y, d
@@ -9828,7 +9884,7 @@ local function MarkerTick(self, elapsed)
 		end
 	end
 	-- on screen: over the destination (hung on the navigation frame); off
-	-- screen: on the ring round the character, in the destination's direction
+	-- screen: on the game's oval, in the destination's direction (below)
 	if not off and not self.glideAt and (self.mode ~= "nav" or self.anchoredTo ~= nav) then
 		self.mode, self.anchoredTo = "nav", nav
 		self:ClearAllPoints()
@@ -9839,7 +9895,16 @@ local function MarkerTick(self, elapsed)
 	-- their text shade
 	if off ~= self.off then
 		self.off = off
-		self.gem:SetShown(not off)
+		-- (2.1.63) the mark stays off screen, on the oval itself as the game's icon (the near look's height let go);
+		-- back on screen near the place, that height again
+		self.gem:Show()
+		if off and (self.coreY or 0) ~= 0 then
+			self.core:ClearAllPoints()
+			self.core:SetPoint("CENTER", self, "CENTER", 0, 0)
+			self.coreY = 0
+		elseif not off and self.pin then
+			Beacon.Turn(self, true)
+		end
 		self.distance:SetShown(not off)
 		self.label:SetShown(not off)
 		self.edge:SetShown(off)
@@ -9891,29 +9956,27 @@ local function MarkerTick(self, elapsed)
 		self.faint = faint
 		Beacon.Fade(self, faint)
 	end
-	self.easing = false
 	if off then
-		-- the direction from the screen's centre to where the game puts the
-		-- place (in screen units, so a wide screen does not skew it); the
-		-- arrow slides round the ring the short way, eased so it does not jitter
+		-- (2.1.63, the game's own way: SuperTrackedFrame's ClampElliptical and UpdateArrow) the mark where the line
+		-- from the world's middle to where the game puts the place (in screen units, so a wide screen does not skew it)
+		-- crosses the oval, no easing; the arrow on the mark's rim, turned the way out. A screen too narrow for the
+		-- oval keeps it inside (0.45 of the world's screen each way)
 		local al, ab, aw, ah = Beacon.Area()   -- (2.1.51: the world's screen -- Offhand's main one)
-		local want = math.atan2((fy - 0.5) * ah, (fx - 0.5) * aw)
-		if not (self.angle > -math.huge and self.angle < math.huge) then
-			self.angle = want   -- (never stuck on a NaN: it would be set every tick after)
+		local px, py = (fx - 0.5) * aw, (fy - 0.5) * ah
+		local a, b = math.min(OVAL_X, aw * 0.45), math.min(OVAL_Y, ah * 0.45)
+		local den = math.sqrt(a * a * py * py + b * b * px * px)
+		local ratio = den > 0 and a * b / den or 0
+		local angle = math.atan2(py, px)
+		if angle > -math.huge and angle < math.huge then
+			self.angle = angle   -- (never a NaN kept: the last direction stays)
 		end
-		local diff = (want - self.angle + math.pi) % (2 * math.pi) - math.pi
-		-- half the gap a frame at 60 fps: keeps up with a fast turn, still no jitter
-		-- (user, 2026-09-23: "kinda slow response when turning"; was dt * 12)
-		self.angle = self.angle + diff * math.min(1, dt * 30)
-		-- (still easing: the next ticks go on even with nothing moving)
-		self.easing = math.abs(diff) > 0.002
-		self.mode, self.anchoredTo = "ring", nil
-		-- (the ring's size at the camera's zoom: Beacon.RingScale)
-		local k = Beacon.RingScale()
-		self.ringK = k
+		self.mode, self.anchoredTo = "oval", nil
+		self.ovalX, self.ovalY = al + aw / 2 + px * ratio, ab + ah / 2 + py * ratio
 		self:ClearAllPoints()
-		self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", al + aw / 2 + math.cos(self.angle) * RING_X * k,
-			ab + ah / 2 + (math.sin(self.angle) * RING_Y + RING_DY) * k)
+		self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", self.ovalX, self.ovalY)
+		local rim = 13 * (self.coreScale or 1) + EDGE_GAP   -- (the mark: 26 units at its frame's scale, Beacon.Resize)
+		self.edge:ClearAllPoints()
+		self.edge:SetPoint("CENTER", self, "CENTER", math.cos(self.angle) * rim, math.sin(self.angle) * rim)
 		self.edge:SetRotation(self.angle - math.pi / 2)
 		if self.shade and self.shade.edgeOn then
 			TextShade.Edge(self, true)   -- (its shade turned with it)
@@ -10085,7 +10148,7 @@ UpdateMarker = function()
 		FadeGameMarker(inArea)
 		return
 	end
-	-- the tick places it: over the destination or on the ring round the character
+	-- the tick places it: over the destination or on the game's oval (off screen)
 	marker.nav = nav
 	marker.label:SetText((standIn and (DestinationLabel(standIn) or standIn.label)) or DestinationLabel(destination) or "")
 	-- a new destination (another quest, another place: not the next spot of
@@ -10852,6 +10915,7 @@ M.OnMap = OnMap
 -- (2.1.53, the map's town marks on the minimap) a map's 0..1 place -> its continent, yards east, yards south; nil
 -- for a map with no place on a continent: ToYards(mapID, x, y)
 M.ToYards = ToYards
+M.QuestObjectivePoint = QuestObjectivePoint   -- (2.1.63: the game's own point for a quest, for a guide's step: Guides.lua)
 
 function M:FollowedRemaining(questID)
 	local d = destination
@@ -12455,6 +12519,15 @@ SlashCmdList.MELLOROUTE = function(msg)
 		end
 	elseif msg == "pin" then
 		M.PinReport()
+	elseif msg == "gamepoint" then
+		-- (2.1.63) the game's own point for a followed quest, or Route's own pin (StandIn.SetGamePoint)
+		local on = M.db.questOwnPin == true
+		StandIn.SetGamePoint(on)
+		UpdateMarker()
+		MelloUI:Print(on and "World Marker: a followed quest's marker stands on the game's own point for it, its height too "
+			.. "(the default). /route gamepoint again: Route's own pin."
+			or "World Marker: Route's own pin stands in where the game's point for a quest seems off the ground. "
+			.. "/route gamepoint again: the game's own point (the default).")
 	elseif msg == "reset" then
 		MelloUI:Print("This wipes every learned path. Type  /route reset confirm  to do it.")
 	else

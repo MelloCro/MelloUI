@@ -93,6 +93,17 @@ function Guide.SetArrowShown(key, on)
 	end
 end
 
+-- (2.1.63; the user, 2026-11-21, of a player's pull request #55 for Polestar: "Take useful parts" -- its choice between
+-- Polestar's own windows and the tracker, taken for every guide with steps) where a guide's steps show: "tracker"
+-- (MelloUI's Quest Tracker, its own window and arrow veiled: as before), "own" (its own window, arrow and pins: Route
+-- does not follow it) or "both" (followed, its own window, arrow and pins left showing too): the choice on its card of
+-- the Addons page, Route's setting guideShow_<reader key>, in the profile; nil is "tracker". Set: Guide.SetShows
+Guide.SHOWS = { tracker = true, own = true, both = true }
+function Guide.Shows(key)
+	local v = M.db and M.db["guideShow_" .. tostring(key)]
+	return Guide.SHOWS[v] and v or "tracker"
+end
+
 -- fn(...)'s first result, guarded: nil when fn is missing, raised, or that result is secret
 local function Pcall(fn, ...)
 	if type(fn) ~= "function" then
@@ -165,6 +176,7 @@ end
 function Guide.Forget()
 	Guide.mapID, Guide.x, Guide.y = nil, nil, nil
 	Guide.stepMap, Guide.stepX, Guide.stepY = nil, nil, nil
+	Guide.quest = nil
 	Guide.sig, Guide.itemSig, Guide.goalSig = nil, nil, nil
 	for _, reader in ipairs(Guide.readers) do
 		reader.sig, reader.quick, reader.lastKey = nil, nil, nil
@@ -186,6 +198,7 @@ do
 	local veil = {}   -- [frame] = { alpha, scale } its guide's own while veiled; false: watched
 	local veiling = false
 	local regen   -- (frames holding secure buttons: in a fight veiled or not after it, PLAYER_REGEN_ENABLED)
+	local unveiled   -- [frame] = true: given back, for its guide to lay out again out of a fight (a reader's Unveiled)
 
 	local function Later()
 		if not regen then
@@ -235,11 +248,13 @@ do
 		return v and "veiled" or v == false and "given back" or "never veiled"
 	end
 
-	-- every watched frame veiled when it is the followed guide's, given back otherwise
+	-- every watched frame veiled when it is the followed guide's, given back otherwise (2.1.63: and while its steps show
+	-- in its own window too, Guide.Shows "both")
 	function Guide.Veil()
 		local want = {}
 		local reader = Following() and Guide.active
-		if reader and reader.Frames then
+		local veils = reader and Guide.Shows(reader.key) == "tracker" or false
+		if veils and reader.Frames then
 			local ok, frames = pcall(reader.Frames)
 			for _, frame in ipairs(ok and type(frames) == "table" and frames or {}) do
 				if frame.SetScale and frame.GetScale and frame.SetAlpha and frame.GetAlpha then
@@ -260,7 +275,7 @@ do
 		-- (a guide's drawings on no frame of its own, Polestar's on the minimap: quieted through its own setting, Quiet)
 		for _, r in ipairs(Guide.readers) do
 			if r.Quiet then
-				pcall(r.Quiet, r == reader)
+				pcall(r.Quiet, r == reader and veils)
 			end
 			-- (a guide's own frame left showing, worn in MelloUI's look while it is followed: RestedXP's Active Targets)
 			if r.Dress then
@@ -281,6 +296,23 @@ do
 					frame:SetScale(v.scale or 1)
 					frame:SetAlpha(v.alpha or 1)
 					veiling = false
+					unveiled = unveiled or {}
+					unveiled[frame] = true
+				end
+			end
+		end
+		-- (2.1.63) the frames given back laid out by their guide at their real scale (a layout made under the veil measured
+		-- a thousandth of it: Polestar's height cap), out of a fight
+		if unveiled then
+			if InCombatLockdown() then
+				Later()
+			else
+				local given = unveiled
+				unveiled = nil
+				for _, r in ipairs(Guide.readers) do
+					if r.Unveiled then
+						pcall(r.Unveiled, given)
+					end
 				end
 			end
 		end
@@ -333,6 +365,16 @@ end
 local INTEGRATION = { rxp = "RestedXP", zygor = "Zygor", tomtom = "TomTom", polestar = "Polestar",
 	fta = "FollowTheArrow", apr = "APR" }   -- (2.1.51: these two on the Addons page too)
 local function Allowed(reader)
+	-- (2.1.63) a guide whose steps show in its own window is not followed, nor the arrow it hands its spot to (a
+	-- reader's Hands: Polestar's arrow handed to TomTom's)
+	if Guide.Shows(reader.key) == "own" then
+		return false
+	end
+	for _, r in ipairs(Guide.readers) do
+		if r ~= reader and r.Hands and Guide.Shows(r.key) == "own" and Pcall(r.Hands) == reader.key then
+			return false
+		end
+	end
 	local I = rawget(MelloUI, "Integrations")
 	local key = INTEGRATION[reader.key]
 	return not (I and key and not I.Use(key))
@@ -412,6 +454,35 @@ function Guide.Refresh()
 end
 MelloUI:On("language", function() Guide.Refresh() end, Guide)
 
+-- (2.1.63) where a guide's steps show (Guide.Shows), set from its card on the Addons page: a followed guide left to its
+-- own window takes the pin laid for its step with it (a pin of the player's own stays), then every guide read again
+function Guide.SetShows(key, mode)
+	if not (M.db and type(key) == "string") then
+		return
+	end
+	M.db["guideShow_" .. key] = Guide.SHOWS[mode] and mode ~= "tracker" and mode or nil
+	local was = Guide.active
+	if was and not Allowed(was) then
+		if Ours() then
+			pcall(C_Map.ClearUserWaypoint)
+		end
+		Guide.mapID, Guide.x, Guide.y = nil, nil, nil
+		Guide.stepMap, Guide.stepX, Guide.stepY = nil, nil, nil
+		M.db.guidePin = nil
+	end
+	Guide.Refresh()
+end
+
+-- (2.1.63) a guide Route reads steps from (its card on the Addons page offers where they show)
+function Guide.HasSteps(key)
+	for _, r in ipairs(Guide.readers) do
+		if r.key == key then
+			return r.Steps ~= nil
+		end
+	end
+	return false
+end
+
 -- (2.1.30) where the game takes the pin for a step's spot: its own map when that map may hold one, else the first map up
 -- its parents that may, the spot carried over through the world (C_Map.CanSetUserWaypointOnMap -- Polestar's own
 -- bridge asks it too: a dungeon's or a building's map refuses the pin); nil when none does
@@ -473,6 +544,47 @@ local function Unlaid(had)
 	return false
 end
 
+-- (2.1.63; the user, 2026-11-21, a guide's "Turn in A Humble Task": MelloUI's pin at the character's height, the game's
+-- own marker on the place -- "there has to be a way to combine it") a step whose quest is in the log, the game's own
+-- point for that quest at the step's place: that quest is tracked instead of a pin, and the World Marker stands on the
+-- game's point, its height too: the game's accurate point is the focused quest's alone (the user's test, the same day:
+-- a map pin is drawn at the player's height whatever height it is given, UiMapPoint's z). A quest giver has no point of
+-- the game's (Forever sends no quest offers: the quest offer pin taken, its distance 0, not on screen; no points of the
+-- map's own in Mulgore), so a step to accept one keeps its pin
+local QUEST_NEAR = 60   -- yards: the game's point for the quest this near the step's place stands for it
+
+local function StepQuest(reader, zone, x, y)
+	local point, toYards = M.QuestObjectivePoint, M.ToYards
+	local steps = reader.steps
+	-- (Route To The Tracked Quest off: Route follows no tracked quest, so the step keeps its pin)
+	if not (steps and point and toYards and C_QuestLog and C_QuestLog.GetLogIndexForQuestID and M.db
+		and M.db.trackQuests ~= false) then
+		return nil
+	end
+	local c0, sx, sy = toYards(zone, x, y)
+	if not c0 then
+		return nil
+	end
+	for _, line in ipairs(steps.lines or {}) do
+		local q = tonumber(line.quest)
+		local okL, index = false, nil
+		if q and not line.done then
+			okL, index = pcall(C_QuestLog.GetLogIndexForQuestID, q)
+		end
+		if okL and Plain(index) then
+			local m, qx, qy = point(q)
+			local c, gx, gy
+			if m and qx and qy then
+				c, gx, gy = toYards(m, qx, qy)
+			end
+			if c == c0 and gx and math.sqrt((gx - sx) ^ 2 + (gy - sy) ^ 2) <= QUEST_NEAR then
+				return q
+			end
+		end
+	end
+	return nil
+end
+
 function Guide.Step(force)   -- force: a click on the step (laid again, over the player's own pin too); true when laid
 	local reader = Following() and Guide.active
 	local zone, x, y = reader and reader.mapID, reader and reader.x, reader and reader.y
@@ -487,6 +599,20 @@ function Guide.Step(force)   -- force: a click on the step (laid again, over the
 	if not force and has and not Ours() then
 		return   -- the player's own pin stays (followed again once it is gone)
 	end
+	-- (2.1.63) its quest in the log at the game's own point for it: that quest tracked, no pin (a pin of ours from the
+	-- step before taken away -- a map pin goes before a tracked quest -- and on a click the player's own too)
+	local quest = M.TrackQuest and StepQuest(reader, zone, x, y)
+	if quest then
+		Guide.stepMap, Guide.stepX, Guide.stepY = zone, x, y
+		if force and has and not Ours() then
+			pcall(C_Map.ClearUserWaypoint)
+		end
+		Unlaid(has)
+		Guide.quest = quest
+		M.TrackQuest(quest)
+		return true
+	end
+	Guide.quest = nil
 	if not (C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
 		return
 	end
@@ -552,14 +678,16 @@ function Guide.Dump(say)
 			for _, f in ipairs(ok and type(arrows) == "table" and arrows or {}) do
 				local okR, l, b = pcall(f.GetRect, f)
 				l, b = okR and Finite(l), okR and Finite(b)
-				say("   %s's arrow (%s): switch %s, %s by it, alpha %s, scale %s, at %s, %s", r.name,
-					tostring(f.GetName and f:GetName() or "-"), Guide.ArrowShown(r.key) and "on" or "off",
+				say("   %s's arrow (%s): steps in %s, switch %s, %s by it, alpha %s, scale %s, at %s, %s", r.name,
+					tostring(f.GetName and f:GetName() or "-"), Guide.Shows(r.key), Guide.ArrowShown(r.key) and "on" or "off",
 					f:IsShown() and "shown" or "hidden", tostring(Finite(f:GetAlpha())), tostring(Finite(f:GetScale())),
 					(l and b) and string.format("%d, %d", l, b) or "nowhere", Guide.VeilState(f))
 			end
 		end
 	end
 	say("   the step laid: %s", Spot(Guide.stepMap, Guide.stepX, Guide.stepY))
+	-- (2.1.63) a step whose quest is in the log: that quest tracked at the game's own point (Guide.Step)
+	say("   the step's quest tracked by the game for it: %s", tostring(Guide.quest or "none (a pin, or nothing)"))
 	if Guide.stepMap then
 		local can = C_Map.CanSetUserWaypointOnMap
 		local okC, takes = pcall(can, Guide.stepMap)
@@ -721,6 +849,12 @@ end
 -- so following does not put it back before the next step or a click. A pin of the player's own stays.
 function Guide.Unpin()
 	local okH, has = pcall(C_Map.HasUserWaypoint)
+	-- (2.1.63) a step whose quest the game tracks for it (Guide.Step): that tracking let go, as its pin would be
+	if not (okH and Plain(has)) and Guide.quest and M.UntrackQuest then
+		M.UntrackQuest(Guide.quest)
+		Guide.quest = nil
+		return
+	end
 	if not (okH and Plain(has)) then
 		return
 	end
@@ -1995,6 +2129,28 @@ do
 
 	function polestar.Arrows()   -- (2.1.51: Guide.ArrowShown)
 		return List(Arrow())
+	end
+
+	-- (2.1.63) the reader its spot goes through: TomTom's while it hands its arrow there (left with it, Allowed)
+	function polestar.Hands()
+		local nav = Nav()
+		return nav and Pcall(nav.UsingTomTomArrow) and "tomtom" or nil
+	end
+
+	-- (2.1.63; found by pull request #55's author) its window given back, laid out again: its height cap reads the
+	-- window's own scale (UI/GuideFrameLayout.lua's capHeight), a thousandth under the veil, so a step laid out then
+	-- left the window too tall
+	function polestar.Unveiled(frames)
+		local frame = rawget(_G, "PolestarGuideFrame")
+		if not (frame and frames[frame]) then
+			return
+		end
+		local t = P()
+		local ui = t and rawget(t, "UI")
+		local gf = type(ui) == "table" and rawget(ui, "GuideFrame")
+		if type(gf) == "table" and type(gf.Layout) == "function" then
+			pcall(gf.Layout)
+		end
 	end
 
 	-- its minimap route, trail and target pin (the user's pick, 2026-10-31: "one route"), on frames with no name: off

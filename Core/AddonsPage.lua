@@ -33,6 +33,7 @@ local T = {
 	ROW_H = 34,       -- a changed setting's row, a job's, a compatible addon's
 	LINK_W = 290,     -- the Compatibility tab's link column
 	NAME_W = 184,     -- its addon column
+	SHOWS_W = 190,    -- (2.1.63) a guide card's Guide steps in box
 	NEW = "2.1.44",
 }
 AP.T = T
@@ -65,12 +66,21 @@ local TEXT = {
 	jobs = "Who does what",
 	colJob = "Job", colBy = "Done by",
 	-- (2.1.51) a guide's card: its own arrow beside MelloUI's World Marker
+	-- (2.1.63) a guide's card: where its steps show (Route's Guide.Shows)
+	shows = "Guide steps in",
+	showsTip = "MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side.",
+	showsTracker = "MelloUI's Quest Tracker", showsOwn = "Its own window", showsBoth = "Both",
 	arrow = "Show its own arrow too",
 	arrowTip = "Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way.",
 	-- (2.1.52, stage 2) a needed addon's card while it is not installed (I.LIST's `needed`: Questie)
 	notInstalled = "Not installed",
 	install = "Install it, then type /reload.",
 }
+-- (2.1.63) a guide card's Guide steps in: its choices (Route's Guide.Shows), and the arrow switch's alpha while
+-- its own window shows the guide (its arrow shows anyway)
+local SHOWS = { { value = "tracker", label = TEXT.showsTracker }, { value = "own", label = TEXT.showsOwn },
+	{ value = "both", label = TEXT.showsBoth } }
+local DIMMED = 0.5
 AP.TEXT = TEXT
 AP.DISCORD = "https://discord.com/channels/1552056753833648140/1570155693305110558"
 
@@ -317,6 +327,25 @@ local function Card(parent, e, width, skin, ctx)
 	-- the setting is Route's, in the profile). No Route: no row
 	local route = e.arrow and MelloUI:GetModule("Route")
 	local G = route and route.Guide
+	-- (2.1.63; the user, 2026-11-21, of pull request #55: "Take useful parts") a guide with steps: where they show --
+	-- MelloUI's Quest Tracker, its own window, or both (Route's Guide.Shows, in the profile)
+	if G and G.Shows and G.HasSteps and G.HasSteps(e.arrow) then
+		local label = W.Text(body, "GameFontHighlight", Tr(TEXT.shows), "text")
+		label:SetPoint("TOPLEFT", body, "TOPLEFT", T.PAD + 4, -(by + 8))
+		W.NewTag(body, label, "2.1.63")
+		local dd = W.Dropdown(body, T.SHOWS_W, function()
+			return G.Shows(e.arrow)
+		end, function(value)
+			G.SetShows(e.arrow, value)
+			if card.Refresh then
+				card.Refresh()
+			end
+		end, SHOWS, { default = Tr(TEXT.shows), tooltip = Tr(TEXT.showsTip) })
+		dd:SetPoint("TOPRIGHT", body, "TOPRIGHT", -T.PAD, -(by + 4))
+		card.showsBox = dd
+		Rule(body, by + T.ROW_H - 2)
+		by = by + T.ROW_H
+	end
 	if G and G.ArrowShown then
 		local label = W.Text(body, "GameFontHighlight", Tr(TEXT.arrow), "text")
 		label:SetPoint("TOPLEFT", body, "TOPLEFT", T.PAD + 4, -(by + 8))
@@ -410,8 +439,15 @@ local function Card(parent, e, width, skin, ctx)
 		if card.switch then
 			card.switch:Refresh()
 		end
+		if card.showsBox then
+			card.showsBox:Refresh()   -- (2.1.63: a profile may hold another choice)
+		end
 		if card.arrowSwitch then
 			card.arrowSwitch:Refresh()   -- (2.1.51: the setting may have changed with a profile)
+			-- (2.1.63) its arrow shows anyway while its steps show in its own window: the switch dimmed, kept as it was
+			local elsewhere = card.showsBox and G and G.Shows(e.arrow) ~= "tracker"
+			card.arrowSwitch:SetEnabled(not elsewhere)
+			card.arrowSwitch:SetAlpha(elsewhere and DIMMED or 1)
 		end
 		local now = {}
 		for _, fix in ipairs(I.Changed(e)) do
