@@ -25,6 +25,8 @@
 --   * Keys: the game's own bindings (each button's commandName, ACTIONBUTTON1 ... MULTIACTIONBAR7BUTTON12) put on ours
 --     with SetOverrideBindingClick, read again on UPDATE_BINDINGS out of a fight; a key fires on its press or release
 --     as the game's ActionButtonUseKeyDown says, a mouse click on its release (the header's secure click wrapper).
+--     (2.1.67) With the game's Press and Hold Casting on (ActionButtonUseKeyHeldSpell) the keys stay the game's: a held
+--     spell keeps casting only from the game's own binding path, never an addon's button (KeysToGame, below).
 --   * Drag and drop through the secure drag wrappers (the game's "lock action bars" and its pick-up modifier).
 --   * (2.1.19) A flyout on a bar of ours (the hunter's Aspects, the warrior's stances ...) opens a flyout of ours, the
 --     game's in its parts (the section Flyouts: why the game's SpellFlyout cannot serve our buttons).
@@ -96,7 +98,8 @@ local TEXT = {
 
 -- (shows: the buttons that only show a slot they are told -- A.ShowButton, the gamepad bars' -- kept up to date with
 -- ours, never bound)
-local A = { bars = {}, built = nil, buttons = {}, shows = {}, byAction = {}, gameOf = {}, wantShown = {} }
+local A = { bars = {}, built = nil, buttons = {}, shows = {}, byAction = {}, gameOf = {}, wantShown = {},
+	byGame = {} }   -- (2.1.67) [the game's button] = ours at its place (its command's), for KeysToGame's press
 OB.Actions = A
 local FLY = { panels = {} }   -- (2.1.19) the flyouts of ours (the section Flyouts)
 
@@ -941,6 +944,9 @@ local function NewButton(bar, n, i, page)
 	-- in containers a level over the bar, so two over it, above its dividers (the bar's children, one over it)
 	btn:SetFrameLevel(bar:GetFrameLevel() + 2)
 	local game = GameButton(n, i)
+	if game then
+		A.byGame[game] = btn
+	end
 	btn:SetID(i)
 	btn.bar, btn.index = bar, i
 	btn.commandName = Field(game, "commandName") or (COMMAND[n] .. i)
@@ -1457,6 +1463,26 @@ local function HeaderSettings()
 	end
 end
 
+-- (2.1.67; a player on CurseForge, 2026-11-21: "hold to cast does not work sadly with mello") the game's Press and Hold
+-- Casting (ActionButtonUseKeyHeldSpell): a spell keeps casting while its key is held, and stops as the key is let go --
+-- but only from the game's own binding path (ActionButtonDown / MultiActionButtonDown -> TryUseActionButton, whose
+-- secure click is told it is a key press); an addon's button can never be (SecureTemplates.xml: "AddOns won't be able
+-- to have isKeyPress or isSecureAction set"). With it on, the keys stay the game's: its own buttons -- the same slots as
+-- ours, Bar 1 paged in the game's ActionBarController order, Bars 2-8 at the game's pages -- cast, held; ours show the
+-- key's press (KeyPressed, a post-hook of TryUseActionButton). Off: the keys on ours, as before
+local function KeysToGame()
+	return GetCVarBool("ActionButtonUseKeyHeldSpell") and true or false
+end
+
+-- the game's button a key pressed (TryUseActionButton's self): ours at its place pressed or let go, as the game shows its
+-- own (visual only, as PostClick's)
+local KeyPressed = Shared("the game's key press shown on our action button", function(game, down)
+	local btn = A.byGame[game]
+	if btn and KeysToGame() then
+		btn:SetButtonState(down and "PUSHED" or "NORMAL")
+	end
+end)
+
 -- the game's bindings on ours (its commands' keys, override bindings of ours); out of a fight
 local function Bind()
 	if not (A.keys and OB.On(PART)) then
@@ -1466,6 +1492,16 @@ local function Bind()
 		return
 	end
 	ClearOverrideBindings(A.keys)
+	if KeysToGame() then
+		if not A.keyHook and type(rawget(_G, "TryUseActionButton")) == "function" then
+			A.keyHook = true
+			Perf.hooksecurefunc("TryUseActionButton", KeyPressed)
+		end
+		for _, btn in ipairs(A.buttons) do
+			btn:UpdateHotkeys()
+		end
+		return
+	end
 	for _, btn in ipairs(A.buttons) do
 		local keys = { GetBindingKey(btn.commandName) }
 		for _, key in ipairs(keys) do
@@ -1630,6 +1666,9 @@ A.OnEvent = Shared("Own Bars: the action bars' events", function(_, event, a1, a
 		Bind()
 	elseif event == "CVAR_UPDATE" then
 		local cvar = Plain(a1)
+		if cvar == "ActionButtonUseKeyHeldSpell" or cvar == nil then
+			Bind()   -- (2.1.67: the keys to the game's buttons or back on ours; after a fight if in one)
+		end
 		if (cvar == "ActionButtonUseKeyDown" or cvar == "lockActionBars" or cvar == nil)
 			and not Later(HeaderSettings, "Own Bars: the action bars' key and lock settings", true) then
 			HeaderSettings()

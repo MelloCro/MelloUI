@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.67
+
+- Fixed: the game's Press and Hold Casting (a spell keeps casting while you hold its key) did nothing on MelloUI's action bars. With it on, your keys now go through the game's own buttons, which cast the same spells, and MelloUI's buttons still light up as you press them.
+
 ## 2.1.66
 
 - Cast Marks, new (off until you turn it on, Bars > Cast Bar > Bar): the end of each cast is hatched for the spell queue window and your latency (once the fill reaches it, the next spell queues), and a thin mark shows where each tick of a channelled spell lands, such as Drain Life, Mind Flay or Arcane Missiles. On the game's cast bar and the Personal Display's.

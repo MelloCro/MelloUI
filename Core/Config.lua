@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.67", lines = {
+		"Press and Hold Casting works on MelloUI's action bars.",
+	} },
 	{ version = "2.1.66", lines = {
 		"Cast Marks (off until turned on): your latency hatched at the end of each cast, and a mark for each tick of a channel.",
 		"Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker.",
@@ -209,12 +212,6 @@ local CHANGELOG = {
 		"Leveling guides: a step whose quest is in your log puts the World Marker on the game's own point for it too.",
 		"World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does.",
 		"Action bars: the range colour no longer sticks after a vehicle or form bar, and cooldown numbers keep showing when the game hides cooldown times.",
-	} },
-	{ version = "2.1.62", lines = {
-		"Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row.",
-		"Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it.",
-		"More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers.",
-		"Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before.",
 	} },
 }
 local LINKS = {

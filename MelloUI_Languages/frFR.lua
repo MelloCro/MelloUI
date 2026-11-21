@@ -4543,6 +4543,7 @@ Lang:Add("frFR", {
 	["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "Délais de recharge : Chiffres en combat peut masquer le compte à rebours du jeu en combat, et Obscurité du balayage assombrit le balayage.", -- draft
 	["Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips."] = "Grimoires démoniaques (désactivés par défaut) : ce que savent vos démons, marqué chez le marchand et dans les infobulles des grimoires.", -- draft
 	["Mail Recipients: no realm behind your own characters any more when the game names none."] = "Destinataires du courrier : plus de royaume derrière vos propres personnages quand le jeu n'en nomme aucun.", -- draft
+	["Press and Hold Casting works on MelloUI's action bars."] = "L'incantation en maintenant la touche fonctionne sur les barres d'action de MelloUI.", -- draft
 	["Percent Position"] = "Position du pourcentage", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Où se placent les pourcentages de vie et de puissance : à côté des barres, ou centrés dessus comme les nombres des Formes de druide.", -- draft
 	["Beside The Bars"] = "À côté des barres", -- draft

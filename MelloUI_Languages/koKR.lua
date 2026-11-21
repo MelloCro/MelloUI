@@ -3071,6 +3071,7 @@ Lang:Add("koKR", {
 	["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "재사용 대기 타이머: 전투 중 숫자로 전투 중 게임의 카운트다운을 숨길 수 있고, 쓸기 어둡기로 쓸기를 더 어둡게 합니다.", -- draft
 	["Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips."] = "악마 마법서 (켜기 전까지 꺼짐): 악마가 아는 것을 상인과 마법서 툴팁에 표시합니다.", -- draft
 	["Mail Recipients: no realm behind your own characters any more when the game names none."] = "우편 수신자: 게임이 서버 이름을 주지 않을 때 내 캐릭터 뒤에 서버 이름이 더 이상 붙지 않습니다.", -- draft
+	["Press and Hold Casting works on MelloUI's action bars."] = "누르고 있으면 시전 기능이 MelloUI 행동 단축바에서 작동합니다.", -- draft
 	["Percent Position"] = "백분율 위치", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "생명력과 자원 백분율이 놓이는 곳: 바 옆, 또는 드루이드 변신의 숫자처럼 바 위 가운데.", -- draft
 	["Beside The Bars"] = "바 옆", -- draft

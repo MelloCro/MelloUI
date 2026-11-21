@@ -3071,6 +3071,7 @@ Lang:Add("zhCN", {
 	["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "冷却计时：战斗中显示数字可在战斗中隐藏游戏的倒计时，扫过暗度可让扫过更暗。", -- draft
 	["Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips."] = "恶魔魔典（开启前默认关闭）：在商人处和魔典提示中标出你的恶魔会什么。", -- draft
 	["Mail Recipients: no realm behind your own characters any more when the game names none."] = "邮件收件人：游戏不给服务器名时，你自己的角色后面不再显示服务器名。", -- draft
+	["Press and Hold Casting works on MelloUI's action bars."] = "按住施法现在可在 MelloUI 的动作条上使用。", -- draft
 	["Percent Position"] = "百分比位置", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "生命值和能量百分比显示的位置：在条旁边，或像德鲁伊形态的数字一样居中显示在条上。", -- draft
 	["Beside The Bars"] = "在条旁边", -- draft
