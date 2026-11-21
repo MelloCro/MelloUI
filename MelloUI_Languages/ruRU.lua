@@ -3033,6 +3033,7 @@ Lang:Add("ruRU", {
 	["Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame."] = "Рамка питомца: перемещённая рамка остаётся на своём месте в бою и больше не прыгает под рамку игрока.", -- draft
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: следующий /reload переключает на копию раскладки игры от MelloUI, и перемещённые панели, например панель тотемов, остаются на месте в бою.", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "Личный дисплей: «Положение процентов» ставит проценты здоровья и энергии на полосы, как числа «Обликов друида».", -- draft
+	["Mail: an empty subject takes the name of the first item you attach."] = "Почта: пустая тема получает название первого вложенного предмета.", -- draft
 	["Percent Position"] = "Положение процентов", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Где стоят проценты здоровья и энергии: рядом с полосами или по центру на них, как числа «Обликов друида».", -- draft
 	["Beside The Bars"] = "Рядом с полосами", -- draft
@@ -3068,6 +3069,8 @@ Lang:Add("ruRU", {
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Кнопка рядом с полем «Кому» у почтового ящика показывает ваших персонажей и персонажей друзей Battle.net: щёлкните по одному, и его имя будет вписано.", -- draft
 	["Who was that again? One click and the letter has its name."] = "Как же его звали? Один щелчок, и в письме есть имя.", -- draft
 	["Battle.net Friends' Characters"] = "Персонажи друзей Battle.net", -- draft
+	["Subject from the First Item"] = "Тема по первому предмету", -- draft
+	["An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays."] = "Пустая тема получает название первого вложенного предмета, с количеством для стопки. Тема, введённая вами, остаётся.", -- draft
 	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "В меню показаны и друзья Battle.net, у каждого те персонажи, которых игра показала, пока друг играл. Выключено: только ваши персонажи, персонажи друзей не запоминаются.", -- draft
 	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "В списке показаны и ваши друзья по Battle.net, у каждого те персонажи, которых игра показала, пока они играли. Выкл.: только ваши персонажи, персонажи друзей не запоминаются.", -- draft
 	["Recipients"] = "Получатели", -- draft

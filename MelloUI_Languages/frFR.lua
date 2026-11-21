@@ -4513,6 +4513,7 @@ Lang:Add("frFR", {
 	["Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame."] = "Cadre du familier : déplacé, il reste là où vous l'avez mis en combat au lieu de sauter sous le cadre du joueur.", -- draft
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout : votre prochain /reload passe à la copie MelloUI de la disposition du jeu, pour que les barres déplacées comme celle des totems restent en place en combat.", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "Affichage personnel : Position du pourcentage place les pourcentages de vie et de puissance sur les barres, comme les nombres des Formes de druide.", -- draft
+	["Mail: an empty subject takes the name of the first item you attach."] = "Courrier : un sujet vide prend le nom du premier objet joint.", -- draft
 	["Percent Position"] = "Position du pourcentage", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Où se placent les pourcentages de vie et de puissance : à côté des barres, ou centrés dessus comme les nombres des Formes de druide.", -- draft
 	["Beside The Bars"] = "À côté des barres", -- draft

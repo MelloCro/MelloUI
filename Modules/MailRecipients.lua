@@ -71,7 +71,7 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 	options = {
 		{ type = "toggle", key = "bnet", name = "Battle.net Friends' Characters",
 		  desc = "The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted." },
-		{ type = "toggle", key = "subject", name = "Subject from the First Item", new = "2.1.64",
+		{ type = "toggle", key = "subject", name = "Subject from the First Item", new = "2.1.65",
 		  desc = "An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays." },
 	},
 })

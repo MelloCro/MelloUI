@@ -3033,6 +3033,7 @@ Lang:Add("esES", {
 	["Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame."] = "Marco de mascota: si lo moviste, se queda donde lo pusiste en combate en lugar de saltar bajo el marco del jugador.", -- draft
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: tu próximo /reload cambia a la copia de MelloUI del diseño del juego, así las barras que moviste, como la de tótems, se quedan en su sitio en combate.", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "Pantalla personal: Posición del porcentaje pone los porcentajes de salud y poder sobre las barras, como los números de Formas de druida.", -- draft
+	["Mail: an empty subject takes the name of the first item you attach."] = "Correo: un asunto vacío toma el nombre del primer objeto que adjuntas.", -- draft
 	["Percent Position"] = "Posición del porcentaje", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Dónde se muestran los porcentajes de salud y poder: junto a las barras o centrados sobre ellas, como los números de Formas de druida.", -- draft
 	["Beside The Bars"] = "Junto a las barras", -- draft
@@ -3068,6 +3069,8 @@ Lang:Add("esES", {
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Un botón junto al campo Para del buzón lista tus personajes y los de tus amigos de Battle.net: haz clic en uno y se escribe su nombre.", -- draft
 	["Who was that again? One click and the letter has its name."] = "¿Cómo se llamaba? Un clic y la carta ya tiene su nombre.", -- draft
 	["Battle.net Friends' Characters"] = "Personajes de amigos de Battle.net", -- draft
+	["Subject from the First Item"] = "Asunto del primer objeto", -- draft
+	["An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays."] = "Un asunto vacío toma el nombre del primer objeto que adjuntas, con su cantidad si es un montón. Lo que escribas tú se queda.", -- draft
 	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "El menú lista también a tus amigos de Battle.net, cada uno con los personajes que el juego ha mostrado de ellos mientras jugaban. Desactivado: solo tus personajes, y no se anota ninguno de los suyos.", -- draft
 	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "La lista también muestra a tus amigos de Battle.net, cada uno con los personajes que el juego ha mostrado de ellos mientras jugaban. Desactivado: solo tus propios personajes, y no se anota ninguno de los suyos.", -- draft
 	["Recipients"] = "Destinatarios", -- draft

@@ -3918,6 +3918,7 @@ Lang:Add("deDE", {
 	["Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame."] = "Begleiterrahmen: Ein verschobener Rahmen bleibt im Kampf, wo du ihn hingesetzt hast, statt unter den Spielerrahmen zu springen.", -- draft
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: Dein nächstes /reload wechselt zu MelloUIs Kopie des Spiel-Layouts, damit verschobene Leisten wie die Totemleiste im Kampf an ihrem Platz bleiben.", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "Persönliche Anzeige: Prozentposition setzt die Prozentwerte von Gesundheit und Kraft auf die Leisten, wie die Zahlen der Druidengestalten.", -- draft
+	["Mail: an empty subject takes the name of the first item you attach."] = "Post: Ein leerer Betreff bekommt den Namen des ersten angehängten Gegenstands.", -- draft
 	["Percent Position"] = "Prozentposition", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Wo die Prozentwerte von Gesundheit und Kraft stehen: neben den Leisten oder mittig darauf wie die Zahlen der Druidengestalten.", -- draft
 	["Beside The Bars"] = "Neben den Leisten", -- draft

@@ -3033,6 +3033,7 @@ Lang:Add("zhCN", {
 	["Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame."] = "宠物框体：移动过的宠物框体在战斗中会留在你放的位置，不再跳到玩家框体下方。", -- draft
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout：下次 /reload 时会切换到 MelloUI 复制的游戏布局，图腾条等移动过的动作条在战斗中也会留在原位。", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "个人显示：百分比位置可将生命值和能量百分比显示在条上，就像德鲁伊形态的数字。", -- draft
+	["Mail: an empty subject takes the name of the first item you attach."] = "邮件：主题为空时，会填入你附加的第一个物品的名称。", -- draft
 	["Percent Position"] = "百分比位置", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "生命值和能量百分比显示的位置：在条旁边，或像德鲁伊形态的数字一样居中显示在条上。", -- draft
 	["Beside The Bars"] = "在条旁边", -- draft
@@ -3068,6 +3069,8 @@ Lang:Add("zhCN", {
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色：点击其中一个即可填入名字。", -- draft
 	["Who was that again? One click and the letter has its name."] = "那个人叫什么来着？点一下，信上就有名字了。", -- draft
 	["Battle.net Friends' Characters"] = "战网好友的角色", -- draft
+	["Subject from the First Item"] = "用第一个物品作为主题", -- draft
+	["An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays."] = "主题为空时，会填入你附加的第一个物品的名称，若是一组则带上数量。你自己输入的主题保持不变。", -- draft
 	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "菜单中也会列出你的战网好友，以及游戏在他们游玩时显示过的角色。关闭：只列出你自己的角色，不记录好友的角色。", -- draft
 	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "列表也会显示你的 Battle.net 好友，以及游戏在他们游玩时显示过的角色。关闭：只显示你自己的角色，不记录好友的角色。", -- draft
 	["Recipients"] = "收件人", -- draft

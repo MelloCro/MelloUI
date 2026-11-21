@@ -188,6 +188,7 @@ local CHANGELOG = {
 		"Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame.",
 		"Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights.",
 		"Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers.",
+		"Mail: an empty subject takes the name of the first item you attach.",
 	} },
 	{ version = "2.1.64", lines = {
 		"Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once.",

@@ -13,6 +13,8 @@
 - Fixed: a pet frame you moved in Edit Layout could jump under the player frame, over your buffs, as each fight started, and only come back after it. It now stays where you put it through the fight, with the pet's happiness and debuffs.
 - Fixed: after you let MelloUI copy the game's Edit Mode layout, a plain /reload never switched to the copy, so elements you moved, such as the totem bar, jumped back to the game's place in every fight. Your next /reload now switches to it with every place you moved, and the game keeps them in fights too.
 - Personal Display: Percent Position puts the health and power percents On The Bars, centred on each bar like Druid Forms' numbers, in every look. Beside The Bars stays the default.
+- Mail Recipients: Subject from the First Item (on by default). An empty subject takes the name of the first item you attach, with its count for a stack; what you type yourself stays.
+- Configurator: a designer tab's name in the search results and on the Back button is in your language. A few stayed in English.
 
 ## 2.1.64
 

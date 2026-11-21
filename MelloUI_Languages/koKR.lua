@@ -3033,6 +3033,7 @@ Lang:Add("koKR", {
 	["Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame."] = "소환수 창: 옮겨 둔 창이 전투 중에도 플레이어 창 아래로 튀지 않고 놓은 자리에 머뭅니다.", -- draft
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: 다음 /reload 때 게임 레이아웃의 MelloUI 사본으로 바뀌어, 토템 바처럼 옮긴 바가 전투 중에도 제자리에 머뭅니다.", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "개인 표시기: 백분율 위치로 생명력과 자원 백분율을 드루이드 변신의 숫자처럼 바 위에 놓습니다.", -- draft
+	["Mail: an empty subject takes the name of the first item you attach."] = "우편: 제목이 비어 있으면 처음 첨부한 아이템의 이름이 들어갑니다.", -- draft
 	["Percent Position"] = "백분율 위치", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "생명력과 자원 백분율이 놓이는 곳: 바 옆, 또는 드루이드 변신의 숫자처럼 바 위 가운데.", -- draft
 	["Beside The Bars"] = "바 옆", -- draft
@@ -3068,6 +3069,8 @@ Lang:Add("koKR", {
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "우체통의 받는 사람 칸 옆 버튼이 내 캐릭터와 Battle.net 친구의 캐릭터를 보여 줍니다. 하나를 클릭하면 이름이 입력됩니다.", -- draft
 	["Who was that again? One click and the letter has its name."] = "그게 누구였더라? 클릭 한 번이면 편지에 이름이 들어갑니다.", -- draft
 	["Battle.net Friends' Characters"] = "Battle.net 친구의 캐릭터", -- draft
+	["Subject from the First Item"] = "첫 번째 아이템으로 제목 채우기", -- draft
+	["An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays."] = "제목이 비어 있으면 처음 첨부한 아이템의 이름이 들어가며, 묶음이면 개수도 붙습니다. 직접 입력한 제목은 그대로 둡니다.", -- draft
 	["The menu lists your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "메뉴에 Battle.net 친구도 표시하며, 친구가 플레이하는 동안 게임이 보여 준 캐릭터를 함께 보여 줍니다. 끄면 내 캐릭터만 표시하고 친구의 캐릭터는 기록하지 않습니다.", -- draft
 	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "목록에 Battle.net 친구도 표시하며, 친구가 플레이하는 동안 게임이 보여 준 캐릭터를 함께 보여 줍니다. 끄면 내 캐릭터만 표시하고 친구의 캐릭터는 기록하지 않습니다.", -- draft
 	["Recipients"] = "받는 사람", -- draft
