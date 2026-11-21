@@ -2491,6 +2491,11 @@ Lang:Add("zhCN", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "同时显示它自己的箭头", -- draft
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Route 跟随它时，它的箭头会和 MelloUI 的世界标记一起留在屏幕上。关闭：只有世界标记指路。", -- draft
+	-- (2.1.63) a guide's card on the Addons page: where its steps show
+	["Guide steps in"] = "指南步骤显示于", -- draft
+	["MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side."] = "MelloUI 的任务追踪器：步骤显示在追踪器中，由 MelloUI 的世界标记指路，指南自己的窗口和箭头隐藏。自己的窗口：按指南自己的方式显示窗口、箭头和地图标记，MelloUI 不再处理其步骤。两者：追踪器和指南自己的窗口并排显示。", -- draft
+	["Its own window"] = "自己的窗口", -- draft
+	["Both"] = "两者", -- draft
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "开启它自己的 TomTom 箭头选项后，Route 通过 TomTom 的箭头跟随它的步骤（TomTom 的卡片决定是否显示该箭头）。", -- draft
 	["Route follows its steps through TomTom"] = "Route 通过 TomTom 跟随它的步骤", -- draft
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "通过 TomTom 跟随：由 TomTom 的卡片开关它，并决定是否显示它的箭头。", -- draft
@@ -3005,6 +3010,11 @@ Lang:Add("zhCN", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "背包窗口：把身上穿着的装备放到 + 格上，会进入一个空格。以前它会重新穿回去。", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "地下城信息：地下城、区域和首领以客户端语言命名，首领行里的掉落会显示物品提示。", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "语言：德语已由一位德国玩家逐行检查，聊天、地图和菜单有了更多法语。", -- draft
+	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "指南：在插件页面中，每个指南的卡片可选择其步骤的显示位置：MelloUI 的任务追踪器、指南自己的窗口，或两者。", -- draft
+	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "世界标记：任务的标记会立在游戏自己的点上，处于真实高度，即使你从山丘上往下看也是如此。", -- draft
+	["Leveling guides: a step whose quest is in your log puts the World Marker on the game's own point for it too."] = "升级指南：任务已在任务日志中的步骤，也会把世界标记放在游戏自己的点上。", -- draft
+	["World Marker: off screen, the mark and its arrow ride an oval round the middle of the screen, as the game's own focus marker."] = "世界标记：目标在屏幕外时，标记和箭头会沿着屏幕中央周围的椭圆移动，与游戏自己的焦点标记相同。", -- draft
+	["Action bars: the range colour no longer sticks after a vehicle or form bar, and cooldown numbers keep showing when the game hides cooldown times."] = "动作条：在载具或形态动作条之后，距离颜色不再卡住；游戏隐藏冷却时间时，冷却数字也会继续显示。", -- draft
 	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "竞速条：新增“自选”，可将伤害、治疗和仇恨分行上下显示。“自动”仍是默认设置，仍为一行。", -- draft
 	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "邮件收件人：收件人栏旁的按钮会在发送邮件窗口旁打开一个列表。好友的角色就地展开，列表会保持你上次的打开或关闭状态。", -- draft
 	["More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers."] = "更多法语翻译：Edit Layout、任务列表的筛选、Follow The Arrow 的菜单、Voice Over 的按钮、Stats 的鼠标提示以及乘船路线标记。", -- draft

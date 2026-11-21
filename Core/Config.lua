@@ -177,6 +177,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.63", lines = {
+		"Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both.",
+		"World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill.",
+		"Leveling guides: a step whose quest is in your log puts the World Marker on the game's own point for it too.",
+		"World Marker: off screen, the mark and its arrow ride an oval round the middle of the screen, as the game's own focus marker.",
+		"Action bars: the range colour no longer sticks after a vehicle or form bar, and cooldown numbers keep showing when the game hides cooldown times.",
+	} },
 	{ version = "2.1.62", lines = {
 		"Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row.",
 		"Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it.",
@@ -205,15 +212,6 @@ local CHANGELOG = {
 		"Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light.",
 		"Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars.",
 		"Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name.",
-	} },
-	{ version = "2.1.58", lines = {
-		"Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu.",
-		"Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too.",
-		"Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read.",
-		"Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls.",
-		"Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over.",
-		"Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too.",
-		"Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood.",
 	} },
 }
 local LINKS = {

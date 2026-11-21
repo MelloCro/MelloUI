@@ -2491,6 +2491,11 @@ Lang:Add("koKR", {
 	-- (2.1.51) the Addons page: the leveling guides, a guide's own arrow beside the World Marker
 	["Show its own arrow too"] = "자체 화살표도 표시", -- draft
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Route가 따라가는 동안 그 화살표가 MelloUI의 월드 마커 옆에 화면에 남습니다. 끄기: 월드 마커만 길을 안내합니다.", -- draft
+	-- (2.1.63) a guide's card on the Addons page: where its steps show
+	["Guide steps in"] = "가이드 단계 표시 위치", -- draft
+	["MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side."] = "MelloUI 퀘스트 추적기: 단계는 추적기에, 길은 MelloUI 월드 마커가 안내하며, 가이드 자체 창과 화살표는 숨겨집니다. 자체 창: 가이드가 보여주는 대로 창, 화살표, 지도 표시가 나타나고 MelloUI는 단계에 관여하지 않습니다. 둘 다: 추적기와 가이드 자체 창을 나란히 표시합니다.", -- draft
+	["Its own window"] = "자체 창", -- draft
+	["Both"] = "둘 다", -- draft
 	["With its own Use TomTom arrow option on, Route follows its steps through TomTom's arrow (TomTom's card shows that arrow or not)."] = "자체 TomTom 화살표 옵션을 켜면 Route가 TomTom의 화살표를 통해 그 단계를 따라갑니다(TomTom 카드에서 그 화살표 표시 여부를 정합니다).", -- draft
 	["Route follows its steps through TomTom"] = "Route가 TomTom을 통해 그 단계를 따라갑니다", -- draft
 	["Followed through TomTom: TomTom's card switches it, and shows its arrow or not."] = "TomTom을 통해 따라감: TomTom 카드에서 켜고 끄며, 그 화살표 표시 여부도 정합니다.", -- draft
@@ -3005,6 +3010,11 @@ Lang:Add("koKR", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "가방 창: 착용 중인 장비를 + 칸에 놓으면 빈 칸으로 들어갑니다. 전에는 다시 착용되었습니다.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "던전 정보: 던전, 지역, 우두머리 이름이 클라이언트 언어로 표시되고, 우두머리 줄의 전리품에 아이템 툴팁이 나옵니다.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "언어: 독일어를 독일 플레이어가 한 줄씩 검수했고, 대화창과 지도, 메뉴의 프랑스어가 늘었습니다.", -- draft
+	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "가이드: 애드온의 각 가이드 카드에서 단계를 표시할 곳을 고릅니다: MelloUI 퀘스트 추적기, 가이드 자체 창, 또는 둘 다.", -- draft
+	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "월드 마커: 퀘스트에서는 언덕 위에서 내려다볼 때도 게임 자체 지점의 실제 높이에 표시됩니다.", -- draft
+	["Leveling guides: a step whose quest is in your log puts the World Marker on the game's own point for it too."] = "레벨업 가이드: 퀘스트 목록에 있는 퀘스트의 단계도 월드 마커를 게임 자체 지점에 표시합니다.", -- draft
+	["World Marker: off screen, the mark and its arrow ride an oval round the middle of the screen, as the game's own focus marker."] = "월드 마커: 화면 밖에 있을 때 마커와 화살표가 게임 자체 집중 마커처럼 화면 가운데를 둘러싼 타원을 따라 움직입니다.", -- draft
+	["Action bars: the range colour no longer sticks after a vehicle or form bar, and cooldown numbers keep showing when the game hides cooldown times."] = "행동 단축바: 탈것이나 변신 단축바 뒤에도 사거리 색이 더 이상 남아 있지 않으며, 게임이 재사용 대기시간을 숨길 때도 재사용 대기 숫자가 계속 표시됩니다.", -- draft
 	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "경주 막대: 새 선택지 ‘직접 선택’으로 피해, 치유, 위협을 줄마다 위아래로 표시합니다. 자동은 기본값으로 남으며 한 줄 그대로입니다.", -- draft
 	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "우편 받는 사람: 받는 사람 칸 옆의 버튼이 우편 보내기 창 옆에 목록을 엽니다. 친구를 누르면 그 자리에서 캐릭터가 펼쳐지며, 열어 두거나 닫아 둔 상태가 그대로 유지됩니다.", -- draft
 	["More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers."] = "프랑스어 번역 추가: Edit Layout, 퀘스트 목록의 필터, Follow The Arrow 메뉴, Voice Over 버튼, Stats 툴팁, 배 경로 표시.", -- draft
