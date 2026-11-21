@@ -932,6 +932,18 @@ do
 			if v then
 				return v
 			end
+			-- (a path joined in English, "Swing Timers > Shots": each of its pieces looked up where the whole is not)
+			if text:find(" > ", 1, true) then
+				local pieces, any = {}, false
+				for piece in (text .. " > "):gmatch("(.-) > ") do
+					local p = current[piece]
+					pieces[#pieces + 1] = p or piece
+					any = any or p ~= nil
+				end
+				if any then
+					return table.concat(pieces, " > ")
+				end
+			end
 			local misses = Lang.misses
 			if misses then
 				misses[text] = true
