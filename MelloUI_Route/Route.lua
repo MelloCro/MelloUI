@@ -40,7 +40,9 @@ local M = MelloUI:RegisterModule("Route", {
 	icon = "Interface\\Icons\\Ability_Tracking",
 	flavour = "A trail of gems from here to there, along the roads you have walked before.",
 	group = "Quests and travel", navOrder = 2,
-	keep = { "^flights_" },   -- each character's own flight points (CharFlightsKey): never in a profile, never wiped by one
+	-- each character's own flight points (CharFlightsKey): never in a profile, never wiped by one; (2.1.63) the player's
+	-- own in-game navigation setting while the World Marker holds it on (Beacon.HoldNavigation)
+	keep = { "^flights_", "^savedInGameNav$" },
 	enabledByDefault = true,
 	defaults = {
 		worldMap = true,
@@ -8361,6 +8363,27 @@ end
 
 local UpdateMarker   -- below: the tick hides the marker through it
 
+-- (2.1.63; the user, 2026-11-21: "make sure that when people load the addon, install new or update it, that the console
+-- command for the ingame navigation is switched on automatically") the game's in-game navigation (showInGameNavigation:
+-- its focus marker over the place, a setting Forever's own options do not show) held on while the World Marker is --
+-- the game's own marker shows wherever ours stands back -- through the one system for such settings
+-- (MelloUI:HoldCVar): the player's own value noted (savedInGameNav, in Route's `keep`, never in a profile) and given
+-- back once the World Marker or Route goes off. Out of a fight: after it
+function Beacon.HoldNavigation()
+	local function Hold()
+		local db = M.db
+		if db and MelloUI.HoldCVar then   -- (a small world without Core's helpers: nothing)
+			MelloUI:HoldCVar(db, "showInGameNavigation", "savedInGameNav", M.isEnabled and db.worldMarker ~= false or false, "1")
+		end
+	end
+	local S = MelloUI.Schedule
+	if S and S.WhenOutOfCombat then
+		S:WhenOutOfCombat(Hold, "Route: the game's in-game navigation")
+	elseif not InCombatLockdown() then
+		Hold()
+	end
+end
+
 -- How far the place is, as the game measures it (C_Navigation.GetDistance),
 -- or nil when it cannot say
 function Beacon.Distance()
@@ -12678,6 +12701,7 @@ function M:OnEnable(db)
 	CreateProvider()
 	EnsureMinimapFrame()
 	EnsureMarker()
+	Beacon.HoldNavigation()   -- (2.1.63: the game's in-game navigation on while the World Marker is)
 	-- (a profile brought in: the Text Shade as it says; nothing at login)
 	TextShade.Apply()
 	MelloUI:On("setting", TextShade.OnSetting, "Route text shade")
@@ -12760,12 +12784,14 @@ function M:OnDisable()
 	if M.Guide then
 		M.Guide.Refresh()   -- (a followed guide's own arrow and window back, its steps out of the Quest Tracker)
 	end
+	Beacon.HoldNavigation()   -- (2.1.63: the player's own in-game navigation setting back)
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "worldMarker" then
 		StandIn.Update()
+		Beacon.HoldNavigation()   -- (2.1.63: the game's in-game navigation held or given back with it)
 	elseif key == "trailLook" then
 		Beacon.Tint()   -- (the World Marker's light and flag in the new look; the maps' at the redraw)
 	elseif key == "followGuide" and M.Guide then
