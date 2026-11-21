@@ -3023,6 +3023,7 @@ Lang:Add("zhCN", {
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "语言：德语已由一位德国玩家逐行检查，聊天、地图和菜单有了更多法语。", -- draft
 	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "地图的任务日志：每个区域的追踪框和“所有任务”框可一次将许多任务放入任务追踪器。", -- draft
 	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "任务追踪器中的 RestedXP：后退会回到尚未完成的步骤，已完成的步骤只会显示。", -- draft
+	["Dungeon Info: loot for six of Forever's own dungeons that had none, and players' measured drop rates for more bosses."] = "地下城信息：六个此前没有掉落信息的 Forever 专属地下城的掉落，以及玩家测得的更多首领的掉落几率。", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "指南：在插件页面中，每个指南的卡片可选择其步骤的显示位置：MelloUI 的任务追踪器、指南自己的窗口，或两者。", -- draft
 	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "任务追踪器中的 Polestar：每一步都会显示对象或地点，并在目标下方显示 Polestar 的备注。", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "世界标记：任务的标记会立在游戏自己的点上，处于真实高度，即使你从山丘上往下看也是如此。", -- draft

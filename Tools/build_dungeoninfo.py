@@ -20,7 +20,8 @@ Sources (all local):
   (1.2.2) the picture      an instance with no LFG picture: its loading screen (LoadingScreens; picture_for)
   (1.2.2) Forever's loot   Everloot's open data (player-collected, CC BY-SA 4.0, credited in the data file): its
                            drop rates by boss and creature, fetched with --everloot into the build data's cache
-                           (its API since 2026-11-03: rollups/drops and corpus/public's encounter records)
+                           (its API since 2026-11-03: rollups/drops' public rows, three installs agreeing; a
+                           boss's creatures the database's and DungeonMaster's since 2026-11-21)
   (1.2.2) seen in game     the players' /dungeoninfo exports in MelloUI-BuildData/dungeoninfo_seen (read_seen)
 
     python Tools/build_dungeoninfo.py [--check] [--everloot]
@@ -164,7 +165,8 @@ SEEN_DIR = os.path.join(REPO, "Workspace", "BuildData", "dungeoninfo_seen")
 # CC BY-SA 4.0 in the data file, with EVERLOOT_CREDIT beside them. (2026-11-03: the open-data export at
 # data.everloot.app is gone; Everloot's API stands in its place -- /api/rollups/drops, the corroborated rates by
 # creature, and /api/corpus/public's encounter records, a boss kill's creatures -- paged, 500 rows a page and 30
-# requests an hour without a key. The fetch writes them in the cached export's shape, which read_everloot reads.)
+# requests an hour without a key. The fetch writes them in the cached export's shape, which read_everloot reads.
+# 2026-11-21: the kill records no longer list a kill's creatures; only the rates are fetched, see fetch_everloot.)
 EVERLOOT_URL = "https://everloot.app"
 EVERLOOT_PAGE = 500
 EVERLOOT_DIR = os.path.join(BUILD, "everloot")
@@ -177,7 +179,8 @@ EVERLOOT_CREDIT = "Data from Everloot (https://everloot.app), CC BY-SA 4.0."
 # bosses = { [name] = { npcID, rare, loot = { items } } } }) is kept by hand in the build data's cache, a folder a
 # version: download its zip from CurseForge, put Curated.lua, README.md and its TOC in DM_DIR/<version>/.
 DM_DIR = os.path.join(BUILD, "dungeonmaster")
-DM_CREDIT = "DungeonMaster by MalkDev (https://www.curseforge.com/wow/addons/dungeonmaster), GPL-3.0."
+DM_CREDIT = ("DungeonMaster by MalkDev (https://www.curseforge.com/wow/addons/dungeonmaster), GPL-3.0; its lists "
+             "partly from QuestieDB (https://github.com/Questie/QuestieDB), GPL-3.0.")
 
 
 def read_dungeonmaster():
@@ -218,10 +221,12 @@ def norm_name(s):
 
 
 def fetch_everloot():
-    """Everloot's corroborated drop rates and its boss kills (its API, paged) into EVERLOOT_DIR/<its data's time>/ in
-    the export's shape (observed/drop-rates.ndjson, observed/bosses.ndjson, manifest.json); False when it has no rate
-    yet or that data is cached already (the cache kept as it is). A boss's creatures: those listed for a kill of his
-    encounter by at least half the installs that reported one (a record may list the trash that died in the fight)."""
+    """Everloot's public drop rates (its API, paged) into EVERLOOT_DIR/<its data's time>/ in the export's shape
+    (observed/drop-rates.ndjson, manifest.json); False when it has no public rate yet or that data is cached already
+    (the cache kept as it is). (2026-11-21) Only the rows it marks public: its tier "confirmed", three installs or
+    more agreeing -- "reported" (one) and "verified" (two) it serves too, not public. Its public kill records no
+    longer list a kill's creatures (encounter, name and map only), so a boss's creatures are paired in main: the
+    database's (the creature named for his encounter on his map) and DungeonMaster's npcID."""
     import json
     import time
     import urllib.error
@@ -252,53 +257,33 @@ def fetch_everloot():
             if url:
                 time.sleep(1)
         return out, first or {}
-    rates, first = pages("/api/rollups/drops", "rates")
+    served, first = pages("/api/rollups/drops", "rates")
+    rates = [r for r in served if r.get("public") is True]
     stats = first.get("stats") or {}
     as_of = first.get("dataAsOf") or first.get("generatedAt") or ""
     if not rates:
-        log("Everloot has no corroborated drop rate yet (%s uploads, %s loot windows, data as of %s): the cache kept"
-            % (stats.get("uploads"), stats.get("lootWindows"), as_of or "unknown"))
+        log("Everloot has no public drop rate yet (%d served, %s uploads, %s loot windows, data as of %s): the cache kept"
+            % (len(served), stats.get("uploads"), stats.get("lootWindows"), as_of or "unknown"))
         return False
     stamp = re.sub(r"[^\w.-]", "", as_of.replace(":", "")) or time.strftime("%Y-%m-%dT%H%M%SZ", time.gmtime())
     folder = os.path.join(EVERLOOT_DIR, stamp)
     if os.path.isfile(os.path.join(folder, "manifest.json")):
         log("Everloot's data as of %s is cached already" % as_of)
         return False
-    records, _ = pages("/api/corpus/public?kinds=encounter", "records")
-    kills = defaultdict(lambda: defaultdict(set))   # (map, encounter) -> npc -> installs
-    reporters = defaultdict(set)
-    for r in records:
-        if r.get("kind") != "encounter" or r.get("success") is not True:
-            continue
-        key = (r.get("instanceMapId"), r.get("encounterId"))
-        if not all(isinstance(v, int) for v in key):
-            continue
-        reporters[key].add(r.get("installId"))
-        for npc in r.get("npcIds") or []:
-            if isinstance(npc, int):
-                kills[key][npc].add(r.get("installId"))
     os.makedirs(os.path.join(folder, "observed"), exist_ok=True)
+    n_npc = 0
     with open(os.path.join(folder, "observed", "drop-rates.ndjson"), "w", encoding="utf-8") as fh:
         for r in rates:
             if isinstance(r.get("sourceNpcId"), int) and isinstance(r.get("itemId"), int):
+                n_npc += 1
                 fh.write(json.dumps({"sourceNpcId": r["sourceNpcId"], "itemId": r["itemId"], "rate": r.get("rate"),
                                      "lootWindows": r.get("kills"), "drops": r.get("drops"),
                                      "reporters": r.get("reporters")}) + "\n")
-    n_bosses = 0
-    with open(os.path.join(folder, "observed", "bosses.ndjson"), "w", encoding="utf-8") as fh:
-        for (imap, enc), by_npc in sorted(kills.items()):
-            need = max(1, (len(reporters[(imap, enc)]) + 1) // 2)
-            npcs = sorted(n for n, who in by_npc.items() if len(who) >= need)
-            if npcs:
-                n_bosses += 1
-                fh.write(json.dumps({"instanceMapId": imap, "encounterId": enc,
-                                     "npcIds": [{"npcId": n} for n in npcs]}) + "\n")
     with open(os.path.join(folder, "manifest.json"), "w", encoding="utf-8") as fh:
         json.dump({"source": EVERLOOT_URL + "/api", "dataAsOf": as_of, "credit": EVERLOOT_CREDIT,
-                   "files": [{"path": "observed/drop-rates.ndjson", "rows": len(rates)},
-                             {"path": "observed/bosses.ndjson", "rows": n_bosses}]}, fh, indent=1)
-    log("Everloot data as of %s cached: %d drop rates, %d bosses' creatures (from %d kill records)"
-        % (as_of, len(rates), n_bosses, sum(len(v) for v in reporters.values())))
+                   "files": [{"path": "observed/drop-rates.ndjson", "rows": n_npc}]}, fh, indent=1)
+    log("Everloot data as of %s cached: %d public drop rates of creatures (%d public, %d served)"
+        % (as_of, n_npc, len(rates), len(served)))
     return True
 
 
@@ -526,6 +511,7 @@ def main(check):
         every[n].append(e)
     want_loot = set()
     boss_loot = {}
+    boss_npcs = {}  # creature entry -> (instance map, encounter): Everloot's rates of a boss (its rows name no encounter)
     trash_of = {}   # instance key -> [(creature entry, its loot id)]: every creature on its map that is no boss's
     for inst in instances:
         bossy = set()
@@ -538,6 +524,8 @@ def main(check):
                 if n.startswith(bname + "'s "):
                     ents += es
             bossy.update(ents)
+            for e in ents:
+                boss_npcs.setdefault(e, (inst["map"], enc_id))
             lids = sorted({loot_ids[e] for e in ents if loot_ids.get(e)})
             boss_loot[enc_id] = lids
             want_loot.update(lids)
@@ -676,12 +664,27 @@ def main(check):
                     match[name] = enc
                     named.add(enc)
                     break
+        # (2026-11-21) every other name the same and one boss left on each side: one boss under two names (its "The
+        # Baron", the client's "The Butcher" in the Ruins of Lordaeron; its 1.12.1 reordered its list, so the place
+        # no longer pairs them). Each side counts every name it has -- its order's bosses without a list too (Lady
+        # Sarevess), so its Baron Aquanis, no encounter of the client's, stays apart
+        dm_all = set(cur["order"]) | set(cur["bosses"])
+        dm_norms = {norm_name(n) for n in dm_all}
+        our_norms = {norm_name(b) for _, b in ours}
+        ours_left = [enc for enc, b in ours if enc not in named and norm_name(b) not in dm_norms]
+        dm_left = [n for n in dm_all if n not in match and norm_name(n) not in our_norms]
+        if len(ours_left) == 1 and len(dm_left) == 1 and dm_left[0] in cur["bosses"] and not cur["bosses"][dm_left[0]]["rare"]:
+            match[dm_left[0]] = ours_left[0]
+            named.add(ours_left[0])
         if len(cur["order"]) == len(ours):
             for (enc, _), name in zip(ours, cur["order"]):
                 b = cur["bosses"].get(name)
                 if b and not b["rare"] and name not in match and enc not in named:
                     match[name] = enc
                     named.add(enc)
+        for name, enc in match.items():
+            if cur["bosses"][name]["npc"]:
+                boss_npcs[cur["bosses"][name]["npc"]] = (inst["map"], enc)
         full = []
         for enc, bname, drops in inst["bosses"]:
             name = next((n for n, e in match.items() if e == enc), None)
@@ -719,6 +722,13 @@ def main(check):
     # Everloot's drop rates (read_everloot): a boss's by his encounter's creatures, the trash's by the creatures
     # spawned on the instance's map (the database's: Forever's own creatures are on no map the data places)
     e_stamp, e_bosses, e_drops, e_names = read_everloot()
+    # (2026-11-21) its rows name a creature, never his encounter, and its kill records no longer list the creatures:
+    # a boss's are the database's and DungeonMaster's (boss_npcs)
+    for npc, where in boss_npcs.items():
+        e_bosses.setdefault(npc, where)
+    if e_stamp:
+        placed = sum(len(e_drops[n]) for n in e_drops if n in e_bosses)
+        log("Everloot %s: %d creatures' rates, %d of them bosses' rows" % (e_stamp, len(e_drops), placed))
     for inst in instances:
         e_boss, e_trash = {}, {}
         enc_ids = {enc for enc, _, _ in inst["bosses"]}

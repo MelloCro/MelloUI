@@ -3023,6 +3023,7 @@ Lang:Add("koKR", {
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "언어: 독일어를 독일 플레이어가 한 줄씩 검수했고, 대화창과 지도, 메뉴의 프랑스어가 늘었습니다.", -- draft
 	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "지도의 퀘스트 목록: 각 지역의 추적 상자와 모든 퀘스트 상자로 여러 퀘스트를 한 번에 퀘스트 추적기에 넣습니다.", -- draft
 	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "퀘스트 추적기의 RestedXP: 뒤로는 아직 완료되지 않은 단계로 돌아가고, 완료된 단계는 보여 주기만 합니다.", -- draft
+	["Dungeon Info: loot for six of Forever's own dungeons that had none, and players' measured drop rates for more bosses."] = "던전 정보: 전리품 정보가 없던 Forever 고유 던전 여섯 곳의 전리품과, 플레이어가 측정한 더 많은 우두머리의 획득 확률.", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "가이드: 애드온의 각 가이드 카드에서 단계를 표시할 곳을 고릅니다: MelloUI 퀘스트 추적기, 가이드 자체 창, 또는 둘 다.", -- draft
 	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "퀘스트 추적기의 Polestar: 각 단계에 대상이나 장소가 표시되고, 목표 아래에 Polestar의 메모가 표시됩니다.", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "월드 마커: 퀘스트에서는 언덕 위에서 내려다볼 때도 게임 자체 지점의 실제 높이에 표시됩니다.", -- draft

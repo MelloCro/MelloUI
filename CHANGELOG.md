@@ -4,6 +4,7 @@
 
 - Map's quest log: every zone's heading has a tracked box, and an All quests line on top has one for the whole log. A click shows all of those quests in the Quest Tracker, or takes them all off when every one is there already.
 - Quest Tracker with RestedXP: the step arrows' Back goes back in RestedXP to a step not done yet. A done step is only shown, and RestedXP stays on its own step; Forward walks back up to it. With no step before to show, Back is greyed instead of gone.
+- Dungeon Info: loot lists for six of Forever's own dungeons that had none (The Drowned City, Blackmaw Hold, Alcaz Prison, The Shaper's Terrace, Krol'dok Stronghold, City of Dalaran), and Forever's own lists for more classic bosses, from DungeonMaster 1.12.1. Drop rates players measured for Everloot show in Razorfen Kraul, Scarlet Monastery and Dalaran.
 
 ## 2.1.63
 

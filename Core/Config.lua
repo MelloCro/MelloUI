@@ -180,6 +180,7 @@ local CHANGELOG = {
 	{ version = "2.1.64", lines = {
 		"Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once.",
 		"RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one.",
+		"Dungeon Info: loot for six of Forever's own dungeons that had none, and players' measured drop rates for more bosses.",
 	} },
 	{ version = "2.1.63", lines = {
 		"Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both.",

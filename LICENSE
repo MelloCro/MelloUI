@@ -61,7 +61,8 @@ Data under the GPL-3.0 (not covered by the MIT License above):
   DungeonMaster by MalkDev (https://www.curseforge.com/wow/addons/dungeonmaster,
   GPL-3.0): its hand-curated lists for World of Warcraft: Forever's own
   dungeons and for the classic dungeons Forever changed (the drops whose
-  source field is 1).
+  source field is 1), partly from what Questie players see in World of
+  Warcraft: Forever (QuestieDB, https://github.com/Questie/QuestieDB, GPL-3.0).
 - MelloUI_DungeonInfo/DungeonInfoData.lua also holds Everloot's rows (each
   instance's 13th and 14th fields: drop rates players collected in World of
   Warcraft: Forever): Data from Everloot (https://everloot.app), CC BY-SA 4.0
