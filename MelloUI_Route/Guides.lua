@@ -79,7 +79,24 @@ end
 -- Navigation World Marker") a guide's own arrow left showing beside the World Marker while it is followed (its window
 -- still veiled): the switch on its card of the Addons page (Core/AddonsPage.lua), Route's setting
 -- guideArrow_<reader key>, in the profile with Route's others; off by default, as before
+-- Polestar can keep its full native presentation instead of the guide reader's replacements.
+function Guide.PolestarNative()
+	return M.db and M.db.polestarNative == true or false
+end
+
+-- Comparison is an override: keep the chosen normal mode and arrow preference for when it is switched off.
+function Guide.PolestarBoth()
+	return M.db and M.db.polestarBoth == true or false
+end
+
+function Guide.SetPolestarBoth(on)
+	if not M.db then return end
+	M.db.polestarBoth = on and true or false
+	Guide.Refresh()
+end
+
 function Guide.ArrowShown(key)
+	if key == "polestar" and Guide.PolestarBoth() then return true end
 	return (M.db and M.db["guideArrow_" .. tostring(key)] == true) and true or false
 end
 
@@ -87,7 +104,8 @@ function Guide.SetArrowShown(key, on)
 	if not (M.db and type(key) == "string") then
 		return
 	end
-	M.db["guideArrow_" .. key] = on and true or nil
+	if key == "polestar" and Guide.PolestarBoth() then return end
+	M.db["guideArrow_" .. key] = (on or key == "polestar" and Guide.PolestarNative()) and true or nil
 	if Guide.Veil then
 		Guide.Veil()   -- (a frame holding secure buttons waits for the fight's end there)
 	end
@@ -171,6 +189,17 @@ function Guide.Forget()
 	end
 end
 
+-- Switch only the guide presentation; Polestar's other integrations and its own settings stay intact.
+function Guide.SetPolestarNative(on)
+	if not M.db then
+		return
+	end
+	M.db.polestarNative = on and true or false
+	M.db.guideArrow_polestar = on and true or nil
+
+	Guide.Refresh()
+end
+
 --------------------------------------------------------------------------------
 -- Veiling a guide's own arrow and window while its guide runs here (the user,
 -- 2026-10-18: "when this compatibility is enabled, the restedxp arrow and its
@@ -238,6 +267,7 @@ do
 	-- every watched frame veiled when it is the followed guide's, given back otherwise
 	function Guide.Veil()
 		local want = {}
+		local restored
 		local reader = Following() and Guide.active
 		if reader and reader.Frames then
 			local ok, frames = pcall(reader.Frames)
@@ -281,6 +311,17 @@ do
 					frame:SetScale(v.scale or 1)
 					frame:SetAlpha(v.alpha or 1)
 					veiling = false
+					restored = restored or {}
+					restored[frame] = true
+				end
+			end
+		end
+		-- A reader may measure in screen units. Refresh only after every released frame has its real scale back,
+		-- including a release deferred through PLAYER_REGEN_ENABLED; releasing only an arrow is not a window refresh.
+		if restored then
+			for _, r in ipairs(Guide.readers) do
+				if r.Unveiled then
+					pcall(r.Unveiled, restored)
 				end
 			end
 		end
@@ -315,11 +356,26 @@ local function Read(reader)
 			reader.quick = quick
 		end
 	end
-	local parts = { m and string.format("%d:%.4f:%.4f", m, x, y) or "-" }
+	local parts = { m and string.format("%d:%.4f:%.4f", m, x, y) or "-", tostring(steps and steps.style), tostring(steps and steps.presentation) }
 	for _, line in ipairs(steps and steps.lines or {}) do
-		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-")
+		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "") .. (line.context and "c" or "") .. tostring(line.role or "") .. tostring(line.right or "") .. tostring(line.number or "")
+			.. tostring(line.current or false) .. tostring(line.icon or "") .. tostring(line.progress or "") .. tostring(line.ruleBefore or false) .. tostring(line.expanded) .. tostring(line.singleLine) .. tostring(line.font)
+			.. tostring(line.section) .. tostring(line.group) .. "q" .. tostring(line.quest)
+			.. tostring(line.fontInfo and line.fontInfo.size) .. tostring(line.fontInfo and line.fontInfo.scale)
+			.. tostring(line.rightFontInfo and line.rightFontInfo.size) .. tostring(line.rightFontInfo and line.rightFontInfo.scale)
+			.. tostring(line.numberFontInfo and line.numberFontInfo.size) .. tostring(line.numberFontInfo and line.numberFontInfo.scale)
+			.. table.concat(line.colour or {}, ",") .. table.concat(line.iconColour or {}, ",") .. table.concat(line.progressColour or {}, ",") .. tostring(line.rightFont) .. table.concat(line.rightColour or {}, ",")
 	end
 	parts[#parts + 1] = NavSig(steps)
+	for _, key in ipairs({ "counter", "control" }) do
+		local font = steps and steps.fonts and steps.fonts[key]
+		parts[#parts + 1] = font and (font.face .. tostring(font.size) .. tostring(font.scale)) or ""
+	end
+	for _, tab in ipairs(steps and steps.tabs or {}) do
+		parts[#parts + 1] = tostring(tab.title) .. tostring(tab.levels) .. tostring(tab.active)
+			.. tostring(tab.fontInfo and tab.fontInfo.size) .. tostring(tab.fontInfo and tab.fontInfo.scale)
+			.. tostring(tab.rangeFontInfo and tab.rangeFontInfo.size) .. tostring(tab.rangeFontInfo and tab.rangeFontInfo.scale)
+	end
 	reader.mapID, reader.x, reader.y, reader.steps = m, x, y, steps
 	reader.runs = (m or steps) and true or false
 	-- (its step itself -- the guide, the step's number in its title, the spot -- not its lines' progress: what takes over)
@@ -333,6 +389,18 @@ end
 local INTEGRATION = { rxp = "RestedXP", zygor = "Zygor", tomtom = "TomTom", polestar = "Polestar",
 	fta = "FollowTheArrow", apr = "APR" }   -- (2.1.51: these two on the Addons page too)
 local function Allowed(reader)
+	if Guide.PolestarNative() and not Guide.PolestarBoth() then
+		if reader.key == "polestar" then
+			return false
+		elseif reader.key == "tomtom" then
+			-- Polestar can hand its arrow to TomTom; do not reclaim that same native arrow through another reader.
+			local p = rawget(_G, "Polestar")
+			local nav = type(p) == "table" and rawget(p, "Nav")
+			if type(nav) == "table" and Pcall(nav.UsingTomTomArrow) then
+				return false
+			end
+		end
+	end
 	local I = rawget(MelloUI, "Integrations")
 	local key = INTEGRATION[reader.key]
 	return not (I and key and not I.Use(key))
@@ -399,6 +467,18 @@ end
 
 -- every hooked reader read again (following turned on, a login)
 function Guide.Refresh()
+	if Guide.PolestarNative() then
+		M.db.guideArrow_polestar = true
+	end
+	if Guide.PolestarNative() and not Guide.PolestarBoth() and Guide.active and Guide.active.key == "polestar" then
+		-- Give back only our guide pin. A waypoint the player placed must survive the handover.
+		if Ours() and C_Map.ClearUserWaypoint then
+			pcall(C_Map.ClearUserWaypoint)
+		end
+		Guide.mapID, Guide.x, Guide.y = nil, nil, nil
+		Guide.stepMap, Guide.stepX, Guide.stepY = nil, nil, nil
+		M.db.guidePin = nil
+	end
 	for _, reader in ipairs(Guide.readers) do
 		if reader.hooked and Following() then
 			reader.sig = Read(reader)
@@ -600,10 +680,15 @@ end
 function Guide.Publish()
 	local reader = Following() and Guide.active
 	local steps = reader and reader.steps
-	local parts = { (reader and reader.key or "") .. "|" .. tostring(steps and steps.title) }
+	local parts = { (reader and reader.key or "") .. "|" .. tostring(steps and steps.title), tostring(steps and steps.style), tostring(steps and steps.presentation) }
 	for _, line in ipairs(steps and steps.lines or {}) do
-		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "")
-			.. "q" .. tostring(line.quest)
+		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "") .. (line.context and "c" or "") .. tostring(line.role or "") .. tostring(line.right or "") .. tostring(line.number or "")
+			.. tostring(line.current or false) .. tostring(line.icon or "") .. tostring(line.progress or "") .. tostring(line.ruleBefore or false) .. tostring(line.expanded) .. tostring(line.singleLine) .. tostring(line.font)
+			.. tostring(line.section) .. tostring(line.group) .. "q" .. tostring(line.quest)
+			.. tostring(line.fontInfo and line.fontInfo.size) .. tostring(line.fontInfo and line.fontInfo.scale)
+			.. tostring(line.rightFontInfo and line.rightFontInfo.size) .. tostring(line.rightFontInfo and line.rightFontInfo.scale)
+			.. tostring(line.numberFontInfo and line.numberFontInfo.size) .. tostring(line.numberFontInfo and line.numberFontInfo.scale)
+			.. table.concat(line.colour or {}, ",") .. table.concat(line.iconColour or {}, ",") .. table.concat(line.progressColour or {}, ",") .. tostring(line.rightFont) .. table.concat(line.rightColour or {}, ",") .. tostring(line.expanded) .. tostring(line.singleLine)
 	end
 	for _, s in ipairs(steps and steps.upcoming or {}) do
 		parts[#parts + 1] = "#" .. tostring(s.n)
@@ -614,6 +699,15 @@ function Guide.Publish()
 	parts[#parts + 1] = NavSig(steps)
 	-- (its spot too: the Quest Tracker's distance to it)
 	parts[#parts + 1] = reader and reader.mapID and string.format("@%d:%.4f:%.4f", reader.mapID, reader.x, reader.y) or "@"
+	for _, key in ipairs({ "counter", "control" }) do
+		local font = steps and steps.fonts and steps.fonts[key]
+		parts[#parts + 1] = font and (font.face .. tostring(font.size) .. tostring(font.scale)) or ""
+	end
+	for _, tab in ipairs(steps and steps.tabs or {}) do
+		parts[#parts + 1] = tostring(tab.title) .. tostring(tab.levels) .. tostring(tab.active)
+			.. tostring(tab.fontInfo and tab.fontInfo.size) .. tostring(tab.fontInfo and tab.fontInfo.scale)
+			.. tostring(tab.rangeFontInfo and tab.rangeFontInfo.size) .. tostring(tab.rangeFontInfo and tab.rangeFontInfo.scale)
+	end
 	local sig = steps and table.concat(parts, "\n") or ""
 	if sig == Guide.sig then
 		return
@@ -627,13 +721,17 @@ function Guide.Publish()
 	Guide.title = steps.title or reader.name
 	Guide.stepText = nil
 	for _, line in ipairs(steps.lines) do
-		if not line.done and not line.skip then
-			Guide.stepText = Guide.stepText or line.text
+		if not line.done and not line.skip and not line.context then
+			Guide.stepText = line.text
+			break
 		end
 	end
 	MelloUI:Fire("guide", { section = reader.section or reader.name, lines = steps.lines, Repin = Guide.Repin,
 		Unpin = Guide.Unpin, title = Guide.title, cog = steps.cog, nav = steps.nav, away = steps.away, upcoming = steps.upcoming,
-		mapID = reader.mapID, x = reader.x, y = reader.y })
+		mapID = reader.mapID, x = reader.x, y = reader.y,
+		presentation = steps.presentation, label = steps.label, counter = steps.counter,
+		skin = steps.skin, font = steps.font, fonts = steps.fonts, metrics = steps.metrics, tabs = steps.tabs, AddTab = steps.AddTab,
+		SetCollapsed = steps.SetCollapsed })
 end
 
 -- the followed guide's items for its step on the bus's "guideitem" (the user, 2026-10-18: "when you need to use an
@@ -1651,6 +1749,12 @@ do
 		return type(t) == "table" and t or nil
 	end
 
+	-- Delegate the whole addon's visibility to its own API, including secure buttons and arrow preferences.
+	local function SetCollapsed(on)
+		local t = P()
+		if t and type(t.SetHidden) == "function" then t.SetHidden(on == true) end
+	end
+
 	local function Engine()
 		local t = P()
 		local e = t and rawget(t, "Engine")
@@ -1661,6 +1765,38 @@ do
 		local t = P()
 		local n = t and rawget(t, "Nav")
 		return type(n) == "table" and n or nil
+	end
+
+	-- GetFont already contains Polestar's resolved text-size and per-element size settings.
+	-- Remove only our tiny window veil from effective scale, retaining Polestar's real window scale.
+	local function NativeScale(region)
+		local t = P()
+		local ui = t and rawget(t, "UI")
+		local gf = type(ui) == "table" and rawget(ui, "GuideFrame")
+		local root = type(gf) == "table" and gf.frame or rawget(_G, "PolestarGuideFrame")
+		local scale = region and Finite(Pcall(region.GetEffectiveScale, region))
+		local current = region
+		for _ = 1, 64 do
+			if current == root then
+				local shownScale = root and Finite(Pcall(root.GetScale, root))
+				local nativeScale = type(gf) == "table" and Finite(gf.scale)
+				nativeScale = nativeScale or (t and Finite(Pcall(t.Get, "ui.scale"))) or 1
+				if scale and shownScale and shownScale > 0 and nativeScale > 0 then
+					scale = scale / shownScale * nativeScale
+				end
+				break
+			end
+			current = type(current) == "table" and Pcall(current.GetParent, current)
+			if not current then break end
+		end
+		return scale and scale > 0 and scale or nil
+	end
+	local function FontInfo(fs)
+		if type(fs) ~= "table" or type(fs.GetFont) ~= "function" then return nil end
+		local ok, face, size = pcall(fs.GetFont, fs)
+		size, face = Finite(size), Text(face)
+		if not (ok and face and size and size > 0) then return nil end
+		return { face = face, size = size, scale = NativeScale(fs) }
 	end
 
 	function polestar.Hook(changed)
@@ -1675,6 +1811,7 @@ do
 			changed()
 		end
 		local function Soon()
+			if not (Following() and Allowed(polestar)) then return end
 			if not pending then
 				pending = true
 				C_Timer.After(0, Run)
@@ -1682,6 +1819,21 @@ do
 		end
 		for _, msg in ipairs(MESSAGES) do
 			t.On(msg, Soon)
+		end
+		-- Read after Polestar has painted the window, including UI-only content (XP, timers and notices).
+		-- Coalesce its renders/layouts with the engine messages; never poll or call its render from a read.
+		local ui = rawget(t, "UI")
+		local gf = type(ui) == "table" and rawget(ui, "GuideFrame")
+		if type(gf) == "table" then
+			for _, key in ipairs({ "Layout", "UpdateXP", "UpdateParty", "TimerTick", "PaintProgress" }) do
+				if type(gf[key]) == "function" then
+					hooksecurefunc(gf, key, Soon)
+				end
+			end
+		end
+		local journey = type(ui) == "table" and rawget(ui, "JourneyPanel")
+		if type(journey) == "table" and type(journey.Refresh) == "function" then
+			hooksecurefunc(journey, "Refresh", Soon)   -- its existing countdown can change text without a layout
 		end
 		return true
 	end
@@ -1707,6 +1859,273 @@ do
 		return m, x / 100, y / 100
 	end
 
+	local function GoalLine(e, i, gv, text)
+		local g = tonumber(gv.index)
+		return { text = text, quest = tonumber(Plain(gv.quest)), done = gv.status == "done" or gv.status == "skipped",
+			box = gv.tickable and g and gv.status ~= "na" and not gv.header and true or false,
+			Toggle = function(tick)
+				if tick ~= (gv.status == "done") and (tick or gv.ticked) then
+					pcall(e.ToggleGoal, i, g)
+				end
+			end }
+	end
+
+	-- Read-only text from Polestar's Skin API 2 guide parts, rather than duplicating its grouping, summaries,
+	-- notices or contextual cards. Ignore alpha (our veil sets it to zero), but respect each part's shown state.
+	-- No tooltip, popup, picker or separate Polestar window is visited. Missing/changed APIs fall back to step data.
+	local function WindowLines(ui, e, i, view)
+		local gf = type(ui) == "table" and rawget(ui, "GuideFrame")
+		local parts = type(gf) == "table" and Pcall(gf.SkinParts)
+		if type(parts) ~= "table" or not parts.window or parts.window ~= rawget(_G, "PolestarGuideFrame")
+			or not parts.body then
+			return nil
+		end
+		local state = Pcall(gf.State)
+		if i and tonumber(Pcall(gf.ShownStep)) ~= i and (state == nil or state == "steps") then
+			return nil   -- the engine has advanced, but this window has not rendered that step yet
+		end
+		local function Colour(region, method)
+			if type(region) ~= "table" or type(region[method]) ~= "function" then return nil end
+			local ok, r, g, blue = pcall(region[method], region)
+			r, g, blue = Finite(r), Finite(g), Finite(blue)
+			return ok and r and g and blue and { r, g, blue } or nil
+		end
+		local addon = P()
+		local theme = addon and rawget(addon, "Theme")
+		local rows, groups, visited, out, n = {}, {}, {}, {}, 0
+		-- Named content sections carry meaning; screen coordinates only order text inside a section.
+		-- Veiled frames have tiny effective scales, so globally sorting their text loses the reading structure.
+		local sections = {
+			{ key = "heading", title = "Step heading" },
+			{ key = "current", title = "Current step" }, { key = "objectives", title = "Objectives" },
+			{ key = "notes", title = "Notes" }, { key = "class", title = "Class quest" },
+			{ key = "travel", title = "Travel" }, { key = "here", title = "While you're here" },
+			{ key = "after", title = "Then" }, { key = "along", title = "Along the way" },
+			{ key = "upnext", title = "Up next" }, { key = "party", title = "Party" },
+			{ key = "xp", title = "Experience" }, { key = "foot", title = "Guide progress" },
+			{ key = "notice", title = "Guide notice" }, { key = "other", title = "Guide details" },
+		}
+		local owners, ignored, roles = {}, {}, {}
+		local function Own(frame, section)
+			if type(frame) == "table" then owners[frame] = section end
+		end
+		if type(parts.person) == "table" and parts.person.Name then roles[parts.person.Name] = "lead" end
+		if type(parts.card) == "table" and parts.card.Section then
+			roles[parts.card.Section] = "lead"
+			-- Polestar parents its profession heading to the card, but lays it out above the person.
+			Own(parts.card.Section, "heading")
+		end
+		Own(parts.person, "current")
+		Own(parts.card, "objectives")
+		Own(parts.goals, "objectives")
+		Own(parts.tip, "notes")
+		for _, key in ipairs({ "after", "along", "upnext", "here", "foot" }) do Own(parts[key], key) end
+		Own(parts.banner, "notice")
+		Own(parts.empty, "notice")
+		Own(gf.party, "party")
+		Own(gf.xp, "xp")
+		Own(type(ui.ClassCard) == "table" and ui.ClassCard.frame, "class")
+		Own(type(ui.JourneyPanel) == "table" and ui.JourneyPanel.frame, "travel")
+		local function Ignore(frame)
+			if type(frame) == "table" then ignored[frame] = true end
+		end
+		-- Action captions are not instructions. Keep the existing tracker controls instead of printing inert buttons.
+		Ignore(parts.banner and parts.banner.Jump)
+		Ignore(parts.banner and parts.banner.Later)
+		Ignore(gf.party and gf.party.GoOn)
+		local picture = type(parts.tip) == "table" and parts.tip.Image
+		local function Shown(f)
+			-- IsShown alone does not account for a hidden ancestor. Stop at the native window: its own
+			-- visibility belongs to Polestar; our tracker may read it while it is closed or veiled.
+			for _ = 1, 64 do
+				if f == parts.window then return true end
+				if not f or Pcall(f.IsShown, f) ~= true then return false end
+				f = Pcall(f.GetParent, f)
+				if not f then return true end
+			end
+			return false
+		end
+		-- Journey is a table-like layout: its number, caption and time are separate native font strings.
+		-- Read the named fields together instead of treating their screen positions as separate instructions.
+		local journey = type(ui.JourneyPanel) == "table" and ui.JourneyPanel
+		local function JourneyLines()
+			if not (journey and type(journey.frame) == "table" and type(journey.head) == "table"
+				and type(journey.rows) == "table") then return nil end
+			local lines = {}
+			if not Shown(journey.frame) then return lines end
+			local function JourneyText(fs)
+				if type(fs) ~= "table" or not Shown(fs) then return nil end
+				local text = Text(Pcall(fs.GetText, fs))
+				return text and text:find("%S") and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or nil
+			end
+			local function Add(text, role)
+				if text then
+					local line = { text = text, role = role or "detail", section = "travel", context = true }
+					lines[#lines + 1] = line
+					return line
+				end
+			end
+			local time, distance = JourneyText(journey.head.Time), JourneyText(journey.head.Dist)
+			local heading = Add(W.Tr("Journey"), "section")
+			heading.fontInfo = FontInfo(journey.head.Label)
+			heading.rightFontInfo = FontInfo(journey.head.Time)
+			heading.rightFont = journey.head.Time and Text(Pcall(journey.head.Time.GetFont, journey.head.Time))
+			heading.rightColour = Colour(journey.head.Time, "GetTextColor")
+			heading.right = time and (time .. (distance and (" \194\183 " .. distance) or "")) or distance
+			local destination = Add(JourneyText(journey.dest), "destination")
+			if destination then destination.fontInfo = FontInfo(journey.dest) end
+			for _, row in ipairs(journey.rows) do
+				if type(row) == "table" and Shown(row) then
+					local caption = JourneyText(row.Text)
+					if caption then
+						local number, duration = JourneyText(row.Num), JourneyText(row.Time)
+						local line = Add(caption, row.psCurrent and "routeCurrent" or "route")
+						line.number, line.right = number, duration
+						line.fontInfo, line.rightFontInfo, line.numberFontInfo = FontInfo(row.Text), FontInfo(row.Time), FontInfo(row.Num)
+						line.icon = row.Icon and Pcall(row.Icon.GetTexture, row.Icon)
+						line.iconColour = Colour(row.Icon, "GetVertexColor")
+						line.font, line.colour = Text(Pcall(row.Text.GetFont, row.Text)), Colour(row.Text, "GetTextColor")
+						line.rightFont, line.rightColour = row.Time and Text(Pcall(row.Time.GetFont, row.Time)), Colour(row.Time, "GetTextColor")
+						Add(JourneyText(row.Sub))
+					end
+				end
+			end
+			Add(JourneyText(journey.more))
+			return lines
+		end
+		local travelLines = JourneyLines()
+
+		for index, row in ipairs(type(parts.rows) == "table" and parts.rows or {}) do
+			if type(row) == "table" and type(row.psGoal) == "table" and row.Text then
+				groups[row] = index
+				rows[row.Text] = { goal = row.psGoal, row = row }
+				Ignore(row.Skip)
+				Ignore(row.Share)
+				Ignore(row.Aim)
+			end
+		end
+		local function Visit(f, section, role, group)
+			if travelLines and journey and f == journey.frame then return end
+			if type(f) ~= "table" or visited[f] or ignored[f] or not Shown(f) then
+				return
+			end
+			section = owners[f] or section or "other"
+			group = groups[f] or group
+			visited[f], n = true, n + 1
+			if n > 1024 then
+				error("guide parts exceed read limit")   -- guarded by Steps; never publish a partial window
+			end
+			local text = Pcall(f.GetObjectType, f) == "FontString" and Text(Pcall(f.GetText, f))
+			local pictureData
+			if f == picture then
+				local texture = Pcall(f.GetTexture, f)
+				local w, h = Finite(Pcall(f.GetWidth, f)), Finite(Pcall(f.GetHeight, f))
+				if (type(texture) == "string" or type(texture) == "number") and w and h and w > 0 and h > 0 then
+					local factor = math.min(1, 180 / w, 180 / h)
+					pictureData = { texture = texture, width = math.max(1, math.floor(w * factor)), height = math.max(1, math.floor(h * factor)) }
+					text = string.format("|T%s:%d:%d|t", texture, pictureData.height, pictureData.width)
+				end
+			end
+			if text and text:find("%S") then
+				local source = rows[f]
+				local gv = source and source.goal
+				-- Use the tracker's colours. Polestar's inline theme colours can have poor contrast in another skin.
+				if type(theme) ~= "table" then text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
+				local line = gv and GoalLine(e, i, gv, text) or { text = text, context = true, picture = pictureData }
+				line.section = section
+				line.group = group
+				line.font = Text(Pcall(f.GetFont, f))
+				line.fontInfo = FontInfo(f)
+				line.colour = Colour(f, "GetTextColor")
+				if source then
+					line.current = type(view) == "table" and view.current == gv.index and gv.status == "active" or false
+					line.icon = source.row.Icon and Pcall(source.row.Icon.GetTexture, source.row.Icon)
+					line.iconColour = Colour(source.row.Icon, "GetVertexColor")
+				end
+				if section == "foot" and text:match("^%s*%d+%%%s*$") then
+					local done, total = Finite(Plain(parts.foot.psDone)), Finite(Plain(parts.foot.psTotal))
+					line.progress = done and total and total > 0 and math.max(0, math.min(1, done / total))
+						or math.max(0, math.min(1, tonumber(text:match("%d+")) / 100))
+				end
+				if parts.person and parts.person.Name == f then
+					line.icon = parts.person.Icon and Pcall(parts.person.Icon.GetTexture, parts.person.Icon)
+					line.iconColour = Colour(parts.person.Icon, "GetVertexColor")
+					line.ruleAfter = not (parts.person.Where and Shown(parts.person.Where))
+				end
+				if parts.person and parts.person.Where == f then line.ruleAfter = true end
+				local parent = Pcall(f.GetParent, f)
+				if type(parent) == "table" and parent.Text == f and parent.Icon and not line.icon then
+					line.icon = Pcall(parent.Icon.GetTexture, parent.Icon)
+					line.iconColour = Colour(parent.Icon, "GetVertexColor")
+				end
+				if line.progress and parts.foot then
+					line.progressColour = Colour(parts.foot.Status, "GetStatusBarColor")
+						or Colour(parts.foot.Line and parts.foot.Line.Fill, "GetVertexColor")
+				end
+				local summary = type(parent) == "table" and parent.Text == f and type(parent.psGoals) == "table"
+				line.role = gv and "objective" or roles[f] or (summary and "lead") or role or (section == "notes" and "note" or "detail")
+				local scale = Finite(Pcall(f.GetEffectiveScale, f)) or 1
+				out[#out + 1] = { line = line, top = (Finite(Pcall(f.GetTop, f)) or 0) * scale,
+					left = (Finite(Pcall(f.GetLeft, f)) or 0) * scale, order = #out + 1 }
+			end
+			for _, method in ipairs({ "GetRegions", "GetChildren" }) do
+				if type(f[method]) == "function" then
+					local list = { pcall(f[method], f) }
+					if not list[1] then error("guide parts cannot be read") end
+					for j = 2, #list do Visit(list[j], section, role, group) end
+				end
+			end
+		end
+		-- Independent roots also cover a skin placing one of the exposed parts outside the body.
+		for _, key in ipairs({ "body", "card", "person", "tip", "after", "along", "upnext", "empty", "banner", "here", "goals", "foot" }) do
+			Visit(parts[key])
+		end
+		table.sort(out, function(a, b)
+			if a.top ~= b.top then return a.top > b.top end
+			if a.left ~= b.left then return a.left < b.left end
+			return a.order < b.order
+		end)
+		local lines = {}
+		local title = type(view) == "table" and Text(view.title)
+		local personName = type(parts.person) == "table" and parts.person.Name
+		local hasPerson = personName and Shown(personName) and Text(Pcall(personName.GetText, personName))
+		for _, section in ipairs(sections) do
+			local first = #lines + 1
+			if section.key == "current" and title and title ~= "" and not hasPerson then
+				lines[#lines + 1] = { text = title, role = "lead", context = true }
+			end
+			if section.key == "travel" and travelLines then
+				for _, line in ipairs(travelLines) do lines[#lines + 1] = line end
+			end
+			for _, entry in ipairs(out) do
+				local line = entry.line
+				if line.section == section.key and not (section.key == "current" and line.text == title and not hasPerson) then
+					lines[#lines + 1] = line
+				end
+			end
+			-- Keep Polestar's own section wording (Then:, Still to do, Up next). No extra gold headings.
+			if #lines >= first and section.key ~= "heading" and section.key ~= "current" and section.key ~= "objectives" and section.key ~= "notes" then
+				lines[first].ruleBefore = true
+			end
+		end
+		local p = P()
+		local firsts = {}
+		for _, line in ipairs(lines) do
+			local key = line.section
+			if key and not firsts[key] then
+				firsts[key] = true
+				local option = key == "notes" and "ui.notesOpen" or key == "upnext" and "ui.upcomingOpen"
+					or key == "travel" and "nav.journeyOpen"
+				if option and p and type(p.Get) == "function" and type(p.Set) == "function" then
+					line.expanded = Pcall(p.Get, option) and true or false
+					line.Collapse = function() pcall(p.Set, option, not Pcall(p.Get, option)) end
+					line.singleLine = key == "notes" and not line.expanded
+				end
+			end
+		end
+		return #lines > 0 and lines or nil
+	end
+
 	-- its step: a line per goal as its window words it (UI.PlainGoalText, the count after it), done when done or
 	-- skipped, a box on the goals it lets the player tick; its step buttons as its own window's arrows and Skip: Prev
 	-- looks a step back, and while it looks at an earlier step Next walks forward (nothing skipped), at the live one
@@ -1714,63 +2133,64 @@ do
 	local seen   -- { step, view }: the step's view Steps read, for Goals right after it (one view a read)
 	function polestar.Steps()
 		local t, e = P(), Engine()
-		local i = e and tonumber(Pcall(e.GetStepIndex))
+		if not e then return nil end
+		local i = tonumber(Pcall(e.GetStepIndex))
 		local ok, view = pcall(i and e.GetStepView, i)
 		seen = ok and type(view) == "table" and { i, view } or nil
-		if not ok or type(view) ~= "table" or type(view.goals) ~= "table" then
-			return nil
-		end
-		local ui = rawget(t, "UI")
-		local word = type(ui) == "table" and ui.PlainGoalText
-		local count = type(ui) == "table" and ui.GoalProgress
-		local lines = {}
-		for _, gv in ipairs(view.goals) do
-			if type(gv) == "table" and gv.status ~= "na" and not gv.folded and not gv.header then
-				local text = Text(Pcall(word, gv)) or Text(gv.text)
-				local n = gv.status ~= "skipped" and Text(Pcall(count, gv))
-				if text and text ~= "" then
-					local g = tonumber(gv.index)
-					lines[#lines + 1] = { text = n and (text .. " (" .. n .. ")") or text,
-						done = (gv.status == "done" or gv.status == "skipped") and true or false,
-						quest = tonumber(Plain(gv.quest)),   -- (its quest: a click on the line in the tracker follows it)
-						box = gv.tickable and g and true or false, Toggle = function(tick)
-							-- (its window's tick: on for a goal not done, off for one the player ticked)
-							if tick ~= (gv.status == "done") and (tick or gv.ticked) then
-								pcall(e.ToggleGoal, i, g)
-							end
-						end }
-				end
+		local ui = t and rawget(t, "UI")
+		local okW, window = pcall(WindowLines, ui, e, i, view)
+		local lines = okW and window or nil
+		if not lines then
+			if not ok or type(view) ~= "table" or type(view.goals) ~= "table" then
+				return nil
 			end
-		end
-		-- (a step whose only lines are headings, a lone "Go to ..." goto: its first heading as the one line)
-		if #lines == 0 then
+			lines = {}
+			local function Add(text, role)
+				text = Text(text)
+				if text and text:find("%S") then lines[#lines + 1] = { text = text, context = true, role = role or "detail" } end
+			end
+			Add(type(view.section) == "table" and view.section.title, "section")
+			if Text(view.title) then Add(W.Tr("Current step"), "section") end
+			Add(view.title, "lead")
+			Add(view.why)
+			local objectives
 			for _, gv in ipairs(view.goals) do
-				if type(gv) == "table" and gv.header and gv.status ~= "na" then
-					local text = Text(Pcall(word, gv)) or Text(gv.text)
+				if type(gv) == "table" and gv.status ~= "na" and not gv.folded then
+					local text = Text(Pcall(type(ui) == "table" and ui.GoalLine, gv))
+					if not text then
+						text = Text(Pcall(type(ui) == "table" and ui.PlainGoalText, gv)) or Text(gv.text)
+						local count = gv.status ~= "skipped" and Text(Pcall(type(ui) == "table" and ui.GoalProgress, gv))
+						if text and count then text = text .. " (" .. count .. ")" end
+					end
 					if text and text ~= "" then
-						lines[1] = { text = text, done = gv.status == "done" and true or false, box = false }
-						break
+						if not objectives then Add(W.Tr("Objectives"), "section"); objectives = true end
+						local line = GoalLine(e, i, gv, text)
+						line.role = gv.header and "lead" or "objective"
+						lines[#lines + 1] = line
+						Add(Pcall(type(ui) == "table" and ui.GoalSubline, gv))
 					end
 				end
 			end
+			-- Preserve upstream's readable fallback for an earlier step whose goals no longer apply.
+			if not objectives then
+				for _, gv in ipairs(view.goals) do
+					if type(gv) == "table" and gv.status == "na" and not gv.folded then
+						local text = Text(Pcall(type(ui) == "table" and ui.PlainGoalText, gv)) or Text(gv.text)
+						if text then
+							local line = GoalLine(e, i, gv, text)
+							line.done, line.box, line.role = true, false, "objective"
+							lines[#lines + 1] = line
+						end
+					end
+				end
+			end
+			if Text(view.note) and view.note ~= "" then
+				Add(W.Tr("Notes"), "section")
+				Add(view.note, "note")
+			end
 		end
+		if #lines == 0 then return nil end
 		local live = tonumber(Pcall(e.GetLiveStep))
-		-- (a step every goal of which reads "na" -- an earlier step looked at, whose goals no longer apply: its goals
-		-- dimmed, as done, so the guide section stays while its arrows walk past it; "na" goals stay hidden on a step
-		-- that has others)
-		if #lines == 0 then
-			for _, gv in ipairs(view.goals) do
-				if type(gv) == "table" and gv.status == "na" and not gv.folded then
-					local text = Text(Pcall(word, gv)) or Text(gv.text)
-					if text and text ~= "" then
-						lines[#lines + 1] = { text = text, done = true, quest = tonumber(Plain(gv.quest)), box = false }
-					end
-				end
-			end
-		end
-		if #lines == 0 then
-			return nil
-		end
 		local function Behind()
 			local at, now = tonumber(Pcall(e.GetStepIndex)), tonumber(Pcall(e.GetLiveStep))
 			return at and now and at < now or false
@@ -1782,25 +2202,8 @@ do
 				elseif type(e.Skip) == "function" then
 					e.Skip()
 				end
-			end, live and i < live)
-		-- (its open guide tabs, two or more: a tab button in the heading switches to the next, round to the first --
-		-- Engine.GetTabs, Engine.SelectTab, as its own tab strip does)
-		if type(e.GetTabs) == "function" and type(e.SelectTab) == "function" then
-			local okT, tabs, active = pcall(e.GetTabs)
-			local n = okT and type(tabs) == "table" and #tabs or 0
-			active = tonumber(active)
-			if n >= 2 and active then
-				local nextI = active % n + 1
-				local nt = type(tabs[nextI]) == "table" and tabs[nextI] or {}
-				local tabName = Text(nt.title) or Text(nt.guideId) or "?"
-				nav = nav or { name = polestar.name }
-				nav.Tab = function()
-					pcall(e.SelectTab, nextI)
-					C_Timer.After(0, function() Guide.Changed(polestar) end)
-				end
-				nav.tabTip = W.Tr("Next guide tab: %s (%d/%d)"):format(tabName, nextI, n)
-			end
-		end
+			end, live and i and i < live)
+		if nav and type(e.Next) == "function" then nav.Next = function() pcall(e.Next) end end
 		local guide = Pcall(e.GetGuide)
 		local name = type(guide) == "table" and Text(guide.title) or nil
 		-- (its steps as the player counts them, as its window does: Engine.StepNumber / StepTotal leave out the steps of
@@ -1822,14 +2225,63 @@ do
 		-- (looking at another step than its live one: the count tinted in the tracker, a click on it back to the live
 		-- step -- Engine.Goto, as its window's "Back to step N" does)
 		local away
-		if live and i ~= live and type(e.Goto) == "function" then
+		if live and i and i ~= live and type(e.Goto) == "function" then
 			away = { count = No(i) .. (total and ("/" .. total) or ""),
 				tip = W.Tr("Viewing step %s. Click: back to step %s."):format(No(i), No(live)), Back = function()
 					pcall(e.Goto, live)
 					C_Timer.After(0, function() Guide.Changed(polestar) end)
 				end }
 		end
-		return { title = W.Tr("%s - step %s%s"):format(name or "Polestar", No(i), total and ("/" .. total) or ""), lines = lines,
+		local title = i and W.Tr("%s - step %s%s"):format(name or "Polestar", No(i), total and ("/" .. total) or "") or name or "Polestar"
+		local tabs = {}
+		local gf = type(ui) == "table" and rawget(ui, "GuideFrame")
+		local nativeParts = type(gf) == "table" and Pcall(gf.SkinParts)
+		local nativeTabs = type(gf) == "table" and rawget(gf, "tabs")
+		local nativeNav = type(nativeParts) == "table" and nativeParts.nav
+		local fonts = {
+			counter = FontInfo(nativeNav and nativeNav.Steps and nativeNav.Steps.Count),
+			control = FontInfo(nativeNav and nativeNav.Skip and nativeNav.Skip.Label),
+		}
+		local okT, list, active = pcall(e.GetTabs)
+		if okT and type(list) == "table" then
+			for index, tab in ipairs(list) do
+				if type(tab) == "table" then
+					local registry = rawget(t, "Guides")
+					local g = type(registry) == "table" and Pcall(registry.Get, tab.guideId)
+					local nativeTab = type(nativeTabs) == "table" and nativeTabs[index]
+					tabs[#tabs + 1] = { title = Text(tab.title) or Text(tab.guideId) or "Polestar",
+						levels = type(ui) == "table" and Text(Pcall(ui.GuideLevels, g)), active = index == active,
+						fontInfo = FontInfo(nativeTab and nativeTab.Label), rangeFontInfo = FontInfo(nativeTab and nativeTab.Range),
+						Select = function() pcall(e.SelectTab, index) end, Close = function() pcall(e.CloseTab, index) end }
+				end
+			end
+		end
+		if #tabs == 0 then
+			tabs[1] = { title = name or "Polestar", levels = type(ui) == "table" and Text(Pcall(ui.GuideLevels, guide)), active = true }
+		end
+		local function AddTab()
+			if type(ui) == "table" then pcall(ui.ShowPicker, { newTab = true }) end
+		end
+		local skin = rawget(t, "Theme")
+		local style = type(skin) == "table" and (tostring(Pcall(skin.SkinKey)) .. tostring(Pcall(skin.Palette))) or nil
+		local resolved = type(gf) == "table" and Pcall(gf.Metrics)
+		local metrics
+		if type(resolved) == "table" then
+			metrics = { scale = NativeScale(type(nativeParts) == "table" and nativeParts.window) }
+			local signature = {}
+			for _, key in ipairs({ "pad", "progH", "icon", "textX", "rowMin", "check", "rowPad", "checkIn", "upRow", "upToggle", "glyphY", "lineH" }) do
+				metrics[key] = Finite(resolved[key])
+				signature[#signature + 1] = tostring(metrics[key])
+			end
+			metrics.litInset = type(skin) == "table" and Finite(Pcall(skin.Metric, "guideLitInset", 4)) or 4
+			metrics.checkMiddle = type(skin) == "table" and Pcall(skin.Metric, "guideCheckMiddle", false) == true
+			style = tostring(style) .. table.concat(signature, ":") .. tostring(metrics.scale) .. tostring(metrics.litInset) .. tostring(metrics.checkMiddle)
+		end
+		return { title = title, lines = lines, skin = skin, style = style, metrics = metrics, fonts = fonts, tabs = tabs, AddTab = AddTab,
+			SetCollapsed = type(t.SetHidden) == "function" and SetCollapsed or nil,
+			presentation = okW and type(window) == "table" and "polestar" or nil,
+			font = okW and type(window) == "table" and window[1] and window[1].font,
+			label = name or "Polestar", counter = i and (tostring(No(i)) .. (total and (" / " .. total) or "")) or nil,
 			nav = nav, away = away, cog = { Left = Picker, Right = Settings, tip = "Polestar",
 				hint = W.Tr("Click: its guides  -  Right-click: its settings") } }
 	end
@@ -1989,8 +2441,24 @@ do
 	end
 
 	function polestar.Frames()
+		if Guide.PolestarBoth() then return {} end
 		return List(Arrow(), rawget(_G, "PolestarGuideFrame"), rawget(_G, "PolestarQuestItemButton"),
 			rawget(_G, "PolestarHearthButton"))
+	end
+
+	-- Its layout's height cap and grow-up bounds use the frame's effective scale. A step rendered under the
+	-- veil can leave oversized dimensions cached: remeasure at the restored scale without changing the step.
+	function polestar.Unveiled(restored)
+		local frame = rawget(_G, "PolestarGuideFrame")
+		if not (frame and restored[frame]) then
+			return
+		end
+		local t = P()
+		local ui = t and rawget(t, "UI")
+		local gf = type(ui) == "table" and rawget(ui, "GuideFrame")
+		if type(gf) == "table" and gf.frame == frame and type(gf.Layout) == "function" then
+			gf.Layout()
+		end
 	end
 
 	function polestar.Arrows()   -- (2.1.51: Guide.ArrowShown)
@@ -2003,6 +2471,7 @@ do
 	-- player's, left so for the session.
 	local held, theirs, leaving, logout
 	function polestar.Quiet(on)
+		on = on and not Guide.PolestarBoth()
 		local t = P()
 		if not (t and type(t.Get) == "function" and type(t.Set) == "function") then
 			return

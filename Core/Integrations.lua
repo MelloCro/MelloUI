@@ -183,10 +183,9 @@ I.LIST = {
 	{ key = "Polestar", name = "Polestar", folders = { "Polestar" }, group = "quests", arrow = "polestar",
 	  url = "https://github.com/fitzforge/polestar",
 	  does = { "The jobs it does while its own switches are on go before MelloUI's (Who does what lists them).",
-		"Route follows its guide's steps.", STEP_BUTTONS,
-		-- (2.1.58) Core/Overlaps.lua's QuestLines
+		"Choose Polestar's own windows and navigation, or its guide steps and navigation in MelloUI.", STEP_BUTTONS,
 		"With Questie, its quest lines on creatures and objects are left out: Questie writes them." },
-	  short = "Its jobs go before MelloUI's; Route follows its guide",
+	  short = "Its jobs go before MelloUI's; choose its own guide windows or MelloUI's",
 	  links = {},
 	  parts = { { "its settings", function()
 		local P = Global("Polestar")

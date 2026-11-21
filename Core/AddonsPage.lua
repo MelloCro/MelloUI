@@ -65,6 +65,10 @@ local TEXT = {
 	jobs = "Who does what",
 	colJob = "Job", colBy = "Done by",
 	-- (2.1.51) a guide's card: its own arrow beside MelloUI's World Marker
+	polestarBoth = "Show both Polestar and tracker",
+	polestarBothTip = "Show Polestar's native windows and arrow alongside its guide in MelloUI's tracker. Off: return to your selected display mode and arrow setting. Polestar's own visibility settings still apply.",
+	nativePolestar = "Use Polestar's own windows",
+	nativePolestarTip = "On: Polestar shows its own guide windows, buttons and navigation. Off: MelloUI shows its guide steps, buttons and navigation. This also switches its own arrow on or off.",
 	arrow = "Show its own arrow too",
 	arrowTip = "Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way.",
 	-- (2.1.52, stage 2) a needed addon's card while it is not installed (I.LIST's `needed`: Questie)
@@ -317,6 +321,38 @@ local function Card(parent, e, width, skin, ctx)
 	-- the setting is Route's, in the profile). No Route: no row
 	local route = e.arrow and MelloUI:GetModule("Route")
 	local G = route and route.Guide
+	if e.key == "Polestar" and G and G.SetPolestarNative then
+		local label = W.Text(body, "GameFontHighlight", Tr(TEXT.nativePolestar), "text")
+		label:SetPoint("TOPLEFT", body, "TOPLEFT", T.PAD + 4, -(by + 8))
+		local sw = W.Switch(body, G.PolestarNative, function(on)
+			G.SetPolestarNative(on)
+			if card.Refresh then
+				card.Refresh()
+			end
+		end)
+		sw:SetPoint("TOPRIGHT", body, "TOPRIGHT", -T.PAD, -(by + 4))
+		sw.melloTipTitle, sw.melloTipBody = Tr(TEXT.nativePolestar), Tr(TEXT.nativePolestarTip)
+		Perf.HookScript(sw, "OnEnter", ArrowTipEnter)
+		Perf.HookScript(sw, "OnLeave", W.TipLeave)
+		card.nativePolestarSwitch = sw
+		Rule(body, by + T.ROW_H - 2)
+		by = by + T.ROW_H
+	end
+	if e.key == "Polestar" and G and G.SetPolestarBoth then
+		local label = W.Text(body, "GameFontHighlight", Tr(TEXT.polestarBoth), "text")
+		label:SetPoint("TOPLEFT", body, "TOPLEFT", T.PAD + 4, -(by + 8))
+		local sw = W.Switch(body, G.PolestarBoth, function(on)
+			G.SetPolestarBoth(on)
+			if card.Refresh then card.Refresh() end
+		end)
+		sw:SetPoint("TOPRIGHT", body, "TOPRIGHT", -T.PAD, -(by + 4))
+		sw.melloTipTitle, sw.melloTipBody = Tr(TEXT.polestarBoth), Tr(TEXT.polestarBothTip)
+		Perf.HookScript(sw, "OnEnter", ArrowTipEnter)
+		Perf.HookScript(sw, "OnLeave", W.TipLeave)
+		card.polestarBothSwitch = sw
+		Rule(body, by + T.ROW_H - 2)
+		by = by + T.ROW_H
+	end
 	if G and G.ArrowShown then
 		local label = W.Text(body, "GameFontHighlight", Tr(TEXT.arrow), "text")
 		label:SetPoint("TOPLEFT", body, "TOPLEFT", T.PAD + 4, -(by + 8))
@@ -410,7 +446,19 @@ local function Card(parent, e, width, skin, ctx)
 		if card.switch then
 			card.switch:Refresh()
 		end
+		if card.polestarBothSwitch then card.polestarBothSwitch:Refresh() end
+		if card.nativePolestarSwitch then
+			local both = G.PolestarBoth and G.PolestarBoth()
+			card.nativePolestarSwitch:Refresh()
+			card.nativePolestarSwitch:SetEnabled(not both)
+			card.nativePolestarSwitch:SetAlpha(both and 0.5 or 1)
+		end
 		if card.arrowSwitch then
+			if e.key == "Polestar" and G.PolestarNative then
+				local native = G.PolestarNative() or (G.PolestarBoth and G.PolestarBoth())
+				card.arrowSwitch:SetEnabled(not native)
+				card.arrowSwitch:SetAlpha(native and 0.5 or 1)
+			end
 			card.arrowSwitch:Refresh()   -- (2.1.51: the setting may have changed with a profile)
 		end
 		local now = {}

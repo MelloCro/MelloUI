@@ -2530,6 +2530,11 @@ local function ReleaseBlock(block)
 		b.line = nil
 	end
 	block.guideClick, block.guideRight = nil, nil
+	block.guideData = nil
+	block.guideMetrics = nil
+	if block.polestarSurface then block.polestarSurface:Hide() end
+	for _, control in ipairs(block.guideHeader or {}) do control:Hide() end
+	for _, control in ipairs(block.guideControls or {}) do control:Hide() end
 	if block.linkLayer then
 		-- (a guide's link layer: mouse and links off, the block's own clicks its own again -- the next lines may be a
 		-- quest's; GuideLayer turns them on for a guide)
@@ -3442,6 +3447,10 @@ local function Line(block, i)
 	end
 	StyleText(fs, TitleSize() - 1)
 	StyleText(fs.dash, TitleSize() - 1)
+	fs:SetJustifyH("LEFT")
+	fs:SetMaxLines(0)
+	fs:SetWordWrap(true)
+	for _, art in pairs(fs.guideArt or {}) do art:Hide() end
 	return fs
 end
 
@@ -3547,6 +3556,7 @@ local function HideLines(block, from)
 		local fs = block.lines[i]
 		fs:Hide()
 		fs.dash:Hide()
+		for _, art in pairs(fs.guideArt or {}) do art:Hide() end
 		if fs.count then
 			fs.count:Hide()
 		end
@@ -4029,6 +4039,7 @@ local function GuideBox(block, i)
 	box:SetSize(14, 14)
 	box:SetPoint("CENTER", b, "CENTER", 0, 0)
 	W.Icon(box, "ctl_check_off", 14)
+	b.off = box
 	b.tick = b:CreateTexture(nil, "ARTWORK")
 	W.Icon(b.tick, "ctl_check_on", 14)
 	b.tick:SetSize(14, 14)
@@ -4345,9 +4356,423 @@ do
 		return l
 	end
 
+	-- Polestar's theme is applied only to tracker-owned frames. Never reparent or mutate its live guide window.
+	function GUIDE.ClearPresentation(block)
+		block.guideData, block.guideMetrics = nil, nil
+		if block.polestarSurface then block.polestarSurface:Hide() end
+		for _, control in ipairs(block.guideHeader or {}) do control:Hide() end
+		for _, control in ipairs(block.guideControls or {}) do control:Hide() end
+	end
+
+	function GUIDE.NativeColour(region, skin, key, method, alpha)
+		if not (skin and type(skin.Color) == "function" and region and region[method]) then return end
+		local ok, r, g, b, a = pcall(skin.Color, key)
+		if ok and MelloUI.Safe.Number(r) and MelloUI.Safe.Number(g) and MelloUI.Safe.Number(b) then
+			region[method](region, r, g, b, alpha or a or 1)
+		end
+	end
+
+	function GUIDE.NativeFont(fs, data, line, size)
+		local spec = line and line.fontInfo
+		local face = spec and spec.face or line and line.font or data.font
+		if spec and type(spec.size) == "number" and spec.size > 0 then
+			size = spec.size
+			local ok, targetScale = pcall(fs.GetEffectiveScale, fs)
+			targetScale = ok and MelloUI.Safe.Number(targetScale)
+			if spec.scale and targetScale and targetScale > 0 then size = size * spec.scale / targetScale end
+		end
+		if type(face) == "string" and fs.SetFont then pcall(fs.SetFont, fs, face, size, "") end
+		if line and line.colour then fs:SetTextColor(unpack(line.colour)) end
+	end
+
+	-- Content dimensions use the same screen scale as native text. Header geometry is independent.
+	function GUIDE.Metrics(block, data)
+		if data.presentation ~= "polestar" or type(data.metrics) ~= "table" then return nil end
+		local source = data.metrics
+		local ok, scale = pcall(block.GetEffectiveScale, block)
+		scale = ok and MelloUI.Safe.Number(scale)
+		local unit = source.scale and scale and scale > 0 and source.scale / scale or 1
+		local m = { unit = unit, checkMiddle = source.checkMiddle }
+		for key, fallback in pairs({ pad = 14, textX = 39, progH = 26,
+			icon = 15, rowMin = 24, check = 18, rowPad = 0, checkIn = 0, upRow = 24,
+			upToggle = 30, glyphY = 12, litInset = 4 }) do
+			m[key] = (MelloUI.Safe.Number(source[key]) or fallback) * unit
+		end
+		return m
+	end
+
+	-- Reflow native rows to the tracker width, retaining the native margins and room around their text.
+	function GUIDE.RowLayout(m, line, previous, following)
+		local s, section = m.unit, line.section
+		local first, final = not previous or previous.section ~= section, not following or following.section ~= section
+		local r = { left = m.pad, right = m.pad, before = 0, after = 0, minimum = 0 }
+		if section == "heading" then
+			r.before = 8 * s
+		elseif section == "current" then
+			r.left, r.before, r.after = m.textX, first and 10 * s or 0, (final and 8 or 3) * s
+		elseif section == "objectives" then
+			r.left = m.textX
+			local detail = line.group and not first and previous.group == line.group or not line.group and line.role == "detail"
+			local more = not final and (line.group and following.group == line.group or not line.group and following.role == "detail")
+			r.before = detail and 0 or 4 * s + m.rowPad
+			r.after = more and 3 * s or 6 * s + m.rowPad
+			r.minimum = not detail and not more and m.rowMin or 0
+			if line.box then r.right = r.right + m.check + 4 * s + m.checkIn end
+		elseif section == "notes" then
+			r.left, r.before, r.after = m.pad + 18 * s, first and 8 * s or 0, 6 * s
+		elseif section == "travel" then
+			-- Journey owns its layout independently of the guide skin's padding.
+			r.left, r.right, r.center = 14 * s, 14 * s, true
+			if first then r.minimum = 30 * s
+			elseif line.role == "destination" then r.left, r.minimum = 39 * s, 22 * s
+			else r.left, r.minimum = 61 * s, 24 * s end
+			r.after = final and 6 * s or 0
+		elseif section == "after" then
+			r.minimum, r.center = 28 * s, true
+		elseif section == "along" or section == "upnext" or section == "here" then
+			r.minimum, r.center = first and m.upToggle or m.upRow, true
+			if not first then r.left = m.textX + 22 * s end
+			r.firstLine = not first and (section == "along" or section == "upnext")
+			r.after = final and not first and 6 * s or 0
+		elseif section == "xp" or section == "party" then
+			r.left, r.minimum, r.center = m.pad + 18 * s, first and 28 * s or 16 * s, true
+		elseif section == "foot" then
+			r.minimum, r.center = m.progH, true
+		else
+			r.after = 3 * s
+		end
+		local cardSection = section == "heading" or section == "current" or section == "objectives" or section == "notes"
+		local nextSection = following and following.section
+		if cardSection and nextSection ~= "heading" and nextSection ~= "current" and nextSection ~= "objectives" and nextSection ~= "notes" then
+			r.cardAfter = 6 * s
+		end
+		if line.Collapse and line.role ~= "note" then r.right = r.right + 18 * s end
+		return r
+	end
+
+	function GUIDE.PlaceCheck(button, block, m, width, top, height)
+		button:ClearAllPoints()
+		local right = width - (m.pad - 3 * m.unit + m.checkIn)
+		local y = top + (m.checkMiddle and height / 2 or 3 * m.unit + m.rowPad)
+		button:SetPoint(m.checkMiddle and "RIGHT" or "TOPRIGHT", block, "TOPLEFT", right, -y)
+	end
+
+	function GUIDE.Surface(block, data, width, layer)
+		block.guideMetrics = GUIDE.Metrics(block, data)
+		local f = block.polestarSurface
+		if not f then
+			f = CreateFrame("Frame", nil, block, "BackdropTemplate")
+			f.psGuide, f.psGuideWindow = true, true
+			f:SetAllPoints(block)
+			block.polestarSurface = f
+			f.tabs = {}
+		end
+		f:SetFrameLevel(block:GetFrameLevel() + 1)
+		layer:SetFrameLevel(block:GetFrameLevel() + 3)
+		f:Show()
+		local skin = data.skin
+		local function Skin(widget, kind)
+			if skin and type(skin.Skin) == "function" then return pcall(skin.Skin, widget, kind) end
+		end
+		local function Button(parent, text, fn)
+			local b = CreateFrame("Button", nil, parent)
+			b.label = b:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
+			b.label:SetPoint("CENTER")
+			b.label:SetText(text)
+			b.fn = fn
+			b:SetSize(22, 20)
+			Perf.SetScript(b, "OnClick", function(self) if self.fn then pcall(self.fn) end end)
+			b:EnableMouseWheel(true)
+			Perf.SetScript(b, "OnMouseWheel", function(_, delta) Scroll(delta) end)
+			return b
+		end
+		if not f.strip then
+			f.strip = CreateFrame("Frame", nil, layer)
+			f.strip:SetHeight(25)
+			f.strip:SetPoint("TOPLEFT", block, "TOPLEFT", 5, -4)
+			f.strip:SetPoint("TOPRIGHT", block, "TOPRIGHT", -5, -4)
+			f.psStrip = f.strip
+			f.add = Button(f.strip, "+")
+			f.add:SetPoint("TOPRIGHT", f.strip, "TOPRIGHT", -1, -2)
+			f.back = Button(layer, "<")
+			f.back:SetPoint("TOPLEFT", block, "TOPLEFT", 12, -32)
+			f.count = layer:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
+			f.count:SetPoint("LEFT", f.back, "RIGHT", 5, 0)
+			f.next = Button(layer, ">")
+			f.next:SetPoint("LEFT", f.count, "RIGHT", 5, 0)
+			f.menu = Button(layer, "...")
+			f.menu:SetPoint("TOPRIGHT", block, "TOPRIGHT", -12, -32)
+			f.skip = Button(layer, Tr("Skip"))
+			f.skip:SetWidth(42)
+			f.skip:SetPoint("RIGHT", f.menu, "LEFT", -5, 0)
+		end
+		do
+			f.strip:ClearAllPoints()
+			-- The tab strip and navigator retain their own compact tracker layout.
+			f.strip:SetPoint("TOPLEFT", block, "TOPLEFT", 5, -4)
+			f.strip:SetPoint("TOPRIGHT", block, "TOPRIGHT", -5, -4)
+			f.strip:SetHeight(25)
+			f.back:ClearAllPoints()
+			f.back:SetPoint("TOPLEFT", block, "TOPLEFT", 12, -32)
+			f.menu:ClearAllPoints()
+			f.menu:SetPoint("TOPRIGHT", block, "TOPRIGHT", -12, -32)
+			f.count:SetPoint("LEFT", f.back, "RIGHT", 5, 0)
+			f.next:SetPoint("LEFT", f.count, "RIGHT", 5, 0)
+			f.skip:SetPoint("RIGHT", f.menu, "LEFT", -5, 0)
+			f.add:ClearAllPoints()
+			f.add:SetPoint("TOPRIGHT", f.strip, "TOPRIGHT", -1, -2)
+		end
+		-- The controls live above the themed ground, and are hidden explicitly when a pooled block changes job.
+		block.guideHeader = { f.strip, f.back, f.count, f.next, f.menu, f.skip }
+		for _, control in ipairs(block.guideHeader) do control:Show() end
+		Skin(f, "window")
+		local tabs = data.tabs or { { title = data.label or data.title, active = true } }
+		local tabWidth = math.max(32, (width - 45) / math.max(1, #tabs))
+		for i, spec in ipairs(tabs) do
+			local tab = f.tabs[i]
+			if not tab then
+				tab = Button(f.strip, "")
+				tab.close = Button(tab, "x")
+				tab.close:SetSize(16, 16)
+				tab.close:SetPoint("RIGHT", tab, "RIGHT", -2, 0)
+				tab.range = tab:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
+				tab.range:SetPoint("RIGHT", tab.close, "LEFT", -3, 0)
+				f.tabs[i] = tab
+			end
+			tab.fn, tab.close.fn = spec.Select, spec.Close
+			tab.psSelected = spec.active and true or false
+			tab.close:SetSize(16, 16)
+			tab.close:SetPoint("RIGHT", tab, "RIGHT", -2, 0)
+			tab.range:SetPoint("RIGHT", tab.close, "LEFT", -3, 0)
+			tab:SetSize(tabWidth - 3, 23)
+			tab:ClearAllPoints()
+			tab:SetPoint("TOPLEFT", f.strip, "TOPLEFT", (i - 1) * tabWidth, 0)
+			tab.label:ClearAllPoints()
+			tab.label:SetPoint("LEFT", tab, "LEFT", 7, 0)
+			tab.range:SetText(spec.levels and ("(" .. spec.levels .. ")") or "")
+			GUIDE.NativeFont(tab.range, data, { fontInfo = spec.rangeFontInfo }, TitleSize() - 2)
+			GUIDE.NativeColour(tab.range, skin, "textDim", "SetTextColor")
+			local rangeWidth = spec.levels and tab.range:GetStringWidth() + 5 or 0
+			local rangeFits = rangeWidth <= math.max(0, tabWidth - 45)
+			tab.range:SetShown(spec.levels ~= nil and rangeFits)
+			tab.label:SetWidth(math.max(1, tabWidth - 30 - (rangeFits and rangeWidth or 0)))
+			tab.label:SetWordWrap(false)
+			tab.label:SetText(spec.title or "")
+			GUIDE.NativeFont(tab.label, data, { fontInfo = spec.fontInfo }, TitleSize() - 1)
+			GUIDE.NativeColour(tab.label, skin, spec.active and "title" or "textMuted", "SetTextColor")
+			tab.close:SetShown(type(spec.Close) == "function")
+			Skin(tab, "tab")
+			if Skin(tab.close, "close") then tab.close.label:Hide() else tab.close.label:Show() end
+			tab:Show()
+		end
+		for i = #tabs + 1, #f.tabs do f.tabs[i]:Hide() end
+		f.count:SetText(data.counter or "")
+		GUIDE.NativeColour(f.count, skin, "text", "SetTextColor")
+		GUIDE.NativeFont(f.count, data, { fontInfo = data.fonts and data.fonts.counter }, TitleSize() - 1)
+		f.add.fn = data.AddTab or (data.cog and data.cog.Left)
+		f.back.fn = data.nav and data.nav.Back
+		f.next.fn = data.nav and (data.nav.Next or data.nav.Skip)
+		f.skip.fn = data.nav and data.nav.Skip
+		f.menu.fn = data.cog and data.cog.Right
+		for _, b in ipairs({ f.add, f.back, f.next, f.skip, f.menu }) do
+			b:SetSize(b == f.skip and 42 or 22, 20)
+			Skin(b, "button")
+			GUIDE.NativeFont(b.label, data, { fontInfo = data.fonts and data.fonts.control }, TitleSize() - 1)
+			b:SetEnabled(type(b.fn) == "function")
+			local glyph = b == f.back and "chevron-left" or b == f.next and "chevron-right" or b == f.add and "plus"
+				or b == f.menu and "menu"
+			if glyph and skin and type(skin.Media) == "function" then
+				local ok, texture = pcall(skin.Media, glyph)
+				if ok and texture then
+					if not b.icon then b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetPoint("CENTER"); b.icon:SetSize(12, 12) end
+					b.icon:SetTexture(texture)
+					b.icon:SetSize(12, 12)
+					GUIDE.NativeColour(b.icon, skin, "textDim", "SetVertexColor")
+					b.icon:Show(); b.label:Hide()
+				end
+			else
+				if b.icon then b.icon:Hide() end
+				b.label:Show()
+			end
+		end
+		f.add:SetEnabled(type(f.add.fn) == "function" and #tabs < 6)
+		f.skip:SetShown(width >= 240)
+		return 64
+	end
+
+	-- Collapsible rows use Polestar's own options; no separate copy of guide state is saved in MelloUI.
+	function GUIDE.Control(block, layer, fs, line, top, width, height, index, rowTop, rowHeight)
+		if type(line.Collapse) ~= "function" then return end
+		block.guideControls = block.guideControls or {}
+		local b = block.guideControls[index]
+		if not b then
+			b = CreateFrame("Button", nil, layer)
+			b.label = b:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
+			b.label:SetAllPoints(b)
+			b:SetSize(18, 18)
+			Perf.SetScript(b, "OnClick", function(self) if self.fn then pcall(self.fn) end end)
+			b:EnableMouseWheel(true)
+			Perf.SetScript(b, "OnMouseWheel", function(_, delta) Scroll(delta) end)
+			block.guideControls[index] = b
+		end
+		b.fn = line.Collapse
+		b.label:SetText(line.expanded and "v" or ">")
+		StyleText(b.label, TitleSize() - 2)
+		b:ClearAllPoints()
+		if line.role == "note" then b:SetPoint("TOPLEFT", block, "TOPLEFT", 12, -top)
+		else b:SetPoint("TOPRIGHT", block, "TOPLEFT", width - 12, -top) end
+		local m = block.guideMetrics
+		if m then
+			local size = 18 * m.unit
+			b:SetSize(size, size)
+			local y = line.role == "note" and top or rowTop + (rowHeight - size) / 2
+			local pad = line.section == "travel" and 14 * m.unit or m.pad
+			b:SetPoint(line.role == "note" and "TOPLEFT" or "TOPRIGHT", block, "TOPLEFT",
+				line.role == "note" and pad or width - pad, -y)
+		else
+			b:SetSize(18, 18)
+		end
+		local skin = block.guideData and block.guideData.skin
+		if skin and type(skin.Media) == "function" then
+			local ok, texture = pcall(skin.Media, line.expanded and "chevron-down" or "chevron-right")
+			if ok and texture then
+				if not b.icon then b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetAllPoints(b) end
+				b.icon:SetTexture(texture)
+				GUIDE.NativeColour(b.icon, skin, "textMuted", "SetVertexColor")
+				b.icon:Show(); b.label:Hide()
+			end
+		else
+			if b.icon then b.icon:Hide() end
+			b.label:Show()
+		end
+		if b.icon and m then
+			b.icon:ClearAllPoints()
+			b.icon:SetPoint("CENTER", b, "CENTER", 0, 0)
+			b.icon:SetSize(12 * m.unit, 12 * m.unit)
+		elseif b.icon then
+			b.icon:ClearAllPoints()
+			b.icon:SetAllPoints(b)
+		end
+		b:Show()
+		if line.singleLine and fs.SetMaxLines then
+			fs:SetMaxLines(1)
+			fs:SetWordWrap(false)
+		end
+		return math.max(height, 18)
+	end
+
+	-- Polestar's compact presentation: pooled decorations belong to their text row and are cleared by Line/HideLines.
+	function GUIDE.Decorate(block, fs, line, top, width, height, rowTop, rowHeight)
+		local W = MelloUI.Widgets
+		local m = block.guideMetrics
+		local pad = m and m.pad or 12
+		local art = fs.guideArt or {}
+		fs.guideArt = art
+		local function Texture(key, layer)
+			if not art[key] then
+				art[key] = (block.linkLayer or block):CreateTexture(nil, layer or "ARTWORK")
+				art[key]:SetTexture("Interface\\Buttons\\WHITE8X8")
+			end
+			art[key]:ClearAllPoints()
+			art[key]:Show()
+			return art[key]
+		end
+		local function Outline(region, key, w, h)
+			for _, edge in ipairs({ "TOPLEFT", "BOTTOMLEFT", "TOPRIGHT", "LEFT" }) do
+				local t = Texture(key .. edge)
+				W.Paint(t, "trim", "vertex", 0.8)
+				if edge == "LEFT" then
+					t:SetPoint("TOPLEFT", region, "TOPLEFT", 0, 0)
+					t:SetSize(2, h)
+				else
+					t:SetPoint(edge, region, edge, 0, 0)
+					t:SetSize(edge == "TOPRIGHT" and 2 or w, edge == "TOPRIGHT" and h or 2)
+				end
+			end
+		end
+		if line.progress then
+			local w = math.max(1, width - (m and 2 * pad or 12))
+			local h = m and 14 * m.unit or height
+			local bg = Texture("progressBase", "BACKGROUND")
+			W.Paint(bg, "innerPanel", "vertex", 0.9)
+			bg:SetPoint("TOPLEFT", block, "TOPLEFT", pad, -(m and rowTop + (rowHeight - h) / 2 or top))
+			bg:SetSize(w, h)
+			local fill = Texture("progressFill")
+			local colour = MelloUI.Meaning.questDone
+			if line.progressColour then fill:SetVertexColor(unpack(line.progressColour))
+			else fill:SetVertexColor(colour[1], colour[2], colour[3], 0.85) end
+			fill:SetPoint("TOPLEFT", bg, "TOPLEFT", 1, -1)
+			fill:SetSize(math.max(0.01, (w - 2) * line.progress), math.max(1, h - 2))
+			Outline(bg, "progressEdge", w, h)
+			fs:SetJustifyH("CENTER")
+			W.Paint(fs, "text", "text")
+		end
+		if line.ruleBefore or line.ruleAfter then
+			local rule = Texture("rule")
+			W.Paint(rule, "border", "vertex", 0.4)
+			local y = line.ruleAfter and (-top - height - 3) or (-top + 5)
+			if m then y = -(line.ruleAfter and rowTop + rowHeight or rowTop) end
+			local rulePad = m and line.section == "travel" and 14 * m.unit or pad
+			rule:SetPoint("TOPLEFT", block, "TOPLEFT", rulePad, y)
+			rule:SetSize(math.max(1, width - (m and 2 * rulePad or 12)), 1)
+		end
+		if line.icon then
+			local icon = Texture("icon")
+			icon:SetTexture(line.icon)
+			local size = line.role == "objective" and 20 or line.role == "lead" and 16 or 14
+			local x, y = 12 + (line.number and 20 or 0), top + 1
+			if m then
+				local s = m.unit
+				size = (line.section == "current" or line.section == "objectives") and m.icon or 11 * s
+				x = pad - s
+				y = rowTop + (rowHeight - size) / 2
+				if line.section == "objectives" then y = rowTop + m.glyphY - size / 2 end
+				if line.section == "current" then y = rowTop + 11 * s end
+				if line.section == "travel" then x, size = 37 * s, 14 * s; y = rowTop + (rowHeight - size) / 2 end
+				if line.section == "along" or line.section == "upnext" or line.section == "here" then x = m.textX - 2 * s end
+				if line.section == "along" or line.section == "upnext" then
+					-- Native summary glyphs follow the first line; wrapped text and panel padding grow below.
+					y = rowTop + (m.upRow - size) / 2
+				end
+			end
+			icon:SetSize(size, size)
+			if line.iconColour then icon:SetVertexColor(unpack(line.iconColour))
+			else icon:SetVertexColor(1, 1, 1); GUIDE.NativeColour(icon, block.guideData and block.guideData.skin, line.role == "objective" and "warning" or "textMuted", "SetVertexColor") end
+			icon:SetPoint("TOPLEFT", block, "TOPLEFT", x, -y)
+		end
+		if line.number then
+			if not art.number then art.number = (block.linkLayer or block):CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall") end
+			local number = art.number
+			StyleText(number, TitleSize() - 3)
+			GUIDE.NativeFont(number, block.guideData or {}, { fontInfo = line.numberFontInfo }, TitleSize() - 3)
+			number:SetText(line.number)
+			W.Paint(number, "mutedText", "text")
+			number:ClearAllPoints()
+			number:SetPoint("TOPLEFT", block, "TOPLEFT", m and 4 * m.unit or 12, -top)
+			number:Show()
+		end
+		if line.current then
+			GUIDE.NativeColour(fs, block.guideData and block.guideData.skin, "quest", "SetTextColor")
+			local bg = Texture("focus", "BACKGROUND")
+			W.Paint(bg, "selectedTab", "vertex", 0.45)
+			GUIDE.NativeColour(bg, block.guideData and block.guideData.skin, "accent", "SetVertexColor", 0.18)
+			local inset = m and m.litInset or 8
+			bg:SetPoint("TOPLEFT", block, "TOPLEFT", inset, m and -rowTop or -top + 3)
+			local w = math.max(1, width - (m and 2 * inset or 8))
+			local h = m and rowHeight or height + 6
+			bg:SetSize(w, h)
+			Outline(bg, "focusEdge", w, h)
+		end
+	end
+
 	-- a guide line as the tracker shows it: its linked text (the reader's), a guide's own link wrapped round it
-	function GuideText(block, line)
+	function GuideText(block, line, width)
 		local text = line.shown or line.text or ""
+		if line.picture and width then
+			local pic = line.picture
+			local factor = math.min(1, math.max(1, width - TEXT_X - COLUMNS.text) / pic.width)
+			text = string.format("|T%s:%d:%d|t", pic.texture, math.max(1, math.floor(pic.height * factor)), math.max(1, math.floor(pic.width * factor)))
+		end
 		if type(line.Open) == "function" then
 			local links = block.guideLinks
 			links[#links + 1] = line.Open
@@ -4375,7 +4800,218 @@ do
 	end
 end
 
+local function FillPolestarBlock(block, data, width)
+	-- (its links: the link layer, GuideLayer, above)
+	local layer = GuideLayer(block)
+	block.guideLinks = block.guideLinks or {}
+	wipe(block.guideLinks)
+	block.overLink = nil
+	block.questID, block.recipeID, block.recraft = nil, nil, nil
+	block.item.itemLink = nil
+	block.item:Hide()
+	if block.item.tray then
+		block.item.tray:Hide()
+		Art.ItemLit(block.item, false)
+	end
+	block.tier = nil
+	if block.mark then
+		block.mark:Hide()
+	end
+	Act.Washed(block, false)
+	if block.dist then
+		block.dist:Hide()
+		block.distValue, block.distLabel, block.distRoom = nil, nil, 0
+	end
+	if block.xp then
+		block.xp:Hide()   -- (2.1.39: nor its XP)
+	end
+	local t = block.title
+	StyleText(t, TitleSize())
+	t:ClearAllPoints()
+	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
+	t:SetWidth(width - TEXT_X)
+	local compact = data.presentation == "polestar"
+	t:SetText(compact and "" or data.title or "Guide")
+	block.guideClick, block.guideRight = data.Repin, data.Unpin   -- (a click: its step marked again; a right-click: its mark gone)
+	block.ink = Inked()
+	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
+	InkLine(t, block.ink, 1)
+	if block.ink and MelloUI.QuestInk then
+		MelloUI.QuestInk.Ink(t, "title")
+	end
+	block.guideData = data
+	block.guideMetrics = nil
+	for _, control in ipairs(block.guideControls or {}) do control:Hide() end
+	for _, control in ipairs(block.guideHeader or {}) do control:Hide() end
+	if block.polestarSurface then block.polestarSurface:Hide() end
+	local y = compact and GUIDE.Surface(block, data, width, layer) or t:GetStringHeight() + TITLE_GAP
+	local n, boxes, controls = 0, 0, 0
+	block.guideQuest, block.guideDone = block.guideQuest or {}, block.guideDone or {}
+	wipe(block.guideQuest)
+	wipe(block.guideDone)
+	block.guideAway, block.guideStepKey = nil, nil
+	local m = block.guideMetrics
+	local group
+	for index, line in ipairs(data.lines or {}) do
+		n = n + 1
+		block.guideQuest[n] = tonumber(line.quest)
+		block.guideDone[n] = line.done and true or nil
+		local role = line.role
+		local inset = compact and 12 or TEXT_X
+		local heading = role == "section"
+		if not m and (heading or (compact and line.ruleBefore)) then y = y + TITLE_GAP * 2 end
+		local spacing = m and GUIDE.RowLayout(m, line, data.lines[index - 1], data.lines[index + 1])
+		if spacing and group and line.section == "objectives" and line.group == group.key then spacing.right = group.right end
+		local shade = line.done and 0.55 or (role == "detail" and 0.72 or 0.95)
+		local rowTop, rowHeight = y, 0
+		local box
+		local top = y + (spacing and spacing.before or 0)
+		local red, green, blue = shade, shade, shade
+		if heading then red, green, blue = 1, 0.82, 0.3 end
+		if compact then
+			if heading then red, green, blue = 0.65, 0.65, 0.65 end
+			if role == "note" or role == "destination" then red, green, blue = 0.85, 0.74, 0.5 end
+		end
+		local fs
+		y, fs = PutLine(block, n, GuideText(block, line, width), y, width,
+			role == "objective" and not line.box and not compact, red, green, blue, not heading)
+		if role then
+			-- Labels, objectives and their supporting detail have distinct sizes, spacing and indentation.
+			StyleText(fs, (heading or role == "lead") and TitleSize() or TitleSize() - 1)
+			local indent = heading and 0 or (role == "detail" and COLUMNS.text * 2 or COLUMNS.text)
+			if compact then
+				local size = role == "lead" and TitleSize() + 1 or heading and TitleSize() - 2 or TitleSize() - 1
+				StyleText(fs, size)
+				GUIDE.NativeFont(fs, data, line, size)
+				indent = line.progress and 0 or line.number and 42 or line.icon and 28 or role == "note" and 20 or role == "detail" and 12 or 0
+			end
+			if spacing then inset, indent = spacing.left, 0 end
+			fs:ClearAllPoints()
+			fs:SetPoint("TOPLEFT", block, "TOPLEFT", inset + indent, -top)
+			local countRoom = fs.count and fs.count:IsShown() and ((MelloUI.Safe.Number(fs.count:GetStringWidth()) or 0) + 8) or 0
+			if compact and line.right then
+				if not fs.count then fs.count = block:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall") end
+				local right = fs.count
+				if right:GetParent() ~= layer then right:SetParent(layer) end
+				StyleText(right, TitleSize() - 2)
+				right:SetJustifyH("RIGHT")
+				right:SetWordWrap(false)
+				right:SetText(line.right)
+				right:SetTextColor(StoneColour(block, 0.75, 0.75, 0.75))
+				GUIDE.NativeFont(right, data, { font = line.rightFont, colour = line.rightColour, fontInfo = line.rightFontInfo }, TitleSize() - 2)
+				right:ClearAllPoints()
+				right:SetPoint("TOPRIGHT", block, "TOPLEFT", width - (spacing and spacing.right or 12), -top)
+				right:Show()
+				countRoom = (MelloUI.Safe.Number(right:GetStringWidth()) or 0) + 12 * (m and m.unit or 1)
+			end
+			fs:SetWidth(math.max(1, width - inset - indent - countRoom - (compact and (line.box or line.Collapse) and 30 or 0) - (compact and 12 or 0)))
+			if spacing then fs:SetWidth(math.max(1, width - spacing.left - spacing.right - countRoom)) end
+			if compact and line.singleLine then fs:SetMaxLines(1); fs:SetWordWrap(false) end
+			local height = math.max(fs:GetStringHeight(), compact and (role == "objective" and 24 or 16) or 0)
+			if spacing then
+				height = fs:GetStringHeight()
+				rowHeight = math.max(spacing.minimum, spacing.before + height + spacing.after)
+				if spacing.center then top = rowTop + (rowHeight - spacing.after - height) / 2 end
+				if spacing.firstLine then
+					local ok, lineHeight = pcall(fs.GetLineHeight, fs)
+					lineHeight = ok and MelloUI.Safe.Number(lineHeight) or height
+					local insetTop = math.max(0, (spacing.minimum - lineHeight) / 2)
+					top = rowTop + insetTop
+					rowHeight = math.max(spacing.minimum, height + insetTop * 2) + spacing.after
+				end
+				fs:SetPoint("TOPLEFT", block, "TOPLEFT", spacing.left, -top)
+				if line.right and fs.count then
+					fs.count:SetPoint("TOPRIGHT", block, "TOPLEFT", width - spacing.right, -top)
+				end
+			end
+			if compact and line.Collapse then
+				controls = controls + 1
+				height = GUIDE.Control(block, layer, fs, line, top, width, height, controls, rowTop, rowHeight) or height
+			end
+			if compact then GUIDE.Decorate(block, fs, line, top, width, height, rowTop, rowHeight) end
+			y = spacing and rowTop + rowHeight + (spacing.cardAfter or 0) or top + height + LINE_GAP + (compact and role == "objective" and 8 or 0) + (compact and line.ruleAfter and 6 or 0)
+		end
+		if line.box then
+			boxes = boxes + 1
+			local b = GuideBox(block, boxes)
+			box = b
+			local check = m and m.check or compact and 22 or 12
+			local textureSize = m and m.check + 2 * m.unit or compact and 24 or 14
+			b:SetSize(check, check)
+			if b.off then
+				b.off:SetSize(textureSize, textureSize)
+				if compact then
+					b.off:SetTexture("Interface\\Buttons\\UI-CheckBox-Up")
+					b.tick:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+					b.nativeStyled = true
+				elseif b.nativeStyled then
+					MelloUI.Widgets.Icon(b.off, "ctl_check_off", 14)
+					MelloUI.Widgets.Icon(b.tick, "ctl_check_on", 14)
+					b.nativeStyled = nil
+				end
+			end
+			b.tick:SetSize(textureSize, textureSize)
+			b.line, b.n = line, n
+			b.tick:SetShown(line.done and true or false)
+			b:ClearAllPoints()
+			if m then
+				GUIDE.PlaceCheck(b, block, m, width, rowTop, rowHeight)
+			elseif compact then
+				b:SetPoint("TOPRIGHT", block, "TOPLEFT", width - 12, -top - 1)
+			else
+				b:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + COLUMNS.bullet, -top - 1)
+			end
+			b:SetFrameLevel(layer:GetFrameLevel() + 1)   -- (over the link layer: its tick its own)
+			b:Show()
+		end
+		if m and line.section == "objectives" and line.group then
+			if not group or group.key ~= line.group then
+				group = { key = line.group, top = rowTop, textTop = top, fs = block.lines[n], line = line, box = box, right = spacing.right }
+			end
+			local following = data.lines[index + 1]
+			if not following or following.section ~= "objectives" or following.group ~= line.group then
+				local height = y - group.top - (spacing.cardAfter or 0)
+				GUIDE.Decorate(block, group.fs, group.line, group.textTop, width, group.fs:GetStringHeight(), group.top, height)
+				if group.box then GUIDE.PlaceCheck(group.box, block, m, width, group.top, height) end
+			end
+		else
+			group = nil
+		end
+	end
+	-- (Guide: Next Steps) the guide's next steps under the current one, dimmed, each led by its number; no box: they
+	-- are not the step yet
+	local want = math.floor(tonumber(M.db and M.db.guideNext) or 0)
+	for s, step in ipairs(want > 0 and data.upcoming or {}) do
+		if s > want then
+			break
+		end
+		y = y + (s == 1 and TITLE_GAP or 0)
+		for j, line in ipairs(step.lines or {}) do
+			n = n + 1
+			local text = type(line) == "table" and GuideText(block, line, width) or tostring(line)
+			local shown = j == 1 and (tostring(step.n) .. "  " .. text) or text
+			y = PutLine(block, n, shown, y, width, false, 0.55, 0.55, 0.55, true)
+		end
+	end
+	-- (its lines the layer's, so their links answer; a quest's block later keeps them there, the layer mouse-off)
+	for i = 1, n do
+		local fs = block.lines[i]
+		if fs and fs:GetParent() ~= layer then
+			fs:SetParent(layer)
+			fs.dash:SetParent(layer)
+		end
+	end
+	HideBoxes(block, boxes + 1)
+	HideLines(block, n + 1)
+	block:SetHeight(y)
+	block:Show()
+	return y
+end
+
 local function FillGuideBlock(block, data, width)
+	if data.presentation == "polestar" then return FillPolestarBlock(block, data, width) end
+	-- A different guide can reuse the same block without first releasing it.
+	GUIDE.ClearPresentation(block)
 	-- (its links: the link layer, GuideLayer, above)
 	local layer = GuideLayer(block)
 	block.guideLinks = block.guideLinks or {}
@@ -4594,6 +5230,9 @@ local function Section(key, label, count)
 			M.db.collapsedSections = c
 			c[key] = not c[key] or nil
 			MelloUI:NotifySettingChanged(M.name, "collapsedSections", c)
+			if key == "guide" and GUIDE.data and type(GUIDE.data.SetCollapsed) == "function" then
+				pcall(GUIDE.data.SetCollapsed, c[key] == true)
+			end
 		end)
 		sections[key] = row
 		Art.sectionRows[#Art.sectionRows + 1] = row
@@ -4617,7 +5256,7 @@ local function Section(key, label, count)
 	Art.Heading(row.text, paper)
 	row.text:ClearAllPoints()
 	row.text:SetPoint("LEFT", row, "LEFT", 0, 0)
-	local n = tonumber(count)
+	local n = tonumber(count) or (type(count) == "string" and count:match("^%d+%s*/%s*%d+$"))
 	if n then
 		StyleText(row.count, TitleSize() - 1)
 		row.count:SetText(n)
@@ -4767,6 +5406,7 @@ local function Rebuild()
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 		row:SetWidth(width)
+
 		row:Show()
 		y = y + SECTION_H + 4
 	end
@@ -4789,7 +5429,12 @@ local function Rebuild()
 	end
 	-- a guide's steps on top (GUIDE, above)
 	if guide then
-		Head("guide", guide.section or "Guide", #(guide.lines or {}), guide.cog, guide.nav)
+		if guide.presentation == "polestar" then
+			-- A peer of Quests and Professions; guide tabs belong inside this section.
+			Head("guide", "Polestar")
+		else
+			Head("guide", guide.section or "Guide", #(guide.lines or {}), guide.cog, guide.nav)
+		end
 		if guideOpen then
 			Put("guide", FillGuideBlock, guide, width)
 		end
