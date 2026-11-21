@@ -35,6 +35,8 @@ local M = MelloUI:RegisterModule("CooldownText", {
 		fontRatio = 0.5,
 		tenths = false,
 		colorByTime = true,
+		fightNumbers = true,   -- the game's own numbers while cooldown times are secret (2.1.63's hand-over)
+		sweep = "game",        -- the dark sweep's darkness on action buttons: "game", "dark", "darker"
 	},
 	options = {
 		{ type = "header", name = "Show On" },
@@ -48,8 +50,31 @@ local M = MelloUI:RegisterModule("CooldownText", {
 		  desc = "Timer text size, relative to the icon." },
 		{ type = "toggle", key = "tenths", name = "Show Tenths Below 5s", desc = "Shows 4.3 instead of 5 in a cooldown's last seconds." },
 		{ type = "toggle", key = "colorByTime", name = "Colour And Size By Time Left", desc = "Timers turn red and larger under 5 seconds, yellow under a minute, and smaller for minutes and hours. Off: all white." },
+		-- (a German player: in fights the game's numbers count the global cooldown too, "2, then 1"; "if we make the
+		-- dark overlay a step darker, the number is not needed and it looks nicer")
+		{ type = "toggle", key = "fightNumbers", name = "Numbers In Fights",
+		  desc = "In fights the game hides cooldown times from addons, and its own numbers count instead, the global cooldown too. Off: only the dark sweep shows the time left." },
+		{ type = "dropdown", key = "sweep", name = "Sweep Darkness",
+		  values = { { value = "game", label = "The Game's" }, { value = "dark", label = "Dark" }, { value = "darker", label = "Darker" } },
+		  desc = "How dark the sweep over an action button runs while it cools down. Back to the game's after a /reload." },
 	},
 })
+
+-- the sweep's darkness for each choice (nil: the game's own, left alone)
+local SWEEP_ALPHA = { dark = 0.85, darker = 0.95 }
+
+-- the game's own numbers held back while cooldown times are secret (Numbers In Fights off)
+function M.SweepOnly()
+	return type(M.db) == "table" and M.db.fightNumbers == false or false
+end
+
+-- an action button's sweep at the darkness asked for, after the game set its own (each SetCooldown)
+local function Sweep(cooldown)
+	local a = SWEEP_ALPHA[type(M.db) == "table" and M.db.sweep or "game"]
+	if a and cooldown.SetSwipeColor then
+		pcall(cooldown.SetSwipeColor, cooldown, 0, 0, 0, a)
+	end
+end
 
 --------------------------------------------------------------------------------
 -- Styles (the usual countdown colours and sizes)
@@ -193,7 +218,7 @@ local function HandOver(cooldown)
 		min = ok and IsPlainNumber(v) and v or 0
 	end
 	handed[cooldown] = { hidden = wish and true or false, min = min }
-	SetNativeNumbersHidden(cooldown, false)
+	SetNativeNumbersHidden(cooldown, M.SweepOnly())
 	local want = math.floor((tonumber(M.db and M.db.minDuration) or 2) * 1000 + 0.5)
 	if cooldown.SetMinimumCountdownDuration and want ~= min then
 		pcall(cooldown.SetMinimumCountdownDuration, cooldown, want)
@@ -369,6 +394,9 @@ local function StartTimer(cooldown, start, duration, modRate)
 		StopTimer(cooldown, true)
 		return
 	end
+	if category == "actionBars" then
+		Sweep(cooldown)
+	end
 	if not IsPlainNumber(start) or not IsPlainNumber(duration) then
 		-- Secret values: Blizzard's own numbers (2.1.63: on an action button, shown to count it -- HandOver)
 		if not handed[cooldown] then
@@ -499,8 +527,8 @@ local function NumbersRequested(cooldown, hidden)
 	local h = handed[cooldown]
 	if h then
 		h.hidden = wantsHidden
-		if wantsHidden then
-			SetNativeNumbersHidden(cooldown, false)
+		if wantsHidden ~= M.SweepOnly() then
+			SetNativeNumbersHidden(cooldown, M.SweepOnly())
 		end
 		return
 	end
@@ -607,6 +635,11 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if (key == "actionBars" or key == "nameplates") and value then
 		InstallHooks()
+	end
+	if key == "fightNumbers" then
+		for cooldown in pairs(handed) do
+			SetNativeNumbersHidden(cooldown, M.SweepOnly())
+		end
 	end
 	-- Force fonts and styles to be re-evaluated on the next tick.
 	for cooldown, timer in pairs(timers) do

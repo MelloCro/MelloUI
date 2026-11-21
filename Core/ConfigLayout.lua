@@ -993,6 +993,8 @@ function L.Define(R, Link)
 	R("ActionBars", "actionbars:button", "Look", "ActionButtons.rangeColours", { gate = AB_AREA })
 	-- (the Bars audit's point 1: On Action Bars is Cooldown Timers' switch here)
 	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.actionBars", { name = "Cooldown Timers", gate = AB_AREA })
+	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.fightNumbers", { gate = AB_AREA })
+	R("ActionBars", "actionbars:cooldown", "General", "CooldownText.sweep", { gate = AB_AREA })
 	R("ActionBars", "actionbars:caps", "General", "ActionBars.hideBarArt")
 	R("ActionBars", "actionbars:arrows", "General", "ActionBars.hidePageArrows")
 	-- Menu & Bags: each bar a part (Hide This Bar, its backdrop; the bag bar's fold), Dark Mode for both
