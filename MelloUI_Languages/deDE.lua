@@ -3876,6 +3876,21 @@ Lang:Add("deDE", {
 	["off"] = "aus", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "Post-Empfänger", -- draft
+	["Demon Grimoires"] = "Dämonen-Folianten", -- draft
+	["Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor."] = "Merkt sich, was jeder deiner Dämonen kann, sobald er beschworen ist, und markiert die Folianten beim Händler und im Tooltip als bekannt oder neu: Du musst nicht mehr jeden Dämon vor dem Händler beschwören.", -- draft
+	["The Imp already knows that one. It told you. Twice."] = "Den kennt der Wichtel schon. Er hat es dir gesagt. Zweimal.", -- draft
+	["Mark Grimoires At The Vendor"] = "Folianten beim Händler markieren", -- draft
+	["Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green."] = "Jeder Foliant auf der Händlerseite zeigt, ob dein Dämon ihn schon kennt: Bekannt in Grau, Neu in Grün.", -- draft
+	["Line In Grimoire Tooltips"] = "Zeile im Tooltip der Folianten", -- draft
+	["A grimoire's tooltip says whether your demon knows it, or that it still needs summoning once."] = "Der Tooltip eines Folianten sagt, ob dein Dämon ihn kennt oder ob er erst einmal beschworen werden muss.", -- draft
+	["Known (%s)"] = "Bekannt (%s)", -- draft
+	["New (%s)"] = "Neu (%s)", -- draft
+	["Your %s knows this (rank %s)."] = "Dein %s kennt das (Rang %s).", -- draft
+	["Your %s knows this."] = "Dein %s kennt das.", -- draft
+	["Your %s does not know this yet."] = "Dein %s kennt das noch nicht.", -- draft
+	["Your %s knows rank %s: this one is new."] = "Dein %s kennt Rang %s: Dieser ist neu.", -- draft
+	["Summon your %s once and MelloUI notes what it knows."] = "Beschwöre deinen %s einmal, dann merkt sich MelloUI, was er kann.", -- draft
+	["Demon Grimoires: nothing noted yet. Summon each demon once."] = "Dämonen-Folianten: Noch nichts gemerkt. Beschwöre jeden Dämon einmal.", -- draft
 	["Who was that again? One click and the letter has its name."] = "Wie hieß der noch gleich? Ein Klick, und der Brief hat seinen Empfänger.", -- draft
 	["Battle.net Friends' Characters"] = "Charaktere der Battle.net-Freunde", -- draft
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Ein Knopf neben dem An-Feld des Briefkastens listet deine Charaktere und die Charaktere deiner Battle.net-Freunde: Klicke einen an, und sein Name wird eingetragen.", -- draft
