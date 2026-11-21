@@ -15,6 +15,7 @@
 - Personal Display: Percent Position puts the health and power percents On The Bars, centred on each bar like Druid Forms' numbers, in every look. Beside The Bars stays the default.
 - Mail Recipients: Subject from the First Item (on by default). An empty subject takes the name of the first item you attach, with its count for a stack; what you type yourself stays.
 - Configurator: a designer tab's name in the search results and on the Back button is in your language. A few stayed in English.
+- Supporters page: a Contributors part under the banners names the people whose code and translations are in MelloUI, sent as pull requests on GitHub, each with what they helped with. It is kept up to date with every release.
 
 ## 2.1.64
 

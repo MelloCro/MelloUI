@@ -5,9 +5,10 @@
 -- gold rods, one a tier: the Champions left, the Legends in the middle and tallest, the Supporters right, the names
 -- written on them as text (sharp, every alphabet). Made on the page's first open (CONFIG.BuildSupportersPage,
 -- Core/Config.lua): nothing at login.
---   MelloUI.SupportersHall.Build(parent, width, data, skin) -> height   the thanks, the invite line with Patreon
---       and Discord (a copy box: the game opens no web page), the hall and the "As of" line, laid from parent's top;
---       data: MelloUI_Supporters (Media/SupportersData.lua)
+--   MelloUI.SupportersHall.Build(parent, width, data, skin, contributors) -> height   the thanks, the invite line with
+--       Patreon and Discord (a copy box: the game opens no web page), the hall, the "As of" line and the Contributors
+--       (2.1.65: Hall.Contributors), laid from parent's top; data: MelloUI_Supporters (Media/SupportersData.lua),
+--       contributors: MelloUI_Contributors (Media/ContributorsData.lua, from GitHub's merged pull requests)
 -- Its motion is MelloUI.Anim's, so Reduce Motion shows the finished page at once:
 --   the opening, each time the page shows: the banners unroll from their rods (the Legends first), each crest
 --       lights as its banner lands, then its names fade in one by one (one Drive, two to four seconds)
@@ -67,6 +68,12 @@ local TEXT = {
 	invite = "Want your name on a banner? Support MelloUI on Patreon, and come say hello on Discord.",
 	waiting = "Waiting for its first name",
 	asOf = "As of %s",
+	-- (2.1.65) the Contributors under the hall
+	contributors = "Contributors",
+	contributorsLine = "The people whose code and translations are in MelloUI, sent as pull requests on GitHub. Thank you!",
+	code = "code",
+	translations = "translations",
+	both = "code and translations",
 }
 -- the two addresses, shown in the copy box
 Hall.LINKS = {
@@ -461,7 +468,49 @@ end
 -- The page's content
 --------------------------------------------------------------------------------
 
-function Hall.Build(parent, width, data, skin)
+-- (2.1.65; the user, 2026-11-21: "we also need to make sure that we credit the people who are posting PRs on the
+-- github ... ingame", then the pick "Supporters page") the Contributors under the hall: a heading, its line, and each
+-- name with what it helped with -- from MelloUI_Contributors (Media/ContributorsData.lua, written before each release by
+-- Tools/contributors.py from the pull requests merged on GitHub), the most merged first. The names as they are (never
+-- looked up in the language, a pipe escaped), what they helped with in the player's language. Nothing without a
+-- name. -> the y under it
+local WHAT = { code = "code", translations = "translations", ["code and translations"] = "both" }
+
+function Hall.Contributors(parent, width, y, list)
+	local names = {}
+	for _, c in ipairs(type(list) == "table" and list or {}) do
+		local name = type(c) == "table" and type(c.name) == "string" and c.name ~= "" and c.name or nil
+		if name then
+			local what = TEXT[WHAT[c.what] or "code"]
+			names[#names + 1] = (name:gsub("|", "||")) .. " (" .. W.Tr(what) .. ")"
+		end
+	end
+	if #names == 0 then
+		return y
+	end
+	y = y + 14
+	local head = W.Text(parent, nil, W.Tr(TEXT.contributors), "selectedTrim")
+	Face(head, FONTS .. "Fredoka\\Fredoka-SemiBold.ttf", 20)
+	head:SetJustifyH("CENTER")
+	head:SetWidth(width)
+	head:SetPoint("TOP", parent, "TOP", 0, -y)
+	y = y + 28
+	local line = W.Text(parent, nil, W.Tr(TEXT.contributorsLine), "text")
+	line:SetJustifyH("CENTER")
+	line:SetWidth(width - 60)
+	line:SetWordWrap(true)
+	line:SetPoint("TOP", parent, "TOP", 0, -y)
+	y = y + max(16, floor((line:GetStringHeight() or 16) + .5)) + 6
+	local who = W.Text(parent, nil, table.concat(names, ",  "), "text")
+	who:SetJustifyH("CENTER")
+	who:SetWidth(width - 60)
+	who:SetWordWrap(true)
+	who:SetPoint("TOP", parent, "TOP", 0, -y)
+	y = y + max(16, floor((who:GetStringHeight() or 16) + .5)) + 4
+	return y
+end
+
+function Hall.Build(parent, width, data, skin, contributors)
 	data = type(data) == "table" and data or {}
 	local any = false
 	for _, t in ipairs(Hall.TIERS) do
@@ -546,6 +595,8 @@ function Hall.Build(parent, width, data, skin)
 		when:SetPoint("TOP", parent, "TOP", 0, -y)
 		y = y + 18
 	end
+
+	y = Hall.Contributors(parent, width, y, contributors)
 
 	Lay(hall, total)
 	Perf.HookScript(hall, "OnShow", HallShown)

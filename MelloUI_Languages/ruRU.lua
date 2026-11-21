@@ -3034,6 +3034,12 @@ Lang:Add("ruRU", {
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: следующий /reload переключает на копию раскладки игры от MelloUI, и перемещённые панели, например панель тотемов, остаются на месте в бою.", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "Личный дисплей: «Положение процентов» ставит проценты здоровья и энергии на полосы, как числа «Обликов друида».", -- draft
 	["Mail: an empty subject takes the name of the first item you attach."] = "Почта: пустая тема получает название первого вложенного предмета.", -- draft
+	["Contributors"] = "Участники", -- draft
+	["The people whose code and translations are in MelloUI, sent as pull requests on GitHub. Thank you!"] = "Люди, чей код и переводы есть в MelloUI, присланные как pull request на GitHub. Спасибо!", -- draft
+	["code"] = "код", -- draft
+	["translations"] = "переводы", -- draft
+	["code and translations"] = "код и переводы", -- draft
+	["Supporters page: the people who send code and translations on GitHub, credited under the banners."] = "Страница поддержки: люди, присылающие код и переводы на GitHub, отмечены под знамёнами.", -- draft
 	["Percent Position"] = "Положение процентов", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Где стоят проценты здоровья и энергии: рядом с полосами или по центру на них, как числа «Обликов друида».", -- draft
 	["Beside The Bars"] = "Рядом с полосами", -- draft

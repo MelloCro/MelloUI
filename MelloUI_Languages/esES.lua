@@ -3034,6 +3034,12 @@ Lang:Add("esES", {
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: tu próximo /reload cambia a la copia de MelloUI del diseño del juego, así las barras que moviste, como la de tótems, se quedan en su sitio en combate.", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "Pantalla personal: Posición del porcentaje pone los porcentajes de salud y poder sobre las barras, como los números de Formas de druida.", -- draft
 	["Mail: an empty subject takes the name of the first item you attach."] = "Correo: un asunto vacío toma el nombre del primer objeto que adjuntas.", -- draft
+	["Contributors"] = "Colaboradores", -- draft
+	["The people whose code and translations are in MelloUI, sent as pull requests on GitHub. Thank you!"] = "Las personas cuyo código y traducciones están en MelloUI, enviados como pull requests en GitHub. ¡Gracias!", -- draft
+	["code"] = "código", -- draft
+	["translations"] = "traducciones", -- draft
+	["code and translations"] = "código y traducciones", -- draft
+	["Supporters page: the people who send code and translations on GitHub, credited under the banners."] = "Página de patrocinadores: las personas que envían código y traducciones en GitHub, reconocidas bajo los estandartes.", -- draft
 	["Percent Position"] = "Posición del porcentaje", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Dónde se muestran los porcentajes de salud y poder: junto a las barras o centrados sobre ellas, como los números de Formas de druida.", -- draft
 	["Beside The Bars"] = "Junto a las barras", -- draft

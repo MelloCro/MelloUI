@@ -1564,7 +1564,7 @@ BUG.WRITE_HOOKS = {
 -- a frame's name, a binding set's own name, or what it is (never a secret)
 function BUG.WhatName(v)
 	if type(v) ~= "table" then
-		return (v ~= nil and not Secret(v)) and tostring(v):sub(1, 40) or ""
+		return (not Secret(v) and v ~= nil) and tostring(v):sub(1, 40) or ""   -- (the secret test first)
 	end
 	local own = rawget(v, "name")
 	if type(own) == "string" and not Secret(own) then

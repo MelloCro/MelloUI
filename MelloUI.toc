@@ -79,6 +79,7 @@ Media\QuestListData.lua
 Media\TrainerSpells.lua
 Media\SupportersData.lua
 Media\PlaceData.lua
+Media\ContributorsData.lua
 Media\ClassIcons.lua
 Media\IconSizes.lua
 Media\ClassPortraits.lua

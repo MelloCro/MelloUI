@@ -189,6 +189,7 @@ local CHANGELOG = {
 		"Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights.",
 		"Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers.",
 		"Mail: an empty subject takes the name of the first item you attach.",
+		"Supporters page: the people who send code and translations on GitHub, credited under the banners.",
 	} },
 	{ version = "2.1.64", lines = {
 		"Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once.",
@@ -7135,7 +7136,9 @@ function CONFIG.BuildSupportersPage(width)
 	local sec = NewSection(page, "Supporters")
 	page.section = sec
 	local data = rawget(_G, "MelloUI_Supporters")
-	sec.y = MelloUI.SupportersHall.Build(sec, width - PAD * 2, type(data) == "table" and data or {}, SKIN)
+	-- (2.1.65) and under it the Contributors: the people whose pull requests were merged (Media/ContributorsData.lua)
+	sec.y = MelloUI.SupportersHall.Build(sec, width - PAD * 2, type(data) == "table" and data or {}, SKIN,
+		rawget(_G, "MelloUI_Contributors"))
 	CONFIG.PaperCard(sec)   -- (the kit look's parchment: the thanks in ink; the banners' names stay on their cloth)
 	sec.needsPanel = nil   -- (no panel: the banners hang on the window's own dark ground, as sketched)
 	page:Finish()

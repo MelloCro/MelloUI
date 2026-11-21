@@ -3034,6 +3034,12 @@ Lang:Add("koKR", {
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: 다음 /reload 때 게임 레이아웃의 MelloUI 사본으로 바뀌어, 토템 바처럼 옮긴 바가 전투 중에도 제자리에 머뭅니다.", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "개인 표시기: 백분율 위치로 생명력과 자원 백분율을 드루이드 변신의 숫자처럼 바 위에 놓습니다.", -- draft
 	["Mail: an empty subject takes the name of the first item you attach."] = "우편: 제목이 비어 있으면 처음 첨부한 아이템의 이름이 들어갑니다.", -- draft
+	["Contributors"] = "기여자", -- draft
+	["The people whose code and translations are in MelloUI, sent as pull requests on GitHub. Thank you!"] = "MelloUI에 코드와 번역을 GitHub 풀 리퀘스트로 보내 준 사람들입니다. 감사합니다!", -- draft
+	["code"] = "코드", -- draft
+	["translations"] = "번역", -- draft
+	["code and translations"] = "코드와 번역", -- draft
+	["Supporters page: the people who send code and translations on GitHub, credited under the banners."] = "후원자 페이지: GitHub에서 코드와 번역을 보내 준 사람들을 깃발 아래에 소개합니다.", -- draft
 	["Percent Position"] = "백분율 위치", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "생명력과 자원 백분율이 놓이는 곳: 바 옆, 또는 드루이드 변신의 숫자처럼 바 위 가운데.", -- draft
 	["Beside The Bars"] = "바 옆", -- draft

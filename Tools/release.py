@@ -46,6 +46,10 @@ supporter roles on MelloUI's Discord (MBot's Workspace/Discord/src/supporters.js
 commit, so every release ships the current list with nobody running anything (the user, 2026-10-31: "i dont want to
 have anything to do with it with updating"). It never refuses a release: without the bot folder, Node, the token or
 Discord the list stays as it is, and the run says so.
+
+The Supporters page's Contributors (Media/ContributorsData.lua, 2.1.65) are refreshed the same way from the pull
+requests merged on GitHub (Tools/contributors.py) and go into the release commit too; without gh or GitHub the list
+stays as it is, never a refusal.
 """
 import argparse
 import os
@@ -61,6 +65,7 @@ FULL_BAKE = os.path.join(HERE, "installer", "bake_full.py")
 NEW_TAGS = os.path.join(HERE, "lint", "check_new_tags.py")
 WHATS_NEW = os.path.join(HERE, "lint", "check_whats_new.py")
 SUPPORTERS = os.path.join(ROOT, "Workspace", "Discord", "src", "supporters.js")
+CONTRIBUTORS = os.path.join(HERE, "contributors.py")
 
 
 def git(*args, capture=True):
@@ -240,6 +245,19 @@ def refresh_supporters(dry):
     return lines
 
 
+def refresh_contributors(dry):
+    """The Contributors from GitHub's merged pull requests into Media/ContributorsData.lua (Tools/contributors.py; with
+    --dry-run in a dry run). Never refuses: returns (lines to print) whatever happens."""
+    cmd = [sys.executable, CONTRIBUTORS] + (["--dry-run"] if dry else [])
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           timeout=180)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [f"not refreshed ({exc}) -- the list stays as it is"]
+    lines = [line.rstrip() for line in ((r.stdout or "") + (r.stderr or "")).splitlines() if line.strip()]
+    return lines or [f"contributors.py exited {r.returncode} -- the list stays as it is"]
+
+
 def write_tocs(edits, version, interface):
     """The Version and Interface lines of every TOC in `edits` ((path, label, text) each)."""
     for path, _, body in edits:
@@ -342,6 +360,7 @@ def main():
                  f"{version}):\n" + "\n".join("  " + line for line in tags_lines))
     # the supporters list, fresh from the Discord roles (written before `pending`, so it goes into the commit)
     supporter_lines = refresh_supporters(a.dry_run)
+    contributor_lines = refresh_contributors(a.dry_run)   # (2.1.65: from GitHub, also before `pending`)
     pending = git("status", "--short")
 
     print(f"{'.'.join(map(str, current))} -> {version}  (tag {tag}, branch {branch})")
@@ -363,6 +382,7 @@ def main():
     print(f"Full experience (Media/Profiles.lua \"MelloUI\"): the current bake, {full_lines[0]}")
     print("New tags: " + "\n  ".join(tags_lines))
     print("Supporters: " + "\n  ".join(supporter_lines))
+    print("Contributors: " + "\n  ".join(contributor_lines))
     if a.dry_run:
         print("dry run: nothing changed")
         return

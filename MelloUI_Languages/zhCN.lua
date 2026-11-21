@@ -3034,6 +3034,12 @@ Lang:Add("zhCN", {
 	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout：下次 /reload 时会切换到 MelloUI 复制的游戏布局，图腾条等移动过的动作条在战斗中也会留在原位。", -- draft
 	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "个人显示：百分比位置可将生命值和能量百分比显示在条上，就像德鲁伊形态的数字。", -- draft
 	["Mail: an empty subject takes the name of the first item you attach."] = "邮件：主题为空时，会填入你附加的第一个物品的名称。", -- draft
+	["Contributors"] = "贡献者", -- draft
+	["The people whose code and translations are in MelloUI, sent as pull requests on GitHub. Thank you!"] = "以 GitHub 拉取请求的方式为 MelloUI 贡献代码和翻译的人们。谢谢你们！", -- draft
+	["code"] = "代码", -- draft
+	["translations"] = "翻译", -- draft
+	["code and translations"] = "代码和翻译", -- draft
+	["Supporters page: the people who send code and translations on GitHub, credited under the banners."] = "支持者页面：在旗帜下方致谢在 GitHub 上提交代码和翻译的人们。", -- draft
 	["Percent Position"] = "百分比位置", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "生命值和能量百分比显示的位置：在条旁边，或像德鲁伊形态的数字一样居中显示在条上。", -- draft
 	["Beside The Bars"] = "在条旁边", -- draft
