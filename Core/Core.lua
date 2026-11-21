@@ -345,6 +345,12 @@ MelloUI.Meaning = {
 	-- (2.1.53, the nameplates' Threat Colours By Role, Modules/Nameplates.lua M.THREAT_TINT: a mob that is safe -- a
 	-- tank's held, anyone else's nowhere near them)
 	threatSafe = Hex("#4CB848"),   -- green (meaning colour)
+	-- (2.1.66, pull request #58, Modules/CastMarks.lua) the cast bar's end hatched: the spell queue window and your
+	-- latency, the next spell can be pressed (the red the player approved)
+	spellQueue = Hex("#D92626"),   -- red (meaning colour)
+	-- (2.1.66, pull request #61, Modules/DemonGrimoires.lua) a grimoire your demon does not know yet: one to learn --
+	-- cannotUse's counterpart
+	canLearn = Hex("#40FF40"),   -- green (meaning colour)
 	-- (0.16.0, the user's pick C of bag_family_sketch: a special bag's slots
 	-- wear their bag type's colour on the rim) [bag family bit] = colour;
 	-- MelloUI_Oldschool/Modules/BackpackPanel.lua reads it

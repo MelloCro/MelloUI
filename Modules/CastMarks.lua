@@ -12,7 +12,8 @@
 --                  Mind Flay, ...: CHANNELS, the seconds between ticks), laid again when a hit pushes the channel back.
 -- Read from the cast's own times (UnitCastingInfo, UnitChannelInfo); a cast whose times are secret gets no marks.
 -- Nothing of the game's is changed: the marks are textures of MelloUI's on the bar, over its fill and under its text.
--- On by default: the marks are quiet. Their switches are on Bars > Cast Bar > Bar.
+-- Off by default (2.1.66: a new feature shows nothing until the player turns it on). Its switches are on Bars > Cast
+-- Bar > Bar. The hatch's red is a meaning colour (MelloUI.Meaning.spellQueue), the ticks the palette's text.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -20,31 +21,32 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("CastMarks")
 local Safe = MelloUI.Safe
 local Secret, Num, Text = Safe.IsSecret, Safe.Number, Safe.Text
+local W = MelloUI.Widgets
 
 local M = MelloUI:RegisterModule("CastMarks", {
 	title = "Cast Marks",
 	desc = "Your latency at the end of each cast and a mark for each tick of a channel, on your cast bar and the Personal Display's.",
 	icon = "Interface\\Icons\\Spell_Shadow_LifeDrain02",
 	flavour = "Press the next spell the moment you can.",
-	enabledByDefault = true,
-	new = "2.1.64",
+	enabledByDefault = false,
+	new = "2.1.66",
 	slash = "castmarks",
 	defaults = { latency = true, ticks = true },
 	options = {
-		{ type = "toggle", key = "latency", name = "Latency", new = "2.1.64",
+		{ type = "toggle", key = "latency", name = "Latency", new = "2.1.66",
 		  desc = "The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell." },
-		{ type = "toggle", key = "ticks", name = "Channel Ticks", new = "2.1.64",
+		{ type = "toggle", key = "ticks", name = "Channel Ticks", new = "2.1.66",
 		  desc = "A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles." },
 	},
 })
 MelloUI.CastMarks = M
 
 local C = {
-	SHADE = { 0.85, 0.15, 0.15, 0.35 },   -- the hatch's ground
+	SHADE = 0.35,                         -- the hatch's ground: MelloUI.Meaning.spellQueue at this alpha
 	STRIPES = "Interface\\RaidFrame\\Shield-Overlay",   -- the game's absorb stripes, tiled (as Core/Shields.lua)
-	STRIPE = { 1, 0.85, 0.85, 0.8 },      -- the stripes' tint
+	STRIPE = 0.8,                         -- the stripes' alpha (their own colour, as Core/Shields.lua's)
 	QUEUE = 400,                          -- ms: the spell queue window where the game does not say
-	TICK = { 1, 1, 1, 0.75 },             -- a tick's mark
+	TICK = 0.75,                          -- a tick's mark: the palette's text at this alpha
 	TICK_W = 2,                           -- pixels
 	MAX_SHARE = 0.5,                      -- the most of the bar the shade takes (a very short cast on a slow line)
 	-- the channels that tick: the spell (its base id, read in the client's language) and the seconds between ticks
@@ -137,12 +139,13 @@ local function Holder(bar)
 	end
 	h = { bar = bar, ticks = {} }
 	h.shade = bar:CreateTexture(nil, "ARTWORK", nil, 7)
-	h.shade:SetColorTexture(unpack(C.SHADE))
+	local red = MelloUI.Meaning.spellQueue
+	h.shade:SetColorTexture(red[1], red[2], red[3], C.SHADE)
 	h.stripes = bar:CreateTexture(nil, "ARTWORK", nil, 7)
 	h.stripes:SetTexture(C.STRIPES, "REPEAT", "REPEAT")
 	h.stripes:SetHorizTile(true)
 	h.stripes:SetVertTile(true)
-	h.stripes:SetVertexColor(unpack(C.STRIPE))
+	h.stripes:SetAlpha(C.STRIPE)
 	h.stripes:SetAllPoints(h.shade)
 	holders[bar] = h
 	return h
@@ -179,7 +182,7 @@ function M.Lay(bar, seconds, channel, name)
 		local at = k < n and (1 - k * every / seconds) or nil
 		if at and at > 0 and not t then
 			t = bar:CreateTexture(nil, "ARTWORK", nil, 7)
-			t:SetColorTexture(unpack(C.TICK))
+			W.Paint(t, "text", "fill", C.TICK)
 			t:SetWidth(C.TICK_W)
 			h.ticks[k] = t
 		end

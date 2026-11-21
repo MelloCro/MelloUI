@@ -52,9 +52,9 @@ local M = MelloUI:RegisterModule("CooldownText", {
 		{ type = "toggle", key = "colorByTime", name = "Colour And Size By Time Left", desc = "Timers turn red and larger under 5 seconds, yellow under a minute, and smaller for minutes and hours. Off: all white." },
 		-- (a German player: in fights the game's numbers count the global cooldown too, "2, then 1"; "if we make the
 		-- dark overlay a step darker, the number is not needed and it looks nicer")
-		{ type = "toggle", key = "fightNumbers", name = "Numbers In Fights", new = "2.1.64",
+		{ type = "toggle", key = "fightNumbers", name = "Numbers In Fights", new = "2.1.66",
 		  desc = "In fights the game hides cooldown times from addons, and its own numbers count instead, the global cooldown too. Off: only the dark sweep shows the time left." },
-		{ type = "dropdown", key = "sweep", name = "Sweep Darkness", new = "2.1.64",
+		{ type = "dropdown", key = "sweep", name = "Sweep Darkness", new = "2.1.66",
 		  values = { { value = "game", label = "The Game's" }, { value = "dark", label = "Dark" }, { value = "darker", label = "Darker" } },
 		  desc = "How dark the sweep over an action button runs while it cools down. Back to the game's after a /reload." },
 	},
@@ -68,13 +68,6 @@ function M.SweepOnly()
 	return type(M.db) == "table" and M.db.fightNumbers == false or false
 end
 
--- an action button's sweep at the darkness asked for, after the game set its own (each SetCooldown)
-local function Sweep(cooldown)
-	local a = SWEEP_ALPHA[type(M.db) == "table" and M.db.sweep or "game"]
-	if a and cooldown.SetSwipeColor then
-		pcall(cooldown.SetSwipeColor, cooldown, 0, 0, 0, a)
-	end
-end
 
 --------------------------------------------------------------------------------
 -- Styles (the usual countdown colours and sizes)
@@ -151,6 +144,58 @@ local function IsPlainNumber(v)
 		return false
 	end
 	return true
+end
+
+-- (2.1.66, the follow-up to pull request #59) an action button's sweep at the darkness asked for: written once a
+-- button (its first cooldown) and again only right after the game wrote its own (GameSwiped, a post-hook of the
+-- cooldowns' SetSwipeColor) -- never on every SetCooldown (CLAUDE.md: no write-back on a path the game runs on every
+-- update). The game's own transparent sweep while its spell cast animation plays (ActionButton's PlaySpellCastAnim,
+-- alpha 0) is left as it is until the game shows its sweep again. "The Game's": nothing written; a button already
+-- darkened keeps it until a /reload
+-- [cooldown] = the darkness this module wrote last; HIDDEN: the game hid the sweep (left so until it shows it again);
+-- false: the game wrote its own visible colour
+local swept = setmetatable({}, { __mode = "k" })
+local HIDDEN = "hidden"
+local sweeping = false                             -- (our own write: not taken for the game's)
+
+local function SweepWanted()
+	return SWEEP_ALPHA[type(M.db) == "table" and M.db.sweep or "game"]
+end
+
+local function SweepWrite(cooldown, a)
+	sweeping = true
+	pcall(cooldown.SetSwipeColor, cooldown, 0, 0, 0, a)
+	sweeping = false
+	swept[cooldown] = a
+end
+
+local function Sweep(cooldown)
+	local a = SweepWanted()
+	local now = swept[cooldown]
+	if a and now ~= a and now ~= HIDDEN and cooldown.SetSwipeColor then
+		SweepWrite(cooldown, a)
+	end
+end
+
+-- the game wrote a sweep colour on a cooldown this module darkened: darkened again, unless the game hid it (alpha 0:
+-- left hidden, even through a SetCooldown, until the game shows its sweep again)
+local function GameSwiped(cooldown, _, _, _, alpha)
+	if sweeping or swept[cooldown] == nil then
+		return
+	end
+	if not (IsPlainNumber(alpha) and alpha > 0) then
+		swept[cooldown] = HIDDEN
+		return
+	end
+	swept[cooldown] = false
+	local a = SweepWanted()
+	if a then
+		local count = MelloUI.Perf and MelloUI.Perf.WriteBack
+		if count then
+			count("CooldownText: the sweep's darkness after the game's")
+		end
+		SweepWrite(cooldown, a)
+	end
 end
 
 local function Category(cooldown)
@@ -589,6 +634,10 @@ local function InstallHooks()
 		end
 		StopTimer(cooldown, true)
 	end)
+	-- (2.1.66) the game's own sweep colour on a cooldown this module darkened (GameSwiped: one table read for the rest)
+	if type(index.SetSwipeColor) == "function" then
+		hooksecurefunc(index, "SetSwipeColor", GameSwiped)
+	end
 	hooksecurefunc(index, "SetHideCountdownNumbers", function(cooldown, hidden)
 		if hidingNumbers then
 			return
@@ -639,6 +688,11 @@ function M:OnSettingChanged(key, value, db)
 	if key == "fightNumbers" then
 		for cooldown in pairs(handed) do
 			SetNativeNumbersHidden(cooldown, M.SweepOnly())
+		end
+	end
+	if key == "sweep" then
+		for cooldown in pairs(swept) do
+			Sweep(cooldown)
 		end
 	end
 	-- Force fonts and styles to be re-evaluated on the next tick.

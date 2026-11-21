@@ -42,15 +42,15 @@ local M = MelloUI:RegisterModule("DemonGrimoires", {
 	desc = "Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor. Summon each demon once first, so MelloUI can note what it knows.",
 	icon = "Interface\\Icons\\INV_Misc_Book_06",
 	flavour = "The Imp already knows that one. It told you. Twice.",
-	enabledByDefault = true,
-	new = "2.1.64",
+	enabledByDefault = false,
+	new = "2.1.66",
 	slash = "grimoires",
 	keep = { "demons" },
 	defaults = { merchant = true, tooltip = true },
 	options = {
-		{ type = "toggle", key = "merchant", name = "Mark Grimoires At The Vendor", new = "2.1.64",
+		{ type = "toggle", key = "merchant", name = "Mark Grimoires At The Vendor", new = "2.1.66",
 		  desc = "Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green." },
-		{ type = "toggle", key = "tooltip", name = "Line In Grimoire Tooltips", new = "2.1.64",
+		{ type = "toggle", key = "tooltip", name = "Line In Grimoire Tooltips", new = "2.1.66",
 		  desc = "A grimoire's tooltip says whether your demon knows it, or that it still needs summoning once." },
 	},
 })
@@ -60,6 +60,21 @@ local G = {
 	SETTLE = 0.5,       -- seconds: the spell book read once its events have stopped coming
 	RECIPE = 9,         -- the item class of grimoires (Recipe; their subclass Book): no other item is read
 }
+
+-- (2.1.66, the follow-up to pull request #61) the words' colours: Known in the palette's muted text, New in the
+-- meaning colour of one to learn (MelloUI.Meaning.canLearn, cannotUse's counterpart), "summon it once" in the
+-- palette's gold -- read when drawn (the vendor's words at each refresh, a tooltip line at each show)
+local function Colour(state)
+	local c
+	if state == "known" then
+		c = MelloUI.Palette.mutedText
+	elseif state == "unseen" then
+		c = MelloUI.Palette.selectedTrim
+	else
+		c = MelloUI.Meaning.canLearn
+	end
+	return c[1], c[2], c[3]
+end
 
 local function Tr(text)
 	local W = MelloUI.Widgets
@@ -305,11 +320,7 @@ function G.Refresh()
 				if family and state ~= "unseen" then
 					local known = state == "known"
 					fs:SetText(MelloUI.Lang.T(known and TEXT.known or TEXT.new))
-					if known then
-						fs:SetTextColor(0.6, 0.6, 0.6)
-					else
-						fs:SetTextColor(0.25, 1, 0.25)
-					end
+					fs:SetTextColor(Colour(known and "known" or "new"))
 					fs:Show()
 				else
 					fs:Hide()
@@ -340,16 +351,16 @@ local function OnItemTooltip(tooltip, data)
 	local F = MelloUI.Lang.F
 	if state == "known" then
 		if known and known > 0 then
-			tooltip:AddLine(F(TEXT.tipKnown, family, known), 0.6, 0.6, 0.6)
+			tooltip:AddLine(F(TEXT.tipKnown, family, known), Colour("known"))
 		else
-			tooltip:AddLine(F(TEXT.tipKnownPlain, family), 0.6, 0.6, 0.6)
+			tooltip:AddLine(F(TEXT.tipKnownPlain, family), Colour("known"))
 		end
 	elseif state == "lower" and known and known > 0 then
-		tooltip:AddLine(F(TEXT.tipLower, family, known), 0.25, 1, 0.25)
+		tooltip:AddLine(F(TEXT.tipLower, family, known), Colour("new"))
 	elseif state == "unseen" then
-		tooltip:AddLine(F(TEXT.tipUnseen, family), 1, 0.82, 0)
+		tooltip:AddLine(F(TEXT.tipUnseen, family), Colour("unseen"))
 	else
-		tooltip:AddLine(F(TEXT.tipNew, family), 0.25, 1, 0.25)
+		tooltip:AddLine(F(TEXT.tipNew, family), Colour("new"))
 	end
 	tooltip:Show()
 end

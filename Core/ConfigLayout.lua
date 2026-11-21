@@ -998,7 +998,6 @@ function L.Define(R, Link)
 	R("ActionBars", "actionbars:caps", "General", "ActionBars.hideBarArt")
 	R("ActionBars", "castbar:bar", "General", "CastMarks.!enabled", { name = "Cast Marks" })
 	R("ActionBars", "castbar:bar", "General", "CastMarks.latency")
-	R("ActionBars", "castbar:bar", "General", "CastMarks.latencyText")
 	R("ActionBars", "castbar:bar", "General", "CastMarks.ticks")
 	R("ActionBars", "actionbars:arrows", "General", "ActionBars.hidePageArrows")
 	-- Menu & Bags: each bar a part (Hide This Bar, its backdrop; the bag bar's fold), Dark Mode for both

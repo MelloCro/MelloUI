@@ -177,6 +177,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.66", lines = {
+		"Cast Marks (off until turned on): your latency hatched at the end of each cast, and a mark for each tick of a channel.",
+		"Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker.",
+		"Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips.",
+		"Mail Recipients: no realm behind your own characters any more when the game names none.",
+	} },
 	{ version = "2.1.65", lines = {
 		"Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values.",
 		"Map's quest log: Show on a quest with no place on the map, such as a crafting writ, says so instead of doing nothing.",
@@ -209,14 +215,6 @@ local CHANGELOG = {
 		"Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it.",
 		"More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers.",
 		"Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before.",
-	} },
-	{ version = "2.1.61", lines = {
-		"Loot rolls in a window of their own: every pick and number, and the item flies to the winner.",
-		"Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs.",
-		"Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps.",
-		"Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen.",
-		"GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap.",
-		"Druid Forms on the player frame too: your other two powers in one row under the power bar, split in two, each with its number. The Personal Display shows them the same way.",
 	} },
 }
 local LINKS = {

@@ -5782,7 +5782,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "Health and power percent, spell names and times." },
 		-- (2.1.65; Wolvegrimm, Discord 2026-11-21: "actual numbers on the health and main power bar just like the new
 		-- Druid bars have" -- the user: the percents on the bars, as an option)
-		{ type = "dropdown", key = "textPlace", name = "Percent Position", new = "2.1.65",
+		{ type = "dropdown", key = "textPlace", name = "Percent Position",
 		  search = "percent number numbers text value on inside bar bars health power position place",
 		  desc = "Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers.",
 		  values = {

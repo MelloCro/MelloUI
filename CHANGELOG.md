@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.66
+
+- Cast Marks, new (off until you turn it on, Bars > Cast Bar > Bar): the end of each cast is hatched for the spell queue window and your latency (once the fill reaches it, the next spell queues), and a thin mark shows where each tick of a channelled spell lands, such as Drain Life, Mind Flay or Arcane Missiles. On the game's cast bar and the Personal Display's.
+- Cooldown Timers: Numbers In Fights (on by default). Off, the game's own countdown numbers stay hidden while cooldown times are hidden from addons in fights, so the global cooldown no longer counts on every button. Sweep Darkness: Dark or Darker for the sweep over an action button.
+- Demon Grimoires, new for warlocks (off until you turn it on, Quality of Life > Vendor): MelloUI notes what each of your demons knows whenever it is out, and marks each grimoire at the vendor as Known or New, with a line in its tooltip. Summon each demon once first.
+- Fixed in Mail Recipients: when the game named no realm, your own characters showed a realm behind their names, you were on your own list, and some characters came twice.
+
 ## 2.1.65
 
 - Blocked actions report (/mellobug): with a controller, it also notes what first changed the game's controller values and the way it got there, to track down actions the game blocks in the Gamepad UI.

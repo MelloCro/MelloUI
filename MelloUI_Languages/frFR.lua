@@ -4539,6 +4539,10 @@ Lang:Add("frFR", {
 	["translations"] = "traductions", -- draft
 	["code and translations"] = "code et traductions", -- draft
 	["Supporters page: the people who send code and translations on GitHub, credited under the banners."] = "Page des soutiens : les personnes qui envoient du code et des traductions sur GitHub, remerciées sous les bannières.", -- draft
+	["Cast Marks (off until turned on): your latency hatched at the end of each cast, and a mark for each tick of a channel."] = "Marques d'incantation (désactivées par défaut) : votre latence hachurée à la fin de chaque sort et une marque pour chaque tick d'une canalisation.", -- draft
+	["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "Délais de recharge : Chiffres en combat peut masquer le compte à rebours du jeu en combat, et Obscurité du balayage assombrit le balayage.", -- draft
+	["Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips."] = "Grimoires démoniaques (désactivés par défaut) : ce que savent vos démons, marqué chez le marchand et dans les infobulles des grimoires.", -- draft
+	["Mail Recipients: no realm behind your own characters any more when the game names none."] = "Destinataires du courrier : plus de royaume derrière vos propres personnages quand le jeu n'en nomme aucun.", -- draft
 	["Percent Position"] = "Position du pourcentage", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Où se placent les pourcentages de vie et de puissance : à côté des barres, ou centrés dessus comme les nombres des Formes de druide.", -- draft
 	["Beside The Bars"] = "À côté des barres", -- draft
