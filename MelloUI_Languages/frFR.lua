@@ -4440,6 +4440,19 @@ Lang:Add("frFR", {
 	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Page Addons : elle s’ouvre de nouveau avec MaxDPS installé, alors qu’elle restait sur Profils.", -- draft
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "Destinataires du courrier", -- draft
+	["Demon Grimoires"] = "Grimoires démoniaques", -- draft
+	["Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor. Summon each demon once first, so MelloUI can note what it knows."] = "Note ce que chacun de vos démons connaît dès qu'il est invoqué, et marque les grimoires chez le marchand et dans les infobulles comme connus ou nouveaux : plus besoin d'invoquer chaque démon devant le marchand. Invoquez d'abord chaque démon une fois, pour que MelloUI note ce qu'il connaît.", -- draft
+	["The Imp already knows that one. It told you. Twice."] = "Le diablotin le connaît déjà. Il vous l'a dit. Deux fois.", -- draft
+	["Mark Grimoires At The Vendor"] = "Marquer les grimoires chez le marchand", -- draft
+	["Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green."] = "Chaque grimoire de la page du marchand indique si votre démon le connaît : Connu en gris, Nouveau en vert.", -- draft
+	["Line In Grimoire Tooltips"] = "Ligne dans l'infobulle des grimoires", -- draft
+	["A grimoire's tooltip says whether your demon knows it, or that it still needs summoning once."] = "L'infobulle d'un grimoire indique si votre démon le connaît, ou s'il faut encore l'invoquer une fois.", -- draft
+	["Your %s knows this (rank %s)."] = "Votre %s connaît ceci (rang %s).", -- draft
+	["Your %s knows this."] = "Votre %s connaît ceci.", -- draft
+	["Your %s does not know this yet."] = "Votre %s ne connaît pas encore ceci.", -- draft
+	["Your %s knows rank %s: this one is new."] = "Votre %s connaît le rang %s : celui-ci est nouveau.", -- draft
+	["Summon your %s once and MelloUI notes what it knows."] = "Invoquez votre %s une fois et MelloUI note ce qu'il connaît.", -- draft
+	["Demon Grimoires: nothing noted yet. Summon each demon once."] = "Grimoires démoniaques : rien de noté pour l'instant. Invoquez chaque démon une fois.", -- draft
 	["Who was that again? One click and the letter has its name."] = "C’était qui, déjà ? Un clic et la lettre a son destinataire.", -- draft
 	["Battle.net Friends' Characters"] = "Personnages des amis Battle.net", -- draft
 	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Un bouton à côté du champ Destinataire de la boîte aux lettres liste vos personnages et ceux de vos amis Battle.net : cliquez sur l’un d’eux et son nom est saisi.", -- draft
