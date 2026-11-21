@@ -637,6 +637,12 @@ Lang:Add("frFR", {
 	["Show Tenths Below 5s"] = "Dixièmes sous 5 s",
 	["Shows 4.3 instead of 5 in a cooldown's last seconds."] = "Affiche 4,3 au lieu de 5 dans les dernières secondes d'un temps de recharge.",
 	["Colour And Size By Time Left"] = "Couleur et taille selon le temps restant",
+	["Numbers In Fights"] = "Chiffres en combat", -- draft
+	["In fights the game hides cooldown times from addons, and its own numbers count instead, the global cooldown too. Off: only the dark sweep shows the time left."] = "En combat, le jeu cache les temps de recharge aux addons, et ses propres chiffres comptent à la place, recharge globale comprise. Désactivé : seul le balayage sombre montre le temps restant.", -- draft
+	["Sweep Darkness"] = "Obscurité du balayage", -- draft
+	["The Game's"] = "Celle du jeu", -- draft
+	["Darker"] = "Plus sombre", -- draft
+	["How dark the sweep over an action button runs while it cools down. Back to the game's after a /reload."] = "L'obscurité du balayage sur un bouton d'action pendant sa recharge. Retour à celle du jeu après un /reload.", -- draft
 	["Timers turn red and larger under 5 seconds, yellow under a minute, and smaller for minutes and hours. Off: all white."] = "Les minuteurs deviennent rouges et plus grands sous 5 secondes, jaunes sous une minute, et plus petits pour les durées en minutes et en heures. Désactivé : tout en blanc.",
 	-- Tweaks
 	["Tweaks"] = "Réglages",
