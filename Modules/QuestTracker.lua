@@ -2530,6 +2530,14 @@ local function ReleaseBlock(block)
 		b.line = nil
 	end
 	block.guideClick, block.guideRight = nil, nil
+	-- (2.1.63) a guide step's heading and note: the next job of this block may be a quest's
+	if block.guideHead then
+		block.guideHead:Hide()
+	end
+	if block.guideNote then
+		block.guideNote:Hide()
+		block.guideRule:Hide()
+	end
 	if block.linkLayer then
 		-- (a guide's link layer: mouse and links off, the block's own clicks its own again -- the next lines may be a
 		-- quest's; GuideLayer turns them on for a guide)
@@ -4375,6 +4383,84 @@ do
 	end
 end
 
+-- (2.1.63; the user's pick A of the Polestar step notes sketch, 2026-11-21: Workspace/BuildData/output/
+-- polestar_notes_sketch) a guide step's heading -- the place or the NPC, the reader's `heading` -- under its title, in
+-- the title's own colour (its ink on parchment) one size smaller; one font string a block, made on its first heading
+function GUIDE.Heading(block, layer, text, y, width)
+	local fs = block.guideHead
+	if type(text) ~= "string" or text == "" then
+		if fs then
+			fs:Hide()
+		end
+		return y
+	end
+	if not fs then
+		fs = layer:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
+		fs:SetJustifyH("LEFT")
+		fs:SetWordWrap(true)
+		block.guideHead = fs
+	end
+	StyleText(fs, TitleSize() - 1)
+	fs:SetText(text)
+	fs:SetTextColor(StoneColour(block, 1, 0.82, 0))
+	InkLine(fs, block.ink, 1)
+	if block.ink and MelloUI.QuestInk then
+		MelloUI.QuestInk.Ink(fs, "title")
+	end
+	fs:ClearAllPoints()
+	fs:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, -y)
+	fs:SetWidth(math.max(1, width - TEXT_X))
+	fs:Show()
+	return y + fs:GetStringHeight() + LINE_GAP
+end
+
+-- ... and its note under its goals (the reader's `note`), every word of it, in the objective text's column one size
+-- smaller, the palette's text (its ink on parchment: body text is never the muted colour), a thin rule at its left
+-- (the palette's border; the ink's faded on parchment)
+function GUIDE.Note(block, layer, text, y, width)
+	local fs, rule = block.guideNote, block.guideRule
+	if type(text) ~= "string" or text == "" then
+		if fs then
+			fs:Hide()
+			rule:Hide()
+		end
+		return y
+	end
+	if not fs then
+		fs = layer:CreateFontString(nil, "OVERLAY", "MelloUIFont_GameFontHighlightSmall")
+		fs:SetJustifyH("LEFT")
+		fs:SetWordWrap(true)
+		rule = MelloUI.Widgets.Solid(layer, "ARTWORK", "border", 0.8)
+		block.guideNote, block.guideRule = fs, rule
+	end
+	y = y + TITLE_GAP
+	local x = TEXT_X + COLUMNS.text
+	StyleText(fs, TitleSize() - 2)
+	fs:SetText(text)
+	fs:SetTextColor(StoneColour(block, 0.9, 0.9, 0.9))
+	InkLine(fs, block.ink, 0.9)
+	fs:ClearAllPoints()
+	fs:SetPoint("TOPLEFT", block, "TOPLEFT", x, -y)
+	fs:SetWidth(math.max(1, width - x))
+	fs:Show()
+	local h = fs:GetStringHeight()
+	local QI = MelloUI.QuestInk
+	if block.ink and QI and QI.INK then
+		if MelloUI.Painter and MelloUI.Painter.Unpaint then
+			MelloUI.Painter.Unpaint(rule, "vertex")   -- (the palette's next switch leaves the ink as it is)
+		end
+		local c = QI.INK.faded
+		rule:SetVertexColor(c[1], c[2], c[3], 0.6)
+	else
+		PaintKey(rule, "border", "vertex", 0.8)
+	end
+	rule:ClearAllPoints()
+	rule:SetPoint("TOPLEFT", block, "TOPLEFT", x - 7, -(y + 1))
+	rule:SetSize(2, math.max(1, h - 2))
+	rule:Show()
+	return y + h + LINE_GAP
+end
+
 local function FillGuideBlock(block, data, width)
 	-- (its links: the link layer, GuideLayer, above)
 	local layer = GuideLayer(block)
@@ -4435,6 +4521,7 @@ local function FillGuideBlock(block, data, width)
 		MelloUI.QuestInk.Ink(t, "title")
 	end
 	local y = t:GetStringHeight() + TITLE_GAP
+	y = GUIDE.Heading(block, layer, data.heading, y, textWidth)   -- (2.1.63: the step's place or NPC)
 	local n, boxes = 0, 0
 	-- (the step's goal lines with a quest: a click on one follows it, Act.GuideLine)
 	block.guideQuest = block.guideQuest or {}
@@ -4480,6 +4567,7 @@ local function FillGuideBlock(block, data, width)
 			b:Show()
 		end
 	end
+	y = GUIDE.Note(block, layer, data.note, y, textWidth)   -- (2.1.63: the step's note under its goals)
 	-- (Guide: Next Steps) the guide's next steps under the current one, dimmed, each led by its number; no box: they
 	-- are not the step yet
 	local want = math.floor(tonumber(M.db and M.db.guideNext) or 0)

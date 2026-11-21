@@ -352,6 +352,8 @@ local function Read(reader)
 		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-")
 	end
 	parts[#parts + 1] = NavSig(steps)
+	-- (2.1.63: its heading and note too -- Polestar's Show Notes switched shows or hides the note at once)
+	parts[#parts + 1] = tostring(steps and steps.heading) .. "|" .. tostring(steps and steps.note)
 	reader.mapID, reader.x, reader.y, reader.steps = m, x, y, steps
 	reader.runs = (m or steps) and true or false
 	-- (its step itself -- the guide, the step's number in its title, the spot -- not its lines' progress: what takes over)
@@ -740,6 +742,7 @@ function Guide.Publish()
 		end
 	end
 	parts[#parts + 1] = NavSig(steps)
+	parts[#parts + 1] = tostring(steps and steps.heading) .. "|" .. tostring(steps and steps.note)   -- (2.1.63)
 	-- (its spot too: the Quest Tracker's distance to it)
 	parts[#parts + 1] = reader and reader.mapID and string.format("@%d:%.4f:%.4f", reader.mapID, reader.x, reader.y) or "@"
 	local sig = steps and table.concat(parts, "\n") or ""
@@ -761,7 +764,8 @@ function Guide.Publish()
 	end
 	MelloUI:Fire("guide", { section = reader.section or reader.name, lines = steps.lines, Repin = Guide.Repin,
 		Unpin = Guide.Unpin, title = Guide.title, cog = steps.cog, nav = steps.nav, away = steps.away, upcoming = steps.upcoming,
-		mapID = reader.mapID, x = reader.x, y = reader.y })
+		mapID = reader.mapID, x = reader.x, y = reader.y,
+		heading = steps.heading, note = steps.note })   -- (2.1.63: a reader's step heading and note, the tracker's take A)
 end
 
 -- the followed guide's items for its step on the bus's "guideitem" (the user, 2026-10-18: "when you need to use an
@@ -899,6 +903,7 @@ end
 -- an arrow alone); Hook(changed) post-hooks the addon's step update, true when
 -- hooked; Point() its step's spot: uiMapID, x, y in 0..1; Steps() { title,
 -- lines = { { text, done, box, Toggle } }, cog, nav (StepButtons: its own step back
+-- (2.1.63: optional heading -- the step's place or NPC -- and note, shown in the tracker over and under the lines)
 -- and skip) } or nil; Items() { { kind
 -- "item" or "spell", id, known } }; Frames() its own arrow and windows;
 -- Quiet(on), optional, its drawings on no frame of its own, through its own
@@ -1963,7 +1968,25 @@ do
 					C_Timer.After(0, function() Guide.Changed(polestar) end)
 				end }
 		end
+		-- (2.1.63; the user's pick A of the Polestar step notes sketch, 2026-11-21) its step's heading -- the place or the
+		-- NPC, as its window words it -- and its note, the note only while its own Show Notes is on (ui.showNotes, as its
+		-- window reads it); their colour codes out, so the tracker's own colour or ink stands
+		local heading, note = Plain(view.title), Plain(view.note)
+		heading = type(heading) == "string" and heading:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or nil
+		note = type(note) == "string" and note:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or nil
+		if heading and (not heading:find("%S") or heading == name) then
+			heading = nil
+		end
+		-- (its setting read with pcall itself: Pcall hands no false back)
+		local okN, shows = false, nil
+		if type(t.Get) == "function" then
+			okN, shows = pcall(t.Get, "ui.showNotes")
+		end
+		if note and (not note:find("%S") or (okN and shows == false)) then
+			note = nil
+		end
 		return { title = W.Tr("%s - step %s%s"):format(name or "Polestar", No(i), total and ("/" .. total) or ""), lines = lines,
+			heading = heading, note = note,
 			nav = nav, away = away, cog = { Left = Picker, Right = Settings, tip = "Polestar",
 				hint = W.Tr("Click: its guides  -  Right-click: its settings") } }
 	end
