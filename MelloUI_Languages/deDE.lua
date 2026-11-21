@@ -637,6 +637,12 @@ Lang:Add("deDE", {
 	["Show Tenths Below 5s"] = "Zehntel unter 5 s zeigen",
 	["Shows 4.3 instead of 5 in a cooldown's last seconds."] = "Zeigt 4,3 statt 5 in den letzten Sekunden einer Abklingzeit.",
 	["Colour And Size By Time Left"] = "Farbe und Größe nach Restzeit",
+	["Numbers In Fights"] = "Zahlen im Kampf", -- draft
+	["In fights the game hides cooldown times from addons, and its own numbers count instead, the global cooldown too. Off: only the dark sweep shows the time left."] = "Im Kampf verbirgt das Spiel die Abklingzeiten vor Addons, dann zählen seine eigenen Zahlen, auch bei der globalen Abklingzeit. Aus: Nur der dunkle Schatten zeigt die verbleibende Zeit.", -- draft
+	["Sweep Darkness"] = "Dunkelheit des Schattens", -- draft
+	["The Game's"] = "Wie im Spiel", -- draft
+	["Darker"] = "Dunkler", -- draft
+	["How dark the sweep over an action button runs while it cools down. Back to the game's after a /reload."] = "Wie dunkel der Schatten über einem Aktionsknopf läuft, solange er abklingt. Zurück zur Spiel-Einstellung nach einem /reload.", -- draft
 	["Timers turn red and larger under 5 seconds, yellow under a minute, and smaller for minutes and hours. Off: all white."] = "Timer werden unter 5 Sekunden rot und größer, unter einer Minute gelb und bei Minuten und Stunden kleiner. Aus: alle weiß.",
 	-- Tweaks
 	["Tweaks"] = "Anpassungen",
