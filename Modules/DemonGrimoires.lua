@@ -7,8 +7,9 @@
 --   Noting     whenever a demon of yours is out, its spell book is read (its family, "Imp", "Voidwalker", ..., and each
 --              ability with its rank) and kept for this character: summoned once, a demon is known from then on, and
 --              noted again as it learns something new.
---   The vendor each grimoire on a merchant's page gets a word under its name: "Known (Imp)" in grey where the demon
---              knows that rank or a higher one, "New (Imp)" in green where it knows a lower one or none of it yet.
+--   The vendor each grimoire on a merchant's page gets a word at its bottom right: "Known" in grey where the demon
+--              knows that rank or a higher one, "New" in green where it knows a lower one or none of it yet (which
+--              demon: the tooltip). The pet's commands (Attack, Follow, Passive, ...) are not noted.
 --   Tooltips   a grimoire's tooltip anywhere (the vendor, your bags) gets the same line.
 -- Which grimoire teaches what is read from its own tooltip ("Teaches your Imp Firebolt (Rank 2)"): the noted ability's
 -- name in it and the first number after the name its rank -- so it reads the client's language and no list of
@@ -26,8 +27,8 @@ local Secret, Num, Text = Safe.IsSecret, Safe.Number, Safe.Text
 
 -- (every text a window draws: Tools/languages/strings.py reads this table)
 local TEXT = {
-	known = "Known (%s)",
-	new = "New (%s)",
+	known = "Known",   -- (the vendor's word: short, at the item's bottom right, clear of the price; the demon in the tooltip)
+	new = "New",
 	tipKnown = "Your %s knows this (rank %s).",
 	tipKnownPlain = "Your %s knows this.",
 	tipNew = "Your %s does not know this yet.",
@@ -113,17 +114,25 @@ local function PetSpells()
 	local bank = type(E) == "table" and type(E.SpellBookSpellBank) == "table" and E.SpellBookSpellBank.Pet
 	if type(SB) == "table" and bank ~= nil and type(SB.HasPetSpells) == "function" then
 		local n = Num(Call(SB.HasPetSpells)) or 0
+		local types = type(E.SpellBookItemType) == "table" and E.SpellBookItemType or {}
 		for i = 1, n do
-			local name, sub = Call(SB.GetSpellBookItemName, i, bank)
-			out[#out + 1] = { name = Text(name), sub = sub }
+			local info = Call(SB.GetSpellBookItemInfo, i, bank)
+			local command = type(info) == "table" and types.PetAction ~= nil and info.itemType == types.PetAction
+			if not command then
+				local name, sub = Call(SB.GetSpellBookItemName, i, bank)
+				out[#out + 1] = { name = Text(name), sub = sub }
+			end
 		end
 		return out
 	end
 	local has, getName = rawget(_G, "HasPetSpells"), rawget(_G, "GetSpellBookItemName") or rawget(_G, "GetSpellName")
+	local getInfo, book = rawget(_G, "GetSpellBookItemInfo"), rawget(_G, "BOOKTYPE_PET") or "pet"
 	local n = Num(Call(has)) or 0
 	for i = 1, n do
-		local name, sub = Call(getName, i, rawget(_G, "BOOKTYPE_PET") or "pet")
-		out[#out + 1] = { name = Text(name), sub = sub }
+		if Text(Call(getInfo, i, book)) ~= "PETACTION" then
+			local name, sub = Call(getName, i, book)
+			out[#out + 1] = { name = Text(name), sub = sub }
+		end
 	end
 	return out
 end
@@ -250,13 +259,10 @@ local function Word(item)
 	if fs then
 		return fs
 	end
+	-- (first under the name: it ran over the price, the player's screenshot of 2026-11-21; now at the bottom right)
 	fs = item:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	local name = rawget(_G, (item.GetName and item:GetName() or "") .. "Name")
-	if name then
-		fs:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -1)
-	else
-		fs:SetPoint("BOTTOMRIGHT", item, "BOTTOMRIGHT", -2, 2)
-	end
+	fs:SetPoint("BOTTOMRIGHT", item, "BOTTOMRIGHT", -4, 3)
+	fs:SetJustifyH("RIGHT")
 	words[item] = fs
 	return fs
 end
@@ -292,7 +298,7 @@ function G.Refresh()
 			if fs then
 				if family and state ~= "unseen" then
 					local known = state == "known"
-					fs:SetText(MelloUI.Lang.F(known and TEXT.known or TEXT.new, family))
+					fs:SetText(MelloUI.Lang.T(known and TEXT.known or TEXT.new))
 					if known then
 						fs:SetTextColor(0.6, 0.6, 0.6)
 					else

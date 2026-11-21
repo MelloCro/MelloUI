@@ -3883,8 +3883,7 @@ Lang:Add("deDE", {
 	["Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green."] = "Jeder Foliant auf der Händlerseite zeigt, ob dein Dämon ihn schon kennt: Bekannt in Grau, Neu in Grün.", -- draft
 	["Line In Grimoire Tooltips"] = "Zeile im Tooltip der Folianten", -- draft
 	["A grimoire's tooltip says whether your demon knows it, or that it still needs summoning once."] = "Der Tooltip eines Folianten sagt, ob dein Dämon ihn kennt oder ob er erst einmal beschworen werden muss.", -- draft
-	["Known (%s)"] = "Bekannt (%s)", -- draft
-	["New (%s)"] = "Neu (%s)", -- draft
+	["Known"] = "Bekannt", -- draft
 	["Your %s knows this (rank %s)."] = "Dein %s kennt das (Rang %s).", -- draft
 	["Your %s knows this."] = "Dein %s kennt das.", -- draft
 	["Your %s does not know this yet."] = "Dein %s kennt das noch nicht.", -- draft

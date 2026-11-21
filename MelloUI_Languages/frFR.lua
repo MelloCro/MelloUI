@@ -4447,8 +4447,6 @@ Lang:Add("frFR", {
 	["Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green."] = "Chaque grimoire de la page du marchand indique si votre démon le connaît : Connu en gris, Nouveau en vert.", -- draft
 	["Line In Grimoire Tooltips"] = "Ligne dans l'infobulle des grimoires", -- draft
 	["A grimoire's tooltip says whether your demon knows it, or that it still needs summoning once."] = "L'infobulle d'un grimoire indique si votre démon le connaît, ou s'il faut encore l'invoquer une fois.", -- draft
-	["Known (%s)"] = "Connu (%s)", -- draft
-	["New (%s)"] = "Nouveau (%s)", -- draft
 	["Your %s knows this (rank %s)."] = "Votre %s connaît ceci (rang %s).", -- draft
 	["Your %s knows this."] = "Votre %s connaît ceci.", -- draft
 	["Your %s does not know this yet."] = "Votre %s ne connaît pas encore ceci.", -- draft
