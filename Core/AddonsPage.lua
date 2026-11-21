@@ -332,7 +332,7 @@ local function Card(parent, e, width, skin, ctx)
 	if G and G.Shows and G.HasSteps and G.HasSteps(e.arrow) then
 		local label = W.Text(body, "GameFontHighlight", Tr(TEXT.shows), "text")
 		label:SetPoint("TOPLEFT", body, "TOPLEFT", T.PAD + 4, -(by + 8))
-		W.NewTag(body, label, "2.1.63")
+		W.NewTag(body, label)
 		local dd = W.Dropdown(body, T.SHOWS_W, function()
 			return G.Shows(e.arrow)
 		end, function(value)
