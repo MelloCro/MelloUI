@@ -3962,6 +3962,13 @@ Lang:Add("deDE", {
 	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "Der vorige Schritt: Ist er noch nicht erledigt, geht RestedXP zu ihm zurück. Ein erledigter wird hier nur angezeigt, und RestedXP bleibt auf seinem eigenen Schritt.", -- draft
 	["Shows the next step here, back up to RestedXP's own step."] = "Zeigt hier den nächsten Schritt, bis zurück zu RestedXPs eigenem Schritt.", -- draft
 	["No earlier step to show here."] = "Hier gibt es keinen früheren Schritt zum Anzeigen.", -- draft
+	["Cast Marks"] = "Zaubermarken", -- draft
+	["Your latency at the end of each cast and a mark for each tick of a channel, on your cast bar and the Personal Display's."] = "Deine Latenz am Ende jedes Zaubers und eine Marke für jeden Tick einer Kanalisierung, auf deiner Zauberleiste und der der Persönlichen Anzeige.", -- draft
+	["Press the next spell the moment you can."] = "Drück den nächsten Zauber, sobald es geht.", -- draft
+	["Latency"] = "Latenz", -- draft
+	["The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell."] = "Das Ende jedes Zaubers ist schraffiert: das Zauber-Warteschlangenfenster des Spiels und deine Latenz. Sobald die Füllung dort ankommt, kannst du den nächsten Zauber drücken.", -- draft
+	["Channel Ticks"] = "Kanalisierungs-Ticks", -- draft
+	["A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles."] = "Eine schmale Marke, wo jeder Tick eines kanalisierten Zaubers landet, etwa bei Lebensentzug, Höllenfeuer oder Arkanen Geschossen.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

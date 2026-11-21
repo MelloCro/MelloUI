@@ -4549,6 +4549,13 @@ Lang:Add("frFR", {
 	["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "Oldschool : les animations de quête portent votre Jeu de cadres : l'icône dans l'anneau du jeu, les mots sur une plaque de son cadre, en lumière peinte.", -- draft
 	["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "Oldschool : les barres de progression portent le cadre de votre Jeu de cadres à la place du support à losanges, et les lignes de liste sont de fines lignes sur fond sombre à la place d'épaisses barres dorées.", -- draft
 	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool : de nouveaux cadres pour les cadres d'unité, la barre de sorts, l'Affichage personnel, les barres d'info et le chat, en trois jeux au choix dans Bordures > Jeu de cadres : Pierre dorée, Fer forgé et Bois sculpté.", -- draft
+	["Cast Marks"] = "Repères d'incantation", -- draft
+	["Your latency at the end of each cast and a mark for each tick of a channel, on your cast bar and the Personal Display's."] = "Votre latence à la fin de chaque incantation et un repère pour chaque tick d'une canalisation, sur votre barre d'incantation et celle de l'affichage personnel.", -- draft
+	["Press the next spell the moment you can."] = "Lancez le sort suivant dès que possible.", -- draft
+	["Latency"] = "Latence", -- draft
+	["The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell."] = "La fin de chaque incantation est hachurée : la fenêtre de file d'attente des sorts du jeu et votre latence. Dès que le remplissage l'atteint, vous pouvez lancer le sort suivant.", -- draft
+	["Channel Ticks"] = "Ticks de canalisation", -- draft
+	["A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles."] = "Un fin repère là où tombe chaque tick d'un sort canalisé, comme Drain de vie, Flammes infernales ou Projectiles des arcanes.", -- draft
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):

@@ -125,6 +125,7 @@ Modules\MeterBar.lua
 Modules\MeterHistory.lua
 Modules\MeterRaid.lua
 Modules\SwingTimers.lua
+Modules\CastMarks.lua
 Modules\PartyMarkers.lua
 Modules\RolePicker.lua
 Modules\MailRecipients.lua

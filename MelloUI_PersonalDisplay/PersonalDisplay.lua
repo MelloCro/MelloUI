@@ -1673,6 +1673,10 @@ local function CastOut(kind, text)
 	if not cast then
 		return
 	end
+	local marks = MelloUI.CastMarks
+	if marks and marks.Clear then
+		marks.Clear(cast.bar)
+	end
 	Motion.LayLine()
 	kind = kind or "plain"
 	local now = GetTime()
@@ -1707,6 +1711,10 @@ local function CastShow(name, seconds, channel, texture, from)
 		Anim:StopTimer(cast.bar, true)   -- (its times unreadable: the bar full, no seconds)
 	end
 	S.castStart, S.castTotal, S.castChannel = from or GetTime(), seconds, channel or nil
+	local marks = MelloUI.CastMarks   -- (latency and channel ticks on this bar too: Modules/CastMarks.lua)
+	if marks and marks.Lay then
+		marks.Lay(cast.bar, seconds, channel, name)
+	end
 	S.casting, S.castEnd, S.castLanded = true, nil, nil
 	Gilded.Icon(texture)
 	FadePoke()
