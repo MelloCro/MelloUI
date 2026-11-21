@@ -3449,7 +3449,7 @@ Lang:Add("frFR", {
 	["Click: its page   Shift-click: link it in the chat"] = "Clic : ouvrir la page   Maj-clic : partager le lien dans le chat",
 	["Tracked in the Quest Tracker: click to take it off, or to show it there"] = "Quête suivie : cliquez pour arrêter le suivi ou l'afficher dans le suivi des quêtes",
 	["Click: fold or unfold this zone"] = "Clic : replier ou déplier cette zone",
-	-- (2.1.61, #34) the tracked boxes of a zone and of the whole log (MelloUI_Map/MapQuestLog.lua)
+	-- (2.1.64, #34) the tracked boxes of a zone and of the whole log (MelloUI_Map/MapQuestLog.lua)
 	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "Toutes les quêtes de cette zone dans le suivi des quêtes : cliquez pour toutes les y afficher ou toutes les retirer", -- draft
 	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Toutes vos quêtes dans le suivi des quêtes : cliquez pour toutes les y afficher ou toutes les retirer", -- draft
 	["My Items"] = "Mes objets",
@@ -4107,7 +4107,7 @@ Lang:Add("frFR", {
 	["Skip this step"] = "Ignorer cette étape",
 	["Back a step"] = "Revenir à l’étape précédente",
 	["Forward a step"] = "Passer à l’étape suivante",
-	-- (2.1.61, #40) RestedXP's Back only looks
+	-- (2.1.64, #40) RestedXP's Back only looks
 	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "L’étape précédente : RestedXP y revient tant qu’elle n’est pas faite. Une étape faite est seulement affichée ici, et RestedXP reste sur sa propre étape.", -- draft
 	["Shows the next step here, back up to RestedXP's own step."] = "Affiche ici l’étape suivante, jusqu’à revenir à l’étape de RestedXP.", -- draft
 	["No earlier step to show here."] = "Aucune étape précédente à afficher ici.", -- draft
@@ -4499,6 +4499,8 @@ Lang:Add("frFR", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Fenêtre des sacs : l’équipement porté déposé sur une case + va dans un emplacement libre. Avant, il retournait sur le personnage.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Infos des donjons : donjons, zones et boss portent leur nom dans la langue de votre client, et le butin d’une ligne de boss affiche l’infobulle de l’objet.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Langues : l’allemand relu ligne par ligne par un joueur allemand, et davantage de la discussion, de la carte et des menus en français.", -- draft
+	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "Journal des quêtes de la carte : une case de suivi sur chaque zone et une case Toutes les quêtes mettent de nombreuses quêtes dans le suivi en une fois.", -- draft
+	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "RestedXP dans le suivi des quêtes : Retour revient à une étape pas encore faite et ne fait qu'afficher une étape faite.", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "Guides : la carte de chaque guide sous Addons choisit où ses étapes s'affichent : le suivi des quêtes de MelloUI, la propre fenêtre du guide, ou les deux.", -- draft
 	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "Polestar dans le suivi des quêtes : chaque étape montre qui ou où elle est, et la note de Polestar sous ses objectifs.", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "Marqueur du monde : sur une quête, il se place sur le point du jeu lui-même, à sa vraie hauteur, même quand vous regardez depuis une colline.", -- draft

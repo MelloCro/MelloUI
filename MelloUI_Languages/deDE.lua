@@ -3645,7 +3645,7 @@ Lang:Add("deDE", {
 	["Click: its page   Shift-click: link it in the chat"] = "Klick: seine Seite   Umschalt-Klick: im Chat verlinken",
 	["Tracked in the Quest Tracker: click to take it off, or to show it there"] = "In der Questverfolgung: Klicken, um sie herauszunehmen oder dort zu zeigen",
 	["Click: fold or unfold this zone"] = "Klick: diese Zone ein- oder ausklappen",
-	-- (2.1.61, #34) the tracked boxes of a zone and of the whole log (MelloUI_Map/MapQuestLog.lua)
+	-- (2.1.64, #34) the tracked boxes of a zone and of the whole log (MelloUI_Map/MapQuestLog.lua)
 	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "Alle Quests dieser Zone in der Questverfolgung: Klicken, um sie alle dort zu zeigen oder alle herauszunehmen", -- draft
 	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Alle deine Quests in der Questverfolgung: Klicken, um sie alle dort zu zeigen oder alle herauszunehmen", -- draft
 	["My Items"] = "Meine Gegenstände",
@@ -3904,6 +3904,8 @@ Lang:Add("deDE", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Taschenfenster: Angelegte Ausrüstung, die du auf ein +-Feld ziehst, kommt in einen freien Platz. Vorher ging sie zurück an den Charakter.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Dungeon-Info: Dungeons, Gebiete und Bosse heißen wie in der Sprache deines Clients, und die Beute in einer Bosszeile zeigt ihren Gegenstands-Tooltip.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Sprachen: Deutsch Zeile für Zeile von einem deutschen Spieler geprüft, und mehr vom Chat, von der Karte und von den Menüs auf Französisch.", -- draft
+	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "Questlog der Karte: Ein Häkchen an jeder Zone und eines für alle Quests setzen viele Quests auf einmal in die Questverfolgung.", -- draft
+	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "RestedXP in der Questverfolgung: Zurück geht zu einem noch nicht erledigten Schritt zurück und zeigt einen erledigten nur an.", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "Guides: Auf der Karte jedes Guides unter Addons wählst du, wo seine Schritte erscheinen: in MelloUIs Questverfolgung, im eigenen Fenster des Guides oder in beiden.", -- draft
 	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "Polestar in der Questverfolgung: Jeder Schritt zeigt, wer oder wo er ist, und Polestars Notiz unter seinen Zielen.", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "Weltmarkierung: Bei einer Quest steht sie auf dem eigenen Punkt des Spiels, in seiner echten Höhe, auch wenn du von einem Hügel hinabschaust.", -- draft
@@ -3928,7 +3930,7 @@ Lang:Add("deDE", {
 	["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "Oldschool: Die Quest-Animationen tragen dein Rahmen-Set: das Symbol im Ring des Sets, die Worte auf einer Tafel aus dem Rahmen des Sets, in gemaltem Licht.", -- draft
 	["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "Oldschool: Fortschrittsbalken tragen den Rahmen deines Rahmen-Sets statt der Klammer mit Rautenkappen, und Listenzeilen sind ruhige Linien auf dunklem Grund statt dicker Goldbalken.", -- draft
 	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: Neue Rahmen für die Einheitenfenster, den Zauberbalken, die Persönliche Anzeige, die Namensplaketten und den Chat, in drei Sets zur Wahl unter Ränder > Rahmen-Set: Vergoldeter Stein, Geschmiedetes Eisen und Geschnitztes Holz.", -- draft
-	-- the guides' step buttons in the Quest Tracker (Modules/QuestTracker.lua; 2.1.61, #40: RestedXP's Back only looks)
+	-- the guides' step buttons in the Quest Tracker (Modules/QuestTracker.lua; 2.1.64, #40: RestedXP's Back only looks)
 	["%s - step %s"] = "%s – Schritt %s", -- draft
 	["Back a step"] = "Einen Schritt zurück", -- draft
 	["Forward a step"] = "Einen Schritt vor", -- draft

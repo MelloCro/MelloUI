@@ -2493,6 +2493,17 @@ Lang:Add("ruRU", {
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Его стрелка остаётся на экране рядом с мировым маркером MelloUI, пока Route следует за ним. Выкл.: путь указывает только мировой маркер.", -- draft
 	-- (2.1.63) a guide's card on the Addons page: where its steps show
 	["Guide steps in"] = "Шаги гайда в", -- draft
+	-- (2.1.64, #34 and #40) the map's quest log's tracked boxes; the guides' step buttons, RestedXP's Back that only looks
+	["All quests"] = "Все задания", -- draft
+	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "Все задания этой зоны в отслеживании заданий: щёлкните, чтобы показать их все там или убрать их все", -- draft
+	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Все ваши задания в отслеживании заданий: щёлкните, чтобы показать их все там или убрать их все", -- draft
+	["%s - step %s"] = "%s — шаг %s", -- draft
+	["Back a step"] = "На шаг назад", -- draft
+	["Forward a step"] = "На шаг вперёд", -- draft
+	["Skip this step"] = "Пропустить этот шаг", -- draft
+	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "Предыдущий шаг: RestedXP возвращается к нему, пока он не выполнен. Выполненный шаг только показывается здесь, а RestedXP остаётся на своём шаге.", -- draft
+	["Shows the next step here, back up to RestedXP's own step."] = "Показывает здесь следующий шаг, вплоть до собственного шага RestedXP.", -- draft
+	["No earlier step to show here."] = "Здесь нет предыдущего шага для показа.", -- draft
 	["MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side."] = "Отслеживание заданий MelloUI: его шаги в отслеживании, мировой маркер MelloUI указывает путь, его собственное окно и стрелка скрыты. Собственное окно: его окно, стрелка и метки на карте, как он их показывает; MelloUI не трогает его шаги. Оба: отслеживание и его собственное окно рядом.", -- draft
 	["Its own window"] = "Собственное окно", -- draft
 	["Both"] = "Оба", -- draft
@@ -3010,6 +3021,8 @@ Lang:Add("ruRU", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Окно сумок: надетая экипировка, брошенная на ячейку «+», попадает в свободную ячейку. Раньше она надевалась обратно.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Сведения о подземельях: подземелья, зоны и боссы названы на языке вашего клиента, а добыча в строке босса показывает подсказку предмета.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Языки: немецкий проверен построчно немецким игроком, а в чате, на карте и в меню стало больше французского.", -- draft
+	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "Журнал заданий карты: флажок у каждой зоны и флажок «Все задания» сразу добавляют много заданий в отслеживание.", -- draft
+	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "RestedXP в отслеживании заданий: «Назад» возвращает к ещё не выполненному шагу, а выполненный только показывает.", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "Гайды: на карточке каждого гайда в разделе «Аддоны» выбирается, где показываются его шаги: в отслеживании заданий MelloUI, в собственном окне гайда или в обоих.", -- draft
 	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "Polestar в отслеживании заданий: каждый шаг показывает, кто или где это, и заметку Polestar под его целями.", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "Мировой маркер: у задания он стоит на собственной точке игры, на её настоящей высоте, даже когда вы смотрите с холма.", -- draft

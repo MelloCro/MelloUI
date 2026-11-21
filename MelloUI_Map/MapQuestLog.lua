@@ -93,7 +93,7 @@ local T = {
 	TITLE_X = 35,               -- a quest's title and lines from the row's left (the mark, the gem, their gaps)
 	ROW_TOP = 7, ROW_GAP = 3, ROW_BOTTOM = 8,
 	ZONE = 28,                  -- a zone's heading
-	ALL = 24,                   -- (2.1.61, #34) the "All quests" line over the zones
+	ALL = 24,                   -- (2.1.64, #34) the "All quests" line over the zones
 	FOLD = 22,                  -- the fold button, the back button
 	OPENER = 30,                -- the rail's buttons
 	BUTTON = 34,                -- the page's round buttons
@@ -144,7 +144,7 @@ local TEXT = {
 	rowTip = "Click: its page   Shift-click: link it in the chat",
 	trackBox = "Tracked in the Quest Tracker: click to take it off, or to show it there",
 	collapse = "Click: fold or unfold this zone",
-	-- (2.1.61, #34) the tracked boxes of a zone and of the whole log
+	-- (2.1.64, #34) the tracked boxes of a zone and of the whole log
 	allQuests = "All quests",
 	trackZone = "All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off",
 	trackAll = "All your quests in the Quest Tracker: click to show them all there, or to take them all off",
@@ -369,7 +369,7 @@ local function HeadLook(h)
 	return h
 end
 
--- (2.1.61, #34) Tracked boxes for many quests at once: a zone's (on its heading) and the whole log's (the "All
+-- (2.1.64, #34) Tracked boxes for many quests at once: a zone's (on its heading) and the whole log's (the "All
 -- quests" line). Full: every one of them in the Quest Tracker; half strong: some; empty: none. A click puts them all
 -- there, or takes them all off when every one is there already. The game's watch list may hold fewer than asked:
 -- the boxes then show what it took
@@ -445,7 +445,7 @@ local function Head(i)
 	h = HeadLook(CreateFrame("Button", nil, S.list))
 	h.count = W.Text(h, "GameFontNormal", nil, "text")
 	h.count:SetPoint("LEFT", h.label, "RIGHT", 6, 0)
-	-- (2.1.61, #34; ChaosieKinder: "easily toggle quests en masse ... check/uncheck group or check/uncheck all", the
+	-- (2.1.64, #34; ChaosieKinder: "easily toggle quests en masse ... check/uncheck group or check/uncheck all", the
 	-- German player's pick: a box on the zone) the zone's tracked box in the quests' boxes' column, the fold toggle
 	-- left of it
 	h.check = Track.Box(h, Track.ZoneClick, Track.ZoneEnter)
@@ -605,7 +605,7 @@ function Log.Lay()
 	local page, width = S.list, S.pageW
 	local y, nh, nr = 0, 0, 0
 	local hidden = false
-	-- (2.1.61, #34) each zone's quests and all of them, for the boxes (a folded zone's too)
+	-- (2.1.64, #34) each zone's quests and all of them, for the boxes (a folded zone's too)
 	for _, ids in pairs(Track.zones) do
 		for k = #ids, 1, -1 do
 			ids[k] = nil
@@ -1336,7 +1336,7 @@ function Log.Init(win)
 	S.page:SetWidth(S.pageW)
 	S.empty = W.Text(S.list, "GameFontHighlight", TEXT.empty, "text")
 	S.empty:SetPoint("TOPLEFT", S.list, "TOPLEFT", 2, -12)
-	-- (2.1.61, #34) "All quests" and its box over the zones, the box in the quests' boxes' column
+	-- (2.1.64, #34) "All quests" and its box over the zones, the box in the quests' boxes' column
 	local all = CreateFrame("Frame", nil, S.list)
 	all:SetHeight(T.ALL)
 	all.check = Track.Box(all, Track.AllClick, Track.AllEnter)

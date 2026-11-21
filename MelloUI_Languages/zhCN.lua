@@ -2493,6 +2493,17 @@ Lang:Add("zhCN", {
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Route 跟随它时，它的箭头会和 MelloUI 的世界标记一起留在屏幕上。关闭：只有世界标记指路。", -- draft
 	-- (2.1.63) a guide's card on the Addons page: where its steps show
 	["Guide steps in"] = "指南步骤显示于", -- draft
+	-- (2.1.64, #34 and #40) the map's quest log's tracked boxes; the guides' step buttons, RestedXP's Back that only looks
+	["All quests"] = "所有任务", -- draft
+	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "将此区域的所有任务显示在任务追踪器中：点击可全部显示，或全部移除", -- draft
+	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "将你的所有任务显示在任务追踪器中：点击可全部显示，或全部移除", -- draft
+	["%s - step %s"] = "%s - 第 %s 步", -- draft
+	["Back a step"] = "后退一步", -- draft
+	["Forward a step"] = "前进一步", -- draft
+	["Skip this step"] = "跳过此步骤", -- draft
+	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "上一步：未完成时，RestedXP 会回到该步骤。已完成的步骤只在这里显示，RestedXP 仍停留在自己的步骤上。", -- draft
+	["Shows the next step here, back up to RestedXP's own step."] = "在这里显示下一步，直到回到 RestedXP 自己的步骤。", -- draft
+	["No earlier step to show here."] = "这里没有可显示的上一步。", -- draft
 	["MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side."] = "MelloUI 的任务追踪器：步骤显示在追踪器中，由 MelloUI 的世界标记指路，指南自己的窗口和箭头隐藏。自己的窗口：按指南自己的方式显示窗口、箭头和地图标记，MelloUI 不再处理其步骤。两者：追踪器和指南自己的窗口并排显示。", -- draft
 	["Its own window"] = "自己的窗口", -- draft
 	["Both"] = "两者", -- draft
@@ -3010,6 +3021,8 @@ Lang:Add("zhCN", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "背包窗口：把身上穿着的装备放到 + 格上，会进入一个空格。以前它会重新穿回去。", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "地下城信息：地下城、区域和首领以客户端语言命名，首领行里的掉落会显示物品提示。", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "语言：德语已由一位德国玩家逐行检查，聊天、地图和菜单有了更多法语。", -- draft
+	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "地图的任务日志：每个区域的追踪框和“所有任务”框可一次将许多任务放入任务追踪器。", -- draft
+	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "任务追踪器中的 RestedXP：后退会回到尚未完成的步骤，已完成的步骤只会显示。", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "指南：在插件页面中，每个指南的卡片可选择其步骤的显示位置：MelloUI 的任务追踪器、指南自己的窗口，或两者。", -- draft
 	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "任务追踪器中的 Polestar：每一步都会显示对象或地点，并在目标下方显示 Polestar 的备注。", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "世界标记：任务的标记会立在游戏自己的点上，处于真实高度，即使你从山丘上往下看也是如此。", -- draft

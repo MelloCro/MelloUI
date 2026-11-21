@@ -2493,6 +2493,17 @@ Lang:Add("esES", {
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Su flecha sigue en pantalla junto al Marcador del mundo de MelloUI mientras Route la sigue. Desactivado: solo el Marcador del mundo indica el camino.", -- draft
 	-- (2.1.63) a guide's card on the Addons page: where its steps show
 	["Guide steps in"] = "Pasos de la guía en", -- draft
+	-- (2.1.64, #34 and #40) the map's quest log's tracked boxes; the guides' step buttons, RestedXP's Back that only looks
+	["All quests"] = "Todas las misiones", -- draft
+	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "Todas las misiones de esta zona en el rastreador de misiones: haz clic para mostrarlas todas allí o quitarlas todas", -- draft
+	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Todas tus misiones en el rastreador de misiones: haz clic para mostrarlas todas allí o quitarlas todas", -- draft
+	["%s - step %s"] = "%s - paso %s", -- draft
+	["Back a step"] = "Un paso atrás", -- draft
+	["Forward a step"] = "Un paso adelante", -- draft
+	["Skip this step"] = "Saltar este paso", -- draft
+	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "El paso anterior: RestedXP vuelve a él mientras no esté hecho. Uno hecho solo se muestra aquí, y RestedXP se queda en su propio paso.", -- draft
+	["Shows the next step here, back up to RestedXP's own step."] = "Muestra aquí el paso siguiente, hasta volver al paso propio de RestedXP.", -- draft
+	["No earlier step to show here."] = "No hay ningún paso anterior que mostrar aquí.", -- draft
 	["MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side."] = "Rastreador de misiones de MelloUI: sus pasos en el rastreador, el marcador del mundo de MelloUI indica el camino, su propia ventana y su flecha ocultas. Su propia ventana: su ventana, su flecha y sus marcas del mapa tal como las muestra; MelloUI deja sus pasos en paz. Ambos: el rastreador y su propia ventana uno al lado del otro.", -- draft
 	["Its own window"] = "Su propia ventana", -- draft
 	["Both"] = "Ambos", -- draft
@@ -3010,6 +3021,8 @@ Lang:Add("esES", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Ventana de bolsas: el equipo puesto que sueltas en una casilla + va a un hueco libre. Antes volvía a equiparse.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Info de mazmorras: las mazmorras, zonas y jefes llevan el nombre del idioma de tu cliente, y el botín de la fila de un jefe muestra la descripción del objeto.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Idiomas: el alemán, revisado línea por línea por un jugador alemán, y más partes del chat, del mapa y de los menús en francés.", -- draft
+	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "Registro de misiones del mapa: una casilla en cada zona y otra de Todas las misiones ponen muchas misiones en el rastreador a la vez.", -- draft
+	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "RestedXP en el rastreador de misiones: Atrás vuelve a un paso aún no hecho y solo muestra uno hecho.", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "Guías: la tarjeta de cada guía en Addons elige dónde se muestran sus pasos: el rastreador de misiones de MelloUI, la propia ventana de la guía o ambos.", -- draft
 	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "Polestar en el rastreador de misiones: cada paso muestra quién o dónde es, y la nota de Polestar bajo sus objetivos.", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "Marcador del mundo: en una misión se coloca en el propio punto del juego, a su altura real, incluso cuando miras desde una colina.", -- draft

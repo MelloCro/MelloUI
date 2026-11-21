@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.64", lines = {
+		"Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once.",
+		"RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one.",
+	} },
 	{ version = "2.1.63", lines = {
 		"Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both.",
 		"Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals.",
@@ -207,12 +211,6 @@ local CHANGELOG = {
 		"Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on.",
 		"Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip.",
 		"Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French.",
-	} },
-	{ version = "2.1.59", lines = {
-		"Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker.",
-		"Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light.",
-		"Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars.",
-		"Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name.",
 	} },
 }
 local LINKS = {

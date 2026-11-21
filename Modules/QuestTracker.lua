@@ -4116,7 +4116,7 @@ end
 -- it looks at an earlier step, and the right arrow walks forward), the icon set's round arrow turned either way, as
 -- the cog dims and lights. (On GUIDE: the file's top-level locals stand near Lua's 200.)
 do
-	-- (2.1.61, #40) Back greyed (nav.backOff: no step before to show): dim, its tooltip says why, a click does nothing
+	-- (2.1.64, #40) Back greyed (nav.backOff: no step before to show): dim, its tooltip says why, a click does nothing
 	local OFF = 0.3
 	local function Rest(self)
 		return self.off and OFF or 0.8
@@ -4138,7 +4138,7 @@ do
 			local c = MelloUI.Look.TipPalette().text   -- (a hint: small text is never mutedText)
 			GameTooltip:AddLine(nav.name, c[1], c[2], c[3], true)
 		end
-		-- (2.1.61, #40) the guide's own word on what the arrow does (RestedXP's Back only looks back)
+		-- (2.1.64, #40) the guide's own word on what the arrow does (RestedXP's Back only looks back)
 		local hint = nav and (self.back and (self.off and "No earlier step to show here." or nav.backHint) or nav.skipHint)
 		if hint then
 			local c = MelloUI.Look.TipPalette().text

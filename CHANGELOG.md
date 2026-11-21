@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.64
+
+- Map's quest log: every zone's heading has a tracked box, and an All quests line on top has one for the whole log. A click shows all of those quests in the Quest Tracker, or takes them all off when every one is there already.
+- Quest Tracker with RestedXP: the step arrows' Back goes back in RestedXP to a step not done yet. A done step is only shown, and RestedXP stays on its own step; Forward walks back up to it. With no step before to show, Back is greyed instead of gone.
+
 ## 2.1.63
 
 - Guides: RestedXP, Zygor, Polestar, Follow The Arrow and Azeroth Pilot Reloaded each get Guide steps in on their card under Addons > Installed. MelloUI's Quest Tracker stays the default. Its own window gives the guide back its own window, arrow and map marks, and MelloUI leaves its steps alone. Both shows the tracker and the guide's own window side by side.

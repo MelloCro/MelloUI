@@ -51,7 +51,7 @@ Guide.NEXT_MAX = 5
 -- "Skip this step" box under its lines) a reader's step buttons, steps.nav: Back runs the guide's own step back, Skip
 -- its own skip -- ahead: the guide is looking at an earlier step, and the arrow walks forward as its own window's
 -- does; the guide read again a frame later (its own update may wait for its next one)
--- (2.1.61, #40) `hints`: { back, skip } a second line under each arrow's tooltip (RestedXP's: Back only looks);
+-- (2.1.64, #40) `hints`: { back, skip } a second line under each arrow's tooltip (RestedXP's: Back only looks);
 -- `backOff`: no step before to go to or show, the Back arrow there greyed (the German player: "the arrow is gone all
 -- of a sudden", their pick: greyed, not gone)
 local function StepButtons(reader, back, skip, ahead, hints, backOff)
@@ -940,7 +940,7 @@ do
 				end
 			end
 		end
-		-- (2.1.61, #40) the step looked back at, its lines then; let go once RestedXP is on another step
+		-- (2.1.64, #40) the step looked back at, its lines then; let go once RestedXP is on another step
 		if rxp.view and tonumber(type(cdata) == "table" and cdata.currentStep) ~= rxp.viewFrom then
 			rxp.view, rxp.viewFrom = nil, nil
 		end
@@ -948,7 +948,7 @@ do
 		return table.concat(parts, "\n")
 	end
 
-	-- (2.1.61, #40; the German player's test: RestedXP's own "Go to step" moved on from a done step at once, as Back
+	-- (2.1.64, #40; the German player's test: RestedXP's own "Go to step" moved on from a done step at once, as Back
 	-- did -- their pick: Back only looks back) a step that shows in the tracker: one line of text at least
 	-- (the German player: "the tooltip should say it is about looking back and ahead") the arrows' second lines (Back: a step not done is gone back to, a done one looked at)
 	rxp.SETTLE = 0.5   -- (Back: seconds before RestedXP is asked again whether it stayed on the step gone back to)
@@ -1403,7 +1403,7 @@ do
 		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
 		local settings = type(open) == "function" and function() open() end or nil
 		local title = type(name) == "string" and name or "RestedXP"
-		-- (its step buttons. 2.1.61, #40: Back only LOOKS back -- RestedXP checks its active step's elements and moves on
+		-- (its step buttons. 2.1.64, #40: Back only LOOKS back -- RestedXP checks its active step's elements and moves on
 		-- from one already done at once, so its own "Go to step" lands on the step after again (the German player's
 		-- test of its window) -- the step before is shown in the tracker, its lines without boxes, RestedXP's own step
 		-- untouched; the arrow forward walks back up to it (ahead), then skips as before with RestedXP's own step set. A step not

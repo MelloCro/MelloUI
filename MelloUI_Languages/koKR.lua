@@ -2493,6 +2493,17 @@ Lang:Add("koKR", {
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Route가 따라가는 동안 그 화살표가 MelloUI의 월드 마커 옆에 화면에 남습니다. 끄기: 월드 마커만 길을 안내합니다.", -- draft
 	-- (2.1.63) a guide's card on the Addons page: where its steps show
 	["Guide steps in"] = "가이드 단계 표시 위치", -- draft
+	-- (2.1.64, #34 and #40) the map's quest log's tracked boxes; the guides' step buttons, RestedXP's Back that only looks
+	["All quests"] = "모든 퀘스트", -- draft
+	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "퀘스트 추적기에 이 지역의 모든 퀘스트 표시: 클릭하면 모두 표시하거나 모두 제거합니다", -- draft
+	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "퀘스트 추적기에 모든 퀘스트 표시: 클릭하면 모두 표시하거나 모두 제거합니다", -- draft
+	["%s - step %s"] = "%s - %s단계", -- draft
+	["Back a step"] = "한 단계 뒤로", -- draft
+	["Forward a step"] = "한 단계 앞으로", -- draft
+	["Skip this step"] = "이 단계 건너뛰기", -- draft
+	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "이전 단계: 아직 완료되지 않았다면 RestedXP가 그 단계로 돌아갑니다. 완료된 단계는 여기에서만 보이며, RestedXP는 자신의 단계에 머뭅니다.", -- draft
+	["Shows the next step here, back up to RestedXP's own step."] = "RestedXP 자신의 단계까지 다음 단계를 여기에 보여 줍니다.", -- draft
+	["No earlier step to show here."] = "여기에 보여 줄 이전 단계가 없습니다.", -- draft
 	["MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side."] = "MelloUI 퀘스트 추적기: 단계는 추적기에, 길은 MelloUI 월드 마커가 안내하며, 가이드 자체 창과 화살표는 숨겨집니다. 자체 창: 가이드가 보여주는 대로 창, 화살표, 지도 표시가 나타나고 MelloUI는 단계에 관여하지 않습니다. 둘 다: 추적기와 가이드 자체 창을 나란히 표시합니다.", -- draft
 	["Its own window"] = "자체 창", -- draft
 	["Both"] = "둘 다", -- draft
@@ -3010,6 +3021,8 @@ Lang:Add("koKR", {
 	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "가방 창: 착용 중인 장비를 + 칸에 놓으면 빈 칸으로 들어갑니다. 전에는 다시 착용되었습니다.", -- draft
 	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "던전 정보: 던전, 지역, 우두머리 이름이 클라이언트 언어로 표시되고, 우두머리 줄의 전리품에 아이템 툴팁이 나옵니다.", -- draft
 	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "언어: 독일어를 독일 플레이어가 한 줄씩 검수했고, 대화창과 지도, 메뉴의 프랑스어가 늘었습니다.", -- draft
+	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "지도의 퀘스트 목록: 각 지역의 추적 상자와 모든 퀘스트 상자로 여러 퀘스트를 한 번에 퀘스트 추적기에 넣습니다.", -- draft
+	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "퀘스트 추적기의 RestedXP: 뒤로는 아직 완료되지 않은 단계로 돌아가고, 완료된 단계는 보여 주기만 합니다.", -- draft
 	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "가이드: 애드온의 각 가이드 카드에서 단계를 표시할 곳을 고릅니다: MelloUI 퀘스트 추적기, 가이드 자체 창, 또는 둘 다.", -- draft
 	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "퀘스트 추적기의 Polestar: 각 단계에 대상이나 장소가 표시되고, 목표 아래에 Polestar의 메모가 표시됩니다.", -- draft
 	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "월드 마커: 퀘스트에서는 언덕 위에서 내려다볼 때도 게임 자체 지점의 실제 높이에 표시됩니다.", -- draft
