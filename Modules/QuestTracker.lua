@@ -4446,7 +4446,7 @@ do
 		local m = { unit = unit, checkMiddle = source.checkMiddle }
 		for key, fallback in pairs({ pad = 14, textX = 39, progH = 26,
 			icon = 15, rowMin = 24, check = 18, rowPad = 0, checkIn = 0, upRow = 24,
-			upToggle = 30, glyphY = 12, litInset = 4 }) do
+			upToggle = 30, glyphY = 12, litInset = 4, lineH = 24 }) do
 			m[key] = (MelloUI.Safe.Number(source[key]) or fallback) * unit
 		end
 		return m
@@ -4457,18 +4457,25 @@ do
 		local s, section = m.unit, line.section
 		local first, final = not previous or previous.section ~= section, not following or following.section ~= section
 		local r = { left = m.pad, right = m.pad, before = 0, after = 0, minimum = 0 }
-		if section == "heading" then
+		if section == "banner" then
+			r.left, r.before, r.after = m.pad + 21 * s, first and 9 * s or 0, (final and 9 or 3) * s
+		elseif section == "heading" then
 			r.before = 8 * s
 		elseif section == "current" then
 			r.left, r.before, r.after = m.textX, first and 10 * s or 0, (final and 8 or 3) * s
 		elseif section == "objectives" then
 			r.left = m.textX
-			local detail = line.group and not first and previous.group == line.group or not line.group and line.role == "detail"
-			local more = not final and (line.group and following.group == line.group or not line.group and following.role == "detail")
-			r.before = detail and 0 or 4 * s + m.rowPad
-			r.after = more and 3 * s or 6 * s + m.rowPad
-			r.minimum = not detail and not more and m.rowMin or 0
-			if line.box then r.right = r.right + m.check + 4 * s + m.checkIn end
+			if line.role == "summary" then
+				-- Polestar's compact card lines use their own first-line height, not the goal glyph offset.
+				r.minimum, r.firstLine, r.right = m.lineH, true, m.pad + 18 * s
+			else
+				local detail = line.group and not first and previous.group == line.group or not line.group and line.role == "detail"
+				local more = not final and (line.group and following.group == line.group or not line.group and following.role == "detail")
+				r.before = detail and 0 or 4 * s + m.rowPad
+				r.after = more and 3 * s or 6 * s + m.rowPad
+				r.minimum = not detail and not more and m.rowMin or 0
+				if line.box then r.right = r.right + m.check + 4 * s + m.checkIn end
+			end
 		elseif section == "notes" then
 			r.left, r.before, r.after = m.pad + 18 * s, first and 8 * s or 0, 6 * s
 		elseif section == "travel" then
@@ -4778,7 +4785,12 @@ do
 				x = pad - s
 				y = rowTop + (rowHeight - size) / 2
 				if line.section == "objectives" then y = rowTop + m.glyphY - size / 2 end
+				if line.section == "objectives" and line.role == "summary" then
+					size = 13 * s
+					x, y = pad + (m.icon - size) / 2, rowTop + (m.lineH - size) / 2
+				end
 				if line.section == "current" then y = rowTop + 11 * s end
+				if line.section == "banner" then x, y, size = pad, rowTop + 10 * s, 13 * s end
 				if line.section == "travel" then x, size = 37 * s, 14 * s; y = rowTop + (rowHeight - size) / 2 end
 				if line.section == "along" or line.section == "upnext" or line.section == "here" then x = m.textX - 2 * s end
 				if line.section == "along" or line.section == "upnext" then

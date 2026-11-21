@@ -1903,6 +1903,7 @@ do
 		-- Named content sections carry meaning; screen coordinates only order text inside a section.
 		-- Veiled frames have tiny effective scales, so globally sorting their text loses the reading structure.
 		local sections = {
+			{ key = "banner", title = "Guide notice" }, { key = "notice", title = "Guide status" },
 			{ key = "heading", title = "Step heading" },
 			{ key = "current", title = "Current step" }, { key = "objectives", title = "Objectives" },
 			{ key = "notes", title = "Notes" }, { key = "class", title = "Class quest" },
@@ -1910,7 +1911,7 @@ do
 			{ key = "after", title = "Then" }, { key = "along", title = "Along the way" },
 			{ key = "upnext", title = "Up next" }, { key = "party", title = "Party" },
 			{ key = "xp", title = "Experience" }, { key = "foot", title = "Guide progress" },
-			{ key = "notice", title = "Guide notice" }, { key = "other", title = "Guide details" },
+			{ key = "other", title = "Guide details" },
 		}
 		local owners, ignored, roles = {}, {}, {}
 		local function Own(frame, section)
@@ -1927,7 +1928,7 @@ do
 		Own(parts.goals, "objectives")
 		Own(parts.tip, "notes")
 		for _, key in ipairs({ "after", "along", "upnext", "here", "foot" }) do Own(parts[key], key) end
-		Own(parts.banner, "notice")
+		Own(parts.banner, "banner")
 		Own(parts.empty, "notice")
 		Own(gf.party, "party")
 		Own(gf.xp, "xp")
@@ -2070,7 +2071,8 @@ do
 						or Colour(parts.foot.Line and parts.foot.Line.Fill, "GetVertexColor")
 				end
 				local summary = type(parent) == "table" and parent.Text == f and type(parent.psGoals) == "table"
-				line.role = gv and "objective" or roles[f] or (summary and "lead") or role or (section == "notes" and "note" or "detail")
+				local cardLine = type(parent) == "table" and parent.Text == f and parent.psLine == true
+				line.role = gv and "objective" or roles[f] or (cardLine and "summary") or (summary and "lead") or role or (section == "notes" and "note" or "detail")
 				local scale = Finite(Pcall(f.GetEffectiveScale, f)) or 1
 				out[#out + 1] = { line = line, top = (Finite(Pcall(f.GetTop, f)) or 0) * scale,
 					left = (Finite(Pcall(f.GetLeft, f)) or 0) * scale, order = #out + 1 }
@@ -2111,7 +2113,10 @@ do
 				end
 			end
 			-- Keep Polestar's own section wording (Then:, Still to do, Up next). No extra gold headings.
-			if #lines >= first and section.key ~= "heading" and section.key ~= "current" and section.key ~= "objectives" and section.key ~= "notes" then
+			if #lines >= first and section.key == "banner" then
+				-- Polestar places notices above the card, with their divider below the message.
+				lines[#lines].ruleAfter = true
+			elseif #lines >= first and section.key ~= "heading" and section.key ~= "current" and section.key ~= "objectives" and section.key ~= "notes" then
 				lines[first].ruleBefore = true
 			end
 		end

@@ -280,6 +280,37 @@ lua.execute(r'''
     person.shown=true
     card.Section.shown=false
     assert(P.Steps().lines[1].text=='Speak to the innkeeper')
+    -- Notices belong above the step even when the veiled native coordinates are stale.
+    local banner=node(nil,600,body)
+    banner.Text=node('Looking back. The guide is at step 2.',600,banner)
+    banner.Icon={GetTexture=function() return 'back' end}
+    banner.Jump=node(nil,590,banner)
+    node('Back to step 2',590,banner.Jump)
+    parts.banner=banner
+    result=P.Steps()
+    local notice=Find(result,banner.Text.text)
+    assert(result.lines[1]==notice and notice.section=='banner', 'banner must precede the step, not follow the progress bar')
+    assert(not notice.ruleBefore and notice.ruleAfter and notice.icon=='back')
+    for _,line in ipairs(result.lines) do assert(line.text~='Back to step 2') end
+    card.Section.shown=true
+    assert(P.Steps().lines[2].text=='Cooking 130-175')
+    card.Section.shown=false
+    banner.shown=false
+    assert(P.Steps().lines[1].text=='Speak to the innkeeper')
+    local empty=node('No guide open',590,body)
+    parts.empty=empty
+    result=P.Steps()
+    local _,emptyAt=Find(result,empty.text)
+    local _,footerAt=Find(result,'24%')
+    assert(emptyAt<footerAt, 'empty-state notices must also precede the progress footer')
+    empty.shown=false
+    local summary=node(nil,770,card)
+    summary.psLine=true
+    summary.Text=node('1 left out here',770,summary)
+    summary.Icon={GetTexture=function() return 'skip' end}
+    result=P.Steps()
+    assert(Find(result,summary.Text.text).role=='summary', 'compact card summaries must not use objective-row geometry')
+    summary.shown=false
     -- No writes to native UI or guide settings while reading. Extra context cannot replace the current goal label.
     assert(root.alpha==0 and body.shown and card.shown and tip.shown)
     G.Refresh()
@@ -695,6 +726,37 @@ render.execute(r'''
         {text='55%',role='progress',section='foot',progress=0.55,ruleBefore=true},
     }}
     native.measureWrap=true
+    -- A wrapped banner keeps the native inset and its icon next to the first line.
+    local banner={presentation='polestar',metrics=metrics,lines={
+        {text='Looking back. The guide is at step 2.',section='banner',role='detail',icon='back',ruleAfter=true},
+        {text='Shandrina',section='current',role='lead'},
+        {text='55%',section='foot',role='progress',progress=0.55},
+    }}
+    for _,width in ipairs({340,180}) do
+        RenderRows(native,banner,width)
+        local notice=native.lines[1]
+        assert(notice.x==39 and notice.y==9)
+        assert(notice.guideArt.icon.x==18 and notice.guideArt.icon.y==10 and notice.guideArt.icon.width==13)
+        assert(native.lines[2].y==notice.y+notice:GetStringHeight()+19)
+        assert(notice.guideArt.rule.y==notice.y+notice:GetStringHeight()+9)
+    end
+    local summaries={presentation='polestar',metrics=metrics,lines={
+        {text='1 left out here',role='summary',section='objectives',icon='skip'},
+        {text="13 quests aren't part of your route",role='summary',section='objectives',icon='cross'},
+    }}
+    metrics.lineH=24
+    for _,width in ipairs({340,180}) do
+        RenderRows(native,summaries,width)
+        for i,caption in ipairs(native.lines) do
+            if i>2 then break end
+            local first=native.lines[1]
+            local inset=math.max(0,(24-caption:GetLineHeight())/2)
+            local top=i==1 and 0 or math.max(24,first:GetStringHeight()+first.y*2)
+            assert(caption.x==42 and caption.y==top+inset)
+            assert(caption.guideArt.icon.width==13 and caption.guideArt.icon.x==19)
+            assert(caption.guideArt.icon.y==top+5.5, 'summary glyph must sit beside the first text line')
+        end
+    end
     RenderRows(native,content,340)
     assert(native.lines[1].x==18 and native.lines[1].y==8)
     assert(native.lines[2].x==42 and native.lines[3].x==42)
