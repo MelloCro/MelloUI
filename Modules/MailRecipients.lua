@@ -66,10 +66,13 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 	defaults = {
 		bnet = true,
 		open = false,   -- (2.1.62) the panel beside Send Mail, as the button left it
+		subject = true,   -- the subject from the first attachment
 	},
 	options = {
 		{ type = "toggle", key = "bnet", name = "Battle.net Friends' Characters",
 		  desc = "The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted." },
+		{ type = "toggle", key = "subject", name = "Subject from the First Item",
+		  desc = "An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays." },
 	},
 })
 MelloUI.MailRecipients = M
@@ -720,15 +723,62 @@ function Show()
 end
 
 --------------------------------------------------------------------------------
+-- The subject from the first attachment (the German player: "when I drag an item into the mail to send it, it would
+-- be nice if the subject were taken from the first item" -- as the game's own Send Mail did once)
+--------------------------------------------------------------------------------
+
+-- the first attachment's name, with its count where it is a stack ("Tin Ore (20)"); "" with nothing attached
+function R.FirstItem()
+	local get = rawget(_G, "GetSendMailItem")
+	if type(get) ~= "function" then
+		return ""
+	end
+	for i = 1, Num(rawget(_G, "ATTACHMENTS_MAX_SEND")) or 12 do
+		local ok, name, _, _, count = pcall(get, i)
+		name = ok and Text(name) or nil
+		if name and name ~= "" then
+			count = Num(count) or 1
+			return count > 1 and (name .. " (" .. count .. ")") or name
+		end
+	end
+	return ""
+end
+
+-- the subject is written only while it is empty or still the one written here: what you typed stays; taking the item
+-- out again empties a subject that was the item's
+function R.Subject()
+	if not (M.isEnabled and type(M.db) == "table" and M.db.subject ~= false) then
+		return
+	end
+	local box = rawget(_G, "SendMailSubjectEditBox")
+	if not (box and box.GetText and box.SetText) then
+		return
+	end
+	local now = Text(Call(box.GetText, box)) or ""
+	if now ~= "" and now ~= R.auto then
+		R.auto = nil
+		return
+	end
+	local want = R.FirstItem()
+	if want ~= now then
+		Call(box.SetText, box, want)
+	end
+	R.auto = want ~= "" and want or nil
+end
+
+--------------------------------------------------------------------------------
 -- Events
 --------------------------------------------------------------------------------
 
 local events = CreateFrame("Frame")
 local EVENTS = { "MAIL_SHOW", "PLAYER_LEVEL_UP", "BN_FRIEND_INFO_CHANGED", "BN_FRIEND_ACCOUNT_ONLINE",
-	"BN_FRIEND_LIST_SIZE_CHANGED" }
+	"BN_FRIEND_LIST_SIZE_CHANGED", "MAIL_SEND_INFO_UPDATE" }
 
 Perf.SetScript(events, "OnEvent", function(_, event)
-	if event == "MAIL_SHOW" then
+	if event == "MAIL_SEND_INFO_UPDATE" then
+		R.Subject()
+	elseif event == "MAIL_SHOW" then
+		R.auto = nil
 		Show()
 	elseif event == "PLAYER_LEVEL_UP" then
 		Perf.C_Timer.After(1, WriteMe)   -- (UnitLevel reads the new level a moment later)
