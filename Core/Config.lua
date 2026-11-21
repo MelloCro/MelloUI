@@ -3953,7 +3953,11 @@ function CONFIG.ShowBack()
 	local on = b ~= nil and b.to == currentPage
 	if on then
 		-- (back to another tab of the same page: the tab's name)
-		local name = (b.page == b.to and b.sec and b.sec.name) and MelloUI.Lang.T(b.sec.name) or PageTitle(b.page)
+		-- (a designer's tab is named by its key, "castbar:timer": its label, "Cast Bar > Timer", is the name shown)
+		local p = pages[b.page]
+		local tab = b.sec and p and p.lay and p.lay.tabOf and p.lay.tabOf[b.sec.name]
+		local secName = b.sec and (tab and tab.label or b.sec.name)
+		local name = (b.page == b.to and secName) and MelloUI.Lang.T(secName) or PageTitle(b.page)
 		button:SetText("< " .. MelloUI.Lang.F(TEXT.backTo, name))
 		W.FitButton(button)
 	end
