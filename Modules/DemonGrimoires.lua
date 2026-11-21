@@ -39,7 +39,7 @@ local TEXT = {
 
 local M = MelloUI:RegisterModule("DemonGrimoires", {
 	title = "Demon Grimoires",
-	desc = "Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor.",
+	desc = "Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor. Summon each demon once first, so MelloUI can note what it knows.",
 	icon = "Interface\\Icons\\INV_Misc_Book_06",
 	flavour = "The Imp already knows that one. It told you. Twice.",
 	enabledByDefault = true,

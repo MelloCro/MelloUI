@@ -3877,7 +3877,7 @@ Lang:Add("deDE", {
 	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
 	["Mail Recipients"] = "Post-Empfänger", -- draft
 	["Demon Grimoires"] = "Dämonen-Folianten", -- draft
-	["Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor."] = "Merkt sich, was jeder deiner Dämonen kann, sobald er beschworen ist, und markiert die Folianten beim Händler und im Tooltip als bekannt oder neu: Du musst nicht mehr jeden Dämon vor dem Händler beschwören.", -- draft
+	["Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor. Summon each demon once first, so MelloUI can note what it knows."] = "Merkt sich, was jeder deiner Dämonen kann, sobald er beschworen ist, und markiert die Folianten beim Händler und im Tooltip als bekannt oder neu: Du musst nicht mehr jeden Dämon vor dem Händler beschwören. Beschwöre dafür jeden Dämon vorher einmal, damit MelloUI sich merken kann, was er kann.", -- draft
 	["The Imp already knows that one. It told you. Twice."] = "Den kennt der Wichtel schon. Er hat es dir gesagt. Zweimal.", -- draft
 	["Mark Grimoires At The Vendor"] = "Folianten beim Händler markieren", -- draft
 	["Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green."] = "Jeder Foliant auf der Händlerseite zeigt, ob dein Dämon ihn schon kennt: Bekannt in Grau, Neu in Grün.", -- draft
