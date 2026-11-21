@@ -51,7 +51,10 @@ Guide.NEXT_MAX = 5
 -- "Skip this step" box under its lines) a reader's step buttons, steps.nav: Back runs the guide's own step back, Skip
 -- its own skip -- ahead: the guide is looking at an earlier step, and the arrow walks forward as its own window's
 -- does; the guide read again a frame later (its own update may wait for its next one)
-local function StepButtons(reader, back, skip, ahead)
+-- (2.1.61, #40) `hints`: { back, skip } a second line under each arrow's tooltip (RestedXP's: Back only looks);
+-- `backOff`: no step before to go to or show, the Back arrow there greyed (the German player: "the arrow is gone all
+-- of a sudden", their pick: greyed, not gone)
+local function StepButtons(reader, back, skip, ahead, hints, backOff)
 	if type(back) ~= "function" and type(skip) ~= "function" then
 		return nil
 	end
@@ -61,13 +64,15 @@ local function StepButtons(reader, back, skip, ahead)
 			C_Timer.After(0, function() Guide.Changed(reader) end)
 		end or nil
 	end
-	return { Back = Run(back), Skip = Run(skip), ahead = ahead and true or nil, name = reader.name }
+	return { Back = Run(back), Skip = Run(skip), ahead = ahead and true or nil, name = reader.name,
+		backHint = hints and hints.back, skipHint = hints and hints.skip,
+		backOff = type(back) ~= "function" and backOff and true or nil }
 end
 
 -- (a step's buttons in its signatures: one shown or gone, or Skip turned into a walk forward, is a change)
 local function NavSig(steps)
 	local nav = steps and steps.nav
-	return nav and ((nav.Back and "<" or "") .. (nav.Skip and (nav.ahead and ">" or ">>") or "")
+	return nav and ((nav.Back and "<" or (nav.backOff and "(<)" or "")) .. (nav.Skip and (nav.ahead and ">" or ">>") or "")
 		.. (nav.tabTip and ("|" .. nav.tabTip) or "")) or ""
 end
 
@@ -935,7 +940,31 @@ do
 				end
 			end
 		end
+		-- (2.1.61, #40) the step looked back at, its lines then; let go once RestedXP is on another step
+		if rxp.view and tonumber(type(cdata) == "table" and cdata.currentStep) ~= rxp.viewFrom then
+			rxp.view, rxp.viewFrom = nil, nil
+		end
+		parts[#parts + 1] = "view:" .. tostring(rxp.view)
 		return table.concat(parts, "\n")
+	end
+
+	-- (2.1.61, #40; the German player's test: RestedXP's own "Go to step" moved on from a done step at once, as Back
+	-- did -- their pick: Back only looks back) a step that shows in the tracker: one line of text at least
+	-- (the German player: "the tooltip should say it is about looking back and ahead") the arrows' second lines (Back: a step not done is gone back to, a done one looked at)
+	rxp.SETTLE = 0.5   -- (Back: seconds before RestedXP is asked again whether it stayed on the step gone back to)
+	rxp.HINTS = {
+		live = { back = "The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step." },
+		looking = { back = "The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step.",
+			skip = "Shows the next step here, back up to RestedXP's own step." },
+	}
+
+	function rxp.Shows(step)
+		for _, el in ipairs(type(step) == "table" and type(step.elements) == "table" and step.elements or {}) do
+			if Usable(el) then
+				return true
+			end
+		end
+		return false
 	end
 
 	-- (the user, 2026-11-15: its Active Targets "in MelloUI's whole design") RestedXP's Active Targets (RXPTargetFrame:
@@ -1374,29 +1403,88 @@ do
 		local menu = type(rframe.DropDownMenu) == "function" and rframe.DropDownMenu
 		local settings = type(open) == "function" and function() open() end or nil
 		local title = type(name) == "string" and name or "RestedXP"
-		-- (its step buttons: the step before or after the current one, as its own "Go to step" menu sets it; going back,
-		-- a sticky step -- one RestedXP passes on to the next -- left out; the current step read at the click)
+		-- (its step buttons. 2.1.61, #40: Back only LOOKS back -- RestedXP checks its active step's elements and moves on
+		-- from one already done at once, so its own "Go to step" lands on the step after again (the German player's
+		-- test of its window) -- the step before is shown in the tracker, its lines without boxes, RestedXP's own step
+		-- untouched; the arrow forward walks back up to it (ahead), then skips as before with RestedXP's own step set. A step not
+		-- done yet (one skipped) RestedXP itself goes back to, as before: nothing moves it on there (the player: "both").
+		-- A sticky step -- one RestedXP passes on to the next -- and one with no line left out; the current step read
+		-- at the click)
 		local set = type(R.SetStep) == "function" and R.SetStep
 		local all = type(guide) == "table" and type(guide.steps) == "table" and guide.steps
 		local function Now()
 			local c = rawget(_G, "RXPCData")
 			return type(c) == "table" and tonumber(c.currentStep) or nil
 		end
-		local nav = set and all and n and StepButtons(rxp, n > 1 and function()
-			for i = (Now() or 1) - 1, 1, -1 do
-				if type(all[i]) == "table" and not all[i].sticky then
-					set(i)
-					return
+		local function Before(from)
+			for i = (from or 1) - 1, 1, -1 do
+				if type(all[i]) == "table" and not all[i].sticky and rxp.Shows(all[i]) then
+					return i
 				end
 			end
+			return nil
+		end
+		local view = rxp.view
+		if view and not (all and type(all[view]) == "table" and rxp.viewFrom == n) then
+			rxp.view, rxp.viewFrom, view = nil, nil, nil
+		end
+		if view then
+			local step, seen = all[view], {}
+			local items = StepItems(step)
+			for _, el in ipairs(type(step.elements) == "table" and step.elements or {}) do
+				if Usable(el) then
+					local text = Shown(R, el.text)
+					seen[#seen + 1] = { text = text, done = (el.completed or el.skip) and true or false, box = false,
+						shown = Linked(el, text, items), Open = Opener(R, el) }
+				end
+			end
+			if #seen > 0 then
+				lines = seen
+			end
+		end
+		local nav = set and all and n and StepButtons(rxp, Before(view or n) and function()
+			local from = rxp.view or Now()
+			local i = Before(from)
+			if not i then
+				return
+			end
+			-- (the German player's pick: both) a step not done yet -- one skipped -- RestedXP goes back to for real; a
+			-- done one only looked at. RestedXP marks a step completed only once it has checked it this session (their
+			-- test after a reload: Back to an earlier, unmarked step, and RestedXP ran on to 65 again), so a step not
+			-- marked is gone back to and asked again a moment later: RestedXP still on it, it was open; moved on, it
+			-- was done, and it is looked at instead
+			if all[i].completed == true then
+				rxp.view, rxp.viewFrom = i, Now()
+				return
+			end
+			rxp.view, rxp.viewFrom = nil, nil
+			set(i)
+			C_Timer.After(rxp.SETTLE, function()
+				local now = Now()
+				if now and now ~= i then
+					rxp.view, rxp.viewFrom = i, now
+					Guide.Changed(rxp)
+				end
+			end)
 		end, function()
 			local now = Now()
-			if now then
+			if rxp.view and now then
+				-- (looking back: the next step shown, RestedXP's own once it is reached)
+				local i = rxp.view + 1
+				while i < now and not (type(all[i]) == "table" and not all[i].sticky and rxp.Shows(all[i])) do
+					i = i + 1
+				end
+				if i >= now then
+					rxp.view, rxp.viewFrom = nil, nil
+				else
+					rxp.view = i
+				end
+			elseif now then
 				set(now + 1)
 			end
-		end)
-		return { title = n and W.Tr("%s - step %s"):format(title, n) or title, nav = nav,
-			lines = lines, upcoming = rxp.Upcoming(R, guide, steps, cdata),
+		end, view ~= nil, rxp.HINTS[view and "looking" or "live"], n > 1)
+		return { title = (view or n) and W.Tr("%s - step %s"):format(title, view or n) or title, nav = nav,
+			lines = lines, upcoming = not view and rxp.Upcoming(R, guide, steps, cdata) or nil,
 			cog = { Left = menu and function() menu() end or settings, Right = settings, tip = "RestedXP Guides",
 				hint = W.Tr("Click: its menu (guides, settings)  -  Right-click: its settings") } }
 	end
