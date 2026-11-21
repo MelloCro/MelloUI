@@ -129,6 +129,7 @@ Modules\CastMarks.lua
 Modules\PartyMarkers.lua
 Modules\RolePicker.lua
 Modules\MailRecipients.lua
+Modules\DemonGrimoires.lua
 Modules\Sparkles.lua
 Modules\CustomSounds.lua
 Modules\Nameplates.lua
