@@ -64,11 +64,54 @@ local function StepButtons(reader, back, skip, ahead)
 	return { Back = Run(back), Skip = Run(skip), ahead = ahead and true or nil, name = reader.name }
 end
 
--- (a step's buttons in its signatures: one shown or gone, or Skip turned into a walk forward, is a change)
-local function NavSig(steps)
-	local nav = steps and steps.nav
-	return nav and ((nav.Back and "<" or "") .. (nav.Skip and (nav.ahead and ">" or ">>") or "")
-		.. (nav.tabTip and ("|" .. nav.tabTip) or "")) or ""
+-- One fingerprint for the public guide view model. Callback identity is deliberately excluded:
+-- readers recreate closures on each read; only action availability changes the presentation.
+function Guide.SnapshotSignature(steps)
+	if not steps then return "" end
+	local out = {}
+	local function Value(v)
+		local text = type(v) == "function" and "action" or tostring(v)
+		out[#out + 1] = #text .. ":" .. text
+	end
+	local function Fields(object, keys)
+		for _, key in ipairs(keys) do
+			if type(object) == "table" then Value(object[key]) else Value(nil) end
+		end
+	end
+	local function Font(font) Fields(font, { "face", "size", "scale" }) end
+	local function Colour(colour)
+		for i = 1, 4 do Value(type(colour) == "table" and colour[i] or nil) end
+	end
+	local function Lines(lines)
+		Value(#(lines or {}))
+		for _, line in ipairs(lines or {}) do
+			if type(line) ~= "table" then Value(line) else
+				Fields(line, { "text", "shown", "done", "skip", "box", "context", "quest", "role", "section", "group",
+					"right", "number", "current", "icon", "progress", "ruleBefore", "ruleAfter", "expanded", "singleLine",
+					"font", "rightFont", "Open", "Toggle", "Collapse" })
+				Font(line.fontInfo); Font(line.rightFontInfo); Font(line.numberFontInfo)
+				Colour(line.colour); Colour(line.rightColour); Colour(line.iconColour); Colour(line.progressColour)
+				Fields(line.picture, { "texture", "width", "height" })
+			end
+		end
+	end
+	Fields(steps, { "title", "presentation", "style", "label", "counter", "collapsed", "AddTab", "SetCollapsed", "GetCollapsed" })
+	Fields(steps.nav, { "Back", "Next", "Skip", "Tab", "ahead", "name", "tabTip" })
+	Fields(steps.cog, { "Left", "Right", "tip", "hint" })
+	Fields(steps.away, { "count", "tip", "Back" })
+	Fields(steps.metrics, { "scale", "pad", "progH", "icon", "textX", "rowMin", "check", "rowPad", "checkIn",
+		"upRow", "upToggle", "glyphY", "lineH", "litInset", "checkMiddle" })
+	Font(steps.fonts and steps.fonts.counter); Font(steps.fonts and steps.fonts.control)
+	Value(steps.font)
+	Value(#(steps.tabs or {}))
+	for _, tab in ipairs(steps.tabs or {}) do
+		Fields(tab, { "title", "levels", "active", "Select", "Close" })
+		Font(tab.fontInfo); Font(tab.rangeFontInfo)
+	end
+	Lines(steps.lines)
+	Value(#(steps.upcoming or {}))
+	for _, step in ipairs(steps.upcoming or {}) do Value(step.n); Lines(step.lines) end
+	return table.concat(out, "|")
 end
 
 local function Following()
@@ -356,32 +399,14 @@ local function Read(reader)
 			reader.quick = quick
 		end
 	end
-	local parts = { m and string.format("%d:%.4f:%.4f", m, x, y) or "-", tostring(steps and steps.style), tostring(steps and steps.presentation) }
-	for _, line in ipairs(steps and steps.lines or {}) do
-		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "") .. (line.context and "c" or "") .. tostring(line.role or "") .. tostring(line.right or "") .. tostring(line.number or "")
-			.. tostring(line.current or false) .. tostring(line.icon or "") .. tostring(line.progress or "") .. tostring(line.ruleBefore or false) .. tostring(line.expanded) .. tostring(line.singleLine) .. tostring(line.font)
-			.. tostring(line.section) .. tostring(line.group) .. "q" .. tostring(line.quest)
-			.. tostring(line.fontInfo and line.fontInfo.size) .. tostring(line.fontInfo and line.fontInfo.scale)
-			.. tostring(line.rightFontInfo and line.rightFontInfo.size) .. tostring(line.rightFontInfo and line.rightFontInfo.scale)
-			.. tostring(line.numberFontInfo and line.numberFontInfo.size) .. tostring(line.numberFontInfo and line.numberFontInfo.scale)
-			.. table.concat(line.colour or {}, ",") .. table.concat(line.iconColour or {}, ",") .. table.concat(line.progressColour or {}, ",") .. tostring(line.rightFont) .. table.concat(line.rightColour or {}, ",")
-	end
-	parts[#parts + 1] = NavSig(steps)
-	for _, key in ipairs({ "counter", "control" }) do
-		local font = steps and steps.fonts and steps.fonts[key]
-		parts[#parts + 1] = font and (font.face .. tostring(font.size) .. tostring(font.scale)) or ""
-	end
-	for _, tab in ipairs(steps and steps.tabs or {}) do
-		parts[#parts + 1] = tostring(tab.title) .. tostring(tab.levels) .. tostring(tab.active)
-			.. tostring(tab.fontInfo and tab.fontInfo.size) .. tostring(tab.fontInfo and tab.fontInfo.scale)
-			.. tostring(tab.rangeFontInfo and tab.rangeFontInfo.size) .. tostring(tab.rangeFontInfo and tab.rangeFontInfo.scale)
-	end
+	local spot = m and string.format("%d:%.4f:%.4f", m, x, y) or "-"
+	local signature = Guide.SnapshotSignature(steps)
 	reader.mapID, reader.x, reader.y, reader.steps = m, x, y, steps
 	reader.runs = (m or steps) and true or false
 	-- (its step itself -- the guide, the step's number in its title, the spot -- not its lines' progress: what takes over)
-	reader.stepKey = parts[1] .. "|" .. tostring(steps and steps.title)
+	reader.stepKey = spot .. "|" .. tostring(steps and steps.title)
 	-- (2.1.0: its title too -- a new step whose lines read as the last one's is a change: its number in its title)
-	return reader.stepKey .. "\n" .. table.concat(parts, "\n", 2)
+	return reader.stepKey .. "\n" .. signature
 end
 
 -- the guide followed: the active one while it runs; else a running guide with steps, else TomTom's arrow
@@ -680,35 +705,8 @@ end
 function Guide.Publish()
 	local reader = Following() and Guide.active
 	local steps = reader and reader.steps
-	local parts = { (reader and reader.key or "") .. "|" .. tostring(steps and steps.title), tostring(steps and steps.style), tostring(steps and steps.presentation) }
-	for _, line in ipairs(steps and steps.lines or {}) do
-		parts[#parts + 1] = tostring(line.shown or line.text) .. (line.done and "+" or "-") .. (line.box and "b" or "") .. (line.context and "c" or "") .. tostring(line.role or "") .. tostring(line.right or "") .. tostring(line.number or "")
-			.. tostring(line.current or false) .. tostring(line.icon or "") .. tostring(line.progress or "") .. tostring(line.ruleBefore or false) .. tostring(line.expanded) .. tostring(line.singleLine) .. tostring(line.font)
-			.. tostring(line.section) .. tostring(line.group) .. "q" .. tostring(line.quest)
-			.. tostring(line.fontInfo and line.fontInfo.size) .. tostring(line.fontInfo and line.fontInfo.scale)
-			.. tostring(line.rightFontInfo and line.rightFontInfo.size) .. tostring(line.rightFontInfo and line.rightFontInfo.scale)
-			.. tostring(line.numberFontInfo and line.numberFontInfo.size) .. tostring(line.numberFontInfo and line.numberFontInfo.scale)
-			.. table.concat(line.colour or {}, ",") .. table.concat(line.iconColour or {}, ",") .. table.concat(line.progressColour or {}, ",") .. tostring(line.rightFont) .. table.concat(line.rightColour or {}, ",") .. tostring(line.expanded) .. tostring(line.singleLine)
-	end
-	for _, s in ipairs(steps and steps.upcoming or {}) do
-		parts[#parts + 1] = "#" .. tostring(s.n)
-		for _, l in ipairs(s.lines) do
-			parts[#parts + 1] = tostring(l.shown or l.text)
-		end
-	end
-	parts[#parts + 1] = NavSig(steps)
-	-- (its spot too: the Quest Tracker's distance to it)
-	parts[#parts + 1] = reader and reader.mapID and string.format("@%d:%.4f:%.4f", reader.mapID, reader.x, reader.y) or "@"
-	for _, key in ipairs({ "counter", "control" }) do
-		local font = steps and steps.fonts and steps.fonts[key]
-		parts[#parts + 1] = font and (font.face .. tostring(font.size) .. tostring(font.scale)) or ""
-	end
-	for _, tab in ipairs(steps and steps.tabs or {}) do
-		parts[#parts + 1] = tostring(tab.title) .. tostring(tab.levels) .. tostring(tab.active)
-			.. tostring(tab.fontInfo and tab.fontInfo.size) .. tostring(tab.fontInfo and tab.fontInfo.scale)
-			.. tostring(tab.rangeFontInfo and tab.rangeFontInfo.size) .. tostring(tab.rangeFontInfo and tab.rangeFontInfo.scale)
-	end
-	local sig = steps and table.concat(parts, "\n") or ""
+	local spot = reader and reader.mapID and string.format("@%d:%.4f:%.4f", reader.mapID, reader.x, reader.y) or "@"
+	local sig = steps and ((reader and reader.key or "") .. spot .. Guide.SnapshotSignature(steps)) or ""
 	if sig == Guide.sig then
 		return
 	end
@@ -731,7 +729,7 @@ function Guide.Publish()
 		mapID = reader.mapID, x = reader.x, y = reader.y,
 		presentation = steps.presentation, label = steps.label, counter = steps.counter,
 		skin = steps.skin, font = steps.font, fonts = steps.fonts, metrics = steps.metrics, tabs = steps.tabs, AddTab = steps.AddTab,
-		SetCollapsed = steps.SetCollapsed })
+		SetCollapsed = steps.SetCollapsed, GetCollapsed = steps.GetCollapsed, collapsed = steps.collapsed })
 end
 
 -- the followed guide's items for its step on the bus's "guideitem" (the user, 2026-10-18: "when you need to use an
@@ -865,6 +863,8 @@ end
 -- lines = { { text, done, box, Toggle } }, cog, nav (StepButtons: its own step back
 -- and skip) } or nil; Items() { { kind
 -- "item" or "spell", id, known } }; Frames() its own arrow and windows;
+-- A Steps snapshot may also expose SetCollapsed(bool), GetCollapsed() -> bool and collapsed: its native
+-- visibility contract. The tracker reconciles it outside layout; native visibility changes must notify Hook.
 -- Quiet(on), optional, its drawings on no frame of its own, through its own
 -- setting (on: followed); Goals(), optional, its step's goals with places
 -- for MelloUI's map (Guide.PublishGoals).
@@ -1742,7 +1742,7 @@ end
 -- or TomTom's while it hands the arrow to TomTom.
 do
 	local polestar = { key = "polestar", name = "Polestar", section = "Polestar" }
-	local MESSAGES = { "STEP_CHANGED", "STEP_UPDATED", "WAYPOINT_CHANGED", "GUIDE_CHANGED", "SETTING_CHANGED", "TABS_CHANGED" }
+	local MESSAGES = { "STEP_CHANGED", "STEP_UPDATED", "WAYPOINT_CHANGED", "GUIDE_CHANGED", "SETTING_CHANGED", "TABS_CHANGED", "POLESTAR_HIDDEN" }
 
 	local function P()
 		local t = rawget(_G, "Polestar")
@@ -1753,6 +1753,13 @@ do
 	local function SetCollapsed(on)
 		local t = P()
 		if t and type(t.SetHidden) == "function" then t.SetHidden(on == true) end
+	end
+
+	local function GetCollapsed()
+		local t = P()
+		if not (t and type(t.Hidden) == "function") then return nil end
+		local ok, hidden = pcall(t.Hidden)
+		if ok and type(hidden) == "boolean" then return hidden end
 	end
 
 	local function Engine()
@@ -2279,6 +2286,7 @@ do
 		end
 		return { title = title, lines = lines, skin = skin, style = style, metrics = metrics, fonts = fonts, tabs = tabs, AddTab = AddTab,
 			SetCollapsed = type(t.SetHidden) == "function" and SetCollapsed or nil,
+			GetCollapsed = type(t.Hidden) == "function" and GetCollapsed or nil, collapsed = GetCollapsed(),
 			presentation = okW and type(window) == "table" and "polestar" or nil,
 			font = okW and type(window) == "table" and window[1] and window[1].font,
 			label = name or "Polestar", counter = i and (tostring(No(i)) .. (total and (" / " .. total) or "")) or nil,

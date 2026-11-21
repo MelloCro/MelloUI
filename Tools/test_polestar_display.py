@@ -243,6 +243,7 @@ lua.execute(r'''
         GetLiveStep=function() return step end,ToggleGoal=function(i,g) assert(i==12 and g==1); toggles=toggles+1 end}
     Polestar.UI={JourneyPanel={frame=travel},GuideFrame={party=party,xp=xp,SkinParts=function() return parts end,ShownStep=function() return step end,State=function() return 'steps' end}}
     hideCalls={}
+    Polestar.Hidden=function() return polestarHidden==true end
     Polestar.SetHidden=function(on) hideCalls[#hideCalls+1]=on;polestarHidden=on end
     local function Find(result,text)
         for j,line in ipairs(result.lines) do if line.text==text then return line,j end end
@@ -372,6 +373,8 @@ lua.execute(r'''
     assert(P.Hook(function() callbacks=callbacks+1 end))
     listeners.STEP_UPDATED()
     listeners.SETTING_CHANGED()
+    assert(listeners.POLESTAR_HIDDEN)
+    listeners.POLESTAR_HIDDEN(true)
     Polestar.UI.GuideFrame.Layout()
     Polestar.UI.GuideFrame.UpdateXP()
     jp.Refresh()
@@ -460,6 +463,37 @@ lua.execute(r'''
     assert(#result.tabs==2 and result.tabs[1].levels=='41-45' and result.tabs[1].active)
     result.tabs[2].Select();result.tabs[1].Close();result.AddTab()
     assert(selected==2 and closed==1 and picker.newTab)
+    -- Both cache layers must react when only a tab's font face changes.
+    local tabFace='Fonts/First.ttf'
+    Polestar.UI.GuideFrame.tabs[1].Label={GetFont=function() return tabFace,14,'' end,GetEffectiveScale=function() return 1 end}
+    G.Changed(P)
+    local firstFont=events.guide.data
+    tabFace='Fonts/Second.ttf'
+    G.Changed(P)
+    assert(events.guide.data~=firstFont and events.guide.data.tabs[1].fontInfo.face==tabFace)
+    local sameFont=events.guide.data
+    G.Changed(P)
+    assert(events.guide.data==sameFont, 'fresh action closures must not invalidate an unchanged view')
+    local fingerprint={lines={{text='Caption',ruleAfter=false,fontInfo={face='A',size=12,scale=1}}}}
+    local first=G.SnapshotSignature(fingerprint)
+    fingerprint.lines[1].ruleAfter=true
+    assert(G.SnapshotSignature(fingerprint)~=first)
+    first=G.SnapshotSignature(fingerprint)
+    fingerprint.lines[1].fontInfo.face='B'
+    assert(G.SnapshotSignature(fingerprint)~=first)
+    first=G.SnapshotSignature(fingerprint)
+    fingerprint.lines[1].Open=function() end
+    assert(G.SnapshotSignature(fingerprint)~=first)
+    first=G.SnapshotSignature(fingerprint)
+    fingerprint.lines[1].Open=function() end
+    assert(G.SnapshotSignature(fingerprint)==first)
+    -- Native visibility changes must publish even when the guide content stays identical.
+    polestarHidden=true
+    G.Changed(P)
+    assert(events.guide.data.collapsed==true and events.guide.data.GetCollapsed()==true)
+    polestarHidden=false
+    G.Changed(P)
+    assert(events.guide.data.collapsed==false and events.guide.data.GetCollapsed()==false)
     Polestar.Theme=nil
     -- Stale rendered steps use the model until Polestar's next render.
     Polestar.UI.GuideFrame.ShownStep=function() return 11 end
@@ -504,7 +538,7 @@ formatter.execute(r'''
     assert(GuideText({}, {text='image',picture={texture='Image',width=180,height=100}}, 500)=='|TImage:100:180|t')
 ''')
 # Run the real guide-row renderer with font/frame doubles. This tests layout intent, not WoW rendering.
-start = tracker.index('\tlocal n, boxes, controls = 0, 0, 0', tracker.index('local function FillPolestarBlock'))
+start = tracker.index('\tlocal n, boxes, controls = 0, 0, 0', tracker.index('function GUIDE.PolestarLayout'))
 end = tracker.index('\n\t-- (Guide: Next Steps)', start)
 render = LuaRuntime()
 render.execute(r'''
@@ -556,6 +590,7 @@ render.execute(r'''
     function methods:SetSize(w,h) self.width=w;self.height=h end
     function methods:SetColorTexture(...) self.colour={...} end
     function methods:SetTexture(v) self.texture=v end
+    function methods:SetTexCoord(...) self.texCoord={...} end
     function methods:SetText(v) self.text=v end
     function methods:SetTextColor(...) self.colour={...} end
     function methods:SetJustifyH(v) self.justify=v end
@@ -597,6 +632,10 @@ render.execute(r'''
 start = tracker.index('\tfunction GUIDE.ClearPresentation(')
 end = tracker.index('\n\t-- a guide line as the tracker shows it:', start)
 render.execute(tracker[start:end])
+step_start = tracker.index('\tfunction GUIDE.StepLink(')
+step_end = tracker.index('\nend\n', step_start)
+render.execute('STEP_LINK="mellouistep"')
+render.execute(tracker[step_start:step_end])
 render.execute(r'''
     -- Native sizes override Mello offsets; compensate for the destination's effective scale.
     local fs=MakeArt()
@@ -725,7 +764,7 @@ render.execute(r'''
     Perf={SetScript=function(frame,key,fn) frame.scripts[key]=fn end}
     function Scroll() end
     function Tr(text) return text end
-    M={name='QuestTracker',db={}}
+    M={name='QuestTracker',db={},isEnabled=true}
     Art={Flat=function(button,glyph,lit) button.flatGlyph=glyph;button.flatLit=lit end}
     MelloUI.NotifySettingChanged=function() notified=true end
     native:GetFrameLevel() -- existing test block, not the Polestar guide window
@@ -763,12 +802,15 @@ render.execute(r'''
     assert(toggled)
 ''')
 # Render the complete guide block, including its native surface, header, controls, footer and pooled cleanup.
-start = tracker.index('local function FillPolestarBlock(')
-end = tracker.index('local function FillGuideBlock(', start)
-render.execute(tracker[start:end].replace('local function FillPolestarBlock(', 'function FillActualGuideBlock(', 1))
+start = tracker.index('function GUIDE.BeginBlock(')
+end = tracker.index('\n-- A section\'s header in the list', start)
+render.execute(tracker[start:end].replace('local function FillGuideBlock(', 'function FillActualGuideBlock(', 1))
+item_start = tracker.index('function GUIDE.Item(')
+item_end = tracker.index('\nend', item_start) + len('\nend')
+render.execute(tracker[item_start:item_end])
 hide_start = tracker.index('local function HideLines(block, from)')
 hide_end = tracker.index('\nend\n', hide_start) + len('\nend')
-render.execute('Motion={Stop=function() end}')
+render.execute('Motion={Stop=function() end,Flash=function(block) block.flashes=(block.flashes or 0)+1 end}')
 render.execute(tracker[hide_start:hide_end].replace('local function HideLines(', 'function RealHideLines(', 1))
 
 render.execute(r'''
@@ -780,6 +822,11 @@ render.execute(r'''
     HideLines=RealHideLines
     -- Keep the same section-toggle painter when rendering the complete block.
     Act={Washed=function() end}
+    Near={GUIDE='guide',Lay=function(block)
+        if block.dist then block.dist:Hide() end
+        return 0
+    end}
+    ITEM_SIZE=26
     M.db={}
     native.item=MakeArt()
     native.title=MakeArt()
@@ -823,47 +870,146 @@ render.execute(r'''
     for _,control in ipairs(native.guideHeader) do assert(not control.shown) end
     for _,control in ipairs(native.guideControls) do assert(not control.shown) end
 ''')
-# Polestar uses the standard section heading and its existing collapse/expand state.
+# The actual dispatcher uses the same items, distances, line state and completion effects for both layouts.
+render.execute(r'''
+    native.item.icon=MakeArt()
+    Art.ItemTray=function() return nil end
+    function ItemCooldown() end
+    MelloUI.PaletteCode=function() return '|cff808080' end
+    local oldNear=Near.Lay
+    local measures=0
+    Near.Lay=function(block,_,right)
+        measures=measures+1
+        block.dist=block.dist or MakeArt()
+        block.dist:SetText('300 yd');block.dist:SetWidth(0);block.dist:Show()
+        return 44
+    end
+    GUIDE.items={items={{kind='item',quest=true,id=6948,icon='hearth'}}}
+    M.db.itemButtons=true
+    for _,presentation in ipairs({'polestar','standard'}) do
+        local content={presentation=presentation,section='Polestar',title='Guide - step 2/3',counter='2 / 3',
+            away={count='2/3',Back=function() returnedToLive=true end},
+            lines={{text='Use Hearthstone',quest=123,role='objective',section='objectives',done=false,box=true}}}
+        local before=measures
+        FillActualGuideBlock(native,content,340)
+        assert(measures==before+1 and native.item.shown and native.item.itemLink=='item:6948')
+        assert(native.item.itemID==6948 and native.dist.shown and native.guideQuest[1]==123)
+        assert(native.guideAway==content.away and native.boxes[1].n==1)
+        if presentation=='polestar' then
+            assert(native.polestarSurface.count.text:find('|Hmellouistep|h2 / 3|h',1,true))
+            assert(native.item.y>=64 and native.lines[1].y>native.item.y)
+            assert(native.dist.x==12 and native.dist.justify=='LEFT')
+        else
+            assert(native.title.text:find('|Hmellouistep|h2/3|h',1,true))
+            assert(not native.polestarSurface.shown)
+        end
+        local flashes=native.flashes or 0
+        content.lines[1].done=true
+        FillActualGuideBlock(native,content,340)
+        assert(native.flashes==flashes+1 and native.guideDone[1])
+        FillActualGuideBlock(native,content,340)
+        assert(native.flashes==flashes+1, 'completion flashes once')
+        content.title='Next step'
+        FillActualGuideBlock(native,content,340)
+        assert(native.flashes==flashes+1, 'a new step must not inherit completion animation')
+        native.guideHand[1]=true
+        content.lines[1].done=false
+        FillActualGuideBlock(native,content,340)
+        content.lines[1].done=true
+        FillActualGuideBlock(native,content,340)
+        assert(native.flashes==flashes+1, 'manually ticked goals do not flash')
+    end
+    -- A missing item clears the same button after either presentation used it.
+    GUIDE.items=nil
+    FillActualGuideBlock(native,{presentation='polestar',lines={{text='Next',role='lead'}}},340)
+    assert(not native.item.shown and not native.item.itemLink and not native.item.itemID)
+    M.db.itemButtons=nil
+    Near.Lay=oldNear
+''')
+# Visibility is reconciled through real guide/setting lifecycle entry points.
+visibility_start = tracker.index('function GUIDE.SyncVisibility(')
+visibility_end = tracker.index("-- the guide step's usable item", visibility_start)
+render.execute(tracker[visibility_start:visibility_end])
+receive_start = tracker.index('function GUIDE.OnData(')
+receive_end = tracker.index('\nend', receive_start) + len('\nend')
+render.execute(tracker[receive_start:receive_end])
+setting_start = tracker.index('function M:OnSettingChanged(')
+setting_end = tracker.index('\nend', setting_start) + len('\nend')
+render.execute(tracker[setting_start:setting_end])
 collapse_start = tracker.index('local function SectionCollapsed(key)')
 collapse_end = tracker.index('\nend', collapse_start) + len('\nend')
 render.execute(tracker[collapse_start:collapse_end].replace('local function SectionCollapsed', 'function SectionCollapsed', 1))
 guide_start = tracker.index('\t-- a guide\'s steps on top (GUIDE, above)')
 guide_end = tracker.index('\n\tif #quests > 0 then', guide_start)
 render.execute('function GuidePlacement(guide) local y=0; local guideOpen=guide and not SectionCollapsed("guide"); local heading,block,options; '
-               'local function Head(_,label,count,cog,nav,compact) heading=label;options={count=count,cog=cog,nav=nav,compact=compact} end; local function Put(key) block=key end;\n'
+               'local function Head(_,label,count,cog,nav) heading=label;options={count=count,cog=cog,nav=nav} end; local function Put(key) block=key end;\n'
                + tracker[guide_start:guide_end] + '\nreturn heading,block,options end')
 expand_start = tracker.index('\t\t\tlocal c = ', tracker.index('row.toggle = MakeToggle('))
 expand_end = tracker.index('\n\t\tend)', expand_start)
 render.execute('function ToggleGuideSection(key) key=key or "guide"\n'+tracker[expand_start:expand_end]+'\nend')
 render.execute(r'''
+    frame=nil;header=nil;moverEntry=nil
+    function ApplyLook() end
+    function MarkDirty() dirtyNotifications=(dirtyNotifications or 0)+1 end
+    MelloUI.NotifySettingChanged=function(_,_,key,value) M:OnSettingChanged(key,value,M.db) end
+    local nativeHidden=false
+    local calls=0
+    data.GetCollapsed=function() return nativeHidden end
+    data.SetCollapsed=function(on)
+        calls=calls+1;nativeHidden=on
+        GUIDE.OnData(data) -- synchronous notification must not produce recursive writes
+    end
     M.db.collapsedSections={quests=true,professions=true}
-    local hidden={}
-    data.SetCollapsed=function(on) hidden[#hidden+1]=on end
-    GUIDE.data=data
-    local heading,block,options=GuidePlacement(data)
+    GUIDE.OnData(data)
+    local heading,block=GuidePlacement(data)
     assert(heading=='Polestar' and block=='guide')
-    assert(not options.count and not options.cog and not options.nav and not options.compact)
     ToggleGuideSection()
-    heading,block=GuidePlacement(data)
-    assert(heading=='Polestar' and not block and M.db.collapsedSections.quests and M.db.collapsedSections.professions)
-    assert(#hidden==1 and hidden[1]==true)
+    assert(nativeHidden and calls==1 and SectionCollapsed('guide'))
     ToggleGuideSection()
-    heading,block=GuidePlacement(data)
-    assert(heading=='Polestar' and block=='guide' and M.db.collapsedSections.quests)
-    assert(#hidden==2 and hidden[2]==false)
+    assert(not nativeHidden and calls==2 and not SectionCollapsed('guide'))
     ToggleGuideSection('quests')
-    assert(#hidden==2, 'other sections must not change Polestar visibility')
+    assert(calls==2 and M.db.collapsedSections.professions)
+    nativeHidden=true
+    GUIDE.OnData(data) -- provider's native hide event
+    assert(SectionCollapsed('guide') and calls==2)
+    nativeHidden=false
+    GUIDE.OnData(data)
+    assert(not SectionCollapsed('guide') and calls==2)
+    ToggleGuideSection()
+    assert(nativeHidden)
+    M:OnSettingChanged('profile',nil,{collapsedSections={quests=true}})
+    assert(not nativeHidden and not SectionCollapsed('guide') and M.db.collapsedSections.quests)
+    -- A newly activated guide follows native visibility, including state saved over reload.
+    nativeHidden=true
+    GUIDE.OnData(nil)
+    GUIDE.OnData(data)
+    assert(SectionCollapsed('guide'))
+    -- Re-enabling/profile activation reconciles the saved tracker choice, even if the provider arrives later.
+    GUIDE.OnData(nil)
+    M.db={collapsedSections={}}
+    GUIDE.ActivateVisibility(true)
+    assert(GUIDE.profileVisibility)
+    GUIDE.OnData(data)
+    assert(not nativeHidden and not GUIDE.profileVisibility)
+    M.isEnabled=false
+    nativeHidden=true
+    GUIDE.OnData(data)
+    assert(not SectionCollapsed('guide'))
+    M.isEnabled=true
+    GUIDE.ActivateVisibility(false)
+    assert(SectionCollapsed('guide'))
     local other={section='Another guide',lines={{text='Step'}},cog={},nav={}}
-    heading,block,options=GuidePlacement(other)
-    assert(heading=='Another guide' and block=='guide' and options.count==1)
-    assert(options.cog==other.cog and options.nav==other.nav)
-    GUIDE.data=other
+    GUIDE.OnData(other)
+    local before=calls
     ToggleGuideSection()
-    assert(#hidden==2, 'another guide must not change Polestar visibility')
-    GUIDE.data={SetCollapsed=function() error('changed optional API') end}
+    assert(calls==before)
+    heading,block=GuidePlacement(other)
+    assert(heading=='Another guide' and block=='guide')
+    -- Missing/throwing optional APIs leave the tracker usable.
+    GUIDE.OnData({SetCollapsed=function() error('changed API') end})
     ToggleGuideSection()
-    assert(not M.db.collapsedSections.guide, 'an unavailable optional API must not break expand')
-    GUIDE.data=nil
+    assert(SectionCollapsed('guide'))
+    GUIDE.OnData(nil)
 ''')
 # Pooled Polestar decorations must disappear when another guide or quest reuses that row.
 start = tracker.index('local function Line(block, i)')
@@ -927,4 +1073,4 @@ lua.execute(r'''
     end
     for _,f in ipairs(nativeFrames) do assert(f.alpha==0.8 and f.scale==1.2) end
 ''')
-print('PASS: guide-window content, links, images, fallbacks, coalesced updates, controls, native handover and combat-safe layout restoration')
+print('PASS: guide content, shared renderer behavior, snapshot invalidation, visibility lifecycle, controls and combat-safe handover')

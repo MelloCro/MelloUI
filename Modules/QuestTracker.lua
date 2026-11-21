@@ -3158,6 +3158,8 @@ do
 			fs:SetWordWrap(false)
 			block.dist = fs
 		end
+		fs:SetJustifyH("RIGHT")
+		fs:SetWidth(0)
 		local size = TitleSize() - 1
 		StyleText(fs, size)
 		Near.Faded(fs, ink)
@@ -3991,6 +3993,50 @@ end
 -- it, through the guide's own skip (line.Toggle); a text-only line has none.
 local GUIDE = { data = nil, items = nil }   -- items: the bus's "guideitem" (Route's Guide.PublishItems)
 
+-- Visibility authority: the native state on guide activation/native messages; an explicit
+-- tracker section/profile change wins until the provider accepts it. Never write from layout.
+function GUIDE.SyncVisibility(direction)
+	if GUIDE.syncing or not (M.isEnabled and M.db and GUIDE.data) then return end
+	local data = GUIDE.data
+	local collapsed = type(M.db.collapsedSections) == "table" and M.db.collapsedSections.guide == true or false
+	if direction == "tracker" then
+		if type(data.SetCollapsed) ~= "function" then return end
+		GUIDE.syncing = true
+		local ok, current
+		if type(data.GetCollapsed) == "function" then ok, current = pcall(data.GetCollapsed) end
+		local applied = ok and current == collapsed
+		if not applied then applied = pcall(data.SetCollapsed, collapsed) end
+		GUIDE.syncing = nil
+		if applied then GUIDE.lastCollapsed, GUIDE.profileVisibility = collapsed, nil end
+	elseif type(data.GetCollapsed) == "function" then
+		local ok, hidden = pcall(data.GetCollapsed)
+		if not ok or type(hidden) ~= "boolean" then return end
+		GUIDE.lastCollapsed = hidden
+		if hidden ~= collapsed then
+			local sections = type(M.db.collapsedSections) == "table" and M.db.collapsedSections or {}
+			M.db.collapsedSections = sections
+			sections.guide = hidden or nil
+			GUIDE.syncing = true
+			MelloUI:NotifySettingChanged(M.name, "collapsedSections", sections)
+			GUIDE.syncing = nil
+		end
+	end
+end
+
+function GUIDE.ActivateVisibility(profile)
+	GUIDE.profileVisibility = profile and true or nil
+	GUIDE.lastCollapsed = type(M.db and M.db.collapsedSections) == "table" and M.db.collapsedSections.guide == true or false
+	GUIDE.SyncVisibility(profile and "tracker" or "native")
+end
+
+function GUIDE.SectionVisibilityChanged()
+	local collapsed = type(M.db and M.db.collapsedSections) == "table" and M.db.collapsedSections.guide == true or false
+	if GUIDE.lastCollapsed ~= collapsed then
+		GUIDE.lastCollapsed, GUIDE.profileVisibility = collapsed, true
+		GUIDE.SyncVisibility("tracker")
+	end
+end
+
 -- the guide step's usable item for the guide block's item button (Quest Items on): the guide's own quest item (an
 -- item of "guideitem" marked quest: Polestar's PolestarQuestItemButton's, in the bags), else the first of its lines'
 -- quests' log items (as FillBlock reads one); link, icon, logIndex (a log item) or itemID (a bag item); nil for none
@@ -4566,7 +4612,7 @@ do
 			tab:Show()
 		end
 		for i = #tabs + 1, #f.tabs do f.tabs[i]:Hide() end
-		f.count:SetText(data.counter or "")
+		f.count:SetText(GUIDE.StepLink(block, data, data.counter or ""))
 		GUIDE.NativeColour(f.count, skin, "text", "SetTextColor")
 		GUIDE.NativeFont(f.count, data, { fontInfo = data.fonts and data.fonts.counter }, TitleSize() - 1)
 		f.add.fn = data.AddTab or (data.cog and data.cog.Left)
@@ -4783,6 +4829,13 @@ do
 
 	-- the guide's title as the tracker shows it: while it shows another step than the live one (data.away, Route's
 	-- Guides.lua) its step count tinted in the palette's muted text and a link (a click: back to the live step)
+	function GUIDE.StepLink(block, data, text)
+		local away = type(data.away) == "table" and data.away or nil
+		block.guideAway = away
+		if not (away and type(away.Back) == "function" and text and text ~= "") then return text end
+		return MelloUI:PaletteCode("mutedText") .. "|H" .. STEP_LINK .. "|h" .. text .. "|h|r"
+	end
+
 	function GUIDE.Title(block, data)
 		local title = data.title or "Guide"
 		local away = type(data.away) == "table" and data.away or nil
@@ -4795,33 +4848,53 @@ do
 		if not s then
 			return title
 		end
-		return title:sub(1, s - 1) .. MelloUI:PaletteCode("mutedText") .. "|H" .. STEP_LINK .. "|h" .. count .. "|h|r"
+		return title:sub(1, s - 1) .. GUIDE.StepLink(block, data, count)
 			.. title:sub(e + 1)
 	end
 end
 
-local function FillPolestarBlock(block, data, width)
+function GUIDE.BeginBlock(block, data, width)
+	GUIDE.ClearPresentation(block)
 	-- (its links: the link layer, GuideLayer, above)
 	local layer = GuideLayer(block)
 	block.guideLinks = block.guideLinks or {}
 	wipe(block.guideLinks)
 	block.overLink = nil
 	block.questID, block.recipeID, block.recraft = nil, nil, nil
-	block.item.itemLink = nil
-	block.item:Hide()
-	if block.item.tray then
-		block.item.tray:Hide()
-		Art.ItemLit(block.item, false)
+	-- (the step's usable item on the quest blocks' own item button, as FillBlock lays it: GUIDE.Item)
+	local item = block.item
+	local link, icon, logIndex, itemID = GUIDE.Item(data)
+	if item.itemLink ~= link and itemOverlay and itemOverlay.over == item then
+		DetachOverlay()   -- (another item, or none: the secure button let go, out of a fight only)
+	end
+	local textWidth = width
+	if link and icon then
+		item.itemLink, item.logIndex, item.itemID = link, logIndex, itemID
+		item.icon:SetTexture(icon)
+		item.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		item:ClearAllPoints()
+		item:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, -2)
+		item:SetFrameLevel(layer:GetFrameLevel() + 1)   -- (over the link layer: its mouse its own)
+		item:Show()
+		local tray = Art.ItemTray(item)
+		if tray then
+			tray:Show()
+		end
+		ItemCooldown(item)
+		textWidth = width - ITEM_SIZE - 8
+	else
+		item.itemLink, item.logIndex, item.itemID = nil, nil, nil
+		item:Hide()
+		if item.tray then
+			item.tray:Hide()
+			Art.ItemLit(item, false)
+		end
 	end
 	block.tier = nil
 	if block.mark then
 		block.mark:Hide()
 	end
 	Act.Washed(block, false)
-	if block.dist then
-		block.dist:Hide()
-		block.distValue, block.distLabel, block.distRoom = nil, nil, 0
-	end
 	if block.xp then
 		block.xp:Hide()   -- (2.1.39: nor its XP)
 	end
@@ -4829,33 +4902,110 @@ local function FillPolestarBlock(block, data, width)
 	StyleText(t, TitleSize())
 	t:ClearAllPoints()
 	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
-	t:SetWidth(width - TEXT_X)
-	local compact = data.presentation == "polestar"
-	t:SetText(compact and "" or data.title or "Guide")
 	block.guideClick, block.guideRight = data.Repin, data.Unpin   -- (a click: its step marked again; a right-click: its mark gone)
 	block.ink = Inked()
+	-- its step's spot's distance as a quest's (Near.Lay; none: no spot, another continent, an instance)
+	local distRoom = Near.Lay(block, Near.GUIDE, textWidth, block.ink)
+	t:SetWidth(textWidth - TEXT_X - distRoom)
+	t:SetText(GUIDE.Title(block, data))
 	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
 	InkLine(t, block.ink, 1)
 	if block.ink and MelloUI.QuestInk then
 		MelloUI.QuestInk.Ink(t, "title")
 	end
+	return layer, textWidth, distRoom
+end
+
+function GUIDE.BeginLines(block, data)
+	-- (the step's goal lines with a quest: a click on one follows it, Act.GuideLine)
+	block.guideQuest = block.guideQuest or {}
+	wipe(block.guideQuest)
+	block.guideDone = block.guideDone or {}
+	wipe(block.guideDone)
+	-- (a goal line done since the last fill of the same step -- not the first, not after a step change, not one
+	-- ticked by hand -- flashed once: Motion.Flash)
+	local lines = data.lines or {}
+	local stepKey = tostring(data.presentation) .. "|" .. tostring(data.section) .. "|" .. tostring(data.title) .. "|" .. #lines
+	local sameStep = block.guideStepKey == stepKey
+	-- (the lines' state at the last fill, kept in one table: a step's key holds its line count, so a line read from
+	-- it under the same key is that step's own)
+	block.guideWasDone = block.guideWasDone or {}
+	block.guideHand = block.guideHand or {}
+	local wasDone = block.guideWasDone
+	if not sameStep then
+		wipe(block.guideHand)
+	end
+	block.guideStepKey = stepKey
+	local flash = nil
+	for n, line in ipairs(lines) do
+		block.guideQuest[n] = tonumber(line.quest)
+		block.guideDone[n] = line.done and true or nil
+		local before = wasDone[n]
+		wasDone[n] = line.done and true or false
+		if line.done and sameStep and before == false and not line.skip and not block.guideHand[n] and not flash then
+			flash = n
+		end
+	end
+	return flash
+end
+
+function GUIDE.FinishBlock(block, layer, y, n, boxes, flash)
+	local t, item = block.title, block.item
+	-- (its lines the layer's, so their links answer; a quest's block later keeps them there, the layer mouse-off)
+	if t:GetParent() ~= layer then
+		t:SetParent(layer)   -- (the title too: its step count's link, GUIDE.Title)
+	end
+	for i = 1, n do
+		local fs = block.lines[i]
+		if fs and fs:GetParent() ~= layer then
+			fs:SetParent(layer)
+			fs.dash:SetParent(layer)
+		end
+	end
+	if flash and block.lines[flash] then
+		Motion.Flash(block, block.lines[flash])
+	end
+	HideBoxes(block, boxes + 1)
+	HideLines(block, n + 1)
+	y = math.max(y, item.itemLink and ITEM_SIZE + 4 or 0)
+	block:SetHeight(y)
+	block:Show()
+	return y
+end
+
+function GUIDE.UtilityRow(block, width, y, distRoom)
+	local item = block.item
+	local height = math.max(item.itemLink and ITEM_SIZE or 0, distRoom > 0 and block.dist:GetStringHeight() or 0)
+	if height == 0 then return y end
+	local pad = block.guideMetrics and block.guideMetrics.pad or 12
+	if item.itemLink then
+		item:ClearAllPoints()
+		item:SetPoint("TOPRIGHT", block, "TOPRIGHT", -pad, -y - 4)
+	end
+	if distRoom > 0 then
+		block.dist:ClearAllPoints()
+		block.dist:SetPoint("LEFT", block, "TOPLEFT", pad, -y - 4 - height / 2)
+		block.dist:SetWidth(math.max(1, width - pad * 2 - (item.itemLink and ITEM_SIZE + 8 or 0)))
+		block.dist:SetJustifyH("LEFT")
+	end
+	return y + height + 8
+end
+
+function GUIDE.PolestarLayout(block, data, width, layer, distRoom)
+	local compact = true
+	block.title:SetText("")
 	block.guideData = data
 	block.guideMetrics = nil
 	for _, control in ipairs(block.guideControls or {}) do control:Hide() end
 	for _, control in ipairs(block.guideHeader or {}) do control:Hide() end
 	if block.polestarSurface then block.polestarSurface:Hide() end
-	local y = compact and GUIDE.Surface(block, data, width, layer) or t:GetStringHeight() + TITLE_GAP
+	local y = GUIDE.Surface(block, data, width, layer)
+	y = GUIDE.UtilityRow(block, width, y, distRoom)
 	local n, boxes, controls = 0, 0, 0
-	block.guideQuest, block.guideDone = block.guideQuest or {}, block.guideDone or {}
-	wipe(block.guideQuest)
-	wipe(block.guideDone)
-	block.guideAway, block.guideStepKey = nil, nil
 	local m = block.guideMetrics
 	local group
 	for index, line in ipairs(data.lines or {}) do
 		n = n + 1
-		block.guideQuest[n] = tonumber(line.quest)
-		block.guideDone[n] = line.done and true or nil
 		local role = line.role
 		local inset = compact and 12 or TEXT_X
 		local heading = role == "section"
@@ -4993,114 +5143,21 @@ local function FillPolestarBlock(block, data, width)
 			y = PutLine(block, n, shown, y, width, false, 0.55, 0.55, 0.55, true)
 		end
 	end
-	-- (its lines the layer's, so their links answer; a quest's block later keeps them there, the layer mouse-off)
-	for i = 1, n do
-		local fs = block.lines[i]
-		if fs and fs:GetParent() ~= layer then
-			fs:SetParent(layer)
-			fs.dash:SetParent(layer)
-		end
-	end
-	HideBoxes(block, boxes + 1)
-	HideLines(block, n + 1)
-	block:SetHeight(y)
-	block:Show()
-	return y
+	return y, n, boxes
 end
 
 local function FillGuideBlock(block, data, width)
-	if data.presentation == "polestar" then return FillPolestarBlock(block, data, width) end
-	-- A different guide can reuse the same block without first releasing it.
-	GUIDE.ClearPresentation(block)
-	-- (its links: the link layer, GuideLayer, above)
-	local layer = GuideLayer(block)
-	block.guideLinks = block.guideLinks or {}
-	wipe(block.guideLinks)
-	block.overLink = nil
-	block.questID, block.recipeID, block.recraft = nil, nil, nil
-	-- (the step's usable item on the quest blocks' own item button, as FillBlock lays it: GUIDE.Item)
-	local item = block.item
-	local link, icon, logIndex, itemID = GUIDE.Item(data)
-	if item.itemLink ~= link and itemOverlay and itemOverlay.over == item then
-		DetachOverlay()   -- (another item, or none: the secure button let go, out of a fight only)
-	end
-	local textWidth = width
-	if link and icon then
-		item.itemLink, item.logIndex, item.itemID = link, logIndex, itemID
-		item.icon:SetTexture(icon)
-		item.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-		item:ClearAllPoints()
-		item:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, -2)
-		item:SetFrameLevel(layer:GetFrameLevel() + 1)   -- (over the link layer: its mouse its own)
-		item:Show()
-		local tray = Art.ItemTray(item)
-		if tray then
-			tray:Show()
-		end
-		ItemCooldown(item)
-		textWidth = width - ITEM_SIZE - 8
-	else
-		item.itemLink, item.logIndex, item.itemID = nil, nil, nil
-		item:Hide()
-		if item.tray then
-			item.tray:Hide()
-			Art.ItemLit(item, false)
-		end
-	end
-	block.tier = nil
-	if block.mark then
-		block.mark:Hide()
-	end
-	Act.Washed(block, false)
-	if block.xp then
-		block.xp:Hide()   -- (2.1.39: nor its XP)
+	local layer, textWidth, distRoom = GUIDE.BeginBlock(block, data, width)
+	local flash = GUIDE.BeginLines(block, data)
+	if data.presentation == "polestar" then
+		local y, n, boxes = GUIDE.PolestarLayout(block, data, width, layer, distRoom)
+		return GUIDE.FinishBlock(block, layer, y, n, boxes, flash)
 	end
 	local t = block.title
-	StyleText(t, TitleSize())
-	t:ClearAllPoints()
-	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
-	block.guideClick, block.guideRight = data.Repin, data.Unpin   -- (a click: its step marked again; a right-click: its mark gone)
-	block.ink = Inked()
-	-- its step's spot's distance as a quest's (Near.Lay; none: no spot, another continent, an instance)
-	local distRoom = Near.Lay(block, Near.GUIDE, textWidth, block.ink)
-	t:SetWidth(textWidth - TEXT_X - distRoom)
-	t:SetText(GUIDE.Title(block, data))
-	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
-	InkLine(t, block.ink, 1)
-	if block.ink and MelloUI.QuestInk then
-		MelloUI.QuestInk.Ink(t, "title")
-	end
 	local y = t:GetStringHeight() + TITLE_GAP
 	local n, boxes = 0, 0
-	-- (the step's goal lines with a quest: a click on one follows it, Act.GuideLine)
-	block.guideQuest = block.guideQuest or {}
-	wipe(block.guideQuest)
-	block.guideDone = block.guideDone or {}
-	wipe(block.guideDone)
-	-- (a goal line done since the last fill of the same step -- not the first, not after a step change, not one
-	-- ticked by hand -- flashed once: Motion.Flash)
-	local lines = data.lines or {}
-	local stepKey = tostring(data.section) .. "|" .. tostring(data.title) .. "|" .. #lines
-	local sameStep = block.guideStepKey == stepKey
-	-- (the lines' state at the last fill, kept in one table: a step's key holds its line count, so a line read from
-	-- it under the same key is that step's own)
-	block.guideWasDone = block.guideWasDone or {}
-	block.guideHand = block.guideHand or {}
-	local wasDone = block.guideWasDone
-	if not sameStep then
-		wipe(block.guideHand)
-	end
-	block.guideStepKey = stepKey
-	local flash = nil
-	for _, line in ipairs(lines) do
+	for _, line in ipairs(data.lines or {}) do
 		n = n + 1
-		block.guideQuest[n] = tonumber(line.quest)
-		block.guideDone[n] = line.done and true or nil
-		local before = wasDone[n]
-		wasDone[n] = line.done and true or false
-		if line.done and sameStep and before == false and not line.skip and not block.guideHand[n] and not flash then
-			flash = n
-		end
 		local shade = line.done and 0.55 or 0.95
 		local top = y
 		-- (a goal's words in the quest titles' column, its box in the marks' column left of it)
@@ -5131,26 +5188,7 @@ local function FillGuideBlock(block, data, width)
 			y = PutLine(block, n, shown, y, width, false, 0.55, 0.55, 0.55, false)
 		end
 	end
-	-- (its lines the layer's, so their links answer; a quest's block later keeps them there, the layer mouse-off)
-	if t:GetParent() ~= layer then
-		t:SetParent(layer)   -- (the title too: its step count's link, GUIDE.Title)
-	end
-	for i = 1, n do
-		local fs = block.lines[i]
-		if fs and fs:GetParent() ~= layer then
-			fs:SetParent(layer)
-			fs.dash:SetParent(layer)
-		end
-	end
-	if flash and block.lines[flash] then
-		Motion.Flash(block, block.lines[flash])
-	end
-	HideBoxes(block, boxes + 1)
-	HideLines(block, n + 1)
-	y = math.max(y, item.itemLink and ITEM_SIZE + 4 or 0)
-	block:SetHeight(y)
-	block:Show()
-	return y
+	return GUIDE.FinishBlock(block, layer, y, n, boxes, flash)
 end
 
 -- A section's header in the list ("Quests", "Professions"): in the kit's
@@ -5230,9 +5268,6 @@ local function Section(key, label, count)
 			M.db.collapsedSections = c
 			c[key] = not c[key] or nil
 			MelloUI:NotifySettingChanged(M.name, "collapsedSections", c)
-			if key == "guide" and GUIDE.data and type(GUIDE.data.SetCollapsed) == "function" then
-				pcall(GUIDE.data.SetCollapsed, c[key] == true)
-			end
 		end)
 		sections[key] = row
 		Art.sectionRows[#Art.sectionRows + 1] = row
@@ -5548,9 +5583,10 @@ MelloUI:On("guideitem", function(data)
 end)
 
 -- a guide's steps published, or taken away (nil): the list rebuilt (GUIDE)
-MelloUI:On("guide", function(data)
+function GUIDE.OnData(data)
 	local was = GUIDE.data
 	GUIDE.data = type(data) == "table" and data or nil
+	GUIDE.SyncVisibility(GUIDE.profileVisibility and "tracker" or "native")
 	if GUIDE.data and not (was and was.title == GUIDE.data.title) then
 		GUIDE.toTop = true   -- (the guide section shown, or its step changed: Rebuild scrolls to the top)
 	end
@@ -5573,7 +5609,8 @@ MelloUI:On("guide", function(data)
 		end
 	end
 	MarkDirty()
-end, "Quest Tracker guide")
+end
+MelloUI:On("guide", GUIDE.OnData, "Quest Tracker guide")
 
 -- (/route guide dump) the guide section as the tracker holds it: its lines published (nil: none), shown, the offset
 function M.GuideState()
@@ -6234,6 +6271,7 @@ function M:OnEnable(db)
 	self.db = db
 	local again = frame ~= nil   -- (switched on again: Build keeps its frame)
 	Build()
+	GUIDE.ActivateVisibility(again)
 	HookEditMode()
 	for _, event in ipairs(EVENTS) do
 		pcall(eventFrame.RegisterEvent, eventFrame, event)
@@ -6267,7 +6305,10 @@ function M:OnDisable()
 end
 
 function M:OnSettingChanged(key, value, db)
+	local changedProfile = self.db ~= db
 	self.db = db
+	if changedProfile then GUIDE.ActivateVisibility(true)
+	elseif key == "collapsedSections" then GUIDE.SectionVisibilityChanged() end
 	-- (1.2.4, el-07) Background Opacity: the look's alpha alone (dragged in Edit Layout's box: no rebuild a step)
 	if key == "opacity" then
 		if looks.kit then
