@@ -27,12 +27,13 @@ local M = MelloUI:RegisterModule("CastMarks", {
 	icon = "Interface\\Icons\\Spell_Shadow_LifeDrain02",
 	flavour = "Press the next spell the moment you can.",
 	enabledByDefault = true,
+	new = "2.1.64",
 	slash = "castmarks",
 	defaults = { latency = true, ticks = true },
 	options = {
-		{ type = "toggle", key = "latency", name = "Latency",
+		{ type = "toggle", key = "latency", name = "Latency", new = "2.1.64",
 		  desc = "The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell." },
-		{ type = "toggle", key = "ticks", name = "Channel Ticks",
+		{ type = "toggle", key = "ticks", name = "Channel Ticks", new = "2.1.64",
 		  desc = "A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles." },
 	},
 })
