@@ -134,13 +134,43 @@ function R.ServerKey(realm)
 	if type(realm) ~= "string" then
 		return nil
 	end
-	local server = realm:gsub("%s+[Rr]ealm%s+%d+", "")
-	server = server:gsub("%s+(%a%a)%d+", " %1")   -- (the region kept: "EU5" -> "EU", an American one stays apart)
+	-- (with spaces as GetRealmName gives it, or without, as GetNormalizedRealmName and a friend's realmName do:
+	-- "CAMWOWEU5Realm7PvE" -> "CAMWOWEUPvE" as well)
+	local server = realm:gsub("[Rr]ealm%s*%d+", "")
+	server = server:gsub("(%u%u)%d+", "%1")   -- (the region kept: "EU5" -> "EU", an American one stays apart)
 	return RealmKey(server)
 end
 
+-- your realm as the game names it. WoW Forever at times names none at all (the German player's /mello mail names,
+-- 2026-11-21: "realm " empty, their characters noted on "CAMWOW EU5 Realm 7 PvE" -- and the empty name read as another
+-- server: every character of theirs with its realm, they themselves on the list, the game's names twice). Then the
+-- normalized name, else the one last read this session, else the realm this character was last noted on
+function R.Realm()
+	local realm = Text(Call(GetRealmName))
+	if not realm or realm == "" then
+		realm = Text(Call(rawget(_G, "GetNormalizedRealmName")))
+	end
+	if realm and realm ~= "" then
+		R.lastRealm = realm
+		return realm
+	end
+	if R.lastRealm then
+		return R.lastRealm
+	end
+	local short = Text(Call(UnitName, "player"))
+	local alts = type(M.db) == "table" and type(M.db.alts) == "table" and M.db.alts or {}
+	local best, seen
+	for key, c in pairs(short and alts or {}) do
+		if type(key) == "string" and key:sub(1, #short + 1) == short .. "-" and type(c) == "table"
+			and type(c.realm) == "string" and c.realm ~= "" and (c.seen or 0) >= (seen or 0) then
+			best, seen = c.realm, c.seen or 0
+		end
+	end
+	return best
+end
+
 local function Me()
-	local short, realm = Text(Call(UnitName, "player")), Text(Call(GetRealmName))
+	local short, realm = Text(Call(UnitName, "player")), R.Realm()
 	if not short or short == "" or not realm or realm == "" then
 		return nil
 	end
@@ -264,7 +294,7 @@ end
 -- server is written to as well: the user, "same faction, I can still send", the game's own name list offering it)
 local function OtherRealm(c)
 	-- (2.1.62: another SERVER, R.ServerKey -- another layer of yours is no other realm; the address keeps the realm whole)
-	local mine, theirs = R.ServerKey(Text(Call(GetRealmName))), R.ServerKey(c.realm)
+	local mine, theirs = R.ServerKey(R.Realm()), R.ServerKey(c.realm)
 	return (mine and theirs and mine ~= theirs) and RealmKey(c.realm) or nil
 end
 
@@ -363,7 +393,7 @@ end
 -- its level where the Quest List has met it. A noted character the menu leaves out (the other faction's) stays out.
 local function Alts(me, myName, faction)
 	local noted = Store("alts")
-	local realm = Text(Call(GetRealmName))
+	local realm = R.Realm()
 	local here = R.ServerKey(realm)   -- (2.1.62: the server, not the layer)
 	-- (2.1.62) you yourself left out by name too: your record of another layer bears another key than `me`
 	local out = {}
