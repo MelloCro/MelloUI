@@ -43,14 +43,13 @@ local M = MelloUI:RegisterModule("DemonGrimoires", {
 	icon = "Interface\\Icons\\INV_Misc_Book_06",
 	flavour = "The Imp already knows that one. It told you. Twice.",
 	enabledByDefault = false,
-	new = "2.1.66",
 	slash = "grimoires",
 	keep = { "demons" },
 	defaults = { merchant = true, tooltip = true },
 	options = {
-		{ type = "toggle", key = "merchant", name = "Mark Grimoires At The Vendor", new = "2.1.66",
+		{ type = "toggle", key = "merchant", name = "Mark Grimoires At The Vendor",
 		  desc = "Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green." },
-		{ type = "toggle", key = "tooltip", name = "Line In Grimoire Tooltips", new = "2.1.66",
+		{ type = "toggle", key = "tooltip", name = "Line In Grimoire Tooltips",
 		  desc = "A grimoire's tooltip says whether your demon knows it, or that it still needs summoning once." },
 	},
 })

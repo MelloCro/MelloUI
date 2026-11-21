@@ -52,9 +52,9 @@ local M = MelloUI:RegisterModule("CooldownText", {
 		{ type = "toggle", key = "colorByTime", name = "Colour And Size By Time Left", desc = "Timers turn red and larger under 5 seconds, yellow under a minute, and smaller for minutes and hours. Off: all white." },
 		-- (a German player: in fights the game's numbers count the global cooldown too, "2, then 1"; "if we make the
 		-- dark overlay a step darker, the number is not needed and it looks nicer")
-		{ type = "toggle", key = "fightNumbers", name = "Numbers In Fights", new = "2.1.66",
+		{ type = "toggle", key = "fightNumbers", name = "Numbers In Fights",
 		  desc = "In fights the game hides cooldown times from addons, and its own numbers count instead, the global cooldown too. Off: only the dark sweep shows the time left." },
-		{ type = "dropdown", key = "sweep", name = "Sweep Darkness", new = "2.1.66",
+		{ type = "dropdown", key = "sweep", name = "Sweep Darkness",
 		  values = { { value = "game", label = "The Game's" }, { value = "dark", label = "Dark" }, { value = "darker", label = "Darker" } },
 		  desc = "How dark the sweep over an action button runs while it cools down. Back to the game's after a /reload." },
 	},
