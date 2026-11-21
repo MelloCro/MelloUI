@@ -9,7 +9,8 @@
 --              noted again as it learns something new.
 --   The vendor each grimoire on a merchant's page gets a word at its bottom right: "Known" in grey where the demon
 --              knows that rank or a higher one, "New" in green where it knows a lower one or none of it yet (which
---              demon: the tooltip). The pet's commands (Attack, Follow, Passive, ...) are not noted.
+--              demon: the tooltip). The pet's commands (Attack, Follow, Passive, ...) are noted with its abilities:
+--              this client gives both the same entry type, and a grimoire never names a command.
 --   Tooltips   a grimoire's tooltip anywhere (the vendor, your bags) gets the same line.
 -- Which grimoire teaches what is read from its own tooltip ("Teaches your Imp Firebolt (Rank 2)"): the noted ability's
 -- name in it and the first number after the name its rank -- so it reads the client's language and no list of
@@ -114,14 +115,12 @@ local function PetSpells()
 	local bank = type(E) == "table" and type(E.SpellBookSpellBank) == "table" and E.SpellBookSpellBank.Pet
 	if type(SB) == "table" and bank ~= nil and type(SB.HasPetSpells) == "function" then
 		local n = Num(Call(SB.HasPetSpells)) or 0
-		local types = type(E.SpellBookItemType) == "table" and E.SpellBookItemType or {}
+		-- (every entry kept: on WoW Forever the demon's abilities are PetAction entries as much as its commands -- a
+		-- filter on that type left the player's Succubus with nothing, every grimoire New. The commands are noted
+		-- too; a grimoire never names them, so they change nothing)
 		for i = 1, n do
-			local info = Call(SB.GetSpellBookItemInfo, i, bank)
-			local command = type(info) == "table" and types.PetAction ~= nil and info.itemType == types.PetAction
-			if not command then
-				local name, sub = Call(SB.GetSpellBookItemName, i, bank)
-				out[#out + 1] = { name = Text(name), sub = sub }
-			end
+			local name, sub = Call(SB.GetSpellBookItemName, i, bank)
+			out[#out + 1] = { name = Text(name), sub = sub }
 		end
 		return out, n
 	end
