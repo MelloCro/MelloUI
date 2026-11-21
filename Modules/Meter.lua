@@ -188,14 +188,14 @@ local M = MelloUI:RegisterModule("Meter", {
 		  desc = "In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers." },
 		-- (2.1.62; #26 and the German player: "leave it to the player what to show, damage, healing and threat?": stacked
 		-- rows of the player's pick; Auto kept as the default and as one row -- the user's pick, above)
-		{ type = "dropdown", key = "raceShows", name = "Race Bar Shows", new = "2.1.62",
+		{ type = "dropdown", key = "raceShows", name = "Race Bar Shows",
 		  values = { { value = "auto", label = "Auto" }, { value = "pick", label = "Your Pick" } },
 		  desc = "Auto: one row, healing as a healer and damage otherwise. Your Pick: the rows ticked below, one under the other." },
-		{ type = "toggle", key = "raceDps", name = "Damage", new = "2.1.62",
+		{ type = "toggle", key = "raceDps", name = "Damage",
 		  desc = "A row of your group's damage." },
-		{ type = "toggle", key = "raceHps", name = "Healing", new = "2.1.62",
+		{ type = "toggle", key = "raceHps", name = "Healing",
 		  desc = "A row of your group's healing." },
-		{ type = "toggle", key = "raceThreat", name = "Threat", new = "2.1.62",
+		{ type = "toggle", key = "raceThreat", name = "Threat",
 		  desc = "In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull." },
 		{ type = "slider", key = "pins", name = "Race Bar Pins", min = T.PINS_MIN, max = T.PINS_MAX, step = 1,
 		  desc = "How many players the race bar shows. You are always on it." },
