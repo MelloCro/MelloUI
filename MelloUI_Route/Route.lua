@@ -7956,10 +7956,9 @@ end
 --   pin       under 100 yards: the beam gone (faded out on the way in), the
 --             mark lands on the place with its pop, never faint. It stays on
 --             top of an NPC, an object or an item's source until it is done.
---   edge      off screen: the mark on the game's own oval round the world's
---             middle with its arrow on its rim, pointing the way to turn
---             (2.1.63, as the game's focus marker; before: the arrow on a
---             ring round the character).
+--   edge      off screen: the arrow alone on the game's own oval round the
+--             world's middle, pointing the way to turn (2.1.63, as the
+--             game's focus marker; before: on a ring round the character).
 --   hidden    inside a quest's objective AREA (the game's quest blob, where
 --             the client can say so: Beacon.InArea) -- killing about a camp
 --             needs no mark over one of its spots; back when the player
@@ -8076,11 +8075,11 @@ local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"   -- lo
 local BEAM_W, BEAM_H = 20, 230   -- (look A, 0.21.3: 48 x 420 with rising streaks before)
 local EDGE_MARGIN = 0.07        -- the navigation frame this near a screen edge (share of the screen) = off screen
 -- (2.1.63; the user, 2026-11-21: "match our own direction arrow with the same behaviour" as the game's focus marker,
--- then "Yes, match it exactly") off screen, the mark rides the game's own oval round the world's middle -- its
--- SuperTrackedFrame:SetEllipticalRadii(500, 200), in UIParent's units -- with its arrow on the mark's outer side.
--- (Before: the arrow alone on a 230 x 170 ring round the character, at the camera's zoom -- 2026-09-23, "its too far
--- off the character" of an arrow at the screen's very edge.) EDGE_GAP: the arrow's middle past the mark's rim
-local OVAL_X, OVAL_Y, EDGE_GAP = 500, 200, 16
+-- then "Yes, match it exactly") off screen, the arrow rides the game's own oval round the world's middle -- its
+-- SuperTrackedFrame:SetEllipticalRadii(500, 200), in UIParent's units -- alone (the same day, in game: the flag mark
+-- beside it read as one too many). (Before: on a 230 x 170 ring round the character, at the camera's zoom --
+-- 2026-09-23, "its too far off the character" of an arrow at the screen's very edge.)
+local OVAL_X, OVAL_Y = 500, 200
 local gameMarkerFaded = false
 local gameMarkerHooked = false
 
@@ -8507,8 +8506,7 @@ function Beacon.Resize(f, d, pin)
 		-- (2026-10-21, the user: "keep its size big enough to not get shrunk down") never under MARK_PX screen px at
 		-- the UI's scale, its picture the copy made for its size (MelloUI.Icons)
 		local least = MelloUI.Icons.FloorScale(f, TextShade.GEM, Beacon.MARK_PX)
-		f.coreScale = math.min(1, math.max(s, Beacon.MARK_MIN, least))   -- (kept: the edge arrow beside it, off screen)
-		f.core:SetScale(f.coreScale)
+		f.core:SetScale(math.min(1, math.max(s, Beacon.MARK_MIN, least)))
 		if f.gem then
 			MelloUI.Icons.Fit(f.gem)
 		end
@@ -8526,7 +8524,7 @@ MelloUI:On("scale", function()
 end, "the World Marker's floor")
 
 -- How much larger or smaller the wisp's start round the character is at the camera's
--- zoom now (see Beacon's RING_*; 2.1.63: the off-screen mark rides the game's oval, its size fixed)
+-- zoom now (see Beacon's RING_*; 2.1.63: the off-screen arrow rides the game's oval, its size fixed)
 function Beacon.RingScale()
 	local zoom = GetCameraZoom and GetCameraZoom()
 	zoom = Plain(zoom)
@@ -8932,7 +8930,7 @@ function Beacon.WispTo()
 	end
 	local ui = UIParent:GetEffectiveScale()
 	if f.off then
-		-- (2.1.63: the mark on the game's oval, as the tick laid it)
+		-- (2.1.63: the edge arrow on the game's oval, as the tick laid it)
 		if not (f.ovalX and f.ovalY) then
 			return nil
 		end
@@ -9918,16 +9916,9 @@ local function MarkerTick(self)
 	-- their text shade
 	if off ~= self.off then
 		self.off = off
-		-- (2.1.63) the mark stays off screen, on the oval itself as the game's icon (the near look's height let go);
-		-- back on screen near the place, that height again
-		self.gem:Show()
-		if off and (self.coreY or 0) ~= 0 then
-			self.core:ClearAllPoints()
-			self.core:SetPoint("CENTER", self, "CENTER", 0, 0)
-			self.coreY = 0
-		elseif not off and self.pin then
-			Beacon.Turn(self, true)
-		end
+		-- (2.1.63, the user's look in game: "on the direction arrow, there is also the flag icon attached to it for some
+		-- reason") off screen the arrow alone, on the game's oval: the mark waits for the place to be on screen again
+		self.gem:SetShown(not off)
 		self.distance:SetShown(not off)
 		self.label:SetShown(not off)
 		self.edge:SetShown(off)
@@ -9980,10 +9971,10 @@ local function MarkerTick(self)
 		Beacon.Fade(self, faint)
 	end
 	if off then
-		-- (2.1.63, the game's own way: SuperTrackedFrame's ClampElliptical and UpdateArrow) the mark where the line
-		-- from the world's middle to where the game puts the place (in screen units, so a wide screen does not skew it)
-		-- crosses the oval, no easing; the arrow on the mark's rim, turned the way out. A screen too narrow for the
-		-- oval keeps it inside (0.45 of the world's screen each way)
+		-- (2.1.63, the game's own way: SuperTrackedFrame's ClampElliptical) the arrow where the line from the world's
+		-- middle to where the game puts the place (in screen units, so a wide screen does not skew it) crosses the
+		-- oval, no easing, turned the way out. A screen too narrow for the oval keeps it inside (0.45 of the world's
+		-- screen each way)
 		local al, ab, aw, ah = Beacon.Area()   -- (2.1.51: the world's screen -- Offhand's main one)
 		local px, py = (fx - 0.5) * aw, (fy - 0.5) * ah
 		local a, b = math.min(OVAL_X, aw * 0.45), math.min(OVAL_Y, ah * 0.45)
@@ -9997,9 +9988,6 @@ local function MarkerTick(self)
 		self.ovalX, self.ovalY = al + aw / 2 + px * ratio, ab + ah / 2 + py * ratio
 		self:ClearAllPoints()
 		self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", self.ovalX, self.ovalY)
-		local rim = 13 * (self.coreScale or 1) + EDGE_GAP   -- (the mark: 26 units at its frame's scale, Beacon.Resize)
-		self.edge:ClearAllPoints()
-		self.edge:SetPoint("CENTER", self, "CENTER", math.cos(self.angle) * rim, math.sin(self.angle) * rim)
 		self.edge:SetRotation(self.angle - math.pi / 2)
 		if self.shade and self.shade.edgeOn then
 			TextShade.Edge(self, true)   -- (its shade turned with it)
