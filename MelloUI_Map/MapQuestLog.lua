@@ -93,6 +93,7 @@ local T = {
 	TITLE_X = 35,               -- a quest's title and lines from the row's left (the mark, the gem, their gaps)
 	ROW_TOP = 7, ROW_GAP = 3, ROW_BOTTOM = 8,
 	ZONE = 28,                  -- a zone's heading
+	ALL = 24,                   -- (2.1.61, #34) the "All quests" line over the zones
 	FOLD = 22,                  -- the fold button, the back button
 	OPENER = 30,                -- the rail's buttons
 	BUTTON = 34,                -- the page's round buttons
@@ -143,6 +144,10 @@ local TEXT = {
 	rowTip = "Click: its page   Shift-click: link it in the chat",
 	trackBox = "Tracked in the Quest Tracker: click to take it off, or to show it there",
 	collapse = "Click: fold or unfold this zone",
+	-- (2.1.61, #34) the tracked boxes of a zone and of the whole log
+	allQuests = "All quests",
+	trackZone = "All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off",
+	trackAll = "All your quests in the Quest Tracker: click to show them all there, or to take them all off",
 	needsQuestie = "Quests on the map come from Questie.",   -- (2.1.52, stage 2: the layers' page without Questie)
 	-- (2.1.53) the layers' page's HandyNotes group without its plugin, and with MelloUI's look of it off
 	needsTown = "These places come from the addon HandyNotes: NPCs (Forever).",
@@ -364,6 +369,74 @@ local function HeadLook(h)
 	return h
 end
 
+-- (2.1.61, #34) Tracked boxes for many quests at once: a zone's (on its heading) and the whole log's (the "All
+-- quests" line). Full: every one of them in the Quest Tracker; half strong: some; empty: none. A click puts them all
+-- there, or takes them all off when every one is there already. The game's watch list may hold fewer than asked:
+-- the boxes then show what it took
+local Track = { zones = {}, all = {}, SOME = 0.45 }
+
+-- "all", "some" or "none" of `ids` tracked
+function Track.State(ids)
+	local on = 0
+	for _, id in ipairs(ids) do
+		if Watched(id) then
+			on = on + 1
+		end
+	end
+	return (#ids > 0 and on == #ids) and "all" or (on > 0 and "some" or "none")
+end
+
+function Track.Paint(box, ids)
+	local state = Track.State(ids)
+	W.Icon(box.tex, state == "none" and "ctl_check_off" or "ctl_check_on")
+	box.tex:SetAlpha(state == "some" and Track.SOME or 1)
+end
+
+-- every one of `ids` in the tracker, or every one taken off when all are there
+function Track.Many(ids)
+	local A = Acts()
+	if not (A and A.Watch) or #ids == 0 then
+		return
+	end
+	local on = Track.State(ids) ~= "all"
+	for _, id in ipairs(ids) do
+		if Watched(id) ~= on then
+			A.Watch(id, on)
+		end
+	end
+	MelloUI:PlayUISound(on and "check_on" or "check_off")
+	Log.Lay()
+end
+
+Track.ZoneClick = Perf.Shared("OnClick on the map's quest log zone boxes", function(self)
+	local zone = self:GetParent().zone
+	Track.Many(zone and Track.zones[zone] or {})
+end, "script")
+
+Track.ZoneEnter = Perf.Shared("OnEnter on the map's quest log zone boxes", function(self)
+	W.ShowTooltip(self, self:GetParent().zone or "", TEXT.trackZone)
+end, "script")
+
+Track.AllClick = Perf.Shared("OnClick on the map's quest log All box", function()
+	Track.Many(Track.all)
+end, "script")
+
+Track.AllEnter = Perf.Shared("OnEnter on the map's quest log All box", function(self)
+	W.ShowTooltip(self, TEXT.allQuests, TEXT.trackAll)
+end, "script")
+
+-- a tracked box as the quests' (CHECK), on `parent`
+function Track.Box(parent, click, enter)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(T.CHECK, T.CHECK)
+	b.tex = b:CreateTexture(nil, "ARTWORK")
+	b.tex:SetAllPoints()
+	Perf.SetScript(b, "OnClick", click)
+	Perf.SetScript(b, "OnEnter", enter)
+	Perf.SetScript(b, "OnLeave", W.TipLeave)
+	return b
+end
+
 local function Head(i)
 	local h = S.heads[i]
 	if h then
@@ -372,10 +445,15 @@ local function Head(i)
 	h = HeadLook(CreateFrame("Button", nil, S.list))
 	h.count = W.Text(h, "GameFontNormal", nil, "text")
 	h.count:SetPoint("LEFT", h.label, "RIGHT", 6, 0)
+	-- (2.1.61, #34; ChaosieKinder: "easily toggle quests en masse ... check/uncheck group or check/uncheck all", the
+	-- German player's pick: a box on the zone) the zone's tracked box in the quests' boxes' column, the fold toggle
+	-- left of it
+	h.check = Track.Box(h, Track.ZoneClick, Track.ZoneEnter)
+	h.check:SetPoint("RIGHT", h, "RIGHT", -4, 0)
+	h.check:SetPoint("BOTTOM", h.label, "BOTTOM", 0, -2)
 	h.toggle = h:CreateTexture(nil, "ARTWORK")
 	h.toggle:SetSize(14, 14)
-	h.toggle:SetPoint("RIGHT", h, "RIGHT", -4, 0)
-	h.toggle:SetPoint("BOTTOM", h.label, "BOTTOM", 0, -1)
+	h.toggle:SetPoint("RIGHT", h.check, "LEFT", -6, 0)
 	h:RegisterForClicks("LeftButtonUp")
 	Perf.SetScript(h, "OnClick", HeadClick)
 	Perf.SetScript(h, "OnEnter", HeadEnter)
@@ -527,6 +605,36 @@ function Log.Lay()
 	local page, width = S.list, S.pageW
 	local y, nh, nr = 0, 0, 0
 	local hidden = false
+	-- (2.1.61, #34) each zone's quests and all of them, for the boxes (a folded zone's too)
+	for _, ids in pairs(Track.zones) do
+		for k = #ids, 1, -1 do
+			ids[k] = nil
+		end
+	end
+	for k = #Track.all, 1, -1 do
+		Track.all[k] = nil
+	end
+	local zone
+	for i = 1, S.n do
+		local e = S.entries[i]
+		if e.header then
+			zone = e.title
+			Track.zones[zone] = Track.zones[zone] or {}
+		elseif e.id and zone then
+			local ids = Track.zones[zone]
+			ids[#ids + 1] = e.id
+			Track.all[#Track.all + 1] = e.id
+		end
+	end
+	local all = S.all
+	all:SetShown(#Track.all > 0)
+	if #Track.all > 0 then
+		all:ClearAllPoints()
+		all:SetPoint("TOPLEFT", page, "TOPLEFT", 0, 0)
+		all:SetWidth(width)
+		Track.Paint(all.check, Track.all)
+		y = T.ALL
+	end
 	for i = 1, S.n do
 		local e = S.entries[i]
 		if e.header then
@@ -537,6 +645,7 @@ function Log.Lay()
 			h.count:SetText(e.count)
 			hidden = S.collapsed[e.title] and true or false
 			W.Icon(h.toggle, hidden and "btn_expand" or "btn_collapse")
+			Track.Paint(h.check, Track.zones[e.title] or {})
 			h:ClearAllPoints()
 			h:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
 			h:SetWidth(width)
@@ -1227,6 +1336,15 @@ function Log.Init(win)
 	S.page:SetWidth(S.pageW)
 	S.empty = W.Text(S.list, "GameFontHighlight", TEXT.empty, "text")
 	S.empty:SetPoint("TOPLEFT", S.list, "TOPLEFT", 2, -12)
+	-- (2.1.61, #34) "All quests" and its box over the zones, the box in the quests' boxes' column
+	local all = CreateFrame("Frame", nil, S.list)
+	all:SetHeight(T.ALL)
+	all.check = Track.Box(all, Track.AllClick, Track.AllEnter)
+	all.check:SetPoint("RIGHT", all, "RIGHT", -4, 0)
+	all.label = W.Text(all, "GameFontHighlightSmall", TEXT.allQuests, "text")
+	all.label:SetPoint("RIGHT", all.check, "LEFT", -6, 0)
+	all:Hide()
+	S.all = all
 	local bar = W.ThinScrollBar(S.paneQ, T.BAR)
 	bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", T.BAR, 0)
 	bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", T.BAR, 0)
