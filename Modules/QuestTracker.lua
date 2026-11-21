@@ -4294,7 +4294,7 @@ do
 			GameTooltip:SetText(Tr(GUIDE_LINK_TIP), 1, 1, 1)
 		elseif link == STEP_LINK then
 			local away = block.guideAway
-			GameTooltip:SetText(away and away.tip or "", 1, 1, 1, true)
+			GameTooltip:SetText(away and away.tip or "", 1, 1, 1, 1, true)
 		elseif not pcall(GameTooltip.SetHyperlink, GameTooltip, link) then
 			GameTooltip:Hide()
 			return

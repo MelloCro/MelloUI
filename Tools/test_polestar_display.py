@@ -998,6 +998,38 @@ render.execute(r'''
     GUIDE.items=nil
     M.db.itemButtons=nil
 ''')
+# Validate the production hyperlink tooltip callback against the client's numeric alpha argument.
+enter_start = tracker.index('\tlocal GuideLinkEnter = Perf.Shared(')
+enter_end = tracker.index('\n\tlocal GuideLinkLeave', enter_start)
+render.execute(r'''
+    GUIDE_LINK='mellouiguide';GUIDE_LINK_TIP='Click: open the link to copy it'
+    Perf.Shared=function(_,fn) return fn end
+    GameTooltip={
+        SetOwner=function(self,owner,anchor) self.owner=owner;self.anchor=anchor end,
+        SetText=function(self,text,r,g,b,alpha,wrap)
+            assert(alpha==nil or type(alpha)=='number', 'SetText alpha must be numeric, not the wrap flag')
+            assert(wrap==nil or type(wrap)=='boolean')
+            self.text=text;self.alpha=alpha;self.wrap=wrap
+        end,
+        SetHyperlink=function(self,link) self.link=link end,
+        Show=function(self) self.shown=true end,
+        Hide=function(self) self.shown=false end,
+    }
+''')
+render.execute(tracker[enter_start:enter_end].replace('local GuideLinkEnter =', 'GuideLinkEnter =', 1))
+render.execute(r'''
+    local layer={block={guideAway={tip='Viewing step 1. Click: back to step 2.'}}}
+    GuideLinkEnter(layer,'mellouistep')
+    assert(GameTooltip.text==layer.block.guideAway.tip and GameTooltip.alpha==1 and GameTooltip.wrap==true)
+    assert(GameTooltip.shown and layer.block.overLink)
+    layer.block.guideAway=nil
+    GuideLinkEnter(layer,'mellouistep')
+    assert(GameTooltip.text=='' and GameTooltip.shown)
+    GuideLinkEnter(layer,'mellouiguide:1')
+    assert(GameTooltip.text==GUIDE_LINK_TIP)
+    GuideLinkEnter(layer,'item:6948')
+    assert(GameTooltip.link=='item:6948')
+''')
 # Visibility is reconciled through real guide/setting lifecycle entry points.
 visibility_start = tracker.index('function GUIDE.SyncVisibility(')
 visibility_end = tracker.index("-- the guide step's usable item", visibility_start)
