@@ -2532,6 +2532,7 @@ local function ReleaseBlock(block)
 	block.guideClick, block.guideRight = nil, nil
 	block.guideData = nil
 	block.guideMetrics = nil
+	block.guideInlineRoom = nil
 	if block.polestarSurface then block.polestarSurface:Hide() end
 	for _, control in ipairs(block.guideHeader or {}) do control:Hide() end
 	for _, control in ipairs(block.guideControls or {}) do control:Hide() end
@@ -3116,8 +3117,12 @@ do
 			fs:SetText(text)
 			block.distLabel = text
 		end
-		fs:Show()
 		local w = Num(fs:GetStringWidth()) or 0
+		if block.guideInlineRoom ~= nil then
+			fs:SetShown(w <= block.guideInlineRoom)
+			return false
+		end
+		fs:Show()
 		return w + DIST_GAP > (block.distRoom or 0)
 	end
 
@@ -4404,7 +4409,7 @@ do
 
 	-- Polestar's theme is applied only to tracker-owned frames. Never reparent or mutate its live guide window.
 	function GUIDE.ClearPresentation(block)
-		block.guideData, block.guideMetrics = nil, nil
+		block.guideData, block.guideMetrics, block.guideInlineRoom = nil, nil, nil
 		if block.polestarSurface then block.polestarSurface:Hide() end
 		for _, control in ipairs(block.guideHeader or {}) do control:Hide() end
 		for _, control in ipairs(block.guideControls or {}) do control:Hide() end
@@ -4975,22 +4980,37 @@ function GUIDE.FinishBlock(block, layer, y, n, boxes, flash)
 	return y
 end
 
-function GUIDE.UtilityRow(block, width, y, distRoom)
-	local item = block.item
-	local height = math.max(item.itemLink and ITEM_SIZE or 0, distRoom > 0 and block.dist:GetStringHeight() or 0)
-	if height == 0 then return y end
-	local pad = block.guideMetrics and block.guideMetrics.pad or 12
+function GUIDE.InlineControls(block, width, distRoom)
+	local f, item = block.polestarSurface, block.item
+	local nextRight = 12 + f.back:GetWidth() + 5 + f.count:GetStringWidth() + 5 + f.next:GetWidth()
+	local menuLeft = width - 12 - f.menu:GetWidth()
+	local right = f.skip:IsShown() and menuLeft - 5 - f.skip:GetWidth() or menuLeft
 	if item.itemLink then
+		-- Keep the usable item visible first; optional navigation gives way at narrow widths.
+		if nextRight + ITEM_SIZE + 16 > right then f.skip:Hide(); right = menuLeft end
+		if nextRight + ITEM_SIZE + 16 > right then f.menu:Hide(); right = width - 12 end
+		if nextRight + ITEM_SIZE + 16 > right then
+			f.back:Hide()
+			f.count:ClearAllPoints()
+			f.count:SetPoint("LEFT", block, "TOPLEFT", 12, -42)
+			nextRight = 12 + f.count:GetStringWidth() + 5 + f.next:GetWidth()
+		end
+		if nextRight + ITEM_SIZE + 16 > right then
+			f.count:Hide(); f.next:Hide(); nextRight = 4
+		end
 		item:ClearAllPoints()
-		item:SetPoint("TOPRIGHT", block, "TOPRIGHT", -pad, -y - 4)
+		item:SetPoint("TOPLEFT", block, "TOPLEFT", nextRight + 8, -42 + ITEM_SIZE / 2)
+		nextRight = nextRight + 8 + ITEM_SIZE
 	end
 	if distRoom > 0 then
+		local left = nextRight + 8
+		block.guideInlineRoom = math.max(0, right - left - 8)
 		block.dist:ClearAllPoints()
-		block.dist:SetPoint("LEFT", block, "TOPLEFT", pad, -y - 4 - height / 2)
-		block.dist:SetWidth(math.max(1, width - pad * 2 - (item.itemLink and ITEM_SIZE + 8 or 0)))
+		block.dist:SetPoint("LEFT", block, "TOPLEFT", left, -42)
+		block.dist:SetWidth(math.max(1, block.guideInlineRoom))
 		block.dist:SetJustifyH("LEFT")
+		block.dist:SetShown(block.dist:GetStringWidth() <= block.guideInlineRoom)
 	end
-	return y + height + 8
 end
 
 function GUIDE.PolestarLayout(block, data, width, layer, distRoom)
@@ -5002,7 +5022,7 @@ function GUIDE.PolestarLayout(block, data, width, layer, distRoom)
 	for _, control in ipairs(block.guideHeader or {}) do control:Hide() end
 	if block.polestarSurface then block.polestarSurface:Hide() end
 	local y = GUIDE.Surface(block, data, width, layer)
-	y = GUIDE.UtilityRow(block, width, y, distRoom)
+	GUIDE.InlineControls(block, width, distRoom)
 	local n, boxes, controls = 0, 0, 0
 	local m = block.guideMetrics
 	local group

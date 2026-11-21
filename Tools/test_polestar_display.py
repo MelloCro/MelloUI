@@ -588,6 +588,7 @@ render.execute(r'''
     function methods:ClearAllPoints() end
     function methods:SetPoint(p,_,_,x,y) self.point=p;self.x=x;self.y=-(y or 0) end
     function methods:SetSize(w,h) self.width=w;self.height=h end
+    function methods:GetWidth() return self.width or 0 end
     function methods:SetColorTexture(...) self.colour={...} end
     function methods:SetTexture(v) self.texture=v end
     function methods:SetTexCoord(...) self.texCoord={...} end
@@ -600,7 +601,10 @@ render.execute(r'''
     function methods:SetVertexColor(...) self.colour={...} end
     function methods:Hide() self.shown=false end
     function methods:IsShown() return self.shown end
-    function methods:GetStringWidth() return #(self.text or '')*6 end
+    function methods:GetStringWidth()
+        local text=(self.text or ''):gsub('|c%x%x%x%x%x%x%x%x',''):gsub('|r',''):gsub('|H.-|h',''):gsub('|h','')
+        return #text*6
+    end
     function methods:GetStringHeight() return self.size or 13 end
     function methods:GetLineHeight() return self.size or 13 end
     function methods:SetFrameLevel(v) self.level=v end
@@ -902,8 +906,8 @@ render.execute(r'''
         assert(native.guideAway==content.away and native.boxes[1].n==1)
         if presentation=='polestar' then
             assert(native.polestarSurface.count.text:find('|Hmellouistep|h2 / 3|h',1,true))
-            assert(native.item.y>=64 and native.lines[1].y>native.item.y)
-            assert(native.dist.x==12 and native.dist.justify=='LEFT')
+            assert(native.item.y==29 and native.lines[1].y==64, 'the item must use the existing navigation row')
+            assert(native.dist.y==42 and native.dist.justify=='LEFT')
         else
             assert(native.title.text:find('|Hmellouistep|h2/3|h',1,true))
             assert(not native.polestarSurface.shown)
@@ -923,6 +927,24 @@ render.execute(r'''
         content.lines[1].done=true
         FillActualGuideBlock(native,content,340)
         assert(native.flashes==flashes+1, 'manually ticked goals do not flash')
+    end
+    -- Item availability changes only horizontal navigation, never the content offset or block height.
+    local content={presentation='polestar',counter='1 / 2',lines={{text='Same step',role='lead'}}}
+    M.db.itemButtons=false
+    local noItemHeight=FillActualGuideBlock(native,content,340)
+    local noItemTop=native.lines[1].y
+    M.db.itemButtons=true
+    assert(FillActualGuideBlock(native,content,340)==noItemHeight and native.lines[1].y==noItemTop)
+    for _,width in ipairs({340,260,180,90,60,340}) do
+        FillActualGuideBlock(native,content,width)
+        assert(native.lines[1].y==noItemTop and native.item.y==29)
+        assert(native.item.x>=12 and native.item.x+ITEM_SIZE<=width-12, 'the item must fit without an extra row')
+        assert(native.item:GetFrameLevel()>native.linkLayer:GetFrameLevel())
+        if width==60 then
+            assert(not native.polestarSurface.menu.shown and not native.polestarSurface.next.shown)
+        elseif width==340 then
+            assert(native.polestarSurface.menu.shown and native.polestarSurface.next.shown and native.polestarSurface.skip.shown)
+        end
     end
     -- A missing item clears the same button after either presentation used it.
     GUIDE.items=nil
