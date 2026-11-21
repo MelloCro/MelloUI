@@ -1,5 +1,5 @@
-"""The English lines the configurator and the installer draw: the keys of MelloUI's language tables (docs/plans/
-languages.md; Core.lua's Languages section). Two sources:
+"""The English lines MelloUI's windows draw through its translation: the keys of MelloUI's language tables (docs/plans/
+languages.md; Core.lua's Languages section). Three sources:
 
   the running addon   every module's title, description and flavour; its options' name, desc, hint, wide, text,
                       choices (values: label, tooltip) and an include's own rows; Core/ConfigLayout.lua's groups,
@@ -11,11 +11,18 @@ languages.md; Core.lua's Languages section). Two sources:
                       of their text tables (TEXT, CHANGELOG ...: TABLES), the label fields of any table (FIELDS), and
                       the arguments of the calls that draw text (CALLS: W.Button's text, W.Header's, BarTip's, a
                       Lang.T / Lang.F ...). Adjacent literals joined by `..` are one line.
+  every other window  (2.1.64) every Lua file the addon loads: the literals handed to a translation -- W.Tr, Lang.T,
+                      Lang.F, a file's own name or function for one, a builder that translates (W.Button's text, a
+                      row's label ...), MelloUI:Confirm's fields -- and the text tables, constants and fields handed to
+                      one (`W.Tr(TEXT.sell)`: all of TEXT). See drawn(), above its rules.
 
     from strings import collect
     lines = collect(root)   -> [(english, where)], each line once, in the order found
+    InCode(root, texts)     -> {english: file} of those texts still a literal in the addon's code (languages.py keeps
+                               their translations live: a text the code reaches through data at run time)
 
-Lines that are no prose (an id, a path, a number, a font object's name) are left out (Prose). Tools never ship.
+Lines that are no prose (an id, a path, a number, a font object's name) are left out (Prose), and so is chat output
+(MelloUI:Print, the copy window's dumps, Config.lua's slash commands: SKIP_FROM). Tools never ship.
 """
 import os
 import re
@@ -25,7 +32,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(TOOLS, "lint"))
 
-# the configurator's and the installer's own code: file -> the text tables whose every string is a line
+# the configurator's and the installer's own code: file -> the text tables whose every string is a line ("*": every
+# literal of the file, a page's data file)
 FILES = {
     "Core/Config.lua": ("TEXT", "CHANGELOG", "LINKS", "COMMANDS", "EDIT_LAYOUT", "PREVIEW", "PROFILES_META",
                         "HOME_FLAVOUR", "AREAS_REFUSED", "PROMPT", "HELP_NOTE", "NEW_LINE", "SETUP_LABELS"),
@@ -49,11 +57,20 @@ FILES = {
     "Modules/RolePicker.lua": ("TEXT",),
     # (2.1.59: the mailbox's recipients; 2.1.62: its panel beside Send Mail, its title and its list)
     "Modules/MailRecipients.lua": ("TEXT",),
+    # (2.1.64: the Addons page's own list -- what MelloUI does with each addon, its links, its jobs, the rows of what
+    # it changed -- drawn by Core/AddonsPage.lua from this file: "*", every literal of the file)
+    "Core/Integrations.lua": "*",
+    # (2.1.64: lists other files draw -- the Spell Groups page's groups and orders, GroupSpellGroupsPage.lua; the map's
+    # town marks' kinds, its layer menu)
+    "MelloUI_GroupFrames/GroupSpellGroups.lua": (),
+    "MelloUI_Map/MapTownMarks.lua": (),
 }
 # a section of a file the windows never draw (the slash commands' chat output, the probes): left out
 SKIP_FROM = {
     "Core/Config.lua": "-- Slash commands",
 }
+# (a page's data file, FILES "*") the fields whose string is an id, never a line: a key, an option's id, a folder
+IDS = {"key", "id", "folders", "folder", "url", "group", "arrow", "icon", "global", "addon", "kind", "type", "event"}
 # fields whose string is a line wherever they stand
 FIELDS = {"name", "desc", "text", "title", "label", "tip", "tooltip", "hint", "flavour", "line", "accept", "cancel",
           "heading", "noun", "wide", "note", "body", "lead", "switchLabel", "switchDesc", "default", "question", "tag"}
@@ -122,7 +139,11 @@ def tokens(src):
 PATHLIKE = re.compile(r"[\\/]|^\||\.(lua|tga|blp|ttf|ogg|mp3)$", re.I)
 # a slash command and its arguments ("/sfx play <name>", "/mello profile ...", "/vo stop | pause | skip"): the same in
 # every language. A sentence that opens with one ("/mellobug's report now shows ...") is a line a player reads.
-SLASH = re.compile(r"^/[a-z]+(?: (?:[a-z]+|<[a-z]+>|\||\.\.\.)){0,5}$")
+# (2.1.64: any number of arguments -- "/mello preview solo | party | raid | stop", Core/Preview.lua's usage)
+SLASH = re.compile(r"^/[a-z]+(?: (?:[a-z]+|<[a-z]+>|\||\.\.\.))*$")
+# a format's placeholders and colour codes ("/ %d": a slash and a count, the same in every language -- while "%s: %s"
+# is a line: "%s : %s" in French, "%s：%s" in Chinese)
+NOT_WORDS = re.compile(r"%(?:\d+\$)?[-+#0]*\d*(?:\.\d+)?[sdfgixXc]|\|c[0-9a-fA-F]{8}|\|r")
 
 
 def Prose(s):
@@ -131,6 +152,8 @@ def Prose(s):
     if not s or not re.search(r"[^\W\d_]", s):
         return False
     t = s.strip()
+    if t.startswith("/") and not re.search(r"[^\W\d_]", NOT_WORDS.sub("", t)):
+        return False
     if not t or PATHLIKE.search(t) and " " not in t:
         return False
     if t.startswith(("http://", "https://")) and " " not in t:
@@ -144,6 +167,8 @@ def Prose(s):
             return False
         if re.match(r"^(Game|System|Number|Chat|Quest)Font", t) or re.match(r"^[A-Z][a-z]+[A-Z]\w*$", t):
             return False                                    # GameFontNormal, CamelCase ids (MelloUIConfigFrame)
+        if re.match(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$", t):
+            return False                                    # an option's id: BagWindow.columns
     return True
 
 
@@ -156,9 +181,12 @@ def literals(path, rel, tables=()):
         src = src[:src.index(stop)]
     toks = list(tokens(src))
     out = []
+    whole = tables == "*"
+    tables = () if whole else tables
     # a stack of open brackets: ("call", name, argindex) | ("table", fieldname-or-None, tablename-or-None)
     stack = []
     table_of = []   # the text table each open "{" belongs to (name or None), inherited inward
+    field_of = []   # the field each open "{" is the value of (`folders = {`; None)
     i, n = 0, len(toks)
     pending_field = None
     while i < n:
@@ -174,12 +202,14 @@ def literals(path, rel, tables=()):
                 name = toks[i - 2][1].split(".")[-1]
             inherited = table_of[-1] if table_of else None
             table_of.append(name if name in tables else inherited)
+            field_of.append(name)
             stack.append(["table", None, 1])
         elif kind == "op" and text in ")}":
             if stack:
                 top = stack.pop()
                 if top[0] == "table" and table_of:
                     table_of.pop()
+                    field_of.pop()
         elif kind == "op" and text == ",":
             if stack and stack[-1][0] == "call":
                 stack[-1][2] += 1
@@ -201,7 +231,12 @@ def literals(path, rel, tables=()):
             if not dynamic:
                 # its context: a field (`key = "..."`), a text table's entry, a call's argument, a top-level constant
                 field = toks[i - 2][1] if i >= 2 and prev[1] == "=" and toks[i - 2][0] == "name" else None
-                if field and field.split(".")[-1] in FIELDS:
+                # (a call's argument: Global("Offhand"), pcall(LibStub, "AceAddon-3.0"); never `or (a and "x")`)
+                in_call = stack and stack[-1][0] == "call" and stack[-1][1] not in KEYWORDS | {None}
+                own = field or (field_of[-1] if stack and stack[-1][0] == "table" and field_of else None)
+                if whole and not in_call:                     # a page's data file: all of it but its ids
+                    take = prev[1] != "[" and (own or "").split(".")[-1] not in IDS
+                elif field and field.split(".")[-1] in FIELDS:
                     take = True
                 elif field and field.split(".")[-1] in tables:           # local HOME_FLAVOUR = "..."
                     take = True
@@ -220,6 +255,283 @@ def literals(path, rel, tables=()):
                 out.append((value, line))
             i = j
         i += 1
+    return out
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Every other window (2.1.64; pull request #62 ran `write` on frFR and ~1,650 live French lines went stale): the bags,
+# the map, the chat, Edit Layout, the Quest List ... draw their texts through the same translation, from files FILES
+# never named. Not a list of files but a rule over every Lua file the addon loads (its TOC and the feature folders'):
+# a line is a literal handed to a translation --
+#   a translator: W.Tr, MelloUI.Widgets.Tr, Lang.T, Lang.F (TRANSLATORS), a file's own name for one (`local Tr =
+#       MelloUI.Widgets.Tr`) and a file's own function that hands a parameter to one (Services' F, BagWindow's F,
+#       Notice's Tr: TranslatorsOf), at that parameter's place;
+#   a shared builder that passes its texts through W.Tr (DRAWN: W.Button's text, a row's label, hint and desc ...) and
+#       the fields of a call's table it draws (DRAWN_FIELDS: MelloUI:Confirm's text, accept, cancel);
+#   or any literal of a text table or a constant one of those is handed (`W.Tr(TEXT.title)`, `W.Button(f, TEXT.sell)`,
+#       `W.Tr(KIND[v].note)`, `W.Tr(d)` of `for _, d in ipairs(DIETS)`: the whole TEXT, KIND and DIETS tables;
+#       `W.Tr(IGNORE_ASK)`, `W.Tr(short)`: that constant's or variable's value), and of a field read through one
+#       (`Tr(kind.label)`: every `label = "..."` of the file).
+# Never MelloUI:Print's line nor MelloUI:ShowText's title: chat output and the copy window's dumps (a slash command's
+# answer, a probe's, /melloperf's report) are no window text, though both hand them to the translation. A text the
+# code reaches only through data at run time (`W.Tr(pin.data.title)` of Media/QuestListData.lua's transports) is not
+# found here: languages.py keeps a translation whose English the addon's code still has (InCode) rather than turn it
+# stale.
+
+TRANSLATORS = {"W.Tr", "MelloUI.Widgets.Tr", "Widgets.Tr", "Lang.T", "Lang.F", "MelloUI.Lang.T", "MelloUI.Lang.F"}
+DRAWN = {
+    "W.Text": (3,), "W.Header": (3,), "W.Tag": (2,), "W.Button": (2,), "W.ShowTooltip": (2, 3, 4),
+    "W.Row": (4, 5, 6), "W.ToggleRow": (3, 4, 5), "W.SliderRow": (3, 4, 5), "W.DropdownRow": (3, 4, 5),
+    "W.ButtonRow": (3, 4, 5, 6), "MelloUI:Announce": (1,), "MelloUI:AnnounceWait": (1,),
+}
+DRAWN_FIELDS = {
+    "MelloUI:Confirm": {"text", "accept", "cancel", "label"},
+    "W.Card": {"title", "text"},
+    "W.Dropdown": {"label"}, "W.DropdownRow": {"label"},
+}
+KEYWORDS = {"and", "or", "not", "return", "if", "elseif", "while", "until", "in", "then", "do", "local", "else",
+            "repeat", "function", "nil", "true", "false", "end", "for", "break"}
+FUNC = re.compile(r"^([ \t]*)(?:local[ \t]+)?(?:function[ \t]+([\w.:]+)[ \t]*|([\w.]+)[ \t]*=[ \t]*function[ \t]*)"
+                  r"\(([^)]*)\)(.*)$", re.M)
+ALIAS = re.compile(r"^[ \t]*(?:local[ \t]+)?([\w.]+(?:[ \t]*,[ \t]*[\w.]+)*)[ \t]*=[ \t]*([\w.:]+(?:[ \t]*,[ \t]*"
+                   r"[\w.:]+)*)[ \t]*(?:--.*)?$", re.M)
+
+
+def TranslatorsOf(src):
+    """{name: "*" | {positions}} of the file's own translators: a name given a translator (`local Tr = W.Tr`) and a
+    function that hands its parameter to one (positions 1-based, as called; a method's `self` not counted)."""
+    found = {n: "*" for n in TRANSLATORS}
+    funcs, closers = [], {}
+    for m in FUNC.finditer(src):
+        indent, name, params, rest = m.group(1), m.group(2) or m.group(3), m.group(4), m.group(5)
+        start = m.end()
+        if re.search(r"\bend\s*$", rest):                 # one line: local function Tr(s) return W.Tr(s) end
+            body = rest
+        else:
+            if indent not in closers:
+                closers[indent] = re.compile(r"^" + re.escape(indent) + r"end\b", re.M)
+            close = closers[indent].search(src, start)
+            body = src[start:close.start() if close else len(src)]
+        funcs.append((name, [p.strip() for p in params.split(",") if p.strip()], body))
+    changed = True
+    while changed:
+        changed = False
+        for m in ALIAS.finditer(src):
+            names = [x.strip() for x in m.group(1).split(",")]
+            values = [x.strip() for x in m.group(2).split(",")]
+            for n, v in zip(names, values):
+                if found.get(v) == "*" and found.get(n) != "*":
+                    found[n] = "*"
+                    changed = True
+        # (the names each body hands a translator first: one pattern a pass)
+        handed = re.compile(r"(?<![\w.:])(?:%s)\s*\(\s*([A-Za-z_]\w*)\b"
+                            % "|".join(re.escape(n) for n in sorted(found, key=len, reverse=True)))
+        for name, params, body in funcs:
+            key = (":" + name.split(":")[-1]) if ":" in name else name
+            have = found.get(key)
+            if have == "*":
+                continue
+            want = set(have or ())
+            first = set(handed.findall(body))
+            for k, p in enumerate(params, 1):
+                if p != "..." and p in first:
+                    want.add(k)
+            if want and want != set(have or ()):
+                found[key] = want
+                changed = True
+    return found
+
+
+def drawn(path, rel):
+    """[(text, line no)] of a file's literals handed to a translation (the rule above)."""
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    stop = SKIP_FROM.get(rel)
+    if stop and stop in src:
+        src = src[:src.index(stop)]
+    found = TranslatorsOf(src)
+    toks = list(tokens(src))
+    n = len(toks)
+
+    def spec_of(name):
+        if not name:
+            return None
+        if name in found:
+            return found[name]
+        if ":" in name and (":" + name.split(":")[-1]) in found:
+            return found[":" + name.split(":")[-1]]
+        return DRAWN.get(name)
+
+    def value_at(i):
+        """the whole constant at token i ("a" .. "b"), its last token, and whether it is joined with anything else"""
+        kind, text = toks[i][0], toks[i][1]
+        parts, j = [unquote(text) if kind == "str" else text[text.index("[", 1) + 1:text.rindex("]", 0, -1)]], i
+        while j + 2 < n and toks[j + 1][1] == ".." and toks[j + 2][0] == "str":
+            parts.append(unquote(toks[j + 2][1]))
+            j += 2
+        dynamic = (j + 1 < n and toks[j + 1][1] == "..") or (i >= 1 and toks[i - 1][1] == "..")
+        return "".join(parts), j, dynamic
+
+    def plain(i):
+        """not a key (`["x"] =`) and not the other side of a comparison (`key == "hud"`)"""
+        if i >= 1 and toks[i - 1][1] == "[":
+            return False
+        return not (i >= 2 and toks[i - 1][1] == "=" and toks[i - 2][1] in ("=", "~", "<", ">"))
+
+    out, names, fields_drawn = [], set(), set()
+    # a name that stands for an entry of a table: `for _, d in ipairs(DIETS)`, `local kind = KINDS[key]`
+    bound = {}
+    for i in range(n - 3):
+        if toks[i][1] == "for":
+            j, vars_ = i + 1, []
+            while j < n and toks[j][0] == "name" and toks[j][1] != "in":
+                vars_.append(toks[j][1])
+                j += 2 if j + 1 < n and toks[j + 1][1] == "," else 1
+            if (j + 3 < n and toks[j][1] == "in" and toks[j + 1][1] in ("ipairs", "pairs") and toks[j + 2][1] == "("
+                    and toks[j + 3][0] == "name" and vars_):
+                bound[vars_[-1]] = toks[j + 3][1].replace(":", ".").split(".")[-1]
+        elif (toks[i][1] == "local" and toks[i + 1][0] == "name" and toks[i + 2][1] == "=" and i + 4 < n
+              and toks[i + 3][0] == "name" and toks[i + 4][1] == "["):
+            bound[toks[i + 1][1]] = toks[i + 3][1].replace(":", ".").split(".")[-1]
+    # pass 1: the literals handed to a translation, and the names of the tables and constants handed to one
+    stack = []   # ["call", name, argindex] | ["group", translated, marked] | ["table", fields]
+
+    def here():
+        if not stack:
+            return False, False, None
+        top = stack[-1]
+        if top[0] == "call":
+            spec = spec_of(top[1])
+            if spec == "*":
+                return True, True, None
+            return bool(spec and top[2] in spec), False, None
+        if top[0] == "group":
+            return top[1], top[2], None
+        return False, False, top[1]
+
+    i = 0
+    while i < n:
+        kind, text, pos = toks[i]
+        prev = toks[i - 1] if i > 0 else (None, None, 0)
+        if kind == "op" and text == "(":
+            if prev[0] == "name" and prev[1] not in KEYWORDS:
+                stack.append(["call", prev[1], 1])
+            else:
+                t, m, _ = here()
+                stack.append(["group", t, m])
+        elif kind == "op" and text == "{":
+            fields = None
+            if stack and stack[-1][0] == "call":
+                fields = DRAWN_FIELDS.get(stack[-1][1])
+            elif stack and stack[-1][0] == "table":
+                fields = stack[-1][1]
+            stack.append(["table", fields])
+        elif kind == "op" and text in ")}":
+            if stack:
+                stack.pop()
+        elif kind == "op" and text == ",":
+            if stack and stack[-1][0] == "call":
+                stack[-1][2] += 1
+        elif kind == "name" and text not in KEYWORDS and not (i + 1 < n and toks[i + 1][1] == "("):
+            translated, _, _ = here()
+            if translated:
+                parts = text.replace(":", ".").split(".")
+                if i + 1 < n and toks[i + 1][1] == "[":
+                    names.add(parts[-1])                      # TEXT[kind], KIND[v].note
+                elif len(parts) > 1:
+                    names.add(parts[-2])                      # TEXT.sell, M.TEXT.sell
+                    if not parts[-2][:1].isupper():
+                        fields_drawn.add(parts[-1])           # kind.label: every label = "..." of the file
+                else:
+                    names.add(parts[0])                       # IGNORE_ASK
+                if parts[0] in bound:
+                    names.add(bound[parts[0]])                # d of ipairs(DIETS): DIETS
+        elif kind in ("str", "long"):
+            value, j, dynamic = value_at(i)
+            if not dynamic and plain(i):
+                translated, marked, fields = here()
+                field = toks[i - 2][1] if i >= 2 and prev[1] == "=" and toks[i - 2][0] == "name" else None
+                take = translated or bool(fields and field in fields)
+                if take and (Prose(value) or (marked and re.search(r"[^\W\d_]{2}", value))):
+                    out.append((value, src.count("\n", 0, pos) + 1))
+            i = j
+        i += 1
+    # pass 2: every literal of those tables (a name with a capital: TEXT, KIND, Fake.WHAT), of those constants and
+    # variables' values (`local IGNORE_ASK = "..."`; `local short = plan.short == "bags" and "Not all of it fits." or
+    # nil` given to a W.Tr(short)) and of the fields read through a translation (kind.label: `label = "..."`)
+    tables = {x for x in names if x[:1].isupper()}
+    depth, inside, parens = [], 0, 0     # depth: per open "{", whether it opened a text table
+    assigned = None                      # the name a statement (outside any bracket) gives its value to
+
+    def last(t):
+        return t.replace(":", ".").split(".")[-1]
+
+    for i in range(n):
+        kind, text, pos = toks[i]
+        prev = toks[i - 1] if i > 0 else (None, None, 0)
+        if kind == "op" and text == "{":
+            name = last(toks[i - 2][1]) if prev[1] == "=" and i >= 2 and toks[i - 2][0] == "name" else None
+            mine = name in tables
+            depth.append(mine)
+            inside += mine
+        elif kind == "op" and text == "}":
+            if depth:
+                inside -= depth.pop()
+        elif kind == "op" and text in "()":
+            parens = max(0, parens + (1 if text == "(" else -1))
+        elif kind == "op" and text == "=" and not depth and not parens:
+            if prev[1] not in ("=", "~", "<", ">") and not (i + 1 < n and toks[i + 1][1] == "="):
+                assigned = last(prev[1]) if prev[0] == "name" else None
+        elif kind == "name" and text in KEYWORDS - {"and", "or", "not", "nil", "true", "false"} and not depth:
+            assigned = None
+        elif kind in ("str", "long") and plain(i):
+            value, _, dynamic = value_at(i)
+            if dynamic:
+                continue
+            field = last(toks[i - 2][1]) if prev[1] == "=" and i >= 2 and toks[i - 2][0] == "name" else None
+            value_of = assigned in names and not depth and not parens   # (a statement's value, never a field's)
+            if (inside or value_of or field in fields_drawn) and Prose(value):
+                out.append((value, src.count("\n", 0, pos) + 1))
+    return out
+
+
+def addon_files(root):
+    """Every Lua file the addon loads: MelloUI.toc's and each feature folder's TOC's (never the language files)."""
+    import features
+    toc = []
+    if os.path.isfile(os.path.join(root, "MelloUI.toc")):     # (a test's small addon may have none)
+        with open(os.path.join(root, "MelloUI.toc"), encoding="utf-8-sig") as fh:
+            toc = [line.strip().replace("\\", "/") for line in fh.read().split("\n")]
+    out = [f for f in toc if f.endswith(".lua")] + features.feature_files(root)
+    return [f for f in dict.fromkeys(out) if os.path.isfile(os.path.join(root, f))]
+
+
+def InCode(root, wanted):
+    """{english: file} of the texts of `wanted` that stand as a literal in the code the addon loads -- languages.py
+    keeps a translation whose English is still there (reached through data at run time, past the rule above; a word
+    Lang.F looks up: "on") rather than turn it stale."""
+    out = {}
+    wanted = set(wanted)
+    if not wanted:
+        return out
+    for rel in addon_files(root):
+        with open(os.path.join(root, rel), encoding="utf-8") as fh:
+            src = fh.read()
+        toks = list(tokens(src))
+        for i, (kind, text, _) in enumerate(toks):
+            if kind not in ("str", "long"):
+                continue
+            # (each literal, and the constant it opens: "a" .. "b")
+            s = unquote(text) if kind == "str" else text[text.index("[", 1) + 1:text.rindex("]", 0, -1)]
+            found = [s]
+            j = i
+            while j + 2 < len(toks) and toks[j + 1][1] == ".." and toks[j + 2][0] == "str":
+                s += unquote(toks[j + 2][1])
+                j += 2
+                found.append(s)
+            for s in found:
+                if s in wanted and s not in out:
+                    out[s] = rel
     return out
 
 
@@ -365,6 +677,12 @@ def collect(root):
                 if s not in seen and s.strip():
                     seen.add(s)
                     out.append((s, "%s:%d" % (rel, line)))
+    # (2.1.64) every other window's lines: the literals handed to a translation, in the files the addon loads
+    for rel in addon_files(root):
+        for s, line in drawn(os.path.join(root, rel), rel):
+            if s not in seen and s.strip():
+                seen.add(s)
+                out.append((s, "%s:%d" % (rel, line)))
     return out
 
 

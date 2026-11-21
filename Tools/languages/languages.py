@@ -11,7 +11,9 @@ A language file maps an English line (Tools/languages/strings.py collects them f
 A line ending in `-- draft` is a machine draft no translator has checked yet; it shows in the game all the same.
 A line the file lacks shows in English. The files are written by this tool only (one line per entry, the English
 order, a comment per source); a translation of an English line the addon no longer has is kept at the file's end as a
-comment ("stale"), never loaded.
+comment ("stale"), never loaded, and comes back live when its line does. A translation whose English the collector does
+not list but the addon's code still holds (a text drawn from data at run time, a chat line) stays live after the
+listed lines, under "-- kept: <file>" (status's "kept"): stale is only English the addon no longer has (2.1.64).
 
     python Tools/languages/languages.py status                 every language: lines, translated, drafts, missing
     python Tools/languages/languages.py check                  the problems (placeholders, markup, a file that does
@@ -102,26 +104,55 @@ def group_of(where):
     return where.split(":")[0]
 
 
-def write(root, code, lines, live, stale):
-    """The file in its one form: the English order, a comment per source, stale lines as comments at its end."""
+def kept_of(root, lines, *tables):
+    """{english: file} of the translations (live or stale) whose English the collector does not list but the addon's
+    code still holds as a literal (strings.InCode): a text reached through data at run time (W.Tr(pin.data.title)), a
+    word Lang.F looks up ("on"), a chat line Print translates. Kept live, never turned stale: stale is only English the
+    addon no longer has (2.1.64; pull request #62's `write` on frFR lost ~1,650 such lines)."""
     english = {s for s, _ in lines}
+    wanted = {s for t in tables for s in t if s not in english}
+    return S.InCode(root, wanted)
+
+
+def write(root, code, lines, live, stale, kept=None):
+    """The file in its one form: the English order, a comment per source, then the translations kept for English the
+    code still has (kept_of), stale lines as comments at its end."""
+    english = {s for s, _ in lines}
+    if kept is None:
+        kept = kept_of(root, lines, live, stale)
     out = [HEAD.format(name=NAMES[code], code=code)]
     last = None
     for s, where in lines:
-        if s not in live:
+        # (2.1.64: a stale line whose English is back comes back live -- before, it was neither, and lost)
+        v = live.get(s) or stale.get(s)
+        if v is None:
             continue
         g = group_of(where)
         if g != last:
             out.append("\t-- %s\n" % g)
             last = g
-        t, draft = live[s]
+        t, draft = v
+        out.append('\t["%s"] = "%s",%s\n' % (lua_quote(s), lua_quote(t), " -- draft" if draft else ""))
+    # (in the code's order, file by file: a stale line whose English is back in the code comes back too)
+    last = None
+    for s, rel in kept.items():
+        v = live.get(s) or stale.get(s)
+        if v is None:
+            continue
+        if last is None:
+            out.append("\t-- Kept: English still in the addon's code that the collector does not list (data drawn at"
+                       " run time, a chat line)\n")
+        if rel != last:
+            out.append("\t-- kept: %s\n" % rel)
+            last = rel
+        t, draft = v
         out.append('\t["%s"] = "%s",%s\n' % (lua_quote(s), lua_quote(t), " -- draft" if draft else ""))
     out.append("})\n")
     gone = dict(stale)
     for s, v in live.items():
         if s not in english:
             gone[s] = v
-    gone = {s: v for s, v in gone.items() if s not in english}
+    gone = {s: v for s, v in gone.items() if s not in english and s not in kept}
     if gone:
         out.append("\n-- No longer in the addon (kept for a line that comes back; never loaded):\n")
         for s in sorted(gone):
@@ -184,20 +215,27 @@ def loads(root, code):
 
 
 def status(root, lines, codes=CODES):
+    """Per language (code, lines, translated, drafts, missing, kept, stale) -- kept: live translations of English the
+    collector does not list but the code still holds (kept_of); stale: live ones of English the addon no longer has --
+    and the problems."""
     english = [s for s, _ in lines]
+    have_all = set(english)
+    files = {code: read(root, code)[0] for code in codes}
+    kept = kept_of(root, lines, *files.values())
     rows, problems = [], []
     for code in codes:
-        live, _ = read(root, code)
+        live = files[code]
         why = loads(root, code)
         if why:
             problems.append("%s.lua does not load: %s" % (code, why))
         have = [s for s in english if s in live]
         drafts = sum(1 for s in have if live[s][1])
-        stale = [s for s in live if s not in set(english)]
-        for s in have:
+        extra = [s for s in live if s not in have_all]
+        for s in have + [s for s in extra if s in kept]:
             for p in problems_of(s, live[s][0]):
                 problems.append("%s: %s -- %r" % (code, p, s[:70]))
-        rows.append((code, len(english), len(have), drafts, len(english) - len(have), len(stale)))
+        rows.append((code, len(english), len(have), drafts, len(english) - len(have),
+                     sum(1 for s in extra if s in kept), sum(1 for s in extra if s not in kept)))
     return rows, problems
 
 
@@ -213,9 +251,9 @@ def main():
     lines = S.collect(a.root)
     if a.what in ("status", "check"):
         rows, problems = status(a.root, lines)
-        print("%-6s %6s %10s %7s %8s %6s" % ("", "lines", "translated", "drafts", "missing", "stale"))
-        for code, n, have, drafts, missing, stale in rows:
-            print("%-6s %6d %10d %7d %8d %6d" % (code, n, have, drafts, missing, stale))
+        print("%-6s %6s %10s %7s %8s %6s %6s" % ("", "lines", "translated", "drafts", "missing", "kept", "stale"))
+        for code, n, have, drafts, missing, kept, stale in rows:
+            print("%-6s %6d %10d %7d %8d %6d %6d" % (code, n, have, drafts, missing, kept, stale))
         for p in problems:
             print("  " + p)
         print("languages: %d problem%s" % (len(problems), "" if len(problems) == 1 else "s"))
