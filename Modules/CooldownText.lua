@@ -170,6 +170,48 @@ local function SetNativeNumbersHidden(cooldown, hidden)
 	end
 end
 
+-- (2.1.63; the user, 2026-11-21: "out of nowhere sometimes the cooldown numbers dont appear on the buttons") an action
+-- button's cooldown whose time the game hands as a secret -- while it restricts addons' cooldowns: a fight, an
+-- encounter, a keystone, a PvP match, some maps (GetActionCooldown's SecretWhenCooldownsRestricted) -- cannot be
+-- counted here, and the game's own numbers stood hidden by its Countdown For Cooldowns option (off by default): none
+-- at all. Those the cooldown's own numbers count instead (the widget reads a secret itself), shown whatever that
+-- option asks, from Minimum Duration up; given back as it ends, or to ours once its time is plain again.
+local handed = setmetatable({}, { __mode = "k" })   -- [cooldown] = { hidden = the game's wish, min = its own minimum }
+
+local function HandOver(cooldown)
+	if handed[cooldown] then
+		return
+	end
+	local wish = requestedHidden[cooldown]
+	if wish == nil and cooldown.GetHideCountdownNumbers then
+		local ok, v = pcall(cooldown.GetHideCountdownNumbers, cooldown)
+		wish = ok and v == true
+	end
+	local min = 0
+	if cooldown.GetMinimumCountdownDuration then
+		local ok, v = pcall(cooldown.GetMinimumCountdownDuration, cooldown)
+		min = ok and IsPlainNumber(v) and v or 0
+	end
+	handed[cooldown] = { hidden = wish and true or false, min = min }
+	SetNativeNumbersHidden(cooldown, false)
+	local want = math.floor((tonumber(M.db and M.db.minDuration) or 2) * 1000 + 0.5)
+	if cooldown.SetMinimumCountdownDuration and want ~= min then
+		pcall(cooldown.SetMinimumCountdownDuration, cooldown, want)
+	end
+end
+
+local function HandBack(cooldown)
+	local h = handed[cooldown]
+	if not h then
+		return
+	end
+	handed[cooldown] = nil
+	if cooldown.SetMinimumCountdownDuration then
+		pcall(cooldown.SetMinimumCountdownDuration, cooldown, h.min)
+	end
+	SetNativeNumbersHidden(cooldown, h.hidden)
+end
+
 local function GetTimer(cooldown)
 	local timer = timers[cooldown]
 	if not timer then
@@ -189,11 +231,15 @@ local function StopTimer(cooldown, restoreNative)
 	-- nothing counting, nothing waiting and nothing to put back: the game
 	-- clears and re-sets cooldowns all the time (some on every frame), and a
 	-- timer already stopped needs no second stop
-	if pending[cooldown] == nil and not (timer and (timer.expires or timer.nativeHidden ~= nil)) then
+	if pending[cooldown] == nil and handed[cooldown] == nil
+		and not (timer and (timer.expires or timer.nativeHidden ~= nil)) then
 		return
 	end
 	if cooldown.IsForbidden and cooldown:IsForbidden() then
 		return
+	end
+	if restoreNative then
+		HandBack(cooldown)   -- (2.1.63: counted by its own numbers -- given back first)
 	end
 	active[cooldown] = nil
 	pending[cooldown] = nil
@@ -324,10 +370,16 @@ local function StartTimer(cooldown, start, duration, modRate)
 		return
 	end
 	if not IsPlainNumber(start) or not IsPlainNumber(duration) then
-		-- Secret values: leave Blizzard's own numbers alone.
-		StopTimer(cooldown, true)
+		-- Secret values: Blizzard's own numbers (2.1.63: on an action button, shown to count it -- HandOver)
+		if not handed[cooldown] then
+			StopTimer(cooldown, true)
+		end
+		if category == "actionBars" then
+			HandOver(cooldown)
+		end
 		return
 	end
+	HandBack(cooldown)   -- (2.1.63: plain again -- counted here)
 	if modRate ~= nil and IsPlainNumber(modRate) and modRate > 0 and modRate ~= 1 then
 		duration = duration / modRate
 	end
@@ -426,7 +478,15 @@ local function DurationObjectChanged(cooldown, duration)
 		end
 	end
 	-- The native setter bypasses SetCooldown. If its timing is restricted or unavailable,
-	-- retire our previous number instead of leaving it over the new cooldown.
+	-- retire our previous number instead of leaving it over the new cooldown (2.1.63: on an action button, its own
+	-- numbers count it -- HandOver)
+	if Category(cooldown) == "actionBars" and CategoryOn(M.db, "actionBars") then
+		if not handed[cooldown] then
+			StopTimer(cooldown, true)
+		end
+		HandOver(cooldown)
+		return
+	end
 	StopTimer(cooldown, true)
 end
 
@@ -435,6 +495,15 @@ end
 local function NumbersRequested(cooldown, hidden)
 	local wantsHidden = hidden and true or false
 	requestedHidden[cooldown] = wantsHidden
+	-- (2.1.63) counted by its own numbers: the wish kept for when it is given back, the numbers left showing
+	local h = handed[cooldown]
+	if h then
+		h.hidden = wantsHidden
+		if wantsHidden then
+			SetNativeNumbersHidden(cooldown, false)
+		end
+		return
+	end
 	local timer = timers[cooldown]
 	if timer and active[cooldown] then
 		-- Remember the caller's latest choice for when our countdown ends or hands back to the native widget.
@@ -529,6 +598,9 @@ function M:OnDisable()
 	for cooldown in pairs(timers) do
 		StopTimer(cooldown, true)
 	end
+	for cooldown in pairs(handed) do
+		HandBack(cooldown)
+	end
 end
 
 function M:OnSettingChanged(key, value, db)
@@ -545,6 +617,12 @@ function M:OnSettingChanged(key, value, db)
 			if not category or not CategoryOn(db, category) then
 				StopTimer(cooldown, true)
 			end
+		end
+	end
+	-- (2.1.63) Action Bars off: the cooldowns its own numbers counted given back to the game's wish
+	if not CategoryOn(db, "actionBars") then
+		for cooldown in pairs(handed) do
+			HandBack(cooldown)
 		end
 	end
 end

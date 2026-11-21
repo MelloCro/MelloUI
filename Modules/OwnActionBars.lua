@@ -291,11 +291,38 @@ end
 
 -- range checks: one switch per slot for all of ours (the game's own watcher's slots are left as they are)
 local rangeRefs = {}
+local rangeKept = false
+
+-- (2.1.63; the user, 2026-11-21: "sometimes on the action bars, the distance coloring does not function correctly") the
+-- game's own watcher switches a slot's range check off whenever one of ITS buttons leaves the slot
+-- (ActionBarButtonRangeCheckFrameMixin:UnregisterFrame: one switch a slot, not counted), and its buttons kept away under
+-- ours still change slots (a vehicle's, a possession's or a form's bar): ours on that slot never heard its range again,
+-- their colour stayed as it was. A slot of ours switched on again after it (post-hook, made with the first slot of ours)
+local function RangeKept(_, action)
+	action = Plain(action)
+	local fn = Api("EnableActionRangeCheck")
+	if fn and type(action) == "number" and rangeRefs[action] then
+		pcall(fn, action, true)
+	end
+end
+
+local function KeepRange()
+	if rangeKept then
+		return
+	end
+	local frame = rawget(_G, "ActionBarButtonRangeCheckFrame")
+	if type(frame) == "table" and type(frame.UnregisterFrame) == "function" then
+		rangeKept = true
+		Perf.hooksecurefunc(frame, "UnregisterFrame", RangeKept)
+	end
+end
+
 local function RangeOn(action)
 	local fn = Api("EnableActionRangeCheck")
 	if not fn or type(action) ~= "number" then
 		return
 	end
+	KeepRange()
 	local n = (rangeRefs[action] or 0) + 1
 	rangeRefs[action] = n
 	if n == 1 then
@@ -320,6 +347,20 @@ local function RangeOff(action)
 	rangeRefs[action] = n > 0 and n or nil
 	if n <= 0 and not GameWatches(action) then
 		pcall(fn, action, false)
+	end
+end
+
+-- (2.1.63) a slot just taken: its range told now -- the game tells a slot's range only when it changes, and a slot
+-- another button watched already tells nothing at our switch (the slot before's colour stayed on the button)
+local function RangeNow(btn, action)
+	local update = rawget(_G, "ActionButton_UpdateRangeIndicator")
+	local fn = Api("IsActionInRange")
+	if type(update) ~= "function" or not fn then
+		return
+	end
+	local ok, inRange = pcall(fn, action)
+	if ok and not Secret(inRange) then
+		pcall(update, btn, inRange ~= nil, inRange == true)
 	end
 end
 
@@ -354,6 +395,9 @@ function B.UpdateAction(self, force)
 	end
 	self:Update()
 	self:UpdateShown()
+	if action and action ~= old then
+		RangeNow(self, action)
+	end
 	-- (2.1.19) a flyout here: its panel of ours made, out of a fight (Flyouts)
 	if action and FLY.Need then
 		local kind, id = GetInfo(action)
