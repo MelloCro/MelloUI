@@ -3,9 +3,11 @@
 -- spell, for example -- and I don't see the latency either")
 --
 -- Two marks on your cast bar, the game's (PlayerCastingBarFrame, in MelloUI's look) and the Personal Display's:
---   Latency        the end of a cast shaded by your latency (the world's, GetNetStats): once the fill reaches it, the
---                  next spell can be pressed. On a channel the shade is at the bar's left end, where it runs out.
---                  Latency Text adds "25ms" just above that end.
+--   Latency        the end of a cast hatched: the game's spell queue window (SpellQueueWindow) and your latency (the
+--                  world's, GetNetStats). Once the fill reaches it, the next spell can be pressed and is queued. On a
+--                  channel the hatch is at the bar's left end, where it runs out. (A label "25ms" above the bar was
+--                  tried first: the player, seeing it, "the latency as a number over the cast bar is nonsense -- better
+--                  visible in the bar itself, hatched, as Forever Castbar does".)
 --   Channel Ticks  a thin mark where each tick of a channel lands (Drain Life, Hellfire, Arcane Missiles, Blizzard,
 --                  Mind Flay, ...: CHANNELS, the seconds between ticks), laid again when a hit pushes the channel back.
 -- Read from the cast's own times (UnitCastingInfo, UnitChannelInfo); a cast whose times are secret gets no marks.
@@ -26,12 +28,10 @@ local M = MelloUI:RegisterModule("CastMarks", {
 	flavour = "Press the next spell the moment you can.",
 	enabledByDefault = true,
 	slash = "castmarks",
-	defaults = { latency = true, latencyText = false, ticks = true },
+	defaults = { latency = true, ticks = true },
 	options = {
 		{ type = "toggle", key = "latency", name = "Latency",
-		  desc = "The end of each cast shaded by your latency: once the fill reaches it, you can press the next spell." },
-		{ type = "toggle", key = "latencyText", name = "Latency Text",
-		  desc = "Your latency in milliseconds just above the shaded end." },
+		  desc = "The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell." },
 		{ type = "toggle", key = "ticks", name = "Channel Ticks",
 		  desc = "A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles." },
 	},
@@ -39,7 +39,10 @@ local M = MelloUI:RegisterModule("CastMarks", {
 MelloUI.CastMarks = M
 
 local C = {
-	SHADE = { 0.85, 0.15, 0.15, 0.45 },   -- the latency's shade
+	SHADE = { 0.85, 0.15, 0.15, 0.35 },   -- the hatch's ground
+	STRIPES = "Interface\\RaidFrame\\Shield-Overlay",   -- the game's absorb stripes, tiled (as Core/Shields.lua)
+	STRIPE = { 1, 0.85, 0.85, 0.8 },      -- the stripes' tint
+	QUEUE = 400,                          -- ms: the spell queue window where the game does not say
 	TICK = { 1, 1, 1, 0.75 },             -- a tick's mark
 	TICK_W = 2,                           -- pixels
 	MAX_SHARE = 0.5,                      -- the most of the bar the shade takes (a very short cast on a slow line)
@@ -101,6 +104,15 @@ function C.Interval(name)
 	return C.byName[name]
 end
 
+-- the game's spell queue window in milliseconds
+function C.Queue()
+	local CV = rawget(_G, "C_CVar")
+	local get = type(CV) == "table" and CV.GetCVar or rawget(_G, "GetCVar")
+	local ok, v = pcall(get, "SpellQueueWindow")
+	v = ok and tonumber(v) or nil
+	return v and v >= 0 and v or C.QUEUE
+end
+
 -- your latency in milliseconds (the world's, the home's where the world's is not given)
 function C.Latency()
 	local ok, _, _, home, world = pcall(GetNetStats)
@@ -125,7 +137,12 @@ local function Holder(bar)
 	h = { bar = bar, ticks = {} }
 	h.shade = bar:CreateTexture(nil, "ARTWORK", nil, 7)
 	h.shade:SetColorTexture(unpack(C.SHADE))
-	h.label = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	h.stripes = bar:CreateTexture(nil, "ARTWORK", nil, 7)
+	h.stripes:SetTexture(C.STRIPES, "REPEAT", "REPEAT")
+	h.stripes:SetHorizTile(true)
+	h.stripes:SetVertTile(true)
+	h.stripes:SetVertexColor(unpack(C.STRIPE))
+	h.stripes:SetAllPoints(h.shade)
 	holders[bar] = h
 	return h
 end
@@ -140,21 +157,19 @@ function M.Lay(bar, seconds, channel, name)
 	local db = Db()
 	local w = Num(bar:GetWidth()) or 0
 	local on = M.isEnabled and type(seconds) == "number" and not Secret(seconds) and seconds > 0 and w > 0
-	-- the latency's shade at the cast's end
-	local ms = on and db.latency ~= false and C.Latency() or nil
+	-- the hatch at the cast's end: the queue window and the latency
+	local ms = on and db.latency ~= false and (C.Queue() + (C.Latency() or 0)) or nil
+	ms = ms and ms > 0 and ms or nil
 	h.shade:ClearAllPoints()
-	h.label:ClearAllPoints()
 	if ms then
 		local share = math.min(ms / 1000 / seconds, C.MAX_SHARE)
 		local side = channel and "LEFT" or "RIGHT"
 		h.shade:SetPoint("TOP" .. side, bar, "TOP" .. side)
 		h.shade:SetPoint("BOTTOM" .. side, bar, "BOTTOM" .. side)
 		h.shade:SetWidth(math.max(1, w * share))
-		h.label:SetPoint("BOTTOM" .. side, bar, "TOP" .. side, 0, 2)
-		h.label:SetText(math.floor(ms + 0.5) .. "ms")
 	end
 	h.shade:SetShown(ms ~= nil)
-	h.label:SetShown(ms ~= nil and db.latencyText == true)
+	h.stripes:SetShown(ms ~= nil)
 	-- the ticks of a channel: the fill runs down from the right, the k-th tick lands at 1 - k * every / seconds
 	local every = on and channel and db.ticks ~= false and C.Interval(name) or nil
 	local n = every and math.floor(seconds / every + 0.5) or 0
@@ -184,7 +199,7 @@ function M.Clear(bar)
 	local h = bar and holders[bar]
 	if h then
 		h.shade:Hide()
-		h.label:Hide()
+		h.stripes:Hide()
 		for _, t in ipairs(h.ticks) do
 			t:Hide()
 		end

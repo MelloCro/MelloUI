@@ -4529,9 +4529,7 @@ Lang:Add("frFR", {
 	["Your latency at the end of each cast and a mark for each tick of a channel, on your cast bar and the Personal Display's."] = "Votre latence à la fin de chaque incantation et un repère pour chaque tick d'une canalisation, sur votre barre d'incantation et celle de l'affichage personnel.", -- draft
 	["Press the next spell the moment you can."] = "Lancez le sort suivant dès que possible.", -- draft
 	["Latency"] = "Latence", -- draft
-	["The end of each cast shaded by your latency: once the fill reaches it, you can press the next spell."] = "La fin de chaque incantation est teintée selon votre latence : dès que le remplissage l'atteint, vous pouvez lancer le sort suivant.", -- draft
-	["Latency Text"] = "Latence en chiffres", -- draft
-	["Your latency in milliseconds just above the shaded end."] = "Votre latence en millisecondes juste au-dessus de la fin teintée.", -- draft
+	["The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell."] = "La fin de chaque incantation est hachurée : la fenêtre de file d'attente des sorts du jeu et votre latence. Dès que le remplissage l'atteint, vous pouvez lancer le sort suivant.", -- draft
 	["Channel Ticks"] = "Ticks de canalisation", -- draft
 	["A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles."] = "Un fin repère là où tombe chaque tick d'un sort canalisé, comme Drain de vie, Flammes infernales ou Projectiles des arcanes.", -- draft
 })

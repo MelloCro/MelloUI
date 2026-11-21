@@ -3942,9 +3942,7 @@ Lang:Add("deDE", {
 	["Your latency at the end of each cast and a mark for each tick of a channel, on your cast bar and the Personal Display's."] = "Deine Latenz am Ende jedes Zaubers und eine Marke für jeden Tick einer Kanalisierung, auf deiner Zauberleiste und der der Persönlichen Anzeige.", -- draft
 	["Press the next spell the moment you can."] = "Drück den nächsten Zauber, sobald es geht.", -- draft
 	["Latency"] = "Latenz", -- draft
-	["The end of each cast shaded by your latency: once the fill reaches it, you can press the next spell."] = "Das Ende jedes Zaubers ist um deine Latenz eingefärbt: Sobald die Füllung dort ankommt, kannst du den nächsten Zauber drücken.", -- draft
-	["Latency Text"] = "Latenz als Zahl", -- draft
-	["Your latency in milliseconds just above the shaded end."] = "Deine Latenz in Millisekunden direkt über dem eingefärbten Ende.", -- draft
+	["The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell."] = "Das Ende jedes Zaubers ist schraffiert: das Zauber-Warteschlangenfenster des Spiels und deine Latenz. Sobald die Füllung dort ankommt, kannst du den nächsten Zauber drücken.", -- draft
 	["Channel Ticks"] = "Kanalisierungs-Ticks", -- draft
 	["A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles."] = "Eine schmale Marke, wo jeder Tick eines kanalisierten Zaubers landet, etwa bei Lebensentzug, Höllenfeuer oder Arkanen Geschossen.", -- draft
 })
