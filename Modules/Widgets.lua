@@ -76,8 +76,7 @@ local Num = MelloUI.Safe.Number
 local Text = MelloUI.Safe.Text
 local pcall, type, floor = pcall, type, math.floor
 -- (the game's namespaces this file asks, looked up once)
-local C_Spell, C_Loot, C_DeathInfo, C_SummonInfo, C_UnitAuras = _G.C_Spell, _G.C_Loot, _G.C_DeathInfo,
-	_G.C_SummonInfo, _G.C_UnitAuras
+local C_Spell, C_Loot, C_SummonInfo, C_UnitAuras = _G.C_Spell, _G.C_Loot, _G.C_SummonInfo, _G.C_UnitAuras
 
 local M = MelloUI:RegisterModule("Widgets", {
 	title = "Widgets",
@@ -954,44 +953,17 @@ local function IsGhost()
 end
 
 -- where the body lies: on the player's map, else on the first map above it
--- that holds it (a body in another part of the zone, or across the zone's
--- edge: the zone's or the continent's map); nil when not known here. Read
--- again while it is missing (user, 2026-09-30: the release reads it as the
--- player is moved to the graveyard, when the game may have no place yet,
--- and "clicking on the waypoint doesn't do anything")
-local CORPSE_MAPS_UP = 4
-
-local function CorpseOn(mapID)
-	local pos = Ask(C_DeathInfo.GetCorpseMapPosition, mapID)
-	if type(pos) ~= "table" or Secret(pos) then
-		return nil
-	end
-	local x, y = Ask(pos.GetXY, pos)
-	x, y = Num(x), Num(y)
-	if x and y and (x > 0 or y > 0) then
-		return x, y
-	end
-	return nil
-end
-
+-- that holds it; nil when not known here (MelloUI.Coords.Corpse, the map's
+-- corpse pin's reader too). Read again while it is missing (user,
+-- 2026-09-30: the release reads it as the player is moved to the
+-- graveyard, when the game may have no place yet, and "clicking on the
+-- waypoint doesn't do anything")
 local function CorpseRead()
-	corpse.mapID, corpse.x, corpse.y = nil, nil, nil
-	local mapID = C_Map and Num((Ask(C_Map.GetBestMapForUnit, "player")))
-	if not (mapID and C_DeathInfo and C_DeathInfo.GetCorpseMapPosition) then
-		return
-	end
-	for _ = 1, CORPSE_MAPS_UP do
-		local x, y = CorpseOn(mapID)
-		if x then
-			corpse.mapID, corpse.x, corpse.y = mapID, x, y
-			return
-		end
-		local info = C_Map.GetMapInfo and Ask(C_Map.GetMapInfo, mapID)
-		local parent = type(info) == "table" and Num(info.parentMapID) or nil
-		if not parent or parent == 0 then
-			return
-		end
-		mapID = parent
+	local C = MelloUI.Coords
+	if C and C.Corpse then
+		corpse.mapID, corpse.x, corpse.y = C.Corpse()
+	else
+		corpse.mapID, corpse.x, corpse.y = nil, nil, nil
 	end
 end
 

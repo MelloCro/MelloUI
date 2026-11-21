@@ -242,6 +242,11 @@ local Click = {}    -- (2.1.21, click-casting on the display; its section after 
 local Druid = {}    -- (2.1.60, Druid Forms: the other forms' powers; its section after the power bar)
 local Block = {}    -- (2.1.61: health, power and a druid's form row in ONE border; its section before Gilded)
 Druid.outlined = setmetatable({}, { __mode = "k" })   -- (2.1.61: its numbers, on the fills: outlined -- StyleText)
+-- (2.1.65; Wolvegrimm, Discord 2026-11-21: "actual numbers on the health and main power bar just like the new Druid
+-- bars have" -- the user: the percents, ON the bars) Percent Position: the health and power percents beside the bars
+-- (as ever) or centred on their fills in the form row's numbers' size and outline, over the rims as those are
+-- (Druid.Row). Only where they stand: Percent reads them as before
+local Pct = { texts = setmetatable({}, { __mode = "k" }) }   -- [the two percents' font strings] = true
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -313,12 +318,45 @@ local function Rows(kind)
 	return open and (open[4] - open[2]) or 21, box and box[2] or 14, p and box and (p.h - box[4]) or 10
 end
 
+-- (2.1.65) the percents on the bars (Percent Position On The Bars)
+function Pct.OnBars()
+	return Db().textPlace == "bars"
+end
+
 local function StyleText(fs, size)
 	-- (one look C11: their own face, Text Font; Shared the Interface text's)
 	S.texts[fs] = size
-	-- (2.1.61: a number on a fill -- Druid Forms' halves -- outlined, so it reads on a bright power's colour)
-	MelloUI.Look.Text(fs, "text", size, { face = Db().textFont, outline = Druid.outlined[fs] })
+	-- (2.1.61: a number on a fill -- Druid Forms' halves -- outlined, so it reads on a bright power's colour; 2.1.65:
+	-- the percents on the bars the same, in the form row's size)
+	local onBar = Pct.texts[fs] and Pct.OnBars() or false
+	MelloUI.Look.Text(fs, "text", onBar and T.formText or size, { face = Db().textFont,
+		outline = Druid.outlined[fs] or onBar })
 	fs:SetShadowOffset(1, -1)
+end
+
+-- (the setting; Start again: a profile's) the two percents in their size and outline where they stand
+function Pct.Style()
+	for fs in pairs(Pct.texts) do
+		StyleText(fs, S.texts[fs] or T.text)
+	end
+end
+
+-- (LayStack, the setting) each percent past the widest cap on its bar's middle, or centred on its own fill
+function Pct.Lay(ui)
+	local onBar = Pct.OnBars()
+	local textX = (ui.widest or Width()) / 2 + T.textGap
+	for _, b in ipairs(ui.stack) do
+		if b.text then
+			b.text:ClearAllPoints()
+			if onBar then
+				b.text:SetPoint("CENTER", b.strip.fill, "CENTER", 0, 0)
+				b.text:SetJustifyH("CENTER")
+			else
+				b.text:SetPoint("LEFT", b.strip.fill, "CENTER", textX, 0)
+				b.text:SetJustifyH("LEFT")
+			end
+		end
+	end
 end
 
 -- a bar's scale for a fill `h` tall in its bracket look, and the caps' solid arms either side of the opening at it (as
@@ -938,14 +976,9 @@ local function LayStack(ui)
 	end
 	-- (the holder: health and power, the cast bar hanging under them when it shows)
 	ui.holder:SetSize(widest, math.max(1, y - T.gap))
-	-- the percents past the widest caps, each on its bar's middle
-	local textX = widest / 2 + T.textGap
-	for _, b in ipairs(ui.stack) do
-		if b.text then
-			b.text:ClearAllPoints()
-			b.text:SetPoint("LEFT", b.strip.fill, "CENTER", textX, 0)
-		end
-	end
+	-- the percents past the widest caps, each on its bar's middle (2.1.65: or on the fills, Percent Position)
+	ui.widest = widest
+	Pct.Lay(ui)
 	-- (2.1.58) the frame set's texture round each fill at its width now
 	-- (2.1.61: the block's bars wear the block's one piece, Block.Lay)
 	for _, b in ipairs(ui.stack) do
@@ -1022,7 +1055,14 @@ local function Build()
 	Paint(ui.cast.bar, "personalCast")
 	Motion.Make(ui)
 	for _, b in ipairs({ ui.health, ui.power }) do
-		b.text = b.bar:CreateFontString(nil, "OVERLAY")
+		-- (2.1.65) on a frame of its own over the fill, over the block's rim as the form row's numbers (Druid.Row):
+		-- with Percent Position On The Bars the percent stands on the fill, and the rim's dark inside edge would cover
+		-- its feet
+		b.over = CreateFrame("Frame", nil, b.strip)
+		b.over:SetAllPoints(b.strip.fill)
+		b.over:SetFrameLevel(float:GetFrameLevel() + 7)
+		b.text = b.over:CreateFontString(nil, "OVERLAY")
+		Pct.texts[b.text] = true
 		StyleText(b.text, T.text)
 		b.text:SetJustifyH("LEFT")
 	end
@@ -5399,8 +5439,10 @@ local function Start()
 	end
 	Click.Make()   -- (2.1.21: while a click-cast addon is there; laid at the Place below)
 	if again then
-		-- (switched on again: what changed while it was off -- its border on the Look page, a profile's sizes)
+		-- (switched on again: what changed while it was off -- its border on the Look page, a profile's sizes; 2.1.65:
+		-- its Percent Position, the percents' size and outline with it)
 		Refit(ui)
+		Pct.Style()
 		LayStack(ui)
 	end
 	ui.holder:Show()
@@ -5689,7 +5731,8 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	defaults = { width = 160, height = 10, shield = true, text = true, zoom = true, hideCastBar = true,
 		healFrom = true, swing = true, swingOver = false, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
-		stun = true, settle = true, classColour = false, castMotion = true, fiveSecond = true, druidForms = true },
+		stun = true, settle = true, classColour = false, castMotion = true, fiveSecond = true, druidForms = true,
+		textPlace = "beside" },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "A bar beside your character for all your shields, each in its school's colour. It drains as they take hits." },
@@ -5729,6 +5772,15 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  end },
 		{ type = "toggle", key = "text", name = "Percent And Spell Text",
 		  desc = "Health and power percent, spell names and times." },
+		-- (2.1.65; Wolvegrimm, Discord 2026-11-21: "actual numbers on the health and main power bar just like the new
+		-- Druid bars have" -- the user: the percents on the bars, as an option)
+		{ type = "dropdown", key = "textPlace", name = "Percent Position", new = "2.1.65",
+		  search = "percent number numbers text value on inside bar bars health power position place",
+		  desc = "Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers.",
+		  values = {
+			{ value = "beside", label = "Beside The Bars" },
+			{ value = "bars", label = "On The Bars" },
+		  } },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces,
 		  desc = "The font of the display's text. Shared: the interface font." },
 		-- (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
@@ -6244,6 +6296,10 @@ function M:OnSettingChanged(key, _, db)
 		for fs, size in pairs(S.texts) do
 			StyleText(fs, size)
 		end
+	elseif key == "textPlace" then
+		-- (2.1.65, Percent Position) the two percents in their size and outline there, laid there
+		Pct.Style()
+		Pct.Lay(ui)
 	end
 end
 

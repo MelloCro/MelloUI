@@ -131,6 +131,7 @@ local TEXT = {
 	read = "Read", stop = "Stop",
 	readTip = "Read the quest aloud: its description in the quest giver's voice, then the recorded objectives when the voice pack has them (Voice Over). Again: stop.",
 	showTip = "The map goes to where this quest is done (its turn-in once it is ready).",
+	showNone = "This quest has no place on the map.",   -- (2.1.65: a crafting writ, done wherever you craft)
 	routeTip = "Follow this quest: Route shows the way to it. Click again to let it go.",
 	shareTip = "Share this quest with your group.",
 	shareOff = "Only a quest that can be shared, while you are in a group.",
@@ -1102,6 +1103,16 @@ function Log.ShowQuest(id)
 		c:Glide(c:FitOf(found))
 		return true
 	end
+	-- (2.1.65; Discord, 2026-11-21: "Show on map doesnt work with Crafting writs, its does nothing") no place known and
+	-- a heading that is no map -- Forever's writs sit under "Crafting", a name-only area (AreaTable 16941,
+	-- CraftingQuestNameOnly): the map the game gives the quest (GetQuestUiMapID, 0 for none: the game's own map opens
+	-- on it, QuestMapFrame_ShowQuestDetails); the whole world is no place. None: false, the button says so (ButtonClick)
+	local mapID = Finite(Ask(rawget(_G, "GetQuestUiMapID"), id))
+	local p = mapID and mapID > 0 and c.byID and c.byID[mapID]
+	if p and p.kind ~= "world" then
+		c:Glide(c:FitOf(p))
+		return true
+	end
 	return false
 end
 
@@ -1124,7 +1135,10 @@ local ButtonClick = Perf.Shared("OnClick on the map's quest page buttons", funct
 	end
 	local B = S.buttons
 	if self == B.show then
-		Log.ShowQuest(id)
+		if not Log.ShowQuest(id) then
+			MelloUI:Announce(TEXT.showNone, "info")   -- (nothing to show: said, not a silent click)
+			return
+		end
 	elseif self == B.read then
 		local VO = VoiceOver()
 		if VO then

@@ -2128,8 +2128,14 @@ B.WriteChanged = WriteChanged
 -- frame, if it is a mover already, goes to the layout's place. Only a preset (no saved layout to read:
 -- EditModeSystemAnchor answers nil) refuses the write: there the copy is held, as before.
 -- (B.handedOver[key]: what the login did with each stored place, for /mello layout places)
+-- (2.1.65; a player's report on 2.1.60: a moved pet frame and totem bar jumped back in every fight, and came back as it
+-- ended) A held place is the store's alone, and in a fight the game lays its frame out again from the preset where no
+-- addon may move it back. With MelloUI's copy of the preset in the list (the player said yes in an earlier session, and
+-- a typed /reload never switched to it) the held places wait to go into the copy, and the next reload makes it active
+-- (Core/EditModeLayout.lua: MelloUI:EditModeCarryToCopy); from then on Edit Mode holds them, in fights too.
 B.handedOver = {}
 local function Handover()
+	local held = {}
 	for key, pos in pairs(StoredSystems()) do
 		local system, index = ParseKey(key)
 		local frame = FrameOf(system, index)
@@ -2138,6 +2144,10 @@ local function Handover()
 		elseif MelloUI:EditModeSystemAnchor(system, index) == nil then
 			B.handedOver[key] = RegisterSystem(frame) and "held (a preset or no saved place: the copy kept)"
 				or "held (already a mover)"
+			local anchor = AnchorOf(pos, frame)
+			if anchor then
+				held[#held + 1] = { key = key, system = system, index = index, anchor = anchor }
+			end
 		elseif SameAsEditMode(system, index, pos, frame) then
 			MelloUI:ForgetPosition(key)
 			B.handedOver[key] = "let go (Edit Mode holds it)"
@@ -2149,6 +2159,16 @@ local function Handover()
 				if not ok then
 					Report(err)
 				end
+			end
+		end
+	end
+	if #held > 0 and MelloUI.EditModeCarryToCopy then
+		local ok, carried = pcall(MelloUI.EditModeCarryToCopy, MelloUI, held)
+		if not ok then
+			Report(carried)
+		elseif carried then
+			for _, h in ipairs(held) do
+				B.handedOver[h.key] = B.handedOver[h.key] .. "; waits for MelloUI's copy of the preset (the next reload)"
 			end
 		end
 	end

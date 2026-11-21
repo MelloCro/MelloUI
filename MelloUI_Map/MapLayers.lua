@@ -78,9 +78,10 @@ local T = {
 	ICONS = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Icons\\",
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
-	-- the stack (MapPins' layer order): the places under the group, the group under the player
+	-- the stack (MapPins' layer order): the places under the group, the group under the player; (2.1.65) your corpse
+	-- over the group, as the game's own map stacks it (Blizzard_WorldMap.lua: PIN_FRAME_LEVEL_CORPSE after the group's)
 	ORDER = { towns = 7, names = 8, places = 9, entrances = 10, transports = 12, flights = 14, quests = 20, gossip = 26,
-		route = 30, waypoint = 32, group = 40, player = 50 },
+		route = 30, waypoint = 32, group = 40, corpse = 45, player = 50 },
 	GOSSIP_ICON = "chat_general",   -- a guard's directions: the speech bubble (the game's gossip icon in MapAddonPins too)
 	MEMBER_SIZE = 16,        -- a party member's class pin (the user, 2026-10-20: "in the theme", "enough just in the color")
 	PIN_GOAL = "goal_pin",   -- the game's waypoint, while Route is off
@@ -131,6 +132,7 @@ local TEXT = {
 	notLearned = "Not learned yet",
 	yourPin = "Your pin",
 	yourPinHint = "Shift-click: share it in the chat\nCtrl-right-click on the map: take it away",
+	corpse = "Corpse",   -- (2.1.65: where the game's own CORPSE is missing)
 	dungeon = "Dungeon",
 	raid = "Raid",
 	levels = "%s, levels %s",
@@ -1268,6 +1270,220 @@ local function Waypoint()
 end
 
 --------------------------------------------------------------------------------
+-- Your corpse (2.1.65; the user: "Players Corpse icon is missing from the Map and Minimap")
+--------------------------------------------------------------------------------
+-- The game marks it on its own world map only (Blizzard_SharedMapDataProviders/DeathMapDataProvider.lua: the map shown
+-- asks C_DeathInfo.GetCorpseMapPosition, a CorpsePinTemplate pin over the group, CORPSE_RED on hover), and while this
+-- map is on, M and L never open that one. So this map lays it, at the game's place in the game's own picture
+-- (DeathMapDataProvider.xml: Interface\Minimap\POIIcons, its corpse cut; MelloUI's set has none: the same in every
+-- look), and the minimap the same picture from the same read (CLAUDE.md rule 5), on Route's minimap layer, held just
+-- inside its edge while the body is further off (as Route's goal). One switch: the Map module. Read when you die,
+-- release, come back to life, change zones or enter the world (MelloUI.Coords.Corpse, the Corpse Run widget's reader
+-- too), then kept: a body does not move. While you are dead with no place yet (the game may have none as it moves a
+-- released ghost), read again every AGAIN s; alive, nothing runs and the minimap's mark is not wanted
+local CORPSE = {
+	FILE = "Interface\\Minimap\\POIIcons",
+	L = 0.56640625, R = 0.6328125, T = 0.001953125, B = 0.03515625,
+	SIZE = T.PIN_SIZE + 2,   -- (the game's 24 at its corpse pin's scale, 0.8)
+	MINI = 14,               -- on the minimap (the flight masters' 13, the town marks' 13: a little over them)
+	OWNER = "Map corpse",
+	AGAIN = 1,
+	EVENTS = { "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA" },
+}
+T.CORPSE = CORPSE
+-- on: the Map module's; dead: yours (UnitIsDeadOrGhost, the events' word where it is secret); mapID, x, y: the body's
+-- place (Coords.Corpse); cont, yx, yy: the same in Route's yards (the minimap's)
+local Corpse = { on = false, dead = false, wait = 0, events = nil, mark = nil, mini = false }
+Layers.corpse = Corpse
+
+local Plain = MelloUI.Safe.Value
+
+local function CorpseTip()
+	return Text(rawget(_G, "CORPSE")) or TEXT.corpse
+end
+
+-- the game's picture, cut as its pin cuts it, at the pin's size
+local function CorpseLook(tex)
+	MelloUI.Icons.Set(tex, CORPSE.FILE, tex:GetWidth(), CORPSE.L, CORPSE.R, CORPSE.T, CORPSE.B)
+end
+
+local CORPSE_PIN = { size = CORPSE.SIZE, sub = 4, look = CorpseLook, tip = CorpseTip }
+
+-- this map's pin (the window's beat)
+local function CorpsePin()
+	local c = Corpse
+	if c.on and c.mapID then
+		S.pins:SetAt("corpse", "corpse", c.mapID, c.x, c.y, CORPSE_PIN)
+	else
+		S.pins:Remove("corpse", "corpse")
+	end
+end
+
+local function CorpseMarkEnter(f)
+	W.ShowTooltip(f, CorpseTip(), nil, nil, "ANCHOR_CURSOR")
+end
+
+local function CorpseMarkLeave(f)
+	if GameTooltip:GetOwner() == f then
+		GameTooltip:Hide()
+	end
+end
+
+-- the minimap's mark (made the first time a body shows there): the picture, the mouse's motion only (the minimap keeps
+-- its clicks), over the flight masters and the town marks
+local function CorpseMark(frame)
+	local f = Corpse.mark
+	if not f then
+		f = CreateFrame("Frame", nil, frame)
+		f:SetFrameLevel(frame:GetFrameLevel() + 2)
+		f:SetSize(CORPSE.MINI, CORPSE.MINI)
+		f.icon = f:CreateTexture(nil, "ARTWORK")
+		f.icon:SetAllPoints(f)
+		MelloUI.Icons.Set(f.icon, CORPSE.FILE, CORPSE.MINI, CORPSE.L, CORPSE.R, CORPSE.T, CORPSE.B)
+		if f.SetMouseClickEnabled then
+			f:EnableMouse(true)
+			f:SetMouseClickEnabled(false)
+			f:SetScript("OnEnter", CorpseMarkEnter)
+			f:SetScript("OnLeave", CorpseMarkLeave)
+			f:SetScript("OnHide", CorpseMarkLeave)
+		end
+		Corpse.mark = f
+	end
+	return f
+end
+
+-- Route's minimap layer's tick (cont nil: hidden)
+function Layers.MiniCorpseDraw(cont, round, R, RX, RY)
+	local Route = MelloUI.Route
+	local c = Corpse
+	local frame = cont and Route and Route.MinimapFrame()
+	if not (frame and c.yx and c.cont == cont) then
+		if c.mark then
+			c.mark:Hide()
+		end
+		return
+	end
+	local f = CorpseMark(frame)
+	local gx, gy = Route.MinimapOffset(c.yx, c.yy)
+	local m = CORPSE.MINI / 2
+	local inside
+	if round then
+		inside = gx * gx + gy * gy <= (R - m) * (R - m)
+	else
+		inside = math.abs(gx) <= RX - m and math.abs(gy) <= RY - m
+	end
+	if not inside and type(Route.MinimapEdge) == "function" then
+		local k = Route.MinimapEdge(gx, gy, round, R, RX, RY, m)
+		gx, gy = gx * k, gy * k
+	end
+	Route.MarkPlace(f, CORPSE.MINI, frame, "CENTER", gx, gy)
+end
+
+-- the minimap's mark wanted while there is a body to show there (Route on: its minimap layer)
+local function CorpseMini()
+	local R = MelloUI.Route
+	if type(R) ~= "table" or type(R.WantMinimap) ~= "function" then
+		return
+	end
+	local want = (Corpse.on and Corpse.yx) and true or false
+	if want ~= Corpse.mini then
+		Corpse.mini = want
+		R.WantMinimap(CORPSE.OWNER, want and Layers.MiniCorpseDraw or nil)
+	end
+end
+
+-- the body's place read (Coords.Corpse), and in Route's yards for the minimap
+local function CorpseRead()
+	local c = Corpse
+	local C = MelloUI.Coords
+	local mapID, x, y
+	if C and C.Corpse then
+		mapID, x, y = C.Corpse()
+	end
+	c.mapID, c.x, c.y, c.cont, c.yx, c.yy = mapID, x, y, nil, nil, nil
+	local R = MelloUI.Route
+	if mapID and type(R) == "table" and type(R.ToYards) == "function" then
+		local ok, cont, yx, yy = pcall(R.ToYards, mapID, x, y)
+		if ok and Finite(cont) and Finite(yx) and Finite(yy) then
+			c.cont, c.yx, c.yy = cont, yx, yy
+		end
+	end
+end
+
+-- (dead with no place yet) asked again every AGAIN s until the game has one
+local function CorpseBeat(frame, elapsed)
+	local c = Corpse
+	c.wait = c.wait - (elapsed or 0)
+	if c.wait > 0 then
+		return
+	end
+	c.wait = CORPSE.AGAIN
+	CorpseRead()
+	if c.mapID or not c.dead then
+		Perf.SetScript(frame, "OnUpdate", nil)
+		CorpseMini()
+	end
+end
+
+-- dead or not now: yours where it reads plain, else the event's word (a death, a release: dead; a ghost back to
+-- life: not), else as it was
+local function IsDead(event)
+	local ok, dead = pcall(UnitIsDeadOrGhost, "player")
+	dead = ok and Plain(dead)
+	if dead ~= nil then
+		return dead == true
+	end
+	if event == "PLAYER_DEAD" or event == "PLAYER_ALIVE" then
+		return true
+	elseif event == "PLAYER_UNGHOST" then
+		return false
+	end
+	return Corpse.dead
+end
+
+-- a death, a release, a return to life, a new zone or world (event nil: the switch): the place read again or let go
+local function CorpseCheck(event)
+	local c = Corpse
+	c.dead = c.on and IsDead(event) or false
+	if c.dead then
+		CorpseRead()
+	else
+		c.mapID, c.x, c.y, c.cont, c.yx, c.yy = nil, nil, nil, nil, nil, nil
+	end
+	if c.events then
+		c.wait = CORPSE.AGAIN
+		Perf.SetScript(c.events, "OnUpdate", (c.dead and not c.mapID) and CorpseBeat or nil)
+	end
+	CorpseMini()
+	if S.pins and S.shown then
+		CorpsePin()
+		S.pins:Lay()
+	end
+end
+
+-- (Map.lua: its OnEnable and OnDisable) the corpse on this map and the minimap wanted or not
+function Layers.Corpse(on)
+	local c = Corpse
+	c.on = on and true or false
+	if c.on and not c.events then
+		c.events = CreateFrame("Frame")
+		Perf.SetScript(c.events, "OnEvent", function(_, event)
+			CorpseCheck(event)
+		end)
+	end
+	if c.events then
+		for _, event in ipairs(CORPSE.EVENTS) do
+			if c.on then
+				c.events:RegisterEvent(event)
+			else
+				c.events:UnregisterEvent(event)
+			end
+		end
+	end
+	CorpseCheck(nil)
+end
+
+--------------------------------------------------------------------------------
 -- The window's beat
 --------------------------------------------------------------------------------
 
@@ -1297,6 +1513,7 @@ function Layers.Tick(elapsed)
 	-- (the group on their own maps: shown while you are in an instance too)
 	Group(mapID)
 	Waypoint()
+	CorpsePin()   -- (2.1.65)
 	S.pins:Lay()
 	RouteChanged()
 end
@@ -1337,6 +1554,7 @@ function Layers.Init(canvas, pins)
 	pins:Layer("route", T.ORDER.route)
 	pins:Layer("gossip", T.ORDER.gossip)
 	pins:Layer("group", T.ORDER.group)
+	pins:Layer("corpse", T.ORDER.corpse)
 	pins:Layer("waypoint", T.ORDER.waypoint)
 	pins:Layer("player", T.ORDER.player)
 	S.wait = 0

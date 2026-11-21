@@ -242,7 +242,9 @@ CHECKS = {
                      "a UI sound played directly: MelloUI:PlayUISound(kind) (Core.lua), so Custom Sounds sees it"),
     # a reload asked for by MelloUI's code: the game blocks it ("MelloUI blocked
     # by the game: Reload()", 0.19.9's in-game test); the player types /reload
-    "reload-call": (r"\bReloadUI\b|C_UI\.Reload\b", None,
+    # (2.1.65) a call only: a post-hook on the game's ReloadUI names it in quotes (Core/EditModeLayout.lua: the
+    # player's own /reload switches to a waiting Edit Mode layout) and asks for no reload
+    "reload-call": (r"(?<![\"'])\bReloadUI\b(?![\"'])|C_UI\.Reload\b", None,
                     "a reload from MelloUI's code, which the game blocks: say 'type /reload' (MelloUI:Announce / Print)"),
     # the guard, and a literal fallback behind a palette colour
     "palette-guard": (r"MelloUI\.Palette and |Palette\.\w+\s+or\s*\{", None,

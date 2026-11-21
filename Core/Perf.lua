@@ -1540,6 +1540,147 @@ function BUG.PadNotGames()
 	return out
 end
 
+-- (2.1.65; the same controller player's report on 2.1.63, 2026-11-21: the window manager's focus, its bindings and the
+-- crossbar's active bar named MelloUI's, while the forbidden call itself came out of the game's own close of the quest
+-- window -- so those values were written earlier, on another way, which a block's own way cannot show) Who writes the
+-- Gamepad UI's state, as it happens: post-hooks (the game's calls run as before, nothing of its own is written) on the
+-- entries of its window manager, its binding stack and the crossbar's page switch. After each call the values that run
+-- the pad are asked of the game (issecurevariable); one that turns from the game's to an addon's keeps the call, the
+-- frame or set it was for, the time and the way there: the first BUG.WRITES of them a session, in every later entry
+-- and under NOW. Hooked as the Gamepad UI comes on (at the login when it is on already, or its bus 'gamepad'), never
+-- out of it; a few asks a call, and the manager is called as its windows open and close.
+BUG.WRITES, BUG.WRITE_KEYS = 4, 60
+BUG.writes = {}
+BUG.writeState = {}   -- [a value's name] = the addon that wrote it, as last seen; false: the game's
+BUG.WRITE_HOOKS = {
+	{ path = { "GamepadMode", "FrameControlsManager" }, slots = { "isUIFocused", "focusedFrame" },
+		methods = { "FrameShown", "FrameHidden", "SetUIFocusState", "ToggleUIFocus", "FocusFrame", "HandlePopupShown",
+			"HandlePopupHide", "SuspendFrame", "UnsuspendFrame", "HideActiveFrames" } },
+	{ path = { "GamepadSharedUtility", "InputBindingManager" }, slots = { "currentCoreBindingActive" },
+		lists = { "activeBindings" }, methods = { "AddBindingSet", "RemoveSet" } },
+	{ path = { "GamepadMainActionBarFrame", "PageUnit" }, slots = { "activeBar" }, methods = { "SetActiveActionBar" } },
+}
+
+-- a frame's name, a binding set's own name, or what it is (never a secret)
+function BUG.WhatName(v)
+	if type(v) ~= "table" then
+		return (v ~= nil and not Secret(v)) and tostring(v):sub(1, 40) or ""
+	end
+	local own = rawget(v, "name")
+	if type(own) == "string" and not Secret(own) then
+		return own:sub(1, 60)
+	end
+	local get = rawget(v, 0) ~= nil and (v.GetDebugName or v.GetName) or nil
+	local ok, name = pcall(get or error, v)
+	if ok and type(name) == "string" and not Secret(name) and name ~= "" then
+		return name:sub(1, 60)
+	end
+	return "a table"
+end
+
+-- the addon that wrote t[key] as the game says, or false (the game's own, or no answer)
+local function WrittenBy(check, t, key)
+	local ok, secure, by = pcall(check, t, key)
+	if ok and secure == false then
+		return tostring(by)
+	end
+	return false
+end
+
+function BUG.Wrote(spec, label, t, method, arg)
+	if #BUG.writes >= BUG.WRITES then
+		return
+	end
+	local check = rawget(_G, "issecurevariable")
+	if type(check) ~= "function" then
+		return
+	end
+	local found
+	local function Look(name, tbl, key)
+		local by = WrittenBy(check, tbl, key)
+		local was = BUG.writeState[name]
+		BUG.writeState[name] = by
+		if by and by ~= was then
+			found = found or {}
+			found[#found + 1] = format("%s (%s)", name, by)
+		end
+	end
+	for _, key in ipairs(spec.slots) do
+		Look(label .. "." .. key, t, key)
+	end
+	for _, key in ipairs(spec.lists or {}) do
+		local list = rawget(t, key)
+		if type(list) == "table" then
+			local n = 0
+			for k in pairs(list) do
+				n = n + 1
+				if n > BUG.WRITE_KEYS then
+					break
+				end
+				if type(k) == "string" or type(k) == "number" then
+					Look(label .. "." .. key .. "." .. tostring(k), list, k)
+				end
+			end
+		end
+	end
+	if not found then
+		return
+	end
+	local okW, way = pcall(BUG.Way)
+	BUG.writes[#BUG.writes + 1] = {
+		at = BUG.beganAt and math.floor(GetTime() - BUG.beganAt) or nil,
+		what = format("%s:%s(%s)", label, method, BUG.WhatName(arg)),
+		values = found, combat = InCombatLockdown() and true or false,
+		way = okW and way or nil,
+	}
+end
+
+-- the hooks, once each table is there (a table not there yet: asked again the next time the Gamepad UI comes on)
+function BUG.HookPad()
+	if type(rawget(_G, "issecurevariable")) ~= "function" or not MelloUI.Safe.GamepadUI() then
+		return
+	end
+	for _, spec in ipairs(BUG.WRITE_HOOKS) do
+		if not spec.hooked then
+			local t, label = rawget(_G, spec.path[1]), spec.path[1]
+			for i = 2, #spec.path do
+				t = type(t) == "table" and rawget(t, spec.path[i]) or nil
+				label = label .. "." .. spec.path[i]
+			end
+			if type(t) == "table" then
+				spec.hooked = true
+				BUG.padWatched = BUG.padWatched or (BUG.beganAt and math.floor(GetTime() - BUG.beganAt) or 0)
+				for _, method in ipairs(spec.methods) do
+					if type(t[method]) == "function" then
+						rawHook(t, method, function(_, arg)
+							pcall(BUG.Wrote, spec, label, t, method, arg)
+						end)
+					end
+				end
+			end
+		end
+	end
+end
+
+-- the report's lines of it; nil while it never watched (out of the Gamepad UI all session)
+function BUG.WriteLines()
+	if not BUG.padWatched then
+		return nil
+	end
+	if #BUG.writes == 0 then
+		return { format("The Gamepad UI's state: nothing written outside the game since %d s in.", BUG.padWatched) }
+	end
+	local out = {}
+	for _, w in ipairs(BUG.writes) do
+		out[#out + 1] = format("The Gamepad UI's state written outside the game, %s s in, %s, by %s: %s", tostring(w.at or "?"),
+			w.combat and "in combat" or "out of combat", w.what, table.concat(w.values, ", "))
+		for _, line in ipairs(w.way or {}) do
+			out[#out + 1] = "  " .. line
+		end
+	end
+	return out
+end
+
 function BUG.Under()
 	local ok, list = pcall(rawget(_G, "GetMouseFoci") or error)
 	local f = ok and type(list) == "table" and list[1] or nil
@@ -1699,6 +1840,7 @@ function BUG.Capture(event, addon, func)
 	if gamepad then
 		okP, pad = pcall(BUG.PadNotGames)   -- (the Gamepad UI's own tables: only while it is on)
 	end
+	local okR, writes = pcall(BUG.WriteLines)
 	local entry = {
 		when = date("%Y-%m-%d %H:%M:%S"),
 		what = event == "ADDON_ACTION_FORBIDDEN" and "forbidden" or "blocked",
@@ -1710,7 +1852,7 @@ function BUG.Capture(event, addon, func)
 		lines = lines,
 		under = okU and under or nil, way = okW and way or nil,
 		tainted = okT and tainted or nil, others = okO and others or nil, made = okM and made or nil,
-		pad = okP and pad or nil,
+		pad = okP and pad or nil, writes = okR and writes or nil,
 	}
 	table.insert(list, 1, entry)
 	BUG.seen[func] = { entry = entry, at = at }
@@ -1760,6 +1902,9 @@ function BUG.Report()
 			add("   Not the game's, in its Gamepad UI: %s", #e.pad > 0 and table.concat(e.pad, ", ")
 				or "nothing in its window manager, navigation, binding stack or crossbar")
 		end
+		for _, line in ipairs(e.writes or {}) do
+			add("   %s", line)
+		end
 		if e.others and #e.others > 0 then
 			add("   Other addons: %s", table.concat(e.others, ", "))
 		end
@@ -1779,6 +1924,10 @@ function BUG.Report()
 	for _, line in ipairs(BUG.MadeLines()) do
 		add("  %s", line)
 	end
+	local okR, writes = pcall(BUG.WriteLines)
+	for _, line in ipairs(okR and writes or {}) do
+		add("  %s", line)
+	end
 	add("")
 	add("To find the cause: /console taintLog 2, /reload, do what you did; the game writes Logs/taint.log.")
 	return table.concat(L, "\n")
@@ -1794,6 +1943,7 @@ BUG.frame:SetScript("OnEvent", function(_, event, addon, func)
 		BUG.frame:UnregisterEvent(event)
 		BUG.began = (addon and "a login") or (func and "a reload") or nil
 		BUG.beganAt = GetTime()
+		pcall(BUG.HookPad)   -- (only while the Gamepad UI is on)
 		return
 	end
 	local ok, err = pcall(BUG.Capture, event, addon, func)
@@ -1801,6 +1951,14 @@ BUG.frame:SetScript("OnEvent", function(_, event, addon, func)
 		geterrorhandler()(err)
 	end
 end)
+
+if type(MelloUI.On) == "function" then   -- (Core's bus; a world without it: the login's check alone)
+	MelloUI:On("gamepad", function(on)
+		if on then
+			pcall(BUG.HookPad)
+		end
+	end, "Perf: the blocked actions report watches the Gamepad UI's state")
+end
 
 SLASH_MELLOBUG1 = "/mellobug"
 SlashCmdList.MELLOBUG = function(msg)

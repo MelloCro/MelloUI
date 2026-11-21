@@ -1655,6 +1655,83 @@ function MelloUI:PlayPoint(frame, point, rel, x, y)
 end
 
 --------------------------------------------------------------------------------
+-- Keys while hovered (2.1.65; a player on Discord, 2026-11-21, of a quest on
+-- the map: "Holding shift doesnt expand the quest when you are already
+-- hovering the quest ... it only works when you move your cursor of the icon
+-- and back on"). A tooltip that reads Shift, Ctrl or Alt as it is drawn is
+-- drawn again the moment one goes down or up while the mouse stays on its
+-- frame: one way for every such hover, never a copy per tooltip.
+--   MelloUI:WatchKeys(frame, redraw)  from the frame's OnEnter (or the call
+--       that shows its tooltip): redraw(frame, key, down) at each modifier
+--       change while the mouse is on it (key: the game's "LSHIFT", "RCTRL",
+--       ...; down: 1 or 0)
+--   MelloUI:UnwatchKeys(frame)        from its OnLeave; also run by itself on
+--       the frame's OnLeave and OnHide (hooked once a frame) and at a key once
+--       the frame is out of sight
+-- One event frame, made at the first hover; MODIFIER_STATE_CHANGED registered
+-- only while a frame is watched (nothing at login, no poll). One frame at a
+-- time: the mouse is on one.
+--------------------------------------------------------------------------------
+
+do
+	local events, owner, redraw
+	local hooked = setmetatable({}, { __mode = "k" })   -- [frame] = true: Stop hooked on its OnLeave and OnHide
+	local stopShared
+
+	local function Stop(frame)
+		if frame ~= nil and frame ~= owner then
+			return
+		end
+		owner, redraw = nil, nil
+		if events then
+			events:UnregisterEvent("MODIFIER_STATE_CHANGED")
+		end
+	end
+
+	local function OnKey(_, _, key, down)
+		local frame, fn = owner, redraw
+		if not (frame and fn and frame:IsVisible()) then
+			return Stop()
+		end
+		fn(frame, key, down)
+	end
+
+	function MelloUI:WatchKeys(frame, fn)
+		if type(frame) ~= "table" or type(fn) ~= "function" or not frame.IsVisible then
+			return
+		end
+		local scope = MelloUI.CorePerf
+		scope = scope and scope.Shared and scope.SetScript and scope.HookScript and scope or nil
+		if not events then
+			events = CreateFrame("Frame")
+			if scope then
+				scope.SetScript(events, "OnEvent", OnKey)
+			else
+				events:SetScript("OnEvent", OnKey)
+			end
+		end
+		if not hooked[frame] and frame.HookScript then
+			hooked[frame] = true
+			stopShared = stopShared or (scope and scope.Shared("the hovered frame's key watch let go", Stop, "script"))
+				or Stop
+			if scope then
+				scope.HookScript(frame, "OnLeave", stopShared)
+				scope.HookScript(frame, "OnHide", stopShared)
+			else
+				frame:HookScript("OnLeave", Stop)
+				frame:HookScript("OnHide", Stop)
+			end
+		end
+		owner, redraw = frame, fn
+		events:RegisterEvent("MODIFIER_STATE_CHANGED")
+	end
+
+	function MelloUI:UnwatchKeys(frame)
+		Stop(frame)
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Window places: one store, one mover registry and one keep-on-screen for
 -- every element MelloUI moves (audit, 2026-09-24, rank 6: the whisper popups,
 -- the Route arrow, the Voice Over overlay and the copy window each dragged

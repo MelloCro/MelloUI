@@ -645,6 +645,19 @@ end
 -- (0.23.0) the one way a secure overlay is laid over a button of ours: the chat view's tabs' stand-ins too
 Rem.OverlayPlace = OverlayPlace
 
+-- its size (2.1.65): on its own place the one stored with it (Edit Layout's
+-- Size), else its 100 %; on the ring and at its standard place its 100 % (the
+-- ring's plate is locked: no size of its own there). Laid before its anchor, so
+-- a profile without one, or the ring again, never keeps the last one's
+local function SizeOf(attached, home)
+	if attached or home then
+		return 1
+	end
+	local pos = MelloUI:GetPosition(MOVER_KEY)
+	local s = type(pos) == "table" and Num(pos.scale) or nil
+	return (s and s > 0) and s or 1
+end
+
 -- laid: on the ring while it has one, else on its own place (home: its
 -- standard place, the store passed by -- the mover's default, Edit Layout's
 -- reset before it is saved)
@@ -657,6 +670,9 @@ local function Hang(home)
 	local region, side, reach, far = Anchor()
 	local place = PlaceOf(side)
 	ui.want = place
+	if ui.entry then
+		MelloUI:ScaleEntry(ui.entry, SizeOf(region ~= nil, home))
+	end
 	holder:ClearAllPoints()
 	if region then
 		S.attached = true
@@ -979,10 +995,19 @@ local function PlaceLater()
 end
 
 -- its own place: saved only while it has no ring to hang from (dragged while
--- it hangs there, it goes back to the ring)
-local function SaveFree(frame)
+-- it hangs there, it goes back to the ring). pos: Edit Layout's pending place
+-- (its Save), whose scale is the Size the player gave it -- kept with the
+-- place, none at its 100 % (2.1.65; Wolvegrimm, Discord 2026-11-21: detached
+-- and sized in Edit Layout, it came back at another place and size. The place
+-- was measured at the new size and stored without it: back at 100 % after a
+-- reload, its offsets landed elsewhere)
+local function SaveFree(frame, pos)
 	if not S.attached then
-		MelloUI:SavePosition(MOVER_KEY, frame)
+		local scale
+		if type(pos) == "table" then
+			scale = Num(pos.scale) or false
+		end
+		MelloUI:SavePosition(MOVER_KEY, frame, scale)
 	end
 	Place()
 end

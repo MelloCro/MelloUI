@@ -1937,12 +1937,40 @@ local function WrapTooltip()
 	local standProvider = { GetMap = function()
 		return standMap
 	end }
-	local function Lend(self)
+	-- (2.1.65; a player on Discord, 2026-11-21: "Holding shift doesnt expand the quest when you are already hovering the
+	-- quest ... it only works when you move your cursor of the icon and back on") Questie draws its tooltip again as
+	-- Shift goes down or up only over the game's own world map or minimap (its EventHandler's ModifierStateChanged:
+	-- MouseIsOver(WorldMapFrame), MouseIsOver(Minimap)), never over MelloUI's map. Over an icon MelloUI's map holds,
+	-- MelloUI's key watch (MelloUI:WatchKeys, Core.lua) does what Questie's handler does there: the tooltip shown again
+	-- from the lines it gathered (its _Rebuild, which reads Shift). Questie's keys on the tooltip are only read
+	local function Redraw(icon, key)
+		if key ~= "LSHIFT" and key ~= "RSHIFT" then
+			return
+		end
+		local tip = GameTooltip
+		local rebuild = rawget(tip, "_Rebuild")
+		if type(rebuild) ~= "function" or rawget(tip, "_owner") ~= icon or not tip:IsShown()
+			or tip:GetOwner() ~= icon then
+			return
+		end
+		tip:Hide()
+		tip:ClearLines()
+		tip:SetOwner(icon, "ANCHOR_CURSOR")
+		if pcall(rebuild, tip) then
+			tip:SetFrameStrata("TOOLTIP")
+			tip:Show()
+		end
+	end
+	-- the icons MelloUI's map holds now, when the hovered one is one of them; else nil
+	local function Held(self)
 		if not (mapIcons and MapOurs() and type(self) == "table" and not rawget(self, "miniMapIcon")) then
 			return nil
 		end
 		local held = mapIcons()
-		if not (type(held) == "table" and held[self]) then
+		return (type(held) == "table" and held[self]) and held or nil
+	end
+	local function Lend(held)
+		if not held then
 			return nil
 		end
 		local lib = QL.PinsLib()
@@ -1971,7 +1999,9 @@ local function WrapTooltip()
 				n = Hold(icon, n)
 			end
 		end
-		local lib, real = Lend((...))
+		local hovered, tip, owner = ...
+		local held = Held(hovered)
+		local lib, real = Lend(held)
 		local ok, err = pcall(show, ...)
 		if lib then
 			lib.worldmapProvider = real
@@ -1983,6 +2013,10 @@ local function WrapTooltip()
 			local icon = icons[i]
 			icon.hidden = before[i]
 			icons[i], before[i] = nil, nil
+		end
+		-- (2.1.65) an icon MelloUI's map holds, hovered: Shift down or up drawn at once (Redraw)
+		if ok and held and tip == GameTooltip and owner == nil then
+			MelloUI:WatchKeys(hovered, Redraw)
 		end
 		if not ok then
 			error(err, 0)

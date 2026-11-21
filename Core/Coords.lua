@@ -14,6 +14,11 @@
 --                              you on; nil in an instance or when unread
 --   Coords.MinimapMouse(area)  mapID, x, y under the mouse while it is over
 --                              `area` (the minimap's shown part), or nil
+--   Coords.Corpse()            mapID, x, y: your corpse, on your map or the
+--                              first map above it the game places it on, as
+--                              the game's own map pin reads it (C_DeathInfo);
+--                              nil while there is none or no place yet. The
+--                              Corpse Run widget's and the map's one reader
 --   Coords.Minimap(on)         the minimap's line on or off
 --   Coords.MinimapLineHeight() the line's height while it is on (the
 --                              minimap's column counts it), else nil
@@ -92,6 +97,48 @@ function Coords.Player()
 		return nil
 	end
 	return mapID, x, y
+end
+
+-- (2.1.65, moved here from the Corpse Run widget for the map's corpse pin) where the body lies: on your map, else on the
+-- first map above it that holds it (a body in another part of the zone, or across the zone's edge: the zone's or the
+-- continent's map) -- the game's own map asks C_DeathInfo.GetCorpseMapPosition for the map it shows
+-- (Blizzard_SharedMapDataProviders/DeathMapDataProvider.lua). The game may have no place yet while it moves a released
+-- ghost to the graveyard: the users ask again while it is missing (the user, 2026-09-30)
+local CORPSE_MAPS_UP = 4
+
+local function CorpseOn(get, mapID)
+	local ok, pos = pcall(get, mapID)
+	if not ok or MelloUI.Safe.IsSecret(pos) or type(pos) ~= "table" then
+		return nil
+	end
+	local okXY, x, y = pcall(pos.GetXY, pos)
+	x, y = okXY and Finite(x) or nil, okXY and Finite(y) or nil
+	if x and y and (x > 0 or y > 0) then
+		return x, y
+	end
+	return nil
+end
+
+function Coords.Corpse()
+	local DI = rawget(_G, "C_DeathInfo")
+	if not (DI and DI.GetCorpseMapPosition and C_Map and C_Map.GetBestMapForUnit) then
+		return nil
+	end
+	local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
+	mapID = ok and Finite(mapID) or nil
+	for _ = 1, CORPSE_MAPS_UP do
+		if not mapID then
+			return nil
+		end
+		local x, y = CorpseOn(DI.GetCorpseMapPosition, mapID)
+		if x then
+			return mapID, x, y
+		end
+		local okI, info = pcall(C_Map.GetMapInfo, mapID)
+		local parent = okI and type(info) == "table" and Finite(info.parentMapID) or nil
+		mapID = parent ~= 0 and parent or nil
+	end
+	return nil
 end
 
 -- the place under the mouse on the minimap: the mouse's distance from the

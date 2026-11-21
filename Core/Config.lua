@@ -177,6 +177,18 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.65", lines = {
+		"Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values.",
+		"Map's quest log: Show on a quest with no place on the map, such as a crafting writ, says so instead of doing nothing.",
+		"Reminders detached from the portrait keep the size and place you gave them in Edit Layout.",
+		"Map with Questie: Shift over a quest icon opens its full tooltip at once, and letting go folds it again.",
+		"Your corpse shows on the map and the minimap again after you die.",
+		"Oldschool: the map's Quest List tab reads as easily as the Quests tab, with no stray parchment over the map.",
+		"Druid Forms: buffs and debuffs anchored to the player frame hang under its row instead of covering it.",
+		"Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame.",
+		"Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights.",
+		"Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers.",
+	} },
 	{ version = "2.1.64", lines = {
 		"Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once.",
 		"RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one.",
@@ -203,15 +215,6 @@ local CHANGELOG = {
 		"Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen.",
 		"GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap.",
 		"Druid Forms on the player frame too: your other two powers in one row under the power bar, split in two, each with its number. The Personal Display shows them the same way.",
-	} },
-	{ version = "2.1.60", lines = {
-		"Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished.",
-		"Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate.",
-		"Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms.",
-		"Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up.",
-		"Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on.",
-		"Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip.",
-		"Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French.",
 	} },
 }
 local LINKS = {

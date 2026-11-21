@@ -25,7 +25,9 @@
 -- numbers'). Kept with it: its show and hide (UNIT_PET, UNIT_EXITED_VEHICLE, PET_UI_UPDATE), and two frames of their
 -- own jobs that stay the game's and working -- its debuff row (AuraFrameContainer, on its UNIT_AURA) and the hunter's
 -- happiness (PetFrameHappiness: its own events and tooltip). No key written on it or its regions, no hook on them,
--- nothing of it shown, hidden or moved. This client has no pet-target frame.
+-- nothing of it shown, hidden or moved -- but for those two through a fight while only MelloUI's store holds the
+-- frame's place (2.1.65, "Its place through a fight" below: they stand on ours then). This client has no pet-target
+-- frame.
 --
 -- Units.PetKind: Start(login) / Stop() with the Unit Frames module (Modules/UnitFrames.lua), as the other kinds.
 --------------------------------------------------------------------------------
@@ -250,8 +252,111 @@ function Pet.Update(f)
 	Attack(f, false)
 end
 
+--------------------------------------------------------------------------------
+-- Its place through a fight (2.1.65; a player's report on 2.1.60: "the pet unit frame jumps below the player frame
+-- and covers my buffs" as each fight starts, back as it ends). A place of the player's that only MelloUI's store holds
+-- -- Edit Mode's layout still has the game's frame in its default place (a preset kept, its copy not made active yet,
+-- or the session the place was given in) -- is the game's to lay out again: a layout of the player frame's bottom
+-- container (PlayerBottomManagedFrameContainer:Layout) or of Edit Mode's systems puts the frame under the player frame,
+-- and in a fight no addon may move it back (the store puts it back as the fight ends). So as a fight starts
+-- (PLAYER_REGEN_DISABLED: before the lockdown) ours stands at that place by the screen on its own, with the game's two
+-- frames that belong to it (its debuff row and the hunter's happiness: their own anchors on the game's frame, laid
+-- once in PetFrame.xml) on ours; as the fight ends all three stand on the game's frame again. Out of a fight nothing
+-- changes, and a place Edit Mode's layout holds (the game keeps it there) needs no hold.
+--------------------------------------------------------------------------------
+
+local IsSecret = MelloUI.Safe.IsSecret
+local hold = { on = false, points = {} }   -- points: [frame] = { { point, relativeTo, relativePoint, x, y }, ... }
+
+-- the store's place for the game's frame when only the store holds it, else nil
+local function StoreOnlyPlace(game)
+	local entry = MelloUI.MoverEntry and MelloUI:MoverEntry(game)
+	local pos = entry and entry.key ~= nil and MelloUI:GetPosition(entry.key)
+	if type(pos) ~= "table" or type(game.IsInDefaultPosition) ~= "function" then
+		return nil
+	end
+	local ok, default = pcall(game.IsInDefaultPosition, game)
+	if not ok or IsSecret(default) or default ~= true then
+		return nil
+	end
+	return pos
+end
+
+local function PointsOf(r)
+	local list = {}
+	local okN, n = pcall(r.GetNumPoints, r)
+	for i = 1, (okN and Num(n)) or 0 do
+		local ok, p, rel, rp, x, y = pcall(r.GetPoint, r, i)
+		if not ok or IsSecret(p) or IsSecret(rp) or IsSecret(x) or IsSecret(y) then
+			return nil
+		end
+		list[#list + 1] = { p, rel, rp, x, y }
+	end
+	return list
+end
+
+local function Lay(r, points, from, to)
+	r:ClearAllPoints()
+	for _, a in ipairs(points) do
+		r:SetPoint(a[1], (a[2] == from and to) or a[2], a[3], a[4], a[5])
+	end
+end
+
+function Pet.Hold(f)
+	f = f or Pet.frame
+	local game = G("PetFrame")
+	if hold.on or not (f and game and Pet.standing) or InCombatLockdown() then
+		return
+	end
+	local pos = StoreOnlyPlace(game)
+	if not pos then
+		return
+	end
+	local okS, w, h = pcall(game.GetSize, game)
+	w, h = okS and Num(w), okS and Num(h)
+	if not (w and h and w > 0 and h > 0) then
+		return
+	end
+	-- the game's frame where the store laid it (its anchor on the screen, as Core's place sets it: even clamped to
+	-- the screen) -- its exact rect; laid elsewhere already, the store's place itself
+	local point, relPoint = pos.point or "BOTTOMLEFT", pos.relPoint or "CENTER"
+	local okP, p, rel, rp, x, y = pcall(game.GetPoint, game, 1)
+	local exact = okP and not (IsSecret(p) or IsSecret(rp)) and rel == UIParent and p == point and rp == relPoint
+	x, y = Num(x), Num(y)
+	if not (exact and x and y) then
+		x, y = Num(tonumber(pos.x)) or 0, Num(tonumber(pos.y)) or 0
+	end
+	hold.on = true
+	wipe(hold.points)
+	f:ClearAllPoints()
+	f:SetSize(w, h)
+	f:SetPoint(point, UIParent, relPoint, x, y)
+	for _, r in ipairs({ rawget(game, "AuraFrameContainer") or false, G("PetFrameHappiness") or false }) do
+		local points = r and PointsOf(r)
+		if points then
+			hold.points[r] = points
+			pcall(Lay, r, points, game, f)
+		end
+	end
+end
+
+function Pet.Release(f)
+	f = f or Pet.frame
+	local game = G("PetFrame")
+	if not hold.on or not (f and game) or InCombatLockdown() then
+		return
+	end
+	hold.on = false
+	f:ClearAllPoints()
+	f:SetAllPoints(game)
+	for r, points in pairs(hold.points) do
+		pcall(Lay, r, points)   -- (their own anchors on the game's frame, as they were)
+	end
+	wipe(hold.points)
+end
+
 local EVENTS = { "PLAYER_ENTERING_WORLD", "PET_UI_UPDATE", "PET_ATTACK_START", "PET_ATTACK_STOP", "PORTRAITS_UPDATED",
-	"CVAR_UPDATE" }
+	"CVAR_UPDATE", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }
 local UNIT_EVENTS = { "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER",
 	"UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE", "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "UNIT_CONNECTION",
 	"UNIT_THREAT_SITUATION_UPDATE", "UNIT_COMBAT" }
@@ -262,6 +367,8 @@ local HANDLERS = {
 	PET_UI_UPDATE = function(f) Pet.Update(f) end,
 	PET_ATTACK_START = function(f) Attack(f, true) end,
 	PET_ATTACK_STOP = function(f) Attack(f, false) end,
+	PLAYER_REGEN_DISABLED = function(f) Pet.Hold(f) end,
+	PLAYER_REGEN_ENABLED = function(f) Pet.Release(f) end,
 	PORTRAITS_UPDATED = function(f) Show.Portrait(f) end,
 	UNIT_HEALTH = function(f) Show.Health(f) end,
 	UNIT_MAXHEALTH = function(f) Show.Health(f) end,
@@ -424,6 +531,7 @@ local function Go()
 	Pet.standing = false
 	U.own.pet = nil
 	if f then
+		Pet.Release(f)
 		Listen(f, false)
 		Attack(f, false)
 		f:Hide()
@@ -453,8 +561,8 @@ end
 -- (/ufdump own) the pet's lines
 U.dumps[#U.dumps + 1] = function(add)
 	local game, parts = GameParts()
-	add(("own pet frame: %s (standing %s, wanted %s)"):format(tostring(Pet.frame and Pet.frame:GetName()),
-		tostring(Pet.standing), tostring(Pet.wanted)))
+	add(("own pet frame: %s (standing %s, wanted %s, held through a fight %s)"):format(
+		tostring(Pet.frame and Pet.frame:GetName()), tostring(Pet.standing), tostring(Pet.wanted), tostring(hold.on)))
 	if game then
 		local seen = 0
 		for _, r in ipairs(parts) do

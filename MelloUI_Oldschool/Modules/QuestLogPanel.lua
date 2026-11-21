@@ -447,7 +447,10 @@ local function SkinQuestList()
 	-- the page dressed as the log's column it lies on (BuildSkin's quest log
 	-- side panel, below): its page, its border, the search box, the gear
 	if frame.bg then
-		Replace(frame.bg, { as = "QuestLog-main-background" })
+		-- (2.1.63, the user's screenshots: "Parchment Misplaced on the Quest List") the page's paper with its picture:
+		-- the paper is a frame of the page laid on the picture's rect, and the picture is hidden while the page lies
+		-- in MelloUI's map (QL.Panel:Home), still on its last place, the game's quest column -- an empty sheet there
+		Follow(Replace(frame.bg, { as = "QuestLog-main-background" }), frame.bg)
 	end
 	local border = frame.border
 	if border and border.Border then

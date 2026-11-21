@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.65
+
+- Blocked actions report (/mellobug): with a controller, it also notes what first changed the game's controller values and the way it got there, to track down actions the game blocks in the Gamepad UI.
+- Map's quest log: Show on a quest with no place on the map, such as a crafting writ, now says so instead of doing nothing. A quest whose place MelloUI does not know goes to the map the game gives it.
+- Fixed: Reminders detached from the portrait forgot the size you gave them in Edit Layout. After a reload they came back at their normal size, somewhere else. They now keep the size and place you saved, through reloads and profile switches.
+- Map with Questie: holding Shift over a quest icon opens its full tooltip at once, and letting go folds it again. Before, the mouse had to leave the icon and come back.
+- Fixed: your corpse was missing from the map and the minimap after you died. Both show it again, in the game's own corpse picture. On the minimap it waits at the edge while it is further away.
+- Fixed in the Oldschool look: an empty parchment could stand over the map, beside or over the Quest List tab. It was the Quest List's page, left behind where the game's quest log lies. It now goes with the page.
+- Fixed in the Oldschool look: the Quest List tab on the map wrote its headings and quest names in the parchment's dark ink on the map's dark panel, hard to read. They are now light, in the same colours as the Quests tab. The game's quest log keeps its dark ink on its parchment.
+- Fixed: with Buffs & Debuffs anchored to the Unit Frame, your buffs and debuffs covered a druid's Druid Forms row on the player frame. They hang under the frame's lowest bar now, in every look, and move back up when the row is switched off.
+- Fixed: a pet frame you moved in Edit Layout could jump under the player frame, over your buffs, as each fight started, and only come back after it. It now stays where you put it through the fight, with the pet's happiness and debuffs.
+- Fixed: after you let MelloUI copy the game's Edit Mode layout, a plain /reload never switched to the copy, so elements you moved, such as the totem bar, jumped back to the game's place in every fight. Your next /reload now switches to it with every place you moved, and the game keeps them in fights too.
+- Personal Display: Percent Position puts the health and power percents On The Bars, centred on each bar like Druid Forms' numbers, in every look. Beside The Bars stays the default.
+
 ## 2.1.64
 
 - Map's quest log: every zone's heading has a tracked box, and an All quests line on top has one for the whole log. A click shows all of those quests in the Quest Tracker, or takes them all off when every one is there already.

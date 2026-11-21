@@ -39,7 +39,13 @@ local bandOf = QI.bandOf   -- [row] = its hover band (QI.RowBand)
 -- (onelook D8) the quest pages' headings, gems and rims: the core's (Modules/QuestPages.lua); nil only in a test
 -- world that does not load it
 local QP = MelloUI.QuestPages
-local LEVEL_SHORTCUT = 4   -- the gear menu's level check: hide quests more than 4 (so 5 or more) levels above
+-- The page's texts in ink only while it lies on the painted parchment (QI.onParchment: Oldschool's quest log page), so
+-- in the game's quest column; in MelloUI's map (QL.Panel.host) it lies on the map's dark panel, its texts in the
+-- palette's colours as the map's Quests tab's (2.1.65, the user: "quest list is very dark compared to the quests tab")
+local function OnPaper()
+	return QI.onParchment and not QL.Panel.host
+end
+local LEVEL_SHORTCUT = 4  -- the gear menu's level check: hide quests more than 4 (so 5 or more) levels above
 local PIN_SIZE = 14        -- the map pin of the pinned quest, after its name
 local PIN_GAP = 4          -- between the name and the pin
 local PARTY_SIZE = 13      -- (2.1.54) the party's mark of a quest someone in your group has too, after the name
@@ -493,7 +499,7 @@ local function InitHeader(button, entry)
 	-- the string's alpha (SetTextColor's Alpha aspect), and the colour laid on
 	-- every Init put the faded label back under the heading: two names (in
 	-- game, 2026-10-15). The panel's own colour only where no heading covers it
-	if not (QP and QP.Header(button, button.plateArea)) then
+	if not (QP and QP.Header(button, button.plateArea, not OnPaper())) then
 		KeyColour(button.label, "text")
 	end
 end
@@ -660,7 +666,7 @@ local function InitRow(button, entry)
 		end
 	end
 	-- on the reskin's parchment: both lines in ink; a done quest faded
-	if QI.onParchment then
+	if OnPaper() then
 		local faded = entry.completed or tier == 1
 		QI.Ink(button.title, faded and "faded" or "title")
 		QI.Ink(button.where, faded and "faded" or "text")
@@ -1291,6 +1297,7 @@ function QL.Panel:Mount(host)
 		self:Home(host)
 	end
 	self:Sync()
+	self:Update(true)   -- (shown already: laid again off the paper, OnPaper; quiet, nothing else changed)
 	return self.frame ~= nil
 end
 
@@ -1308,6 +1315,7 @@ function QL.Panel:Unmount()
 	self.hostShown = false
 	if self:Home(nil) then
 		self:Sync()
+		self:Update(true)   -- (shown there: laid again on the paper, OnPaper)
 	else
 		self.frame:Hide()
 	end
@@ -1512,13 +1520,14 @@ function QL.Panel:Hint()
 		fs:SetWidth(w)
 	end
 	-- in ink on the parchment, as the page's other texts
-	if QI.onParchment then
+	local paper = OnPaper()
+	if paper then
 		QI.Ink(hint.title, "title")
 	else
 		QI.Plain(hint.title, true)
 	end
 	for _, fs in ipairs(hint.lines) do
-		if QI.onParchment then
+		if paper then
 			QI.Ink(fs, "text")
 		else
 			QI.Plain(fs, true)
@@ -1650,7 +1659,7 @@ function QL.Panel:Update(quiet)
 	-- the level (the difficulty colours), the parchment (the ink and the
 	-- stamp) and the quest log's fonts (the Fonts module)
 	local level = QL.Plain(UnitLevel("player"))
-	local paper = QI.onParchment and true or false
+	local paper = OnPaper() and true or false
 	local font = ListFont()
 	-- and the palette (the text colours: a pass after a switch lays it again)
 	local palette = MelloUI.Palette
@@ -1688,7 +1697,7 @@ function QL.Panel:Update(quiet)
 	end
 	for _, l in ipairs(inkLabels) do
 		if l[1] then
-			if QI.onParchment then
+			if paper then
 				QI.Ink(l[1], l[2])
 			else
 				QI.Plain(l[1], true)

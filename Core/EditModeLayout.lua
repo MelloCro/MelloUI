@@ -97,6 +97,10 @@
 --   MelloUI:EditModeHeldAnchor(system, index) -> as EditModeSystemAnchor (2.1.0)
 --       the place held to be written (above), nil when none is held: a place
 --       Edit Layout saved a moment ago (its box's "Attached to")
+--   MelloUI:EditModeCarryToCopy(entries) -> carried                 (2.1.65)
+--       the login's places only MelloUI holds (a preset active), into
+--       MelloUI's copy of that preset right before the next reload makes
+--       it active; nothing without the copy (below Active)
 --   MelloUI:SetEditModeSystemSettings(system, index, values, copy, done)
 --       -> ok, why, saved
 --       values saved into the active layout's system (0.19.9); the game
@@ -654,10 +658,19 @@ end
 -- secure "Reload now" button (its PreClick: MelloUI:EditModeActivateNow), the installer's way: the manager's
 -- synchronous re-layout then runs in a session the reload ends at once, never in a live one. Out of combat, Edit
 -- Mode closed. One at a time (the newest wins); this session only.
+-- (2.1.65; a player's report on 2.1.60: a moved pet frame and totem bar jumped back in every fight, and came back as
+-- it ended) A typed /reload never switched: the preset stayed active, the moved places stayed the store's alone, and in
+-- a fight the game lays its frames out again from the preset where no addon may move them back. Now the player's own
+-- /reload switches too: the game's ReloadUI (its /reload, the AddOns list's and most addons' reload buttons) is
+-- post-hooked once a layout waits -- run as the game has asked for the reload and before it happens, the moment the
+-- button switches in. And a waiting copy may carry places to write into it first (MelloUI:EditModeCarryToCopy, the
+-- login's: below Active). A logout leaves it waiting (the game answers its first preset while a session ends).
 --   MelloUI:EditModeActivePending() -> name, layoutType | nil
---   MelloUI:EditModeActivateNow() -> ok   (a secure /reload button's PreClick only)
+--   MelloUI:EditModeActivateNow() -> ok   (a secure /reload button's PreClick, and the game's ReloadUI after it ran)
 --------------------------------------------------------------------------------
 local pendingActive = nil   -- { name, kind = Enum.EditModeLayoutType }
+local carry = nil           -- (2.1.65) entries to write into the waiting layout right before it is made active
+local WatchReload           -- (below)
 
 -- after a save that named `active` the active one: read back; the game kept another -> it waits (returns that name)
 local function ReadBackActive(full, active)
@@ -672,6 +685,7 @@ local function ReadBackActive(full, active)
 		return nil
 	end
 	pendingActive = { name = NameOf(wanted), kind = TypeOf(wanted) }
+	WatchReload()
 	return NameOf(back[now]) or "?", now
 end
 
@@ -688,6 +702,14 @@ function MelloUI:EditModeActivateNow()
 		return false
 	end
 	pendingActive = nil
+	-- (2.1.65) the places it carries written into it first (by its name: one save)
+	if carry then
+		local list = carry
+		carry = nil
+		local okW, wrote, why = pcall(MelloUI.SetEditModeLayoutSettings, MelloUI, list)
+		Note("%d place(s) written into '%s' before the switch: %s", #list, tostring(want.name),
+			okW and (wrote and "done" or tostring(why)) or tostring(wrote))
+	end
 	local full, info = FullList()
 	for i, layout in ipairs(full or EMPTY) do
 		if NameOf(layout) == want.name and TypeOf(layout) == want.kind then
@@ -701,6 +723,23 @@ function MelloUI:EditModeActivateNow()
 	end
 	Note("activate '%s' before the reload: no longer in the list", tostring(want.name))
 	return false
+end
+
+-- (2.1.65) the player's own /reload switches too (see the header): made once, the first time a layout waits
+local reloadWatched = false
+WatchReload = function()
+	if reloadWatched or type(rawget(_G, "ReloadUI")) ~= "function" then
+		return
+	end
+	reloadWatched = true
+	hooksecurefunc("ReloadUI", function()
+		if pendingActive then
+			local ok, err = pcall(MelloUI.EditModeActivateNow, MelloUI)
+			if not ok then
+				Note("activate at the player's /reload: %s", tostring(err))
+			end
+		end
+	end)
 end
 
 --------------------------------------------------------------------------------
@@ -1232,6 +1271,45 @@ local function Active(full, info)
 		return nil
 	end
 	return full[at], at
+end
+
+-- (2.1.65) The login's places only MelloUI's store holds (Core/EditLayoutBridge.lua's handover: a preset active, no
+-- saved layout to hand them to) while MelloUI's copy of that preset is in the list -- made at the player's yes in an
+-- earlier session and never switched to (see EditModeActivateNow's header): they wait to go into the copy, written
+-- right before it is made active at the next reload. Without the copy (the player said no) nothing changes.
+--   MelloUI:EditModeCarryToCopy(entries) -> carried   entries { { system, index, anchor = { point, relativeTo,
+--       relativePoint, offsetX, offsetY } }, ... } (Edit Mode's anchor at scale 1)
+function MelloUI:EditModeCarryToCopy(entries)
+	if type(entries) ~= "table" or #entries == 0 or not Api() then
+		return false
+	end
+	local full, info = FullList()
+	local layout = full and Active(full, info)
+	if not (layout and TypeOf(layout) == LayoutType("Preset")) then
+		return false
+	end
+	local account = LayoutType("Account")
+	local name = TEXT.copyName:format(NameOf(layout) or "Layout")
+	if not Find(full, name, account) then
+		return false
+	end
+	local list = {}
+	for _, e in ipairs(entries) do
+		local a = type(e) == "table" and e.anchor
+		if type(a) == "table" then
+			list[#list + 1] = { layout = name, layoutType = account, system = e.system, index = e.index, values = {},
+				anchor = { point = a.point, relativeTo = a.relativeTo or "UIParent", relativePoint = a.relativePoint,
+					offsetX = a.offsetX, offsetY = a.offsetY } }
+		end
+	end
+	if #list == 0 then
+		return false
+	end
+	carry = list
+	pendingActive = { name = name, kind = account }
+	WatchReload()
+	Note("the login: %d place(s) only MelloUI holds wait for '%s', made active at the next reload", #list, name)
+	return true
 end
 
 -- Now (every check is the caller's): `entries` -- { system, index, values }

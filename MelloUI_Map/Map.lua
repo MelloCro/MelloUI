@@ -1735,6 +1735,7 @@ function M:OnEnable(db)
 	Town.Mini(true)   -- (2.1.53: the town marks there, by the same switches)
 	AddonPins.MiniRares(true)   -- (2.1.57: another addon's rares off the minimap while RareScanner's stand there)
 	Levels.Mini(true)   -- (2.1.55: the pills and fishing badges there, by the same switches)
+	Layers.Corpse(true)   -- (2.1.65: your corpse on this map and the minimap, as the game's own map has it)
 end
 
 function M:OnSettingChanged(key, _, db)
@@ -1767,6 +1768,7 @@ function M:OnDisable()
 	Town.Mini(false)   -- (2.1.53)
 	AddonPins.MiniRares(false)   -- (2.1.57)
 	Levels.Mini(false)   -- (2.1.55)
+	Layers.Corpse(false)   -- (2.1.65)
 	if win.frame then
 		Dungeon.Hide()
 	end

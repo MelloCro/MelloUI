@@ -1155,6 +1155,17 @@ local function BarsIn(pf, art)
 	return FRAME.BARS
 end
 
+-- (2.1.65; Wolvegrimm, Discord, 2026-11-21, a druid's frame with Anchor: Unit Frame: "Buffs attached to frame collide
+-- with new Druid Energy and Rage Bars" -- "It sits on top of the new bars") the rows hang under the frame's real
+-- bottom: as much lower as its bars reach below its power bar now (MelloUI.Units: a row under the power bar -- Druid
+-- Forms' -- in every look, the painted frame's longer painting with it; none on the game's frame), so they keep the
+-- place under the power bar they have on a frame without such a row
+local function Below()
+	local U = MelloUI.Units
+	local n = U and U.PlayerBelow and U.PlayerBelow()
+	return (type(n) == "number" and n > 0) and n or 0
+end
+
 local function PlaceOnFrame()
 	-- (fr-17: laid on the player frame on the screen -- MelloUI's own while it stands in; its parent stays the game's
 	-- frame, which ours stands on and which is never faded)
@@ -1168,10 +1179,11 @@ local function PlaceOnFrame()
 	Try(c.SetFlowLayoutAnchorPoint, c, right and "TOPLEFT" or "TOPRIGHT")
 	Try(c.SetFlowLayoutGrowthDirection, c, right and 1 or -1, -1)
 	c:ClearAllPoints()
+	local up = FRAME.UP - Below()
 	if right then
-		c:SetPoint("TOPLEFT", art, "BOTTOMLEFT", BarsIn(pf, art) + Weapon.DX(c, "TOPLEFT", 1), FRAME.UP)
+		c:SetPoint("TOPLEFT", art, "BOTTOMLEFT", BarsIn(pf, art) + Weapon.DX(c, "TOPLEFT", 1), up)
 	else
-		c:SetPoint("TOPRIGHT", art, "BOTTOMRIGHT", -FRAME.IN + Weapon.DX(c, "TOPRIGHT", -1), FRAME.UP)
+		c:SetPoint("TOPRIGHT", art, "BOTTOMRIGHT", -FRAME.IN + Weapon.DX(c, "TOPRIGHT", -1), up)
 	end
 	Try(c.UpdateAllAuras, c)
 	Weapon.Lay()
@@ -1191,12 +1203,15 @@ local function SetFrameRows(on)
 			return
 		end
 		frameRows = c
-		-- (fr-17) the player frame of ours come or gone: laid on the one that stands now
-		MelloUI:On("units", function()
+		-- (fr-17) the player frame of ours come or gone: laid on the one that stands now; (2.1.65) a row under its
+		-- power bar come, gone or moved (a druid's form row, the painted look switched): under its bottom again
+		local function Again()
 			if frameRows and frameRows:IsShown() then
 				MelloUI.Kit:WhenOutOfCombat(PlaceOnFrame, FRAME_PLACE_KEY)
 			end
-		end, "Auras: your rows on the player frame")
+		end
+		MelloUI:On("units", Again, "Auras: your rows on the player frame")
+		MelloUI:On("units:bars", Again, "Auras: your rows on the player frame")
 	end
 	if frameRows then
 		if on then

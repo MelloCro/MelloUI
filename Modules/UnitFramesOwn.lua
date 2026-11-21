@@ -37,6 +37,9 @@
 --   Units.Player() -> frame          the player frame on the screen: ours while it stands in, else the game's
 --   Units.PlayerName() -> fontstring  its name (the game's PlayerName, ours)
 --   Units.PlayerLevel() -> fontstring its level (the game's PlayerLevelText, ours)
+--   Units.PlayerBelow() -> number    how far its bars reach below its power bar now, in its units (a druid's form row:
+--                                     2.1.65); 0 for none and for the game's frame. What hangs under the frame (your
+--                                     rows on it: Modules/Auras.lua) hangs that much lower
 --   Units.Target() -> frame          the target frame on the screen (ours: MelloUITargetFrame, else TargetFrame)
 --   Units.TargetToT() -> frame       its target of target (ours: MelloUITargetFrameToT, else TargetFrameToT)
 --   Units.Focus() / Units.FocusToT() the focus frame and its focus target (ours: MelloUIFocusFrame / ...ToT, stage 3)
@@ -59,7 +62,8 @@
 --   Units.Texts(f)                    a frame's bars' values as text, as the game's TextStatusBar (fr-16's, moved
 --                                     here from Group Frames: the party portraits and the player frame share it)
 --   Units.Silence(f, events, owner, depth) / Units.Unsilence(owner)  a game frame's events let go / given back
--- The bus: 'units' (key, on) when ours comes or goes (the dressers lay their look on the frame Units.Player() gives).
+-- The bus: 'units' (key, on) when ours comes or goes (the dressers lay their look on the frame Units.Player() gives);
+-- 'units:bars' (key) when a row under ours' power bar came, went or moved (Units.PlayerBelow changed).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -1341,11 +1345,14 @@ end
 -- depending on how many bars are being tracked, like you did with the Personal Nameplate"). The row is that hole;
 -- nothing of the painting is ours.
 --   Units.FormBars() -> { bar, bar } | nil   the halves while the row shows
+--   Units.PlayerBelow() -> number            (2.1.65) the row's foot under the power bar's while it shows (11 on the
+--                                            plain picture, a painted row's pitch), else 0: 'units:bars' when it changes
 --   Units.FormsTest(on)                      (/mello personal druid) the row with sample amounts, for any class
 --------------------------------------------------------------------------------
 do
+	-- (FOOT: the power bar's foot under the frame's top -- 61 down, 10 high: P.Build, PlayerFrame.xml's ManaBar)
 	local Forms = { POWERS = { "MANA", "ENERGY", "RAGE" }, TYPE = { MANA = 0, RAGE = 1, ENERGY = 3 },
-		W = 124, H = 9, X = 87, Y = -73, GAP = 2,
+		W = 124, H = 9, X = 87, Y = -73, GAP = 2, FOOT = 71,
 		SAMPLE = { MANA = { 1840, 2130 }, ENERGY = { 100, 100 }, RAGE = { 35, 100 } } }
 	P.Forms = Forms
 
@@ -1444,6 +1451,8 @@ do
 			w = (hole[3] - hole[1]) * k
 			h = (hole[4] - hole[2]) * k
 			row:SetPoint("TOPLEFT", region, "CENTER", (hole[1] - u.rw / 2) * k, -(hole[2] + pitch - u.rh / 2) * k)
+			-- (2.1.65: its foot a row under the power bar's, which the set lays on the power hole -- Units.PlayerBelow)
+			f.below = pitch * k
 			Sets.Rows(region, 1)
 			-- (the bars of a painted frame stand at the painting's level: ours with the power bar)
 			local okL, level = pcall(f.manabar.GetFrameLevel, f.manabar)
@@ -1456,6 +1465,7 @@ do
 			painted = true
 		else
 			row:SetPoint("TOPLEFT", area, "TOPLEFT", Forms.X, Forms.Y)
+			f.below = -Forms.Y + h - Forms.FOOT
 			Forms.NoRows(f)
 		end
 		row:SetSize(w, h)
@@ -1547,13 +1557,14 @@ do
 		if not row then
 			return
 		end
-		local was = row.on
+		local was, below = row.on, f.below
 		row.on = want
 		Main(f).AlternatePowerBarArea:SetShown(want)
 		row:SetShown(want)
 		if want then
 			Forms.Place(f)
 		else
+			f.below = nil
 			Forms.NoRows(f)
 		end
 		if quiet then
@@ -1565,6 +1576,15 @@ do
 		if was ~= want then
 			MelloUI:Fire("units", "player", true)   -- (the bars' dressers: the halves come or gone)
 		end
+		if f.below ~= below then
+			MelloUI:Fire("units:bars", "player")   -- (2.1.65: what hangs under the frame -- Units.PlayerBelow)
+		end
+	end
+
+	function U.PlayerBelow()
+		local f = P.standing and P.frame
+		local n = f and f.below
+		return (type(n) == "number" and n > 0) and n or 0
 	end
 
 	function U.FormBars()

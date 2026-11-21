@@ -40,8 +40,9 @@
 -- regions) and none of its rows waits, so nothing of MelloUI's runs in the
 -- log's scroll.
 --
---   QP.Header(button, rect)  a header, the log's or the panel's (`rect`: where
---                            its plate lies): the chat's heading; its parts
+--   QP.Header(button, rect, plain)  a header, the log's or the panel's (`rect`:
+--                            where its plate lies; `plain`: its page on no
+--                            paper): the chat's heading; its parts
 --   QP.Row(button)           a Quests panel row: no heading, its icon in the rim
 --   QP.SetPaper(on)          the painted page on / off: the log and the
 --                            Quests panel inked / plain again
@@ -107,7 +108,8 @@ local function HeadingLook(button)
 	local text = h.src:GetText()
 	h.cover:SetText((not Secret(text) and type(text) == "string") and text or "")
 	local QI = MelloUI.QuestInk
-	local paper = QI and QI.onParchment
+	-- (h.plain: its page lies on no paper, QP.Header's `plain`)
+	local paper = QI and QI.onParchment and not h.plain
 	if paper then
 		QI.Ink(h.cover, "title")
 	else
@@ -260,7 +262,9 @@ end
 -- owner colours it no more once it is faded (the panel: its label): a text
 -- colour with an alpha sets the string's alpha on this client, which no hook
 -- of Kit:Fade sees. Returns the heading (nil: none made, the name stays).
-function QP.Header(button, rect)
+-- `plain` (2.1.65): the caller's page lies on no paper whatever QI.onParchment says (the Quest List's page in
+-- MelloUI's map, on the map's dark panel): the heading in the palette's colours, never the ink.
+function QP.Header(button, rect, plain)
 	local normal = button.GetNormalTexture and button:GetNormalTexture()
 	if not normal then
 		return nil
@@ -273,6 +277,7 @@ function QP.Header(button, rect)
 	local h = Heading(button, rect)
 	if h then
 		h.off = nil
+		h.plain = plain and true or nil
 		Kit:Fade(h.src)
 		HeadingLook(button)
 	end
