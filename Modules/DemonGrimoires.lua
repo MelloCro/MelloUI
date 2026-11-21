@@ -24,7 +24,7 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("DemonGrimoires")
 local Safe = MelloUI.Safe
-local Secret, Num, Text = Safe.IsSecret, Safe.Number, Safe.Text
+local Num, Text = Safe.Number, Safe.Text
 
 -- (every text a window draws: Tools/languages/strings.py reads this table)
 local TEXT = {
