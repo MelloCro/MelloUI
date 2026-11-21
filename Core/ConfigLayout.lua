@@ -1466,6 +1466,7 @@ function L.Define(R, Link)
 	-- Battle.net friends") its own tab
 	R("QualityOfLife", "Mail", "General", "MailRecipients.!enabled", { name = "Mail Recipients" })
 	R("QualityOfLife", "Mail", "General", "MailRecipients.bnet")
+	R("QualityOfLife", "Mail", "General", "MailRecipients.subject")
 	R("QualityOfLife", "Reminders", "General", "Reminders.!enabled", { name = "Reminders" })
 	R("QualityOfLife", "Reminders", "General", "Reminders.remind_mail")
 	R("QualityOfLife", "Reminders", "General", "Reminders.remind_repair")
