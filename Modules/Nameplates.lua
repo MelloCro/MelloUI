@@ -85,10 +85,10 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		-- (2.1.70; Wolvegrimm, Discord 2026-11-22: "is there a way to have nameplate numbers be smaller? I like to have
 		-- really small plates and the numbers are taking most of it", and "actual values inside the bar and % besides
 		-- it") the game's own health numbers on every plate (M.LayHealthText)
-		{ type = "slider", key = "healthTextSize", name = "Health Text Size", min = 0, max = 24, step = 1, new = "2.1.70",
+		{ type = "slider", key = "healthTextSize", name = "Health Text Size", min = 0, max = 24, step = 1,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Game's" or string.format("%d px", v) end,
 		  desc = "The size of the health numbers on the nameplates. Game's: the size the game gives them, the name's." },
-		{ type = "toggle", key = "healthPercentBeside", name = "Percent Beside The Bar", new = "2.1.70",
+		{ type = "toggle", key = "healthPercentBeside", name = "Percent Beside The Bar",
 		  desc = "When the game shows both the health number and the percent on the nameplates (its Nameplates options), the number stands in the middle of the bar and the percent beside it, right of the level." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",

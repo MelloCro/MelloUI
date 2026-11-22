@@ -5862,10 +5862,10 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "The font of the display's text. Shared: the interface font." },
 		-- (2.1.70; the user, 2026-11-22: "give me a size slider on the personal nameplate, a colour picker for the Color
 		-- of the personal nameplate text") every text of the display (StyleText)
-		{ type = "slider", key = "textSize", name = "Text Size", min = 50, max = 200, step = 5, new = "2.1.70",
+		{ type = "slider", key = "textSize", name = "Text Size", min = 50, max = 200, step = 5,
 		  format = function(v) return string.format("%d%%", v) end,
 		  desc = "The size of the display's text: the percents, the amounts, the spell's name and time, and Druid Forms' numbers." },
-		{ type = "colour", key = "textColour", name = "Text Colour", new = "2.1.70",
+		{ type = "colour", key = "textColour", name = "Text Colour",
 		  desc = "The colour of the display's text. Its first colour is the palette's text colour, which follows the palette." },
 		-- (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
 		{ type = "toggle", key = "druidForms", name = "Druid Forms",
