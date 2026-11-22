@@ -839,6 +839,18 @@ function Objectives.FocusChanged()
 	end
 end
 
+-- (2.1.70; the user, 2026-11-22, of the Quest List's Map rows: "these options dont do anything on the map") one of the
+-- Quest List's marks settings changed while this map shows: laid again on the beat. Before, only the game's zone map
+-- and the minimap were told (the Quest List's own OnSettingChanged); this map took the change at its next open or the
+-- log's next change. A bus listener at load (no frame); nothing while the map is closed (Soon: S.shown)
+Objectives.QL_KEYS = { objectiveMarks = true, objectiveTrackedOnly = true, objectiveFocusedOnly = true }
+function Objectives.OnSetting(module, key)
+	if module == "QuestList" and Objectives.QL_KEYS[key] then
+		Objectives.Soon()
+	end
+end
+MelloUI:On("setting", Objectives.OnSetting, "Map: the Quest List's objective marks settings")
+
 function Objectives.Tick(elapsed)
 	local w = S.wait
 	if w then

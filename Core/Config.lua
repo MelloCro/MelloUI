@@ -177,6 +177,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.70", lines = {
+		"Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar.",
+		"Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them.",
+		"Personal Display: Number On The Bars, Percent Beside shows your health and power amounts in the middle of the bars.",
+		"Personal Display: Text Size and Text Colour for all of its text.",
+		"Map: Only The Tracked Quests and Focused Quest Only change the open map at once.",
+		"Chinese text: titles and headings at their right size, and Chinese letters instead of boxes.",
+	} },
 	{ version = "2.1.69", lines = {
 		"Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation.",
 	} },
@@ -195,20 +203,6 @@ local CHANGELOG = {
 		"Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker.",
 		"Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips.",
 		"Mail Recipients: no realm behind your own characters any more when the game names none.",
-	} },
-	{ version = "2.1.65", lines = {
-		"Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values.",
-		"Map's quest log: Show on a quest with no place on the map, such as a crafting writ, says so instead of doing nothing.",
-		"Reminders detached from the portrait keep the size and place you gave them in Edit Layout.",
-		"Map with Questie: Shift over a quest icon opens its full tooltip at once, and letting go folds it again.",
-		"Your corpse shows on the map and the minimap again after you die.",
-		"Oldschool: the map's Quest List tab reads as easily as the Quests tab, with no stray parchment over the map.",
-		"Druid Forms: buffs and debuffs anchored to the player frame hang under its row instead of covering it.",
-		"Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame.",
-		"Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights.",
-		"Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers.",
-		"Mail: an empty subject takes the name of the first item you attach.",
-		"Supporters page: the people who send code and translations on GitHub, credited under the banners.",
 	} },
 }
 local LINKS = {

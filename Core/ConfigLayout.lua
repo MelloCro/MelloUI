@@ -248,6 +248,7 @@ L.pages = {
 			{ key = "enemies", label = "Enemies", line = "Enemies' and NPCs' plates",
 				stage = { kind = "nameplate", pick = "enemy" }, parts = {
 				{ key = "name", label = "Name", stage = "name" }, { key = "health", label = "Health bar", stage = "health" },
+				{ key = "healthtext", label = "Health text", stage = "healthtext" },   -- (2.1.70: the game's numbers)
 				{ key = "threat", label = "Threat line", stage = "threat" },
 				{ key = "combo", label = "Combo points", stage = "combo" },
 				{ key = "cc", label = "CC icon", stage = "cc" }, { key = "quest", label = "Quest icon", stage = "quest" },
@@ -915,6 +916,10 @@ function L.Define(R, Link)
 	for _, key in ipairs({ "threatSafeColour", "threatCloseColour", "threatAggroColour" }) do
 		R("Nameplates", "enemies:health", "Look", "Nameplates." .. key, { when = THREAT_ON })
 	end
+	-- (2.1.70; Wolvegrimm: smaller numbers on small plates, the number in the bar and the percent beside it -- on the
+	-- health numbers' own tab, the Designer's part the user asked for the same day)
+	R("Nameplates", "enemies:healthtext", "Text", "Nameplates.healthTextSize", { name = "Size" })
+	R("Nameplates", "enemies:healthtext", "Layout", "Nameplates.healthPercentBeside")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateSize")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateWidth")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateHeight")
@@ -1364,6 +1369,9 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.textPlace", { when = { key = "PersonalDisplay.text", notValue = false, line = "Only with Percent And Spell Text on" } })   -- (2.1.65: Percent Position, Wolvegrimm)
 	R("Look", "Fonts", "Text", "PersonalDisplay.textFont", { name = "Font", card = "Personal Display" })
 	Link("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.textFont", "Font")
+	-- (2.1.70; the user: a size slider and a colour picker for the Personal Display's text)
+	R("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.textSize")
+	R("UnitGroupFrames", "personal:text", "Text", "PersonalDisplay.textColour")
 	R("UnitGroupFrames", "personal:element", "Layout", "PersonalDisplay.width")
 	R("UnitGroupFrames", "personal:element", "Layout", "PersonalDisplay.height")
 	-- (one look Q4: Edit Layout's Size of the bars and of the shield column, the same value)

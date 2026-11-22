@@ -56,6 +56,7 @@ local T = {
 	colW = 7, colH = 70,                 -- the shield column's fill
 	text = 11,                           -- the percents' and the spell's size
 	textGap = 3,                         -- the percents past the widest cap
+	sampleHealth = 4200, samplePower = 3100,   -- (2.1.70) the preview's made-up full amounts (Number On The Bars)
 	hop = 12, hopTime = 0.62,            -- the hop when you jump: how high, how long
 	jumpCheck = 0.06,                    -- the jump key pressed: airborne this soon after, a jump
 	zoomMin = 0.35, zoomMax = 2.5,       -- the zoom's scaling of the display's offset, at most
@@ -246,7 +247,8 @@ Druid.outlined = setmetatable({}, { __mode = "k" })   -- (2.1.61: its numbers, o
 -- bars have" -- the user: the percents, ON the bars) Percent Position: the health and power percents beside the bars
 -- (as ever) or centred on their fills in the form row's numbers' size and outline, over the rims as those are
 -- (Druid.Row). Only where they stand: Percent reads them as before
-local Pct = { texts = setmetatable({}, { __mode = "k" }) }   -- [the two percents' font strings] = true
+local Pct = { texts = setmetatable({}, { __mode = "k" }),   -- [the two percents' font strings] = true
+	values = setmetatable({}, { __mode = "k" }) }            -- (2.1.70) [the two amounts' font strings] = true
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -323,15 +325,33 @@ function Pct.OnBars()
 	return Db().textPlace == "bars"
 end
 
+-- (2.1.70; Wolvegrimm, Discord 2026-11-22: "Could we have actual values inside the bar and % besides it?") Percent
+-- Position's Number On The Bars, Percent Beside: the health and power amounts centred on the bars, whole (the
+-- player's "actual values": a font string takes the amount as it is, secret or plain, nothing read or compared), the
+-- percents beside them
+function Pct.Number()
+	return Db().textPlace == "number"
+end
+
 local function StyleText(fs, size)
 	-- (one look C11: their own face, Text Font; Shared the Interface text's)
 	S.texts[fs] = size
 	-- (2.1.61: a number on a fill -- Druid Forms' halves -- outlined, so it reads on a bright power's colour; 2.1.65:
-	-- the percents on the bars the same, in the form row's size)
-	local onBar = Pct.texts[fs] and Pct.OnBars() or false
-	MelloUI.Look.Text(fs, "text", onBar and T.formText or size, { face = Db().textFont,
-		outline = Druid.outlined[fs] or onBar })
+	-- the percents on the bars the same, in the form row's size; 2.1.70: the amounts, always on the bars)
+	local onBar = (Pct.texts[fs] and Pct.OnBars()) or Pct.values[fs] or false
+	-- (2.1.70: Text Size, a share of each text's own size)
+	local k = (Num(Db().textSize) or 100) / 100
+	MelloUI.Look.Text(fs, "text", math.max(4, math.floor((onBar and T.formText or size) * k + 0.5)),
+		{ face = Db().textFont, outline = Druid.outlined[fs] or onBar })
 	fs:SetShadowOffset(1, -1)
+	-- (2.1.70: Text Colour; the palette's text colour, the first, left to the look: it follows the palette)
+	local c = Db().textColour
+	if type(c) == "string" and c ~= "palette:text" then
+		local r, g, b = W.ColourValue(c)
+		MelloUI.Look.Colour(fs, { r, g, b })
+	else
+		MelloUI.Look.Colour(fs, nil)
+	end
 end
 
 -- (the setting; Start again: a profile's) the two percents in their size and outline where they stand
@@ -339,11 +359,16 @@ function Pct.Style()
 	for fs in pairs(Pct.texts) do
 		StyleText(fs, S.texts[fs] or T.text)
 	end
+	for fs in pairs(Pct.values) do
+		StyleText(fs, S.texts[fs] or T.text)
+	end
 end
 
--- (LayStack, the setting) each percent past the widest cap on its bar's middle, or centred on its own fill
+-- (LayStack, the setting) each percent past the widest cap on its bar's middle, or centred on its own fill; (2.1.70)
+-- each amount centred on its fill while Number On The Bars, Percent Beside, else hidden
 function Pct.Lay(ui)
 	local onBar = Pct.OnBars()
+	local number = Pct.Number()
 	local textX = (ui.widest or Width()) / 2 + T.textGap
 	for _, b in ipairs(ui.stack) do
 		if b.text then
@@ -356,6 +381,22 @@ function Pct.Lay(ui)
 				b.text:SetJustifyH("LEFT")
 			end
 		end
+		if b.value then
+			b.value:ClearAllPoints()
+			b.value:SetPoint("CENTER", b.strip.fill, "CENTER", 0, 0)
+			b.value:SetJustifyH("CENTER")
+			b.value:SetShown(number)
+		end
+	end
+end
+
+-- (Health, Power, the preview) an amount on its bar: blank unless Number On The Bars, Percent Beside and the text on
+function Pct.Value(fs, v)
+	if not fs then
+		return
+	end
+	if not Pct.Number() or Db().text == false or v == nil or not pcall(fs.SetText, fs, v) then
+		fs:SetText("")
 	end
 end
 
@@ -1065,6 +1106,11 @@ local function Build()
 		Pct.texts[b.text] = true
 		StyleText(b.text, T.text)
 		b.text:SetJustifyH("LEFT")
+		-- (2.1.70) the amount, on the bar while Percent Position is Number On The Bars, Percent Beside (Pct.Lay)
+		b.value = b.over:CreateFontString(nil, "OVERLAY")
+		Pct.values[b.value] = true
+		StyleText(b.value, T.text)
+		b.value:Hide()
 	end
 	-- the cast bar: the spell on its left, the seconds on its right (the engine writes them: Anim:TimerText)
 	local cast = ui.cast
@@ -1196,6 +1242,7 @@ local function Health()
 		ui.health.bar:SetMinMaxValues(0, max)
 		ui.health.bar:SetValue(v, EASE)
 		Motion.Value(ui.health, max, v)
+		Pct.Value(ui.health.value, v)   -- (2.1.70)
 		-- (its share only where both read plain: the beat as it turns low; else the game's curves, secret)
 		local pm, pv = Num(max), Num(v)
 		local share = pm and pv and pm > 0 and pv / pm or nil
@@ -1232,6 +1279,7 @@ local function Power()
 		ui.power.bar:SetMinMaxValues(0, max)
 		ui.power.bar:SetValue(v, EASE)
 		Motion.Value(ui.power, max, v, shifted)
+		Pct.Value(ui.power.value, v)   -- (2.1.70)
 		if shifted then
 			S.powerLast = nil
 		end
@@ -4016,6 +4064,9 @@ function Motion.FormApply()
 		if b.text then
 			b.text:SetAlpha(1 - math.max(rest, dead))
 		end
+		if b.value then
+			b.value:SetAlpha(1 - math.max(rest, dead))
+		end
 	end
 	-- (2.1.60) a druid's form row slim at rest, folds and opens from the middle with them (the German player's
 	-- screenshots: out of a fight it stood thicker than the slimmed health and power); 2.1.61: as slim as the power
@@ -5509,11 +5560,13 @@ local function SampleHealth(pct)
 	Motion.HealthMoment(pct / 100, S.samplePct ~= nil and pct > S.samplePct)
 	S.samplePct = pct
 	ui.health.text:SetFormattedText("%.0f%%", pct)
+	Pct.Value(ui.health.value, math.floor(pct * T.sampleHealth / 100 + 0.5))   -- (2.1.70: a made-up amount)
 	ui.power.bar:SetMinMaxValues(0, 100)
 	ui.power.bar:SetValue(power, EASE)
 	Motion.Value(ui.power, 100, power)
 	Motion.Gain(100, power, nil)
 	ui.power.text:SetFormattedText("%.0f%%", power)
+	Pct.Value(ui.power.value, math.floor(power * T.samplePower / 100 + 0.5))
 end
 
 -- (the preview's own cast ended: a real one begun after the preview's stop left running)
@@ -5753,7 +5806,8 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		healFrom = true, swing = true, swingOver = false, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
 		stun = true, settle = true, classColour = false, castMotion = true, fiveSecond = true, druidForms = true,
-		textPlace = "beside", clickThrough = false },
+		textPlace = "beside", clickThrough = false,
+		textSize = 100, textColour = "palette:text" },   -- (2.1.70: the text's size, a percentage; its colour)
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "A bar beside your character for all your shields, each in its school's colour. It drains as they take hits." },
@@ -5797,13 +5851,22 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		-- Druid bars have" -- the user: the percents on the bars, as an option)
 		{ type = "dropdown", key = "textPlace", name = "Percent Position",
 		  search = "percent number numbers text value on inside bar bars health power position place",
-		  desc = "Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers.",
+		  desc = "Where the health and power percents stand: beside the bars, centred on them like Druid Forms' numbers, or beside them with the amounts themselves centred on the bars.",
 		  values = {
 			{ value = "beside", label = "Beside The Bars" },
 			{ value = "bars", label = "On The Bars" },
+			-- (2.1.70; Wolvegrimm, Discord 2026-11-22: "actual values inside the bar and % besides it")
+			{ value = "number", label = "Number On The Bars, Percent Beside" },
 		  } },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces,
 		  desc = "The font of the display's text. Shared: the interface font." },
+		-- (2.1.70; the user, 2026-11-22: "give me a size slider on the personal nameplate, a colour picker for the Color
+		-- of the personal nameplate text") every text of the display (StyleText)
+		{ type = "slider", key = "textSize", name = "Text Size", min = 50, max = 200, step = 5, new = "2.1.70",
+		  format = function(v) return string.format("%d%%", v) end,
+		  desc = "The size of the display's text: the percents, the amounts, the spell's name and time, and Druid Forms' numbers." },
+		{ type = "colour", key = "textColour", name = "Text Colour", new = "2.1.70",
+		  desc = "The colour of the display's text. Its first colour is the palette's text colour, which follows the palette." },
 		-- (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
 		{ type = "toggle", key = "druidForms", name = "Druid Forms",
 		  search = "druid form forms shapeshift cat bear mana energy rage",
@@ -6104,6 +6167,7 @@ function Druid.TestStep()
 	Druid.Fill(ui.power.bar, token, 100, step[2])
 	Motion.Value(ui.power, 100, step[2], true)   -- (its pale layers with it, not the last real amount)
 	ui.power.text:SetFormattedText("%.0f%%", step[2])
+	Pct.Value(ui.power.value, math.floor(step[2] * T.samplePower / 100 + 0.5))
 	local i = 0
 	for _, other in ipairs(Druid.POWERS) do
 		if other ~= token and i < 2 then
@@ -6319,14 +6383,19 @@ function M:OnSettingChanged(key, _, db)
 		Motion.HoldBanner()
 	elseif key == "settle" then
 		Motion.SettleGo(MelloUI.InCombat(), true)
-	elseif key == "textFont" then
+	elseif key == "textFont" or key == "textSize" or key == "textColour" then   -- (2.1.70: the size and colour too)
 		for fs, size in pairs(S.texts) do
 			StyleText(fs, size)
 		end
 	elseif key == "textPlace" then
-		-- (2.1.65, Percent Position) the two percents in their size and outline there, laid there
+		-- (2.1.65, Percent Position) the two percents in their size and outline there, laid there; (2.1.70) the
+		-- amounts shown or hidden with them, read again
 		Pct.Style()
 		Pct.Lay(ui)
+		if not S.preview then
+			Health()
+			Power()
+		end
 	elseif key == "clickThrough" then
 		Click.Through()   -- (2.1.68: in a fight, set at its end)
 	end

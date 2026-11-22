@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.70
+
+- Nameplates: Health Text Size, new (Nameplates > Enemies > Health text): the health numbers on the plates in the size you pick, smaller for small plates, the names as they are. Game's keeps the game's size.
+- Nameplates: Percent Beside The Bar, new (off until you turn it on, beside Health Text Size): when the game shows both the health number and the percent on the plates, the number stands in the middle of the bar and the percent beside it.
+- Nameplate Designer: the health numbers are a part of their own, Health text. Drag them anywhere on the plate, size them with the wheel, or hide them. Showing them while the game shows none turns on the game's own number and percent.
+- Personal Display: Percent Position has a third choice, Number On The Bars, Percent Beside: your health and power amounts in the middle of the bars, whole, and the percents beside them.
+- Personal Display: Text Size and Text Colour, new (Unit & Group Frames > Personal, Text): the size and the colour of all of its text. The colour starts as the palette's text colour and follows it until you pick one.
+- Fixed: on MelloUI's map, Only The Tracked Quests and Focused Quest Only (Quest List > Map) took effect only the next time the map opened or your quest log changed. They change the open map at once now. /qlmap focus says which quest Focused Quest Only marks, and why (every quest while you follow none).
+- Fixed in Chinese: titles and headings came out about a quarter larger than their size, and lines of text could run into each other. Chinese letters now take the size the text asks for. On some Chinese clients a few titles showed boxes instead of Chinese letters; they show the letters now.
+
 ## 2.1.69
 
 - Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation as it looks through a window for its buttons, and names the part of the window where an addon first got in its way, to track down the actions the game blocks in the Gamepad UI.
