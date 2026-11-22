@@ -4113,7 +4113,7 @@ function CONFIG.EmptyLine(sec, show)
 		note:SetWordWrap(true)
 		sec.emptyNote = note
 	end
-	note:SetText(line or TEXT.nothing)
+	note:SetText(W.Tr(line or TEXT.nothing))
 	note:Show()
 	local jump = id ~= nil and why ~= nil
 	if jump then

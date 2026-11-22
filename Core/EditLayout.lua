@@ -1730,7 +1730,7 @@ local function OpenBoxFor(plate)
 		attach.detach:SetEnabled(locked == nil)
 	end
 	-- Reset (its own label for the shared four) and the link
-	box.reset:SetText(entry.resetLabel or TEXT.reset)
+	box.reset:SetText(W.Tr(entry.resetLabel or TEXT.reset))
 	local fs = box.reset:GetFontString()
 	box.reset:SetWidth(math.max(90, math.ceil((fs and TextWidth(fs) or 0) + 24)))
 	box.reset:Show()

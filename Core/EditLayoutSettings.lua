@@ -811,7 +811,7 @@ local function LayGate(box, spec, y, width)
 	end
 	local module = MelloUI:GetModule(owner)
 	local title = module and module.title or owner
-	row.held:SetText(TEXT.held:format(title))
+	row.held:SetText(W.Tr(TEXT.held):format(W.Tr(title)))
 	row.held:SetWidth(width - 24)
 	row.held:ClearAllPoints()
 	row.held:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -y)
@@ -999,9 +999,9 @@ function ES.Lay(box, entry, y, width)
 		end
 	end
 	if not any then
-		note:SetText(TEXT.none)
+		note:SetText(W.Tr(TEXT.none))
 	else
-		note:SetText(TEXT.note)
+		note:SetText(W.Tr(TEXT.note))
 	end
 	return y + 4
 end
