@@ -609,7 +609,7 @@ function Page.BuildGroups(canvas, width)
 	singleAdd:HookScript("OnClick", AddSingle)
 
 	local function LayTray()
-		title:SetText(string.format(TEXT.title, Owner(inst.spec)))
+		title:SetText(string.format(W.Tr(TEXT.title), Owner(inst.spec)))
 		local class = SG.SpecOf(inst.spec)
 		local groups = { own = {}, all = {}, debuff = {}, single = {} }
 		for _, d in ipairs(SG.DEFS) do
@@ -650,7 +650,7 @@ function Page.BuildGroups(canvas, width)
 					FillCard(c, item.key, item.ind)
 					c:Show()
 				elseif s == "single" then
-					more:SetText(string.format(TEXT.more, #items - perLine + 1))
+					more:SetText(string.format(W.Tr(TEXT.more), #items - perLine + 1))
 					more:ClearAllPoints()
 					if narrow then
 						more:SetPoint("LEFT", secLabel[s], "RIGHT", 8, 0)
@@ -969,7 +969,7 @@ function Page.BuildGroups(canvas, width)
 			typedMsg:SetText("")
 			Changed(inst.ind)
 		else
-			typedMsg:SetText(debuff and string.format(TEXT.debuffSpell, debuff) or TEXT.noSpell)
+			typedMsg:SetText(debuff and string.format(W.Tr(TEXT.debuffSpell), debuff) or W.Tr(TEXT.noSpell))
 		end
 	end
 	local addY = top + 20 + G.rows * G.rowH + 6
@@ -1210,7 +1210,7 @@ function Page.BuildGroups(canvas, width)
 		if not inst.ind and not inst.group then
 			inst.ind = list[1]
 		end
-		show:SetText(inst.el == "raid" and TEXT.show or TEXT.showParty)
+		show:SetText(W.Tr(inst.el == "raid" and TEXT.show or TEXT.showParty))
 		local raid = inst.el == "raid"
 		sizeLabel:SetShown(raid)
 		for _, b in ipairs(sizes.buttons) do
@@ -1232,11 +1232,11 @@ function Page.BuildGroups(canvas, width)
 		end
 		local def = key and SG.DEF[key]
 		local debuff = def and def.scope == "debuff"
-		heading:SetText(key and def.label or Page.Name(ind))
-		scope:SetText(def and (def.scope == "own" and SG.ClassName(SG.SpecOf(inst.spec)) or (def.scope == "all" and TEXT.sections.all)
-			or TEXT.sections.debuff) or "")
-		blurb:SetText(def and def.tip or "")
-		placeBtn:SetText(ind and (ind.kind == "group" and TEXT.off or TEXT.remove) or TEXT.on)
+		heading:SetText(key and W.Tr(def.label) or Page.Name(ind))
+		scope:SetText(def and (def.scope == "own" and SG.ClassName(SG.SpecOf(inst.spec)) or (def.scope == "all" and W.Tr(TEXT.sections.all))
+			or W.Tr(TEXT.sections.debuff)) or "")
+		blurb:SetText(def and (W.Tr(def.tip) or "") or "")
+		placeBtn:SetText(W.Tr(ind and (ind.kind == "group" and TEXT.off or TEXT.remove) or TEXT.on))
 		resetBtn:SetShown(ind ~= nil and ind.kind == "group")
 		-- the spells (a group's); a single spell has none
 		local sel = Sel()
@@ -1248,7 +1248,7 @@ function Page.BuildGroups(canvas, width)
 					on = on + 1
 				end
 			end
-			spellsLabel:SetText(debuff and TEXT.kinds or string.format(TEXT.spells, on, #all))
+			spellsLabel:SetText(debuff and W.Tr(TEXT.kinds) or string.format(W.Tr(TEXT.spells), on, #all))
 			local maxOff = math.max(0, #lines - G.rows)
 			offset = math.min(offset, maxOff)
 		else
@@ -1300,7 +1300,7 @@ function Page.BuildGroups(canvas, width)
 		if hasColour then
 			controls.wheel:Refresh()
 			local e = inst.colourSpell and ind.order == "list" and inst.colourSpell
-			colourLabel:SetText(e and string.format(TEXT.colourOf, SG.Name({ main = e })) or TEXT.colour)
+			colourLabel:SetText(e and string.format(W.Tr(TEXT.colourOf), SG.Name({ main = e })) or W.Tr(TEXT.colour))
 		end
 		local typedColour = ind ~= nil and (ind.kind == "debuff" or (isGroup and debuff))
 		byLabel:SetShown(typedColour)
