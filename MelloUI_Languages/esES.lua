@@ -3109,6 +3109,8 @@ Lang:Add("esES", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "Pantalla personal: tamaño y color del texto para todo su texto.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Mapa: Solo las misiones seguidas y Solo la misión enfocada cambian el mapa abierto al instante.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Texto chino: títulos y encabezados en su tamaño correcto, y caracteres chinos en lugar de recuadros.", -- draft
+	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "Diseñador de placas de nombre: la vista previa lleva el aspecto de tus placas, también el conjunto de marcos Oldschool y el modo oscuro.", -- draft
+	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise: su relleno de maná, ira y energía ahora se ve en las barras de acción de MelloUI.", -- draft
 	["Percent Position"] = "Posición del porcentaje", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Dónde se muestran los porcentajes de salud y poder: junto a las barras o centrados sobre ellas, como los números de Formas de druida.", -- draft
 	["Beside The Bars"] = "Junto a las barras", -- draft

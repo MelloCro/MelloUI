@@ -4088,6 +4088,18 @@ do
 		f.bar:ClearAllPoints()
 		f.bar:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", left, bottom)
 		f:SetSize(left + barW + right, bottom + barH + top)
+		-- (2.1.71; the user, 2026-11-22: "our nameplates in the nameplate preview dont match the actual nameplate look
+		-- depending on the selected theme or modifications") the look the live plates wear: Dark Mode's shade on the
+		-- bar's backing (its own call, as on a plate's), and a look's dress laid again on the sample as it is now (the
+		-- Nameplate Kit's frame set painting: its CP.OnDress puts `dressLay` on the sample)
+		local dm = MelloUI:GetModule("DarkMode")
+		if dm and dm.PreviewShade then
+			dm.PreviewShade("nameplates", f.bg)
+		end
+		f.barH = barH
+		if f.dressLay then
+			f.dressLay(f)
+		end
 		if Stage.Places(f, k, left, right, top, bottom, barW, barH) then
 			Stage.Again(f)
 		end
@@ -4182,9 +4194,10 @@ do
 	Stage.MOVES = { name = "name", cc = "cc", quest = "quest", swing = "swing", level = "level", raid = "raid",
 		debuffs = "debuffs", buffs = "buffs", cast = "cast", combo = "combo", threat = "threat", elite = "elite",
 		healthtext = "hp" }
-	-- what the sample grows round: the parts, the cast bar's icon (beside its bar, or under it in the game's layout) and
-	-- (2.1.70) the health numbers' percent (beside the number or the bar)
-	Stage.BOUNDS = { "castIcon", "hpPct" }
+	-- what the sample grows round: the parts, the cast bar's icon (beside its bar, or under it in the game's layout),
+	-- (2.1.70) the health numbers' percent (beside the number or the bar) and (2.1.71) a look's dress round the bar
+	-- (the Nameplate Kit's painting: its place, `dressBox`, while laid)
+	Stage.BOUNDS = { "castIcon", "hpPct", "dressBox" }
 	for _, field in pairs(Stage.MOVES) do
 		Stage.BOUNDS[#Stage.BOUNDS + 1] = field
 	end
@@ -4341,7 +4354,8 @@ do
 			picks = { enemy = true }, first = "enemy",
 			watch = { Nameplates = true, Auras = true, CooldownText = true, BarTextures = true, UIModifications = true,
 				Tweaks = true,   -- (Tweaks: Text Shade, the band behind the name -- 2026-10-16)
-				SwingTimers = true, PersonalDisplay = true },   -- (2.1.19: the swing badge's hosts)
+				SwingTimers = true, PersonalDisplay = true,   -- (2.1.19: the swing badge's hosts)
+				DarkMode = true },   -- (2.1.71: its shade on the bar's backing)
 			-- (2.1.24, the user's pick A: everything at once -- no Normal / Your target chips; parts dragged now: the
 			-- engine's own caption; the overlaps outlined after each paint)
 			Main = Stage.Main, Paint = Stage.Paint, Room = Stage.Room, parts = Stage.Parts, Empty = Stage.Empty,

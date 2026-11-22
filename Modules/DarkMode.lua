@@ -522,6 +522,21 @@ local function StyleNamePlateUnitFrame(unitFrame)
 	end
 end
 
+-- (2.1.71; the user, 2026-11-22: the Nameplate Designer's preview "dont match the actual nameplate look") a preview's
+-- stand-in for one of a group's game textures (the nameplates' sample: its bar's backing) shaded as that group's live
+-- ones while the group is on, and given back when it is not (Modules/Nameplates.lua's stage, each paint)
+function M.PreviewShade(group, tex)
+	if not (groups[group] and IsTexture(tex)) then
+		return
+	end
+	if Active(group) then
+		Shade(group, tex)
+	elseif groups[group][tex] then
+		groups[group][tex] = nil
+		Unshade(tex)
+	end
+end
+
 local function StyleNamePlate(plate)
 	if plate and not (plate.IsForbidden and plate:IsForbidden()) then
 		StyleNamePlateUnitFrame(plate.UnitFrame)

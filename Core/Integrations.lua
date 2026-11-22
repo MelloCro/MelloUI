@@ -9,7 +9,8 @@
 -- RareScanner in Core/RareScannerLook.lua; Polestar in Core/Overlaps.lua; GatherMate2 and HandyNotes in
 -- MapAddonPins' sources; HandyNotes: NPCs (Forever) in MelloUI_Map/MapTownMarks.lua (2.1.53); the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
 -- MelloUI:ClickCast; SharedMedia in Core/SharedMedia.lua (2.1.45: the sounds too); the bag addons in Core/Overlaps.lua's
--- "bags" job (2.1.49: MelloUI's bag window steps aside); AHledger's auction prices in Modules/Discard.lua (2.1.50). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
+-- "bags" job (2.1.49: MelloUI's bag window steps aside); AHledger's auction prices in Modules/Discard.lua (2.1.50);
+-- ManaRise in Modules/ManaRise.lua (2.1.71: MelloUI's action buttons handed to it). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
 -- but two quest trackers never show at once (Core/Overlaps.lua's questTracker stays).
 -- Shown by the configurator's Addons page (Core/AddonsPage.lua). Nothing at login: read when asked.
 --   I.GROUPS, I.LIST, I.ByKey     the addons by group, in the page's order
@@ -350,6 +351,16 @@ I.LIST = {
 	  url = "https://www.curseforge.com/wow/addons/lueur",
 	  does = { "While it scans the minimap for herbs and ore, MelloUI keeps the minimap and what hangs on it in place." },
 	  short = "The minimap stays in place while it scans", links = {} },
+	-- (2.1.71; the user, 2026-11-22: "manarise addon full compatibility") its resource fill on MelloUI's own action
+	-- buttons: Modules/ManaRise.lua hands them to its ManaRise_RegisterBarAddon (working while that call is there)
+	{ key = "ManaRise", name = "ManaRise", folders = { "ManaRise" }, group = "frames",
+	  url = "https://www.curseforge.com/wow/addons/manarise",
+	  does = { "Its mana, rage and energy fill on MelloUI's action bars, including the controller's display buttons." },
+	  short = "Its resource fill on MelloUI's action bars",
+	  links = {},
+	  parts = { { "its fill on MelloUI's action bars", function()
+		return type(rawget(_G, "ManaRise_RegisterBarAddon")) == "function"
+	  end } } },
 	{ key = "Clique", name = "Clique", folders = { "Clique" }, group = "frames",
 	  url = "https://www.curseforge.com/wow/addons/clique",
 	  does = { "Its click-casting on MelloUI's unit and group frames." },

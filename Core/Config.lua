@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.71", lines = {
+		"Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too.",
+		"ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars.",
+	} },
 	{ version = "2.1.70", lines = {
 		"Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar.",
 		"Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them.",
@@ -197,12 +201,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.67", lines = {
 		"Press and Hold Casting works on MelloUI's action bars.",
-	} },
-	{ version = "2.1.66", lines = {
-		"Cast Marks (off until turned on): your latency hatched at the end of each cast, and a mark for each tick of a channel.",
-		"Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker.",
-		"Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips.",
-		"Mail Recipients: no realm behind your own characters any more when the game names none.",
 	} },
 }
 local LINKS = {

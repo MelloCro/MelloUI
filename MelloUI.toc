@@ -101,6 +101,7 @@ Modules\OwnSpecialBars.lua
 Modules\OwnMicroMenu.lua
 Modules\OwnPadBars.lua
 Modules\MaxDps.lua
+Modules\ManaRise.lua
 Modules\DarkMode.lua
 Modules\Fonts.lua
 Modules\ClassIcons.lua

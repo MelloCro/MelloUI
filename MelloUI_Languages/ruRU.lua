@@ -3109,6 +3109,8 @@ Lang:Add("ruRU", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "Личная панель: размер и цвет для всего её текста.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Карта: «Только отслеживаемые задания» и «Только выбранное задание» сразу меняют открытую карту.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Китайский текст: заголовки нужного размера и китайские иероглифы вместо квадратов.", -- draft
+	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "Конструктор индикаторов: превью выглядит как ваши индикаторы, в том числе с набором рамок Oldschool и тёмным режимом.", -- draft
+	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise: заполнение маной, яростью и энергией теперь видно на панелях команд MelloUI.", -- draft
 	["Percent Position"] = "Положение процентов", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Где стоят проценты здоровья и энергии: рядом с полосами или по центру на них, как числа «Обликов друида».", -- draft
 	["Beside The Bars"] = "Рядом с полосами", -- draft

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.71
+
+- Nameplate Designer: the preview now wears the look your nameplates wear. With the Oldschool look, the frame set's painting round the health bar, the level in its round socket and your target's glow; with Dark Mode on, its darker bar backing. Before, the preview always showed the game's own plate.
+- ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars, the controller's display buttons too (before, it only reached the game's own buttons, which MelloUI's bars hide). On the Addons page, with its own switch.
+
 ## 2.1.70
 
 - Nameplates: Health Text Size, new (Nameplates > Enemies > Health text): the health numbers on the plates in the size you pick, smaller for small plates, the names as they are. Game's keeps the game's size.

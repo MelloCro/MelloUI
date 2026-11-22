@@ -3987,6 +3987,8 @@ Lang:Add("deDE", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "Persönliche Anzeige: Textgröße und Textfarbe für ihren gesamten Text.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Karte: Nur die verfolgten Quests und Nur die verfolgte Quest ändern die offene Karte sofort.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Chinesischer Text: Titel und Überschriften in der richtigen Größe und chinesische Zeichen statt Kästchen.", -- draft
+	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "Namensplaketten-Designer: Die Vorschau trägt das Aussehen deiner Plaketten, auch das Oldschool-Rahmenset und den Dunkelmodus.", -- draft
+	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise: Seine Mana-, Wut- und Energiefüllung erscheint jetzt auf den Aktionsleisten von MelloUI.", -- draft
 	["Percent Position"] = "Prozentposition", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Wo die Prozentwerte von Gesundheit und Kraft stehen: neben den Leisten oder mittig darauf wie die Zahlen der Druidengestalten.", -- draft
 	["Beside The Bars"] = "Neben den Leisten", -- draft

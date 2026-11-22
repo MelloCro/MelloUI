@@ -3109,6 +3109,8 @@ Lang:Add("zhCN", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "个人显示：所有文字的大小和颜色。", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "地图：“仅追踪的任务”和“仅聚焦的任务”会立即改变已打开的地图。", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "中文文本：标题和小标题恢复正常大小，中文字符不再显示为方框。", -- draft
+	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "姓名板设计器：预览与实际姓名板外观一致，包括怀旧框架套装和暗色模式。", -- draft
+	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise：其法力、怒气和能量填充现在会显示在 MelloUI 的动作条上。", -- draft
 	["Percent Position"] = "百分比位置", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "生命值和能量百分比显示的位置：在条旁边，或像德鲁伊形态的数字一样居中显示在条上。", -- draft
 	["Beside The Bars"] = "在条旁边", -- draft

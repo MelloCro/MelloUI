@@ -3109,6 +3109,8 @@ Lang:Add("koKR", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "개인 표시: 모든 글자의 크기와 색상.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "지도: 추적 중인 퀘스트만, 따라가는 퀘스트만 설정이 열린 지도에 바로 적용됩니다.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "중국어 글자: 제목과 머리글이 올바른 크기로 표시되고, 네모 대신 중국어 글자가 보입니다.", -- draft
+	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "이름표 디자이너: 미리 보기가 실제 이름표와 같은 모습을 보여 줍니다. 올드스쿨 프레임 세트와 다크 모드도 포함됩니다.", -- draft
+	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise: 마나, 분노, 기력 채우기가 이제 MelloUI의 행동 단축바에 표시됩니다.", -- draft
 	["Percent Position"] = "백분율 위치", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "생명력과 자원 백분율이 놓이는 곳: 바 옆, 또는 드루이드 변신의 숫자처럼 바 위 가운데.", -- draft
 	["Beside The Bars"] = "바 옆", -- draft
