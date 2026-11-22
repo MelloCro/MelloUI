@@ -177,6 +177,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.72", lines = {
+		"Nameplate Designer: the health number and the percent move and size on their own, and the names have a size.",
+		"Nameplates: the swing badge steps past the percent when it stands beside the bar.",
+		"Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it.",
+		"GatherMate2: every ore and every herb has its own icon on the map and the minimap.",
+	} },
 	{ version = "2.1.71", lines = {
 		"Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too.",
 		"ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars.",
@@ -198,9 +204,6 @@ local CHANGELOG = {
 		"Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars.",
 		"Edit Layout: move and size the totem and minion timers.",
 		"Edit Layout: move the battleground and zone objectives at the top of the screen.",
-	} },
-	{ version = "2.1.67", lines = {
-		"Press and Hold Casting works on MelloUI's action bars.",
 	} },
 }
 local LINKS = {

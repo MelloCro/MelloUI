@@ -74,6 +74,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 - **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, events. Its quests are Questie's: it needs Questie installed (2.1.52).
 - **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock. The **Icons** slider in the map's title row makes every icon on it bigger or smaller (50 to 200 %), other addons' icons such as Questie's too.
 - **RareScanner:** with RareScanner installed, its rares, treasures and events show on the map in MelloUI's look (2.1.43): MelloUI's icon on a plate, its rim gold with a glow for one you just saw, red for one you haven't found yet, muted for one you found before, and faded once it's killed or opened. Hover one for its name and state, click it to put your pin there. RareScanner decides what shows (its own filters and options); its icons on the minimap wear the same look.
+- **GatherMate2:** with GatherMate2 installed, its gathering nodes show on the map and the minimap in MelloUI's icons (2.1.61): each ore in its own colour (copper, tin, iron, mithril, thorium and the rest) and each herb drawn as itself (2.1.72), one icon each for fishing pools and treasures. GatherMate2 decides what shows (its filters, size and opacity); its tracking circle on the minimap stays its own. A node with no MelloUI icon keeps GatherMate2's picture. Switch it off on the Addons page (Use with MelloUI).
 - **Quest areas that touch:** areas whose places lie within about 120 yards of each other show one gold outline instead of a stack of rings (2.1.43). Each objective keeps its marks and its white dots where it is done; hover one of its marks and its own area shows lit inside the outline, which steps back with the other marks. The same on the game's own map and on the minimap (a minimap mark lifts when you hover it, as on the map).
 - **Smart Route:** a trail of red dots along real roads to wherever you're going, plus an arrow. Cut a corner or take a shortcut? It just keeps going instead of nagging you to turn around. It learns the roads you walk.
 - **Service Finder:** need a mailbox, a repair guy, an inn, a trainer? Little icons under the minimap. Click one, the arrow takes you to the nearest.
@@ -1781,6 +1782,12 @@ is held on (it comes back as you had it when you switch it off). While another b
 ArkInventory or BetterBags (2.1.49; GitHub issue #8) -- this window and its bank by kind step aside by themselves, so B
 opens one bag window (Core/Overlaps.lua's "bags" job; each addon's card on the Addons page, its Use with MelloUI off
 brings MelloUI's back).
+
+**Loot Sparkles** (0.20.1, off; Nameplates > Objects): the game's sparkle on lootable quest items kept, and golden
+glints over the ore vein, herb or quest object you walk up to (the game's soft targeting picks it). While
+[Lueur](https://www.curseforge.com/wow/addons/lueur) is on (2.1.72), its glow does that: the glints step aside and
+leave soft targeting's settings to it (Core/Overlaps.lua's "gatherGlow" job; its Use with MelloUI off on the
+Addons page brings the glints back). The quest item sparkle stays MelloUI's.
 
 **Loot Flight** (0.21.3, on; Animations > Bars & Windows): an item you loot flies from where you picked it up
 (where the pointer was: on the corpse, or on the loot window's row) into its slot in the window, laid out

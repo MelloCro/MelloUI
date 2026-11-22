@@ -66,6 +66,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		castHeight = 0,
 		-- (2.1.70) the game's health numbers on the plates: their size, 0 the game's; the percent beside the bar
 		healthTextSize = 0, healthPercentBeside = false,
+		-- (2.1.72) the percent's own size (0: the number's) and the names' (0: the game's)
+		healthPctSize = 0, nameSize = 0,
 		-- (the band behind the names: Text Shade's, Look > General > Text -- the
 		-- user, 2026-10-16; Name Shade's key dropped by Core.lua's MERGES)
 	},
@@ -90,6 +92,14 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  desc = "The size of the health numbers on the nameplates. Game's: the size the game gives them, the name's." },
 		{ type = "toggle", key = "healthPercentBeside", name = "Percent Beside The Bar",
 		  desc = "When the game shows both the health number and the percent on the nameplates (its Nameplates options), the number stands in the middle of the bar and the percent beside it, right of the level." },
+		-- (2.1.72; Wolvegrimm, Discord 2026-11-22: "have the % and total value inside the bar but move them separately
+		-- ... I also like to have 100% smaller than the actual values", "if we could also select the size of the names")
+		{ type = "slider", key = "healthPctSize", name = "Percent Size", min = 0, max = 24, step = 1, new = "2.1.72",
+		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Number's" or string.format("%d px", v) end,
+		  desc = "The size of the health percent on the nameplates. Number's: the health number's size." },
+		{ type = "slider", key = "nameSize", name = "Name Size", min = 0, max = 24, step = 1, new = "2.1.72",
+		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Game's" or string.format("%d px", v) end,
+		  desc = "The size of the names on the nameplates. Game's: the size the game gives them." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",
 		  desc = "A large crowd-control icon above the name. Needs the game's Crowd Control nameplate option on." },
@@ -281,7 +291,8 @@ end
 -- option's (CC Icon Size, Quest Icon Size): the stage reads and writes it through the place
 --------------------------------------------------------------------------------
 M.PART_SIZE = { cc = "ccSize", quest = "questIconSize", cast = "castHeight",   -- (2.1.53: the cast bar's height)
-	healthtext = "healthTextSize" }   -- (2.1.70: the health numbers' size)
+	healthtext = "healthTextSize",   -- (2.1.70: the health numbers' size)
+	healthpct = "healthPctSize", name = "nameSize" }   -- (2.1.72: the percent's own, the names')
 -- (2.1.52; the configurator pass in the test VM, 2026-11-14: two switches hid one part -- the preview's Show and the
 -- module's own; the user: "Yes, go ahead") a part with a switch of the module's own is shown and hidden by that
 -- switch alone: the preview offers no Show row and no Hide for it (Stage.Part), its row on the part's tab the one. A
@@ -370,7 +381,7 @@ function M.SetPartPlace(key, t)
 	end
 	-- (2.1.70; the user: "make it so that people can move, enable and disable the Nameplate Text on the preview") the
 	-- health numbers placed or shown while the game shows none of them: the game's own number and percent switched on
-	if key == "healthtext" and type(t) == "table" and t.show ~= false then
+	if (key == "healthtext" or key == "healthpct") and type(t) == "table" and t.show ~= false then
 		M.ShowHealthText()
 	end
 	local all = {}
@@ -403,7 +414,8 @@ end
 function M.HasLayout()
 	local db = M.db
 	return db ~= nil and ((type(db.parts) == "table" and next(db.parts) ~= nil) or db.plateSize == true
-		or (Num(db.castHeight) or 0) > 0 or (Num(db.healthTextSize) or 0) > 0 or db.healthPercentBeside == true)
+		or (Num(db.castHeight) or 0) > 0 or (Num(db.healthTextSize) or 0) > 0 or db.healthPercentBeside == true
+		or (Num(db.healthPctSize) or 0) > 0 or (Num(db.nameSize) or 0) > 0)
 end
 
 -- (2.1.53; the user, 2026-11-15: "the CastBar shown in the Preview does not match in actual Combat, the castbar is
@@ -689,8 +701,9 @@ end
 
 -- the game's anchors for the three (Blizzard_NamePlateUnitFrame.lua UpdateAnchors: the percent at the bar's right,
 -- the number left of it, the single text left of that; over the bar, or over its top while the name stands above it
--- with the numbers outside)
-local function GameTextHome(bar, single, value, pct)
+-- with the numbers outside). TextSpot: the percent's own spot (point, the bar's point, x, y) -- (2.1.72) the number's
+-- while the percent stands on a place of its own
+local function TextSpot()
 	local styles = NamePlateConstants and NamePlateConstants.NAME_ANCHOR_STYLES
 	local opts = rawget(_G, "NamePlateSetupOptions")
 	local style = styles and SetupOption("unitNameAnchorStyle", styles.InsideHealthBar)
@@ -698,20 +711,35 @@ local function GameTextHome(bar, single, value, pct)
 	local classic = type(opts) == "table" and opts.useClassicHealthBar
 	inside = not Secret(inside) and inside == true
 	classic = not Secret(classic) and classic == true
+	if styles and style == styles.AboveHealthBar and not inside then
+		return "BOTTOMRIGHT", "TOPRIGHT", -4, 2, true
+	end
+	return "RIGHT", "RIGHT", -4, (styles and style == styles.CenteredAboveHealthBar and classic) and -0.5 or 0, false
+end
+M.TextSpot = TextSpot
+
+local function GameTextHome(bar, single, value, pct)
+	local p, rp, x, y, top = TextSpot()
 	for _, fs in ipairs({ single, value, pct }) do
 		fs:ClearAllPoints()
 	end
-	if styles and style == styles.AboveHealthBar and not inside then
-		pct:SetPoint("BOTTOMRIGHT", bar, "TOPRIGHT", -4, 2)
+	pct:SetPoint(p, bar, rp, x, y)
+	if top then
 		value:SetPoint("BOTTOMRIGHT", pct, "BOTTOMLEFT", -2, 0)
 		single:SetPoint("BOTTOMRIGHT", value, "BOTTOMLEFT", 2, 0)
 		return
 	end
-	pct:SetPoint("RIGHT", bar, "RIGHT", -4, (styles and style == styles.CenteredAboveHealthBar and classic) and -0.5 or 0)
 	value:SetPoint("RIGHT", pct, "LEFT", -2, 0)
 	single:SetPoint("RIGHT", value, "LEFT", 2, 0)
 end
 
+-- (2.1.72; Wolvegrimm, Discord 2026-11-22: "have the % and total value inside the bar but move them separately ... I
+-- also like to have 100% smaller than the actual values") the number and the percent two parts of the Nameplate
+-- Designer's: "healthtext" the number (and the single text: the number or the percent shown alone), "healthpct" the
+-- percent -- each on its own place, shown or hidden on its own, the percent at Percent Size (0: the number's). The
+-- game's anchors laid first while anything moves, then each where it goes: the number on its place, else centred
+-- (Percent Beside The Bar), else -- the percent gone to its own place -- on the percent's spot at the bar's right; the
+-- percent on its place, else beside the bar, else right of a placed number
 function M.LayHealthText(uf)
 	local hb = uf and uf.HealthBarsContainer
 	local bar = hb and hb.healthBar
@@ -721,16 +749,16 @@ function M.LayHealthText(uf)
 	end
 	local db = M.db
 	local size = math.floor((Num(db and db.healthTextSize) or 0) + 0.5)
+	local psize = math.floor((Num(db and db.healthPctSize) or 0) + 0.5)
 	local beside = db ~= nil and db.healthPercentBeside == true
-	local place = M.PartPlace("healthtext")
+	local place, pplace = M.PartPlace("healthtext"), M.PartPlace("healthpct")
 	local was = M.textLaid[uf]
-	local texts = { single, value, pct }
-	if size <= 0 and not beside and not place then
+	local game = SetupOption("healthBarFontHeight", 16)
+	if size <= 0 and psize <= 0 and not beside and not place and not pplace then
 		if was then
 			M.textLaid[uf] = nil
-			local h = SetupOption("healthBarFontHeight", 16)
-			for _, fs in ipairs(texts) do
-				fs:SetTextHeight(h)
+			for _, fs in ipairs({ single, value, pct }) do
+				fs:SetTextHeight(game)
 				fs:SetAlpha(1)
 			end
 			if was ~= "size" then
@@ -739,13 +767,23 @@ function M.LayHealthText(uf)
 		end
 		return
 	end
-	M.textLaid[uf] = (place and "placed") or (beside and "beside") or "size"
-	local h = size > 0 and size or SetupOption("healthBarFontHeight", 16)
-	local alpha = (place and place.show == false) and 0 or 1
-	for _, fs in ipairs(texts) do
-		fs:SetTextHeight(h)
-		fs:SetAlpha(alpha)
+	local moved = (place or pplace or beside) and true or false
+	M.textLaid[uf] = moved and "moved" or "size"
+	local h = size > 0 and size or game
+	single:SetTextHeight(h)
+	value:SetTextHeight(h)
+	pct:SetTextHeight(psize > 0 and psize or h)
+	local a = (place and place.show == false) and 0 or 1
+	single:SetAlpha(a)
+	value:SetAlpha(a)
+	pct:SetAlpha((pplace and pplace.show == false) and 0 or 1)
+	if not moved then
+		if was == "moved" then
+			GameTextHome(bar, single, value, pct)
+		end
+		return
 	end
+	GameTextHome(bar, single, value, pct)
 	if place then
 		M.LayPart(value, bar, place)
 		M.LayPart(single, bar, place)
@@ -754,17 +792,60 @@ function M.LayHealthText(uf)
 		single:SetPoint("CENTER", bar, "CENTER", 0, 0)
 		value:ClearAllPoints()
 		value:SetPoint("CENTER", bar, "CENTER", 0, 0)
-	elseif was == "beside" or was == "placed" then
-		GameTextHome(bar, single, value, pct)
+	elseif pplace then
+		local p, rp, x, y = TextSpot()
+		value:ClearAllPoints()
+		value:SetPoint(p, bar, rp, x, y)
 	end
-	if beside then
-		local lf = uf.PlayerLevelDiffFrame
-		local by = (lf and not M.PartPlace("level") and MelloUI.Safe.Call(lf, "IsShown") == true) and lf or bar
+	if pplace then
+		M.LayPart(pct, bar, pplace)
+	elseif beside then
 		pct:ClearAllPoints()
-		pct:SetPoint("LEFT", by, "RIGHT", 3, 0)
+		pct:SetPoint("LEFT", M.BesideOf(uf, bar), "RIGHT", 3, 0)
 	elseif place then
 		pct:ClearAllPoints()
 		pct:SetPoint("LEFT", value, "RIGHT", 2, 0)
+	end
+end
+
+-- what the percent stands beside: the level badge while it shows on the bar's right, else the bar
+function M.BesideOf(uf, bar)
+	local lf = uf.PlayerLevelDiffFrame
+	return (lf and not M.PartPlace("level") and MelloUI.Safe.Call(lf, "IsShown") == true) and lf or bar
+end
+
+-- (2.1.72) the swing badge's neighbour on your target's plate (Core/SwingBadge.lua): the percent while it stands beside
+-- the bar there (the badge steps past it -- Wolvegrimm: "The new Nameplate life % outside the bar gets hidden by the
+-- Swing Timer"), else nil (the badge beside the level badge, as before)
+function M:BesideAnchor(uf)
+	local bar = uf and uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar
+	local pct = bar and bar.LeftText
+	local db = M.db
+	if pct and db and db.healthPercentBeside == true and not M.PartPlace("healthpct") and M.textLaid[uf] == "moved" then
+		return pct
+	end
+	return nil
+end
+
+-- (2.1.72; Wolvegrimm: "if we could also select the size of the names it would be great!") Name Size on a plate's name,
+-- its cover (Show Names As) and its measure (the band behind it), after the game's UpdateAnchors (M.LayGameParts: its
+-- ApplyFrameOptions set the game's height just before); 0 after a size: the game's height again
+M.nameLaid = setmetatable({}, { __mode = "k" })   -- [unit frame] = true while a Name Size is on its name
+function M.LayNameSize(uf)
+	local name = uf and uf.name
+	if not name then
+		return
+	end
+	local size = math.floor((Num(M.db and M.db.nameSize) or 0) + 0.5)
+	if size <= 0 and not M.nameLaid[uf] then
+		return
+	end
+	M.nameLaid[uf] = size > 0 or nil
+	local h = size > 0 and size or SetupOption("healthBarFontHeight", 16)
+	for _, fs in ipairs({ name, Plate.coverOf[name] or false, Plate.measureOf[uf] or false }) do
+		if fs and fs.SetTextHeight then
+			fs:SetTextHeight(h)
+		end
 	end
 end
 
@@ -775,6 +856,7 @@ function M.LayGameParts(uf)
 	end
 	M.LayBars(uf, hb)
 	M.LayHealthText(uf)
+	M.LayNameSize(uf)   -- (2.1.72)
 	local auras = uf.AurasFrame
 	for key, def in pairs(M.GAME_PARTS) do
 		local region = def[3] and (auras and auras[def[1]]) or uf[def[1]]
@@ -3561,8 +3643,13 @@ function M:OnSettingChanged(key, value, db)
 		Combo.Update()
 		return
 	end
-	if key == "healthTextSize" or key == "healthPercentBeside" then
+	if key == "healthTextSize" or key == "healthPercentBeside" or key == "healthPctSize" or key == "nameSize" then
 		M.LayShown(true)   -- (2.1.70: every shown plate's numbers, a setting taken back the game's again)
+		-- (2.1.72) the swing badge beside the percent, or back beside the level badge
+		local sb = MelloUI.SwingBadge
+		if sb and sb.Lay then
+			sb.Lay()
+		end
 		return
 	end
 	if key == "swingSize" then
@@ -3831,30 +3918,40 @@ do
 		f.hp = CreateFrame("Frame", nil, f.top)
 		f.hp:EnableMouse(false)
 		f.hpNum = Stage.Text(f.hp, "SystemFont_NamePlate")
-		f.hpPct = Stage.Text(f.hp, "SystemFont_NamePlate")
-		f.hpPct:SetText(Stage.HP_PCT)
 		f.hpOne = Stage.Text(f.hp, "SystemFont_NamePlate")
 		f.hpOne:SetText("")
+		-- (2.1.72; Wolvegrimm: "move them separately") the percent a part of its own: its frame round it, the region
+		f.hpP = CreateFrame("Frame", nil, f.top)
+		f.hpP:EnableMouse(false)
+		f.hpPct = Stage.Text(f.hpP, "SystemFont_NamePlate")
+		f.hpPct:SetText(Stage.HP_PCT)
+		-- (2.1.72, Name Size) the name's own height, for Name Size's 0
+		local _, nameH = f.name:GetFont()
+		f.nameH = Fin(nameH)
 		return f
 	end
 
 	-- (2.1.70) the health numbers as the live plates lay them before a place (M.LayHealthText): what the game shows of
-	-- them (both while it shows neither: what showing the part switches on), Health Text Size, the game's anchors or
-	-- Percent Beside The Bar's; the part's frame round the number (its home read off it; a place laid by Stage.Places,
-	-- then Stage.HealthOnPlace)
+	-- them (both while it shows neither: what showing the part switches on), Health Text Size and (2.1.72) Percent Size,
+	-- the game's anchors or Percent Beside The Bar's; each part's frame round its text (its home read off it; a place
+	-- laid by Stage.Places, then Stage.HealthRelate)
 	function Stage.LayHealth(f, db, ours)
 		local num, pct = M.HealthBits()
 		local size = ours and math.floor((Num(db.healthTextSize) or 0) + 0.5) or 0
+		local psize = ours and math.floor((Num(db.healthPctSize) or 0) + 0.5) or 0
 		local h = size > 0 and size or SetupOption("healthBarFontHeight", Stage.HP_H)
 		f.hpNum:SetText(num and Stage.HP_NUM or Stage.HP_PCT)
-		f.hpPct:SetShown(num and pct and true or false)
+		local both = num and pct and true or false
+		f.hpPct:SetShown(both)
+		f.hpP:SetShown(both)
 		for _, t in ipairs({ f.hpNum, f.hpPct, f.hpOne }) do
 			if t.SetTextHeight then   -- (the game's call on the live plates' numbers: the sample's the same)
-				t:SetTextHeight(h)
+				t:SetTextHeight((t == f.hpPct and psize > 0) and psize or h)
 			end
 		end
 		local beside = ours and db.healthPercentBeside == true
 		f.hp.beside = beside
+		GameTextHome(f.bar, f.hpOne, f.hpNum, f.hpPct)
 		if beside then
 			f.hpOne:ClearAllPoints()
 			f.hpOne:SetPoint("CENTER", f.bar, "CENTER", 0, 0)
@@ -3862,25 +3959,45 @@ do
 			f.hpNum:SetPoint("CENTER", f.bar, "CENTER", 0, 0)
 			f.hpPct:ClearAllPoints()
 			f.hpPct:SetPoint("LEFT", M.PartPlace("level") and f.bar or f.level, "RIGHT", 3, 0)
-		else
-			GameTextHome(f.bar, f.hpOne, f.hpNum, f.hpPct)
 		end
 		f.hp:ClearAllPoints()
 		f.hp:SetPoint("TOPLEFT", f.hpNum, "TOPLEFT")
 		f.hp:SetPoint("BOTTOMRIGHT", f.hpNum, "BOTTOMRIGHT")
+		f.hpP:ClearAllPoints()
+		f.hpP:SetPoint("TOPLEFT", f.hpPct, "TOPLEFT")
+		f.hpP:SetPoint("BOTTOMRIGHT", f.hpPct, "BOTTOMRIGHT")
 	end
 
-	-- (2.1.70) the numbers on their place (Stage.Places laid the frame there): the frame the number's size, the number
-	-- and the single text on it, the percent right of the number unless beside the bar -- the live plates' layout
-	function Stage.HealthOnPlace(f)
-		local w = Fin(f.hpNum:GetStringWidth()) or 20
-		local h = Fin(f.hpNum:GetStringHeight()) or Stage.HP_H
-		f.hp:SetSize(math.max(1, w), math.max(1, h))
-		f.hpNum:ClearAllPoints()
-		f.hpNum:SetPoint("CENTER", f.hp, "CENTER", 0, 0)
-		f.hpOne:ClearAllPoints()
-		f.hpOne:SetPoint("CENTER", f.hp, "CENTER", 0, 0)
-		if not f.hp.beside then
+	-- a part's frame laid on its place (Stage.Places): the frame its text's size, the text on it
+	local function OnFrame(frame, text, also)
+		local w = Fin(text:GetStringWidth()) or 20
+		local h = Fin(text:GetStringHeight()) or Stage.HP_H
+		frame:SetSize(math.max(1, w), math.max(1, h))
+		text:ClearAllPoints()
+		text:SetPoint("CENTER", frame, "CENTER", 0, 0)
+		if also then
+			also:ClearAllPoints()
+			also:SetPoint("CENTER", frame, "CENTER", 0, 0)
+		end
+	end
+
+	-- (2.1.70, 2.1.72) the numbers after every part is on its place -- the live plates' layout (M.LayHealthText): the
+	-- number (and the single text) on its frame while placed, else on the percent's spot at the bar's right once the
+	-- percent has a place of its own; the percent on its frame while placed, else right of a placed number (unless
+	-- beside the bar)
+	function Stage.HealthRelate(f)
+		local place = not f.noPlaces and f.hp:IsShown() and M.PartPlace("healthtext")
+		local pplace = not f.noPlaces and f.hpP:IsShown() and M.PartPlace("healthpct")
+		if place then
+			OnFrame(f.hp, f.hpNum, f.hpOne)
+		elseif pplace and not f.hp.beside then
+			local p, rp, x, y = M.TextSpot()
+			f.hpNum:ClearAllPoints()
+			f.hpNum:SetPoint(p, f.bar, rp, x, y)
+		end
+		if pplace then
+			OnFrame(f.hpP, f.hpPct)
+		elseif place and not f.hp.beside then
 			f.hpPct:ClearAllPoints()
 			f.hpPct:SetPoint("LEFT", f.hpNum, "RIGHT", 2, 0)
 		end
@@ -3966,7 +4083,10 @@ do
 				sb.SampleFill(f.swing, Stage.SWING_FILL)   -- (2.1.20: its ring as a fight's, filled part of the way)
 			end
 			f.swing:ClearAllPoints()
-			f.swing:SetPoint("LEFT", f.level, "RIGHT", gap, 0)   -- (in its own units: the plate's gap, scaled with it)
+			-- (in its own units: the plate's gap, scaled with it; 2.1.72: past the percent while it stands beside the
+			-- bar, as on your target's plate -- Core/SwingBadge.lua, NP:BesideAnchor)
+			local pctBeside = ours and db.healthPercentBeside == true and not M.PartPlace("healthpct")
+			f.swing:SetPoint("LEFT", pctBeside and f.hpPct or f.level, "RIGHT", gap, 0)
 		end
 		local swingW = swing and (gap * k + badge) or 0
 		f.threat:SetShown(ours and target and db.threatLine ~= false)
@@ -3997,6 +4117,15 @@ do
 		end
 		if f.band then
 			f.band:SetShown(ours and Plate.Shade())
+		end
+		-- (2.1.72) Name Size on the sample's name and its measure (the band behind it), as M.LayNameSize on a plate's
+		local nsize = ours and math.floor((Num(db.nameSize) or 0) + 0.5) or 0
+		local nh = nsize > 0 and nsize or f.nameH
+		if nh and f.name.SetTextHeight then
+			f.name:SetTextHeight(nh)
+			if f.measure and f.measure.SetTextHeight then
+				f.measure:SetTextHeight(nh)
+			end
 		end
 		local nameH = Fin(f.name:GetStringHeight()) or 12
 		-- your debuffs (Auras' row: its size; the game's row: the game's) over the name, their numbers while a
@@ -4140,11 +4269,10 @@ do
 					M.LayCast(r, f.castIcon, f.castText, f.bar, place, M.CastHeight(), barW)
 				elseif key == "threat" then
 					r:SetWidth(barW)
-				elseif key == "healthtext" then
-					Stage.HealthOnPlace(f)   -- (2.1.70)
 				end
 			end
 		end
+		Stage.HealthRelate(f)   -- (2.1.70, 2.1.72: the numbers after every part is on its place)
 		for _, field in pairs(Stage.BOUNDS) do
 			local r = f[field]
 			if r and r:IsShown() then
@@ -4193,7 +4321,7 @@ do
 	-- (2.1.70: the game's health numbers too)
 	Stage.MOVES = { name = "name", cc = "cc", quest = "quest", swing = "swing", level = "level", raid = "raid",
 		debuffs = "debuffs", buffs = "buffs", cast = "cast", combo = "combo", threat = "threat", elite = "elite",
-		healthtext = "hp" }
+		healthtext = "hp", healthpct = "hpP" }   -- (2.1.72: the percent its own part)
 	-- what the sample grows round: the parts, the cast bar's icon (beside its bar, or under it in the game's layout),
 	-- (2.1.70) the health numbers' percent (beside the number or the bar) and (2.1.71) a look's dress round the bar
 	-- (the Nameplate Kit's painting: its place, `dressBox`, while laid)
@@ -4203,9 +4331,11 @@ do
 	end
 	Stage.SIZES = { cc = { min = 16, max = 80, step = 1 }, quest = { min = 10, max = 48, step = 1 },
 		level = { min = 8, max = 40, step = 1 }, raid = { min = 8, max = 48, step = 1 }, cast = { min = 4, max = 30, step = 1 },
-		elite = { min = 8, max = 48, step = 1 }, healthtext = { min = 6, max = 24, step = 1 } }
+		elite = { min = 8, max = 48, step = 1 }, healthtext = { min = 6, max = 24, step = 1 },
+		healthpct = { min = 6, max = 24, step = 1 }, name = { min = 6, max = 24, step = 1 } }   -- (2.1.72)
 	-- which side of a part its size is (its home's): the width of the icons, the cast bar's and the numbers' height
-	Stage.SIZE_OF = { cc = "w", quest = "w", level = "w", raid = "w", cast = "h", elite = "w", healthtext = "h" }
+	Stage.SIZE_OF = { cc = "w", quest = "w", level = "w", raid = "w", cast = "h", elite = "w", healthtext = "h",
+		healthpct = "h", name = "h" }   -- (2.1.72: the percent's and the name's height)
 	Stage.homes = {}
 	function Stage.Part(key, label, field, text)
 		local part = { key = key, label = label, drag = false, text = text,
@@ -4256,7 +4386,8 @@ do
 			Stage.parts = {
 				Stage.Part("name", "Name", "name", true),
 				Stage.Part("health", "Health bar", "bg"),
-				Stage.Part("healthtext", "Health text", "hp"),   -- (2.1.70: the game's health numbers)
+				Stage.Part("healthtext", "Health number", "hp"),   -- (2.1.70: the game's health numbers)
+				Stage.Part("healthpct", "Health percent", "hpP"),   -- (2.1.72: the percent its own part)
 				Stage.Part("threat", "Threat line", "threat"),
 				Stage.Part("combo", "Combo points", "combo"),
 				Stage.Part("cc", "CC icon", "cc"),

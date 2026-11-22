@@ -268,7 +268,8 @@ I.LIST = {
 	  end },
 	{ key = "GatherMate2", name = "GatherMate2", folders = { "GatherMate2" }, group = "map",
 	  url = "https://www.curseforge.com/wow/addons/gathermate2",
-	  does = { "Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons, one a kind: herbs, veins, fishing pools and treasures." },
+	  -- (2.1.72) each ore and herb its own icon (MelloUI_Map/MapAddonPins.lua, Gather.NODE)
+	  does = { "Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons: each ore and each herb its own (copper, iron, peacebloom ...), and one each for fishing pools and treasures." },
 	  short = "Its gathering nodes in MelloUI's icons",
 	  links = { { "Map layers", map = true } },
 	  parts = { { "its nodes", function()
@@ -347,10 +348,15 @@ I.LIST = {
 	  url = "https://www.curseforge.com/wow/addons/node-sight",
 	  does = { "While it scans the minimap for herbs and ore, MelloUI keeps the minimap and what hangs on it in place." },
 	  short = "The minimap stays in place while it scans", links = {} },
-	{ key = "Lueur", name = "Lueur", folders = { "Lueur" }, group = "map", switch = false,
+	-- (2.1.72; the user, 2026-11-22: "full compatibility with Lueur addon") its glow on what you walk up to: Loot
+	-- Sparkles' gathering glints and their hold on soft targeting step aside (Core/Overlaps.lua, job gatherGlow)
+	{ key = "Lueur", name = "Lueur", folders = { "Lueur" }, group = "map",
 	  url = "https://www.curseforge.com/wow/addons/lueur",
-	  does = { "While it scans the minimap for herbs and ore, MelloUI keeps the minimap and what hangs on it in place." },
-	  short = "The minimap stays in place while it scans", links = {} },
+	  does = { "Its glow on the ore, herb or quest object you walk up to: MelloUI's Loot Sparkles glints step aside while it is on, and leave the game's soft targeting settings to it.",
+		"While it scans the minimap for herbs and ore, MelloUI keeps the minimap and what hangs on it in place." },
+	  short = "Its glow in place of MelloUI's gathering glints",
+	  links = { { "Loot Sparkles: Ore Veins", id = "Sparkles.ore" } },
+	  parts = { { "its own switch", function() return Global("LueurDB") ~= nil end } } },
 	-- (2.1.71; the user, 2026-11-22: "manarise addon full compatibility") its resource fill on MelloUI's own action
 	-- buttons: Modules/ManaRise.lua hands them to its ManaRise_RegisterBarAddon (working while that call is there)
 	{ key = "ManaRise", name = "ManaRise", folders = { "ManaRise" }, group = "frames",
@@ -707,6 +713,14 @@ function I.Jobs()
 	-- (2.1.49) the bag window
 	local bags = By("bags")
 	rows[#rows + 1] = { "Bag window", bags or "MelloUI's Bag Window", bags and "MelloUI's bag window steps aside" or nil }
+	-- (2.1.72) the glow on what you walk up to: Lueur's while it is on, else Loot Sparkles' glints (with it or
+	-- Lueur there only)
+	local glow = By("gatherGlow")
+	local sparkles = MelloUI.modules and MelloUI.modules.Sparkles
+	if glow or Used("Lueur") or (type(sparkles) == "table" and sparkles.isEnabled) then
+		rows[#rows + 1] = { "Glow on the ore or herb you walk up to", glow or "MelloUI's Loot Sparkles",
+			glow and "MelloUI's glints step aside" or nil }
+	end
 	-- (2.1.57) one owner a kind: the rares RareScanner's while it shows them (RL.Rares), a HandyNotes plugin's aside
 	local RL = rawget(MelloUI, "RareScannerLook")
 	local rares = Used("RareScanner")

@@ -248,7 +248,8 @@ L.pages = {
 			{ key = "enemies", label = "Enemies", line = "Enemies' and NPCs' plates",
 				stage = { kind = "nameplate", pick = "enemy" }, parts = {
 				{ key = "name", label = "Name", stage = "name" }, { key = "health", label = "Health bar", stage = "health" },
-				{ key = "healthtext", label = "Health text", stage = "healthtext" },   -- (2.1.70: the game's numbers)
+				{ key = "healthtext", label = "Health number", stage = "healthtext" },   -- (2.1.70: the game's numbers)
+				{ key = "healthpct", label = "Health percent", stage = "healthpct" },   -- (2.1.72: its own part)
 				{ key = "threat", label = "Threat line", stage = "threat" },
 				{ key = "combo", label = "Combo points", stage = "combo" },
 				{ key = "cc", label = "CC icon", stage = "cc" }, { key = "quest", label = "Quest icon", stage = "quest" },
@@ -919,7 +920,11 @@ function L.Define(R, Link)
 	-- (2.1.70; Wolvegrimm: smaller numbers on small plates, the number in the bar and the percent beside it -- on the
 	-- health numbers' own tab, the Designer's part the user asked for the same day)
 	R("Nameplates", "enemies:healthtext", "Text", "Nameplates.healthTextSize", { name = "Size" })
-	R("Nameplates", "enemies:healthtext", "Layout", "Nameplates.healthPercentBeside")
+	-- (2.1.72; Wolvegrimm: the percent moved on its own and smaller, the names' size) the percent's own tab: its size and
+	-- its place beside the bar; the name's tab: its size
+	R("Nameplates", "enemies:healthpct", "Text", "Nameplates.healthPctSize", { name = "Size" })
+	R("Nameplates", "enemies:healthpct", "Layout", "Nameplates.healthPercentBeside")
+	R("Nameplates", "enemies:name", "Text", "Nameplates.nameSize", { name = "Size" })
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateSize")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateWidth")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateHeight")

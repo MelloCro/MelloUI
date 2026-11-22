@@ -38,6 +38,20 @@ for n in ("kill", "kill_elite", "kill_rare", "quest_mark", "turnin_mark", "loot"
 # (take A). Standalone marks, with the marks' shade)
 for art, n in (("gather_herb_b", "gather_herb"), ("gather_ore", "gather_ore"), ("gather_fish", "gather_fish")):
     SET.append(("gather", art, n, 64))
+# (2.1.72, Batches 38-41; the user, 2026-11-22: "copper for copper, iron etc ... also for every herb kind") one icon a
+# resource: each metal of the veins and each herb GatherMate2 marks in Forever's world (MelloUI_Map/MapAddonPins.lua's
+# Gather.NODE), standalone marks with the marks' shade
+GATHER_ORES = ("copper", "tin", "iron", "silver", "gold", "mithril", "truesilver", "thorium", "darkiron", "bloodstone",
+               "incendicite", "indurium")
+GATHER_HERBS = ("peacebloom", "silverleaf", "earthroot", "mageroyal", "briarthorn", "stranglekelp", "bruiseweed",
+                "steelbloom", "gravemoss", "kingsblood", "liferoot", "fadeleaf", "goldthorn", "khadgarswhisker",
+                "wintersbite", "firebloom", "purplelotus", "arthastears", "sungrass", "blindweed", "ghostmushroom",
+                "gromsblood", "goldensansam", "dreamfoil", "silversage", "plaguebloom", "icecap", "bloodvine",
+                "blacklotus", "demonsage")
+for n in GATHER_ORES:
+    SET.append(("gather", "ore_" + n, "ore_" + n, 64))
+for n in GATHER_HERBS:
+    SET.append(("gather", "herb_" + n, "herb_" + n, 64))
 for n in ("pin_collect", "pin_portal", "pin_dungeon", "pin_raid", "pin_boat", "pin_zeppelin", "pin_tram"):
     SET.append(("pins", n, n, 64))
 for n in ("track_todo", "track_handin", "svc_repair", "svc_mail", "svc_inn", "svc_flight", "svc_auction", "svc_bank",

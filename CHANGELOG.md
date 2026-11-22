@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.72
+
+- Nameplate Designer: the health number and the percent are two parts now, Health number and Health percent: drag each one anywhere on the plate, hide either, and give the percent its own size (Percent Size, smaller than the number if you like).
+- Nameplates: Name Size, new (Nameplates > Enemies > Name): the names on the plates in the size you pick. The wheel over the name in the Designer sets it too.
+- Fixed: with Percent Beside The Bar, the swing badge on your target's plate covered the percent. It now stands past it.
+- Lueur: while its glow is on, Loot Sparkles' glints over ore, herbs and quest objects step aside and leave the game's soft targeting settings to it, so the two no longer fight over them. The quest item sparkle stays. On the Addons page, with its own switch.
+- GatherMate2: every ore and every herb now has its own MelloUI icon on the map and the minimap: copper, tin, iron, mithril, thorium and the rest each in their own colour, and each of the 30 herbs drawn as itself (Peacebloom, Silverleaf, Kingsblood, Black Lotus ...). Before, all veins shared one icon and all herbs another.
+
 ## 2.1.71
 
 - Nameplate Designer: the preview now wears the look your nameplates wear. With the Oldschool look, the frame set's painting round the health bar, the level in its round socket and your target's glow; with Dark Mode on, its darker bar backing. Before, the preview always showed the game's own plate.
