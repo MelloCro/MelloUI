@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.69", lines = {
+		"Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation.",
+	} },
 	{ version = "2.1.68", lines = {
 		"Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap.",
 		"Loot All Key: one key takes everything from the loot window (Windows > Loot windows).",
@@ -206,11 +209,6 @@ local CHANGELOG = {
 		"Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers.",
 		"Mail: an empty subject takes the name of the first item you attach.",
 		"Supporters page: the people who send code and translations on GitHub, credited under the banners.",
-	} },
-	{ version = "2.1.64", lines = {
-		"Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once.",
-		"RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one.",
-		"Dungeon Info: loot for six of Forever's own dungeons that had none, and players' measured drop rates for more bosses.",
 	} },
 }
 local LINKS = {

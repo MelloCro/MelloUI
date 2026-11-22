@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.69
+
+- Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation as it looks through a window for its buttons, and names the part of the window where an addon first got in its way, to track down the actions the game blocks in the Gamepad UI.
+
 ## 2.1.68
 
 - Map: Focused Quest Only, new (off until you turn it on, Quest List > Map, under Objective Marks): the map and the minimap mark only the quest you follow, as the game's own map does. Click a quest's mark in the Quest Tracker to follow it; with none followed, every quest is marked.

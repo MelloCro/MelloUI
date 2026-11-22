@@ -5846,7 +5846,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		-- (2.1.68; Slayristo on Discord: "Clique interacts with the Personal Bar, so accidentally wasting mana at the
 		-- wrong click when just moving screen around ... if Click through Frames is possible option that would be
 		-- great") the click-cast button over the bars lets the pointer through (Click.Through)
-		{ type = "toggle", key = "clickThrough", name = "Click Through", new = "2.1.68",
+		{ type = "toggle", key = "clickThrough", name = "Click Through",
 		  search = "click through clickthrough clique click cast casting healbot mouse camera drag pass ignore",
 		  desc = "Clicks and camera drags over the bars pass through to the world. With a click-cast addon like Clique, the bars no longer cast, target you or open your menu. Edit Layout still moves the display." },
 		{ type = "button", name = "Preview", text = "Play",

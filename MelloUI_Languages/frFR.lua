@@ -4565,6 +4565,7 @@ Lang:Add("frFR", {
 	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Affichage personnel : Clics traversants, pour que Clique ne lance plus de sort quand vous déplacez la caméra sur les barres.", -- draft
 	["Edit Layout: move and size the totem and minion timers."] = "Modifier la disposition : déplacer et redimensionner les délais des totems et serviteurs.", -- draft
 	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "Modifier la disposition : déplacer les objectifs de champ de bataille et de zone en haut de l'écran.", -- draft
+	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Rapport des actions bloquées (/mellobug) : avec une manette, il surveille aussi la navigation à la manette du jeu.", -- draft
 	["Percent Position"] = "Position du pourcentage", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Où se placent les pourcentages de vie et de puissance : à côté des barres, ou centrés dessus comme les nombres des Formes de druide.", -- draft
 	["Beside The Bars"] = "À côté des barres", -- draft

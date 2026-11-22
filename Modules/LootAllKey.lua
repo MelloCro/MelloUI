@@ -34,7 +34,6 @@ local Shared = Perf.Shared
 
 local M = MelloUI:RegisterModule("LootAllKey", {
 	title = "Loot All Key",
-	new = "2.1.68",
 	desc = "While a loot window is open, your Interact key takes everything in it at once, then goes back to its own job. Not in a fight: the game lets no addon change a key then.",
 	icon = "Interface\\Icons\\INV_Misc_Bag_10",
 	flavour = "See what it dropped, then take it all with one key.",
@@ -43,7 +42,7 @@ local M = MelloUI:RegisterModule("LootAllKey", {
 		key = "interact",
 	},
 	options = {
-		{ type = "dropdown", key = "key", name = "Which Key", new = "2.1.68",
+		{ type = "dropdown", key = "key", name = "Which Key",
 		  desc = "The key that takes everything while a loot window is open: your Interact key (as set in the game's Key Bindings), or one of these. In a fight the key keeps its own job; it takes over again once the fight ends.",
 		  values = { { value = "interact", label = "Your Interact Key" }, { value = "E", label = "E" },
 			{ value = "F", label = "F" }, { value = "R", label = "R" }, { value = "Q", label = "Q" },

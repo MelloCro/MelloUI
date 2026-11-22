@@ -3093,6 +3093,7 @@ Lang:Add("ruRU", {
 	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Личный дисплей: клики насквозь, чтобы Clique не произносил заклинания, когда вы двигаете камеру над полосами.", -- draft
 	["Edit Layout: move and size the totem and minion timers."] = "Редактор раскладки: перемещайте и меняйте размер таймеров тотемов и прислужников.", -- draft
 	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "Редактор раскладки: перемещайте цели поля боя и зоны вверху экрана.", -- draft
+	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Отчёт о заблокированных действиях (/mellobug): с геймпадом он также следит за навигацией геймпада в игре.", -- draft
 	["Percent Position"] = "Положение процентов", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Где стоят проценты здоровья и энергии: рядом с полосами или по центру на них, как числа «Обликов друида».", -- draft
 	["Beside The Bars"] = "Рядом с полосами", -- draft

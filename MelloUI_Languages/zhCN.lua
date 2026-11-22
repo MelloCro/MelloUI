@@ -3093,6 +3093,7 @@ Lang:Add("zhCN", {
 	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "个人显示：点击穿透，在条上拖动镜头时 Clique 不再施法。", -- draft
 	["Edit Layout: move and size the totem and minion timers."] = "编辑布局：移动并缩放图腾与仆从计时。", -- draft
 	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "编辑布局：移动屏幕顶部的战场和区域目标。", -- draft
+	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "被阻止操作报告（/mellobug）：使用手柄时，也会留意游戏的手柄导航。", -- draft
 	["Percent Position"] = "百分比位置", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "生命值和能量百分比显示的位置：在条旁边，或像德鲁伊形态的数字一样居中显示在条上。", -- draft
 	["Beside The Bars"] = "在条旁边", -- draft

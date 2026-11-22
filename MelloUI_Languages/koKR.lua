@@ -3093,6 +3093,7 @@ Lang:Add("koKR", {
 	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "개인 디스플레이: 클릭 통과로 바 위에서 카메라를 끌 때 Clique가 시전하지 않습니다.", -- draft
 	["Edit Layout: move and size the totem and minion timers."] = "배치 편집: 토템 및 하수인 타이머를 옮기고 크기를 조절합니다.", -- draft
 	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "배치 편집: 화면 위쪽의 전장 및 지역 목표를 옮깁니다.", -- draft
+	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "차단된 동작 보고서(/mellobug): 컨트롤러를 쓸 때 게임의 컨트롤러 탐색도 지켜봅니다.", -- draft
 	["Percent Position"] = "백분율 위치", -- draft
 	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "생명력과 자원 백분율이 놓이는 곳: 바 옆, 또는 드루이드 변신의 숫자처럼 바 위 가운데.", -- draft
 	["Beside The Bars"] = "바 옆", -- draft
