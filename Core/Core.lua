@@ -842,6 +842,37 @@ function MelloUI:ClickCastOn()
 		or (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Clique") and true) or false
 end
 
+-- (2.1.68; Slayristo on Discord: "Clique interacts with the Personal Bar ... if Click through Frames is possible option
+-- that would be great") click-through for MelloUI's own unit buttons, one place for every frame that gets the switch
+-- (the Personal Display's Click Through first). Let through, the button takes no click and no hover: a click or a
+-- camera drag over it reaches the world, and a click-cast addon's bindings on it (its clicks, its hover keys) never
+-- fire -- its registration stays, harmless, and works again once the button takes the mouse again. A protected
+-- button's mouse is set out of a fight only: asked for in one, the last wish is set at its end (MelloUI.Schedule's
+-- combat queue, one piece per button).
+--   MelloUI:ClickThrough(button, on)   on: the pointer passes through; false or nil: the button takes it again
+do
+	local through, setters = {}, {}   -- [button] = true while let through; [button] = its setter (its queue key too)
+	function MelloUI:ClickThrough(button, on)
+		if type(button) ~= "table" or type(button.EnableMouse) ~= "function" then
+			return
+		end
+		through[button] = on and true or nil
+		local set = setters[button]
+		if not set then
+			set = function()
+				button:EnableMouse(not through[button])
+			end
+			setters[button] = set
+		end
+		local S = rawget(MelloUI, "Schedule")
+		if S and S.WhenOutOfCombat then
+			S:WhenOutOfCombat(set, set)
+		elseif not MelloUI.InCombat() then
+			set()
+		end
+	end
+end
+
 function MelloUI.EditModeOpen()
 	local manager = EditModeManagerFrame
 	if type(manager) ~= "table" or type(manager.IsShown) ~= "function" then

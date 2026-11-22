@@ -2838,8 +2838,20 @@ end
 -- player frame; without one the display lets the pointer through to the world as before. The button is never tied to
 -- the display's frames: their float moves in a fight (the zoom, the hop, the settle), and a frame a secure one is
 -- anchored to may not move then. It is UIParent's, laid over the bars out of a fight only (each Place, a fight's
--- end), as tall as the bars' settled rest and their place in a fight together; hidden while Edit Layout is open
+-- end), as tall as the bars' settled rest and their place in a fight together; hidden while Edit Layout is open.
+-- (2.1.68) Click Through on: the button takes no mouse (MelloUI:ClickThrough, out of a fight), so the pointer passes
+-- through to the world again and the click-cast addon's bindings on it never fire; off: it takes clicks again
 --------------------------------------------------------------------------------
+
+-- Click Through's wish handed to the button: only once it was let through, so a button never let through is never
+-- touched
+function Click.Through()
+	local b, on = Click.button, Db().clickThrough == true
+	if b and (on or Click.through) then
+		Click.through = on
+		MelloUI:ClickThrough(b, on)
+	end
+end
 
 function Click.Make()
 	if Click.button or InCombatLockdown() or not MelloUI:ClickCastOn() then
@@ -5446,6 +5458,7 @@ local function Start()
 		return
 	end
 	Click.Make()   -- (2.1.21: while a click-cast addon is there; laid at the Place below)
+	Click.Through()   -- (2.1.68: Click Through's wish, a profile's too)
 	if again then
 		-- (switched on again: what changed while it was off -- its border on the Look page, a profile's sizes; 2.1.65:
 		-- its Percent Position, the percents' size and outline with it)
@@ -5740,7 +5753,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		healFrom = true, swing = true, swingOver = false, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
 		stun = true, settle = true, classColour = false, castMotion = true, fiveSecond = true, druidForms = true,
-		textPlace = "beside" },
+		textPlace = "beside", clickThrough = false },
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "A bar beside your character for all your shields, each in its school's colour. It drains as they take hits." },
@@ -5830,6 +5843,12 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		  desc = "While you are stunned, feared or silenced, the bars turn red and a line counts down its time. Replaces the game's own banner." },
 		{ type = "toggle", key = "settle", name = "Combat Settle", play = "settle",
 		  desc = "The bars rise into place when a fight starts and settle lower and slimmer after it. (To fade them out of combat: the Fader.)" },
+		-- (2.1.68; Slayristo on Discord: "Clique interacts with the Personal Bar, so accidentally wasting mana at the
+		-- wrong click when just moving screen around ... if Click through Frames is possible option that would be
+		-- great") the click-cast button over the bars lets the pointer through (Click.Through)
+		{ type = "toggle", key = "clickThrough", name = "Click Through", new = "2.1.68",
+		  search = "click through clickthrough clique click cast casting healbot mouse camera drag pass ignore",
+		  desc = "Clicks and camera drags over the bars pass through to the world. With a click-cast addon like Clique, the bars no longer cast, target you or open your menu. Edit Layout still moves the display." },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a shield going up, hit, low and broken, casts, and the bars in the fight",
 		  desc = "Plays a short sample fight on the display.",
@@ -6308,6 +6327,8 @@ function M:OnSettingChanged(key, _, db)
 		-- (2.1.65, Percent Position) the two percents in their size and outline there, laid there
 		Pct.Style()
 		Pct.Lay(ui)
+	elseif key == "clickThrough" then
+		Click.Through()   -- (2.1.68: in a fight, set at its end)
 	end
 end
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.68
+
+- Map: Focused Quest Only, new (off until you turn it on, Quest List > Map, under Objective Marks): the map and the minimap mark only the quest you follow, as the game's own map does. Click a quest's mark in the Quest Tracker to follow it; with none followed, every quest is marked.
+- Loot All Key, new (off until you turn it on, Windows > Loot windows): while a loot window is open, your Interact key (or a key you pick) takes everything at once, then goes back to its own job. In a fight the key keeps its own job; it takes over again once the fight ends.
+- Personal Display: Click Through (off by default, Unit & Group Frames > Personal, Behaviour) lets clicks and camera drags over the bars pass through, so a click-cast addon like Clique no longer casts from them.
+- Edit Layout: the totem and minion timers (a hunter's hawks, a shaman's totems) can be moved and sized, and keep their place in fights.
+- Edit Layout: the battleground and zone objectives at the top of the screen (timers, scores, flags) can be moved and sized ("Zone objectives").
+
 ## 2.1.67
 
 - Fixed: the game's Press and Hold Casting (a spell keeps casting while you hold its key) did nothing on MelloUI's action bars. With it on, your keys now go through the game's own buttons, which cast the same spells, and MelloUI's buttons still light up as you press them.

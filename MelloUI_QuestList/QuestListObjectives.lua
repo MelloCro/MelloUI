@@ -78,14 +78,42 @@ local DIM_MARK = 0.55
 -- bag and flag on a dark disc in a gold ring until then)
 local OBJ_ICON = { [1] = "kill", [2] = "obj_use", [3] = "pin_collect", [4] = "obj_explore" }
 
+-- (2.1.68, Focused Quest Only; Lively on Discord: "a way to focus on a single quest area on the map at a time like in
+-- the base version ... so my map isn't loaded with all my quests at a single time") the one quest to mark, or nil for
+-- every quest. The game's own map draws the area of the quest it super-tracks alone (Blizzard_SharedMapDataProviders/
+-- QuestBlobDataProvider.lua: the quest whose page its quest log shows, else C_SuperTrack's); here the quest followed
+-- (MelloUI.QuestActs.Followed: the game's super-track, as the Quest Tracker lights its mark and Route follows it, or
+-- Route's own pin for the quest while that holds the game's tracking), while it is in the log. The one reader for
+-- every place the marks are drawn: the game's zone map and the minimap (LogQuests below), MelloUI's map
+-- (MapObjectives' LogQuests); with the switch off or no quest followed, nil: every quest as before
+function O.Focus()
+	local M = QL.M
+	if not (M.db and M.db.objectiveFocusedOnly) then
+		return nil
+	end
+	local Acts = rawget(MelloUI, "QuestActs")
+	if not (Acts and Acts.Followed) then
+		return nil
+	end
+	local ok, id = pcall(Acts.Followed)
+	id = ok and Finite(id) or nil
+	if not (id and id > 0 and C_QuestLog and C_QuestLog.GetLogIndexForQuestID) then
+		return nil
+	end
+	local okL, index = pcall(C_QuestLog.GetLogIndexForQuestID, id)
+	return (okL and Finite(index)) and id or nil
+end
+
 -- The quests in the log to show: not complete, and (Only The Tracked Quests)
--- watched; their ids in a list made once and reused
+-- watched -- or (Focused Quest Only, O.Focus) the one followed; their ids in a
+-- list made once and reused
 local quests = {}
 local function LogQuests(trackedOnly)
 	wipe(quests)
 	if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo) then
 		return quests
 	end
+	local focus = O.Focus()
 	local okN, n = pcall(C_QuestLog.GetNumQuestLogEntries)
 	n = okN and QL.Plain(n) or 0
 	for i = 1, type(n) == "number" and n or 0 do
@@ -94,7 +122,9 @@ local function LogQuests(trackedOnly)
 			local id = QL.Plain(info.questID)
 			if type(id) == "number" and id > 0 and not QL.IsReadyForTurnIn(id) then
 				local watched = true
-				if trackedOnly and C_QuestLog.GetQuestWatchType then
+				if focus then
+					watched = id == focus
+				elseif trackedOnly and C_QuestLog.GetQuestWatchType then
 					local okW, watch = pcall(C_QuestLog.GetQuestWatchType, id)
 					watched = okW and not Secret(watch) and watch ~= nil
 				end
@@ -722,6 +752,15 @@ function O.LogChanged()
 	end
 	queued = true
 	C_Timer.After(0.5, Relay)
+end
+
+-- (2.1.68) the quest followed changed (QuestList.lua's SUPER_TRACKING_CHANGED): with Focused Quest Only on, the zone
+-- map and the minimap marked again as for the log's change (O.Focus); with it off nothing changes, nothing is laid
+function O.FocusChanged()
+	local db = QL.M.db
+	if db and db.objectiveFocusedOnly then
+		O.LogChanged()
+	end
 end
 
 --------------------------------------------------------------------------------

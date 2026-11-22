@@ -57,6 +57,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		transportPins = true,
 		objectiveMarks = true,
 		objectiveTrackedOnly = false,
+		objectiveFocusedOnly = false,
 		objectiveMinimap = true,
 		hideGameObjectives = true,
 		dungeonSummary = true,
@@ -111,6 +112,11 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Marks where your quests' objectives are on the zone map, with their progress. Click a mark for a waypoint." },
 		{ type = "toggle", key = "objectiveTrackedOnly", parent = "objectiveMarks", name = "Only The Tracked Quests",
 		  desc = "Marks only the quests you track." },
+		-- (2.1.68; Lively on Discord: "a way to focus on a single quest area on the map at a time like in the base
+		-- version"): QuestListObjectives' O.Focus, read by every place the marks are drawn
+		{ type = "toggle", key = "objectiveFocusedOnly", parent = "objectiveMarks", name = "Focused Quest Only",
+		  new = "2.1.68",
+		  desc = "Marks only the quest you follow (its mark clicked in the Quest Tracker), on the map and the minimap, as the game's own map does. With none followed, every quest is marked." },
 		{ type = "toggle", key = "hideGameObjectives", parent = "objectiveMarks", name = "Hide The Game's Quest Areas",
 		  desc = "Hides the game's blue quest areas while MelloUI's marks are on." },
 		{ type = "toggle", key = "objectiveMinimap", parent = "objectiveMarks", name = "On The Minimap",
@@ -2287,6 +2293,11 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 		if QL.Objectives then
 			QL.Objectives.LogChanged()
 		end
+	elseif event == "SUPER_TRACKING_CHANGED" then
+		-- (2.1.68) another quest followed: Focused Quest Only's marks again (nothing while that switch is off)
+		if QL.Objectives then
+			QL.Objectives.FocusChanged()
+		end
 	elseif event == "PLAYER_LOGOUT" then
 		-- (0.19.9) this character into the account record (QL.Record)
 		QL.Record.Write()
@@ -2414,6 +2425,7 @@ function M:OnEnable(db)
 	-- the events go with the module's state (they ran on after a disable;
 	-- audit 2026-09-22)
 	eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
+	eventFrame:RegisterEvent("SUPER_TRACKING_CHANGED")   -- (2.1.68: the quest followed, Focused Quest Only)
 	eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 	eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
 	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")

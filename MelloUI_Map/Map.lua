@@ -959,6 +959,7 @@ local function Shown()
 	f:RegisterEvent("TAXI_NODE_STATUS_CHANGED")
 	f:RegisterEvent("QUEST_LOG_UPDATE")
 	f:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
+	f:RegisterEvent("SUPER_TRACKING_CHANGED")   -- (2.1.68: the quest followed, Focused Quest Only)
 	f:RegisterEvent("DYNAMIC_GOSSIP_POI_UPDATED")
 	if inside then
 		win.opening = true   -- (Dungeon Info's column out at once: the window opens as wide as it)
@@ -995,6 +996,7 @@ local function Hidden()
 	f:UnregisterEvent("TAXI_NODE_STATUS_CHANGED")
 	f:UnregisterEvent("QUEST_LOG_UPDATE")
 	f:UnregisterEvent("QUEST_WATCH_LIST_CHANGED")
+	f:UnregisterEvent("SUPER_TRACKING_CHANGED")
 	f:UnregisterEvent("DYNAMIC_GOSSIP_POI_UPDATED")
 end
 
@@ -1026,6 +1028,8 @@ local function Frame_OnEvent(_, event)
 		Layers.Event()   -- (a flight point learned, or a flight master's map: the flights again)
 	elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_WATCH_LIST_CHANGED" then
 		Objectives.Soon()   -- (the objectives again after the burst)
+	elseif event == "SUPER_TRACKING_CHANGED" then
+		Objectives.FocusChanged()   -- (2.1.68: Focused Quest Only's quest again; nothing while it is off)
 	elseif event == "DYNAMIC_GOSSIP_POI_UPDATED" then
 		Layers.GossipChanged()   -- (a guard's directions: the game's marker)
 	end

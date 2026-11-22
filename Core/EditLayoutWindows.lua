@@ -32,6 +32,11 @@
 --             Mode systems, moved only by their plain <Method>Base methods
 --             (Core's); MelloUI's place wins while it has one, and a Reset
 --             hands the element back to Edit Mode's place (group "hud")
+--   the HUD   (2.1.68) the game's elements on the screen that are neither a window nor an Edit Mode system (HUD
+--             below: the zone objectives at the top of the screen, the totem and minion timers): key = the
+--             frame's name, group "hud", its row's label; its standard place the game's own (read as it
+--             registers, or the row's `home`); registered at login with a stored place, as the four; a plate
+--             while hidden
 -- When they register (the first-open rule, WINDOW-RULES 2f: no frame is
 -- made for any of them): at login only the ones with a stored place (the
 -- four and the chat windows at UI Modifications' OnEnable, shown at once; the
@@ -193,11 +198,56 @@ local function SharedNames()
 	return type(names) == "table" and names or { "MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame" }
 end
 
+--------------------------------------------------------------------------------
+-- The game's HUD elements that are neither a window nor an Edit Mode system
+--------------------------------------------------------------------------------
+
+-- (2.1.68; a player on Discord: "can we move the subzone information ? exemple in screen for BG") the scores, timers
+-- and objectives the game shows at the top of the screen (a battleground's timer and flags, a world event's count):
+-- Blizzard_UIWidgets' top centre container. A plain frame on UIParent, no Edit Mode system on this client, that the
+-- game anchors once from its XML and never lays again: its widgets are laid inside it and its size comes from them
+-- (a pixel while it is empty); only the spectator's Commentator view anchors it anew. So a place of ours stands with
+-- no game write undone. `follow` as every game element here: a post-hook pair, idle while nobody else anchors it.
+-- The game hangs its "Return to graveyard" button under it (GhostFrame), which moves with it. Not the capture bars
+-- under the minimap (UIWidgetBelowMinimapContainerFrame): the game's right column lays that one again on each of
+-- its widget layouts (ManageFramePositions), so a place of ours would undo a game write on a path it runs often.
+--   label, category  its plate's name and its group in the Elements list
+--   placeholder      its plate's size (UI units) while it is empty, grown from its own anchor point (the bridge's
+--                    TinyBox: the plate of Edit Mode's empty containers)
+--   noted, tiny      (the zone objectives) its note in the box (HudNote); its plate the bridge's TinyBox
+--   anchor, home, shows  (the totem and minion timers' row, added further down beside its helpers) the point it
+--                    grows from, its standard place (else the game's anchor read as it registers), its eye's default
+local HUD = {
+	{ name = "UIWidgetTopCenterContainerFrame", label = "Zone objectives", category = "quests",
+		placeholder = { 200, 40 }, noted = true, tiny = true },
+}
+local HUD_OF = {}
+for _, row in ipairs(HUD) do
+	HUD_OF[row.name] = row
+end
+-- the game's own anchor of each, read as it registers (before a stored place of ours goes on it: where the game laid
+-- it), for its Reset: [frame] = { point, relativeTo, relativePoint, x, y }
+local hudHome = setmetatable({}, { __mode = "k" })
+
+local function ReadHome(frame)
+	local ok, p, rel, rp, x, y = pcall(frame.GetPoint, frame, 1)
+	if not ok or Secret(p) or Secret(rel) or Secret(rp) or type(p) ~= "string" or type(rp) ~= "string" then
+		return nil
+	end
+	x, y = Finite(x), Finite(y)
+	if not (x and y) then
+		return nil
+	end
+	return { p, type(rel) == "table" and rel or UIParent, rp, x, y }
+end
+
 local EDIT_TEXT = {
 	sharedNote = "Edit Mode can move this too. While it has a place here, that place wins.",
 	sharedReset = "Back to Edit Mode's place",
 	editModeLater = "%s returns to Edit Mode's place after a reload.",
 	gameLater = "%s returns to the game's place after a reload.",
+	gameReset = "Back to the game's place",
+	hudNote = "The game's scores, timers and objectives at the top of the screen (battlegrounds, world events).",
 	chat = "Chat: %s",
 	chatWindow = "Chat window %d",   -- (a chat window whose tab name does not read plainly)
 	bag = "Bag %d",                  -- (a separate bag window, ContainerFrameN)
@@ -377,6 +427,23 @@ local function ChatHome(frame)
 	return false, EDIT_TEXT.gameLater:format(entry.label or entry.key)
 end
 
+-- (2.1.68) a HUD element's standard place: the game's own anchor, read as it registered (ReadHome)
+local function HudHome(frame)
+	local entry = MelloUI:MoverEntry(frame)
+	if not entry then
+		return false
+	end
+	local home = hudHome[frame]
+	if home and MelloUI:PlaceEntryAt(entry, home[1], home[2], home[3], home[4], home[5]) then
+		return true
+	end
+	return false, EDIT_TEXT.gameLater:format(entry.label or entry.key)
+end
+
+local function HudNote()
+	return EDIT_TEXT.hudNote
+end
+
 -- ChatFrame2 and every one after it: its number, else nil. The game's
 -- temporary windows (a whisper in a tab of its own) come after the last
 -- standing one (ChatFrame11 ...): chat windows too, live only out of the dock
@@ -417,6 +484,66 @@ local function Readable(name)
 	s = s:match("^%s*(.-)%s*$")
 	return s ~= "" and s or name
 end
+
+-- (2.1.68; Nixxen, Discord, 2026-11-14, a hunter's two hawks under the player frame: "I get a little timer for each
+-- minion/pet under my unit frames. They overlap with my buffs ... I tried finding them in the edit layout menu, but
+-- can not find them") The game's parts of the HUD that no Edit Mode system holds, moved and sized like a window:
+-- key = the frame's name, group "hud", `follow` (Core puts it back after each of the game's layouts), a default place
+-- (the game's own: a Reset never hides it, as it would a window), a plate while it is hidden (`placeholder`), shown by
+-- default only while it shows or has a place of the player's (else its eye in the Elements list: no plate for a class
+-- that never has one). With no place of the player's the game lays it, as before.
+--   TotemFrame  the totem and minion timers (Blizzard_UnitFrame/Mainline/TotemFrame.xml): a round icon and the time
+--               left for each totem or temporary minion -- a shaman's totems, a hunter's hawks. A plain frame of plain
+--               buttons in the player frame's bottom row (PlayerBottomManagedFrameTemplate). The row lays it out
+--               again each time it shows and whenever another of its parts comes or goes (ManagedFrameSystem.lua:
+--               ClearAllPoints, its parent, the row's Layout -- each part anchored to the row, never one part to
+--               another, so nothing protected hangs on it): Core's follow puts it back after each, in a fight too (a
+--               frame found protected waits for the fight's end: Core's Locked). Its default is where the row lays
+--               its first part (a layout frame aligned "center": LEFT on the row's LEFT) -- today's place, under the
+--               player frame, kept: it meets the buffs only when they hang on the frame (Buffs & Debuffs' Attach To
+--               The Player Frame, off by default). It grows to the right from its LEFT (`anchor`), as the row lays
+--               it; the row still keeps its room (the game's rule) while it shows elsewhere.
+local TOTEM = { SLOT = 37, STEP = 31, PAD = 15, MAX = 4 }   -- (TotemButtonTemplate's 37, spacing -6, leftPadding 15)
+
+-- where the player frame's bottom row lays the timers: LEFT on the row's LEFT (read plainly; nil without the row)
+local function TotemAnchor()
+	local box = rawget(_G, "PlayerBottomManagedFrameContainer")
+	local row = type(box) == "table" and rawget(box, "BottomManagedLayoutContainer") or nil
+	if type(row) == "table" and type(row.GetLeft) == "function" then
+		return "LEFT", row, "LEFT", 0, 0
+	end
+	return nil
+end
+
+local function TotemHome(frame)
+	local entry = MelloUI:MoverEntry(frame)
+	if not entry then
+		return false
+	end
+	local p, rel, rp, x, y = TotemAnchor()
+	if p and MelloUI:PlaceEntryAt(entry, p, rel, rp, x, y) then
+		return true
+	end
+	return false, EDIT_TEXT.gameLater:format(entry.label or entry.key)
+end
+
+-- its eye's default: while the timers show, or once the player gave them a place
+local function TotemShows(entry)
+	local frame = entry.frame
+	local ok, shown = pcall(frame.IsShown, frame)
+	if ok and not Secret(shown) and shown then
+		return true
+	end
+	return entry.key ~= nil and MelloUI:GetPosition(entry.key) ~= nil
+end
+
+-- (the one HUD list above, the zone objectives': the timers' row added here, beside its helpers)
+-- `late`: a stored place registers once the login is over (after AfterLogin, as the windows), never in the login's own
+-- pass for the ones that show at once (the zone objectives' way): the player frame's bottom row lays it during the login
+HUD[#HUD + 1] = { name = "TotemFrame", label = "Totem & minion timers", category = "frames", anchor = "LEFT",
+	home = TotemHome, shows = TotemShows, late = true,
+	placeholder = { TOTEM.PAD + TOTEM.SLOT + (TOTEM.MAX - 1) * TOTEM.STEP, TOTEM.SLOT - 2 } }
+HUD_OF.TotemFrame = HUD[#HUD]
 
 -- one of Edit Mode's systems (the loot window, the talking head ...): the
 -- game's to place, Edit Layout's bridge hands it to Edit Mode; only the
@@ -465,6 +592,18 @@ local function CandidateOpts(frame, name)
 			default = EditModeHome, resetLabel = EDIT_TEXT.sharedReset, note = SharedNote,
 			visible = name == "ChatFrame1" and DockShown or nil, box = shared.box, category = shared.category }
 	end
+	local hud = HUD_OF[name]
+	if hud then
+		-- hung by the game's own point (TOP: it grows down from there as widgets come), so its saved place holds
+		-- the part that stays put, whatever it shows now
+		local home = hudHome[frame]
+		local Bridge = MelloUI.EditLayout and MelloUI.EditLayout.Bridge
+		return { key = name, follow = true, when = Live, group = "hud", label = hud.label, category = hud.category,
+			anchor = hud.anchor or (home and home[1]) or nil, default = hud.home or HudHome,
+			resetLabel = EDIT_TEXT.gameReset, note = hud.noted and HudNote or nil,
+			placeholder = { hud.placeholder[1], hud.placeholder[2] },
+			box = hud.tiny and Bridge and Bridge.TinyBox or nil }
+	end
 	local n = ChatNumber(name)
 	if n then
 		return { key = name, follow = true, when = ChatLive, group = "window", label = ChatLabel(frame, n),
@@ -509,6 +648,10 @@ local function RegisterNamed(name, frame)
 	if type(frame) ~= "table" or MelloUI:MoverEntry(frame) then
 		return
 	end
+	-- (2.1.68) a HUD element's own anchor, before any place of ours goes on it (Core places it as it registers)
+	if HUD_OF[name] and not hudHome[frame] then
+		hudHome[frame] = ReadHome(frame)
+	end
 	local opts = CandidateOpts(frame, name)
 	if opts then
 		local entry = MelloUI:RegisterMover(frame, frame, opts)
@@ -545,7 +688,8 @@ local function RegisterStored(which)
 		return
 	end
 	for key in pairs(store) do
-		if type(key) == "string" and (which ~= "shown" or SHARED[key] or ChatNumber(key)) then
+		local hud = type(key) == "string" and HUD_OF[key] or nil
+		if type(key) == "string" and (which ~= "shown" or SHARED[key] or (hud and not hud.late) or ChatNumber(key)) then
 			RegisterNamed(key)
 		end
 	end
@@ -573,16 +717,39 @@ local function NewStore()
 	PlaceRegistered(true)
 end
 
+-- (2.1.68) The HUD's parts (HUD above), at each open (the source below, last): each registered, its eye's default
+-- given, and a hidden one laid where it will stand -- its place of the player's, else its default -- so its plate
+-- stands there: the game's row lets go of a part's anchor as it hides it, and one never shown since the login still
+-- hangs by its XML anchor, not where the row lays it (the game lays it again at its show)
+local function HudCandidates()
+	for _, row in ipairs(HUD) do
+		local name = row.name
+		RegisterNamed(name)
+		local frame = _G[name]
+		local entry = type(frame) == "table" and MelloUI:MoverEntry(frame)
+		if entry and mine[entry] then
+			entry.showDefault = entry.showDefault or row.shows
+			if not MelloUI:EntryShown(entry) and not MelloUI:RestorePosition(entry.key, frame) and entry.default then
+				pcall(entry.default, frame)
+			end
+		end
+	end
+end
+
 -- The mover source (Core's MelloUI:AddMoverSource): Edit Layout runs it at
 -- each open and resume, and every candidate not registered yet registers
 -- then -- a player's action, never the login. The four first, then the
--- windows, the undocked chat windows and the kit's dressed windows.
+-- windows, the undocked chat windows and the kit's dressed windows; (2.1.68)
+-- last the HUD's parts (HudCandidates).
 local function Candidates()
 	if not Live() then
 		return
 	end
 	for _, name in ipairs(SharedNames()) do
 		RegisterNamed(name)
+	end
+	for _, row in ipairs(HUD) do
+		RegisterNamed(row.name)
 	end
 	for _, name in ipairs(PLAIN_WINDOWS) do
 		RegisterNamed(name)
@@ -605,6 +772,7 @@ local function Candidates()
 			end
 		end
 	end
+	HudCandidates()
 end
 if MelloUI.AddMoverSource then
 	MelloUI:AddMoverSource(Candidates)

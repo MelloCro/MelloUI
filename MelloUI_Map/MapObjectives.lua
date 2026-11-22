@@ -33,7 +33,8 @@
 -- away (ghosts on the effects' layer), its area drawn back into them
 -- A done objective shows nothing, a done quest nothing (its hand-in is the
 -- givers' "?"); the quest open on the quest column's page is left to its own
--- marks there. Only The Tracked Quests (the Quest List's setting) followed.
+-- marks there. Only The Tracked Quests (the Quest List's setting) followed;
+-- (2.1.68) Focused Quest Only too: the quest followed alone, while one is.
 -- (2.1.0, qu-01: the user's pick W1 of BuildData/output/qu01_map_sketch) Zoomed
 -- out, until a zone's zoom shows the marks, one pin a quest: an open one (the
 -- tracker's "!") at the middle of its first open objective's places (the
@@ -47,6 +48,7 @@
 --   Objectives.Init(canvas, pins)    the layers (the window's first open)
 --   Objectives.Open() / Close()      the window shown / hidden
 --   Objectives.Soon()                the log changed: laid again on the beat, after the burst
+--   Objectives.FocusChanged()        (2.1.68) another quest followed: Soon, while Focused Quest Only is on
 --   Objectives.Tick(elapsed)         the window's beat
 --   Objectives.Data()                the Companion's data, asked for once (the quest column's Show too)
 --   Objectives.Lay()                 laid now (the tests)
@@ -106,8 +108,16 @@ function Objectives.Data()
 	return QS == nil or QS.Look()
 end
 
--- the quests in the log to show: not complete, not hidden, (Only The Tracked Quests) watched. (2.1.52: the complete
--- ones' turn-ins zoomed out, one pin a quest -- 2.1.0's Summary -- went: with Questie the engine they never drew)
+-- (2.1.68) Focused Quest Only: the one quest to mark (the Quest List's switch and its one reader, QL.Objectives.Focus:
+-- the quest followed), or nil for every quest
+local function Focus(QL)
+	local O = QL and QL.Objectives
+	return O and O.Focus and O.Focus() or nil
+end
+
+-- the quests in the log to show: not complete, not hidden, (Only The Tracked Quests) watched, or (Focused Quest Only)
+-- the one followed. (2.1.52: the complete ones' turn-ins zoomed out, one pin a quest -- 2.1.0's Summary -- went: with
+-- Questie the engine they never drew)
 local function LogQuests()
 	local out = S.quests
 	wipe(out)
@@ -116,6 +126,7 @@ local function LogQuests()
 	end
 	local QL = QuestList()
 	local trackedOnly = QL and QL.M.db and QL.M.db.objectiveTrackedOnly
+	local focus = Focus(QL)
 	local okN, n = pcall(C_QuestLog.GetNumQuestLogEntries)
 	n = okN and Finite(n) or 0
 	for i = 1, n do
@@ -126,7 +137,9 @@ local function LogQuests()
 			complete = okC and Plain(complete) and true or false
 			if id and id > 0 then
 				local watched = true
-				if trackedOnly and C_QuestLog.GetQuestWatchType then
+				if focus then
+					watched = id == focus
+				elseif trackedOnly and C_QuestLog.GetQuestWatchType then
 					local okW, watch = pcall(C_QuestLog.GetQuestWatchType, id)
 					watched = okW and not Secret(watch) and watch ~= nil
 				end
@@ -814,6 +827,15 @@ end
 function Objectives.Soon()
 	if S.shown and not S.wait then
 		S.wait = T.WAIT
+	end
+end
+
+-- (2.1.68; Map.lua's SUPER_TRACKING_CHANGED while the map shows) another quest followed: laid again on the beat while
+-- Focused Quest Only is on (its quest is the one marked); with it off nothing changes
+function Objectives.FocusChanged()
+	local QL = QuestList()
+	if QL and QL.M.db and QL.M.db.objectiveFocusedOnly then
+		Objectives.Soon()
 	end
 end
 

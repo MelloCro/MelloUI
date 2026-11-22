@@ -177,6 +177,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.68", lines = {
+		"Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap.",
+		"Loot All Key: one key takes everything from the loot window (Windows > Loot windows).",
+		"Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars.",
+		"Edit Layout: move and size the totem and minion timers.",
+		"Edit Layout: move the battleground and zone objectives at the top of the screen.",
+	} },
 	{ version = "2.1.67", lines = {
 		"Press and Hold Casting works on MelloUI's action bars.",
 	} },
@@ -204,14 +211,6 @@ local CHANGELOG = {
 		"Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once.",
 		"RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one.",
 		"Dungeon Info: loot for six of Forever's own dungeons that had none, and players' measured drop rates for more bosses.",
-	} },
-	{ version = "2.1.63", lines = {
-		"Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both.",
-		"Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals.",
-		"World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill.",
-		"Leveling guides: a step whose quest is in your log puts the World Marker on the game's own point for it too.",
-		"World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does.",
-		"Action bars: the range colour no longer sticks after a vehicle or form bar, and cooldown numbers keep showing when the game hides cooldown times.",
 	} },
 }
 local LINKS = {

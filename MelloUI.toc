@@ -119,6 +119,8 @@ Modules\Widgets.lua
 # (2.1.61) the group loot rolls in a window of their own (MelloUI.LootRolls' display; a look's dress)
 Modules\LootRollWindow.lua
 Modules\Discard.lua
+# (2.1.68) one key takes everything while a loot window is open
+Modules\LootAllKey.lua
 Modules\Gains.lua
 Modules\Meter.lua
 Modules\MeterBar.lua

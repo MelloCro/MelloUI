@@ -1640,6 +1640,10 @@ function B.Placeholder(entry)
 	end
 end
 
+-- (2.1.68) the same plate for a game element of EditLayoutWindows that is no Edit Mode system yet lays itself at a
+-- pixel while empty (the zone objectives at the top of the screen): its `box`, from its `placeholder` table's size
+B.TinyBox = HIDDEN.Box
+
 -- (el-14) a reset saved (Core's session at Save): one to the game's default place goes into the active layout as
 -- Edit Mode's own reset keeps it; any other leaves the layout's place as it is (the store's copy gone)
 local Unlock   -- (below)

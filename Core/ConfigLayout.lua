@@ -142,7 +142,7 @@ L.pages = {
 		picker = { label = "Window", noun = "window", from = "windows", own = {
 			{ "BackpackPanel", "Bags", "MelloUI's bag window: your items by kind, its layout and behaviour." },
 			{ "BankPanel", "Bank", "The bank by kind, inside the game's bank window." },
-			{ "LootPanel", "Loot windows", "The loot window's Discard button." },
+			{ "LootPanel", "Loot windows", "The loot window's Discard button and Loot All Key." },
 			{ "StackSplitPanel", "Split stack", "The split box's mouse wheel and half button." } } } },
 	-- (0.17.0) which parts fade away, and when they come back (one look: no
 	-- header switch -- the Fader runs while any element fades)
@@ -719,6 +719,9 @@ function L.Define(R, Link)
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.consumables", LootPanel = "Discard.consumables" }, { name = "Consumables Too" })
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.tradeGoods", LootPanel = "Discard.tradeGoods" }, { name = "Trade Goods Too" })   -- (2.1.51, Nixxen)
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.keepWorth", LootPanel = "Discard.keepWorth" }, { name = "Never Throw Away Items Worth" })
+	-- (2.1.68, a player's request on Discord: one key loots everything while the loot window is open)
+	R("Windows", "Windows", "Behaviour", { LootPanel = "LootAllKey.!enabled" }, { name = "Loot All Key", free = true })
+	R("Windows", "Windows", "Behaviour", { LootPanel = "LootAllKey.key" }, { free = true })
 	-- (0.22.0, a player's request: the split box's mouse wheel and ½, Tweaks' -- either look)
 	R("Windows", "Windows", "Behaviour", { StackSplitPanel = "Tweaks.splitWheel" })
 	R("Windows", "Windows", "Behaviour", { StackSplitPanel = "Tweaks.splitHalf" })
@@ -1371,6 +1374,7 @@ function L.Define(R, Link)
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.lowHealth")
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.stun")
 	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.fiveSecond")   -- (2.1.60: Mana Regen Pause, the five-second rule)
+	R("UnitGroupFrames", "personal:element", "Behaviour", "PersonalDisplay.clickThrough")   -- (2.1.68: Click Through, Slayristo)
 	-- (0.21.0: its border on Oldschool > Borders, its fade on the Fader's page)
 
 	-- Quest Tracker (header: its module's switch; one look, stage E, the user 2026-10-15: its Painted Skin row is
@@ -1435,6 +1439,7 @@ function L.Define(R, Link)
 	R("QuestList", "Map", "General", "QuestList.transportPins")
 	R("QuestList", "Map", "General", "QuestList.objectiveMarks")
 	R("QuestList", "Map", "General", "QuestList.objectiveTrackedOnly")
+	R("QuestList", "Map", "General", "QuestList.objectiveFocusedOnly")   -- (2.1.68: the quest followed alone)
 	R("QuestList", "Map", "General", "QuestList.hideGameObjectives")
 	R("QuestList", "Map", "General", "QuestList.objectiveMinimap",
 		{ when = { key = "Route.!enabled", value = true, line = "Only with Route on (its minimap drawing)" } })
