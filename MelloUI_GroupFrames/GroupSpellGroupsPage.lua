@@ -561,7 +561,7 @@ function Page.BuildGroups(canvas, width)
 			c.label = Page.Name(ind)
 			c.tip = nil
 		end
-		c.title:SetText(c.label)
+		c.title:SetText(key and W.Tr(c.label) or c.label)
 		local n = 0
 		for _, e in ipairs(list) do
 			if n < G.icons then
@@ -947,7 +947,7 @@ function Page.BuildGroups(canvas, width)
 			end
 		end
 		if #added > 0 then
-			lines[#lines + 1] = { head = TEXT.added }
+			lines[#lines + 1] = { head = W.Tr(TEXT.added) }
 			for _, e in ipairs(added) do
 				lines[#lines + 1] = { e = e }
 			end
@@ -1286,7 +1286,7 @@ function Page.BuildGroups(canvas, width)
 			ShowControl(controls.whose, buffs)
 			ShowControl(controls.which, isGroup and key == "dispel")
 			ShowControl(controls.kind, ind.kind == "debuff")
-			labels.whose:SetText((buffs and TEXT.whose) or TEXT.which)
+			labels.whose:SetText(W.Tr(buffs and TEXT.whose or TEXT.which))
 			labels.whose:SetShown(buffs or key == "dispel" or ind.kind == "debuff")
 			-- (a debuff group: no order of your own -- the game never names its spells)
 			if isGroup then

@@ -334,8 +334,8 @@ end
 
 -- (the two as key bindings too: Bindings.xml; a controller addon may bind a named action, a macro with the slash
 -- command works in any of them)
-BINDING_NAME_MELLOUI_TRACKER_PAD = "Quest Tracker: step in with the controller"
-BINDING_NAME_MELLOUI_TRACKER_NEXT = "Quest Tracker: next quest"
+MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_TRACKER_PAD", "Quest Tracker: step in with the controller")
+MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_TRACKER_NEXT", "Quest Tracker: next quest")
 
 SLASH_MELLOTRACKERPAD1 = "/mellotracker"
 SlashCmdList.MELLOTRACKERPAD = function()

@@ -1813,8 +1813,8 @@ end
 
 -- the key binding's names (Bindings.xml)
 BINDING_HEADER_MELLOUI = "MelloUI"
-BINDING_NAME_MELLOUI_MAP_TOGGLE = "Open or close MelloUI's map"
-BINDING_NAME_MELLOUI_MAP_QUESTLOG = "Open MelloUI's map with your quests"
+MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_MAP_TOGGLE", "Open or close MelloUI's map")
+MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_MAP_QUESTLOG", "Open MelloUI's map with your quests")
 
 ns.Map = M
 ns.addon = ADDON

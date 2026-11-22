@@ -711,7 +711,7 @@ SlashCmdList.MELLODUNGEONINFO = function(msg)
 	if msg:lower() == "export" then
 		local text = J.Export()
 		if text then
-			MelloUI:ShowText(TEXT.exportTitle, TEXT.exportHelp .. "\n\n" .. text)
+			MelloUI:ShowText(TEXT.exportTitle, W.Tr(TEXT.exportHelp) .. "\n\n" .. text)
 		else
 			MelloUI:Print(W.Tr(TEXT.exportNone))
 		end
@@ -727,7 +727,7 @@ SlashCmdList.MELLODUNGEONINFO = function(msg)
 end
 
 -- the key binding's name (Bindings.xml)
-BINDING_NAME_MELLOUI_DUNGEONINFO_TOGGLE = "Open or close Dungeon Info"
+MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_DUNGEONINFO_TOGGLE", "Open or close Dungeon Info")
 
 --------------------------------------------------------------------------------
 -- (1.2.2) The drops: the data's, DungeonJournal's while it is loaded, and the ones seen fall, counted for the account

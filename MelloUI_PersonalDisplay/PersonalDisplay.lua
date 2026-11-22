@@ -1679,13 +1679,13 @@ function CastFX.Kind(event, a4)
 	if event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED" then
 		local word = rawget(_G, event == "UNIT_SPELLCAST_FAILED" and "FAILED" or "INTERRUPTED")
 		if Secret(word) or type(word) ~= "string" or word == "" then
-			word = event == "UNIT_SPELLCAST_FAILED" and TEXT.castFailed or TEXT.interrupted
+			word = W.Tr(event == "UNIT_SPELLCAST_FAILED" and TEXT.castFailed or TEXT.interrupted)
 		end
 		return "cut", word
 	elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
 		-- (its fourth: who interrupted it, nil when it ran out -- this client's own cast bar reads it so)
 		if Secret(a4) or a4 ~= nil then
-			return "cut", rawget(_G, "INTERRUPTED") or TEXT.interrupted
+			return "cut", rawget(_G, "INTERRUPTED") or W.Tr(TEXT.interrupted)
 		end
 		return "land"
 	elseif S.castLanded and GetTime() - S.castLanded < T.castLate then
@@ -3596,7 +3596,7 @@ function Motion.Word(action)
 	ui.nextWord = ui.nextWord % #ui.words + 1
 	local text = rawget(_G, Motion.AVOID[action] or "")
 	if Secret(text) or type(text) ~= "string" or text == "" then
-		text = TEXT.words[action] or action
+		text = W.Tr(TEXT.words[action] or action)
 	end
 	w.text:SetText(text)
 	w.text:SetTextColor(Motion.Look("text"))
@@ -3775,7 +3775,7 @@ function Motion.LocStart(data, seconds, name)
 	elseif data then
 		text = data.displayText
 	else
-		text = TEXT.stunned
+		text = W.Tr(TEXT.stunned)
 	end
 	pcall(line.name.SetText, line.name, text)
 	line:Show()
