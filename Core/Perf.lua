@@ -1549,10 +1549,14 @@ end
 -- frame or set it was for, the time and the way there: the first BUG.WRITES of them a session, in every later entry
 -- and under NOW. Hooked as the Gamepad UI comes on (at the login when it is on already, or its bus 'gamepad'), never
 -- out of it; a few asks a call, and the manager is called as its windows open and close.
-BUG.WRITES, BUG.WRITE_KEYS = 4, 60
+BUG.WRITES, BUG.WRITE_KEYS = 6, 60
 BUG.writes = {}
 BUG.writeState = {}   -- [a value's name] = the addon that wrote it, as last seen; false: the game's
 BUG.WRITE_HOOKS = {
+	-- (2.1.69) its navigation first: in the same run its calls come before the bindings they set
+	{ path = { "SmartNavigation" }, slots = { "activeInfo", "bindingActive", "currentButton" }, lists = { "activePanels" },
+		methods = { "HandlePanelOpen", "RefreshButtonGroups", "RemovePanelInfo", "SetActiveFrame", "ActivateBinding",
+			"DeactivateBinding", "EnterFocusGroup" }, walk = "NavWalk" },
 	{ path = { "GamepadMode", "FrameControlsManager" }, slots = { "isUIFocused", "focusedFrame" },
 		methods = { "FrameShown", "FrameHidden", "SetUIFocusState", "ToggleUIFocus", "FocusFrame", "HandlePopupShown",
 			"HandlePopupHide", "SuspendFrame", "UnsuspendFrame", "HideActiveFrames" } },
@@ -1585,6 +1589,85 @@ local function WrittenBy(check, t, key)
 		return tostring(by)
 	end
 	return false
+end
+
+-- (2.1.69; the controller player's 2.1.68 report: the first values that turned MelloUI's were written at the game's
+-- own open of the mailbox, inside the mail window's pad focus, while the window manager's own focus values, written
+-- just before its navigation took the window, stayed the game's -- so the run took its taint in the navigation: its
+-- list of open windows, or its walk of the window for buttons (Blizzard_GamepadSmartNavigation Utility.FindButtons:
+-- every frame in the window, each one's OnMouseUp and OnMouseDown asked)) Where in the navigation's own tables of a
+-- window (`panel`: the call's, else the one it stands in) a value is an addon's. The walk puts the buttons it finds in
+-- a list one by one, and a run once tainted stays so: the first entry that is an addon's (looked for from the list's
+-- end, halved) is the frame whose reading took it, the one before it the last read clean; a group or the window's
+-- info an addon's: before the walk. One line per finding, nil for none
+function BUG.NavWalk(check, nav, panel)
+	local panels = rawget(nav, "activePanels")
+	if type(panel) ~= "table" then
+		local active = rawget(nav, "activeInfo")
+		panel = type(active) == "table" and rawget(active, "frame") or nil
+	end
+	if type(panels) ~= "table" or type(panel) ~= "table" then
+		return nil
+	end
+	local info
+	for i = 1, math.min(#panels, 40) do
+		local p = rawget(panels, i)
+		if type(p) == "table" and rawget(p, "frame") == panel then
+			info = p
+			break
+		end
+	end
+	if not info then
+		return nil
+	end
+	local out, name = {}, BUG.WhatName(panel)
+	local function Mark(what, tbl, key)
+		local by = type(tbl) == "table" and WrittenBy(check, tbl, key)
+		if by then
+			out[#out + 1] = format("%s: %s (%s)", name, what, by)
+		end
+		return type(tbl) == "table" and rawget(tbl, key) or nil
+	end
+	-- the first entry of a list that is an addon's: none while its last is the game's
+	local function First(what, list)
+		local n = type(list) == "table" and #list or 0
+		if n == 0 or not WrittenBy(check, list, n) then
+			return
+		end
+		local lo, hi = 1, n
+		while lo < hi do
+			local mid = math.floor((lo + hi) / 2)
+			if WrittenBy(check, list, mid) then
+				hi = mid
+			else
+				lo = mid + 1
+			end
+		end
+		local entry = rawget(list, lo)
+		entry = type(entry) == "table" and (rawget(entry, "scrollFrame") or entry) or entry
+		local before = lo > 1 and rawget(list, lo - 1) or nil
+		before = type(before) == "table" and (rawget(before, "scrollFrame") or before) or before
+		out[#out + 1] = format("%s: %s %d of %d, %s, after %s (%s)", name, what, lo, n, BUG.WhatName(entry),
+			before ~= nil and BUG.WhatName(before) or "none", tostring(WrittenBy(check, list, lo)))
+	end
+	local groups = Mark("its info's buttonGroups", info, "buttonGroups")
+	if type(groups) ~= "table" then
+		return out[1] and out or nil
+	end
+	local main = Mark("its groups' mainGroup", groups, "mainGroup")
+	Mark("its groups' subGroups", groups, "subGroups")
+	if type(main) == "table" then
+		First("button", Mark("its buttons list", main, "buttons"))
+		local scrolls = Mark("its scroll frames list", main, "scrollFrames")
+		First("scroll frame", scrolls)
+		for i = 1, math.min(type(scrolls) == "table" and #scrolls or 0, 20) do
+			local s = rawget(scrolls, i)
+			if type(s) == "table" then
+				First(format("button in scroll frame %d (%s):", i, BUG.WhatName(rawget(s, "scrollFrame"))), rawget(s, "buttons"))
+			end
+		end
+	end
+	return out[1] and out or nil
 end
 
 function BUG.Wrote(spec, label, t, method, arg)
@@ -1620,6 +1703,17 @@ function BUG.Wrote(spec, label, t, method, arg)
 				if type(k) == "string" or type(k) == "number" then
 					Look(label .. "." .. key .. "." .. tostring(k), list, k)
 				end
+			end
+		end
+	end
+	local walk = spec.walk and BUG[spec.walk]
+	if walk then
+		local okN, lines = pcall(walk, check, t, arg)
+		for _, line in ipairs(okN and type(lines) == "table" and lines or {}) do
+			if not BUG.writeState[line] then   -- (each finding once)
+				BUG.writeState[line] = true
+				found = found or {}
+				found[#found + 1] = line
 			end
 		end
 	end
