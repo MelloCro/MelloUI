@@ -91,7 +91,9 @@ local S = { canvas = nil, pins = nil, shown = false, asked = false, wait = nil, 
 	-- (1.2.0) the areas: their holder and painter, this lay's groups (by shape), the shapes drawn this session, the
 	-- counts, this lay's and the last lay's marks by objective, the ghosts to drive, the edge's zoom, the cull box's
 	holder = nil, painter = nil, groups = {}, seen = {}, counts = {}, now = {}, last = {}, ghosts = {}, nghost = 0, order = {},
-	live = false, k = nil, cuts = nil, hoverKey = nil, stride = nil }
+	live = false, k = nil, cuts = nil, hoverKey = nil, stride = nil,
+	-- (2.1.74) the complete quests shown (LogQuests: their turn-ins, the game's point of a quest Questie lacks)
+	done = {} }
 Objectives.S = S
 
 local function QuestList()
@@ -121,6 +123,7 @@ end
 local function LogQuests()
 	local out = S.quests
 	wipe(out)
+	wipe(S.done)   -- (2.1.74: the complete ones shown too, for the game's turn-in point of a quest Questie lacks)
 	if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo) then
 		return out
 	end
@@ -145,6 +148,8 @@ local function LogQuests()
 				end
 				if watched and not complete then
 					out[#out + 1] = id
+				elseif watched then
+					S.done[#S.done + 1] = id
 				end
 			end
 		end
@@ -563,6 +568,69 @@ end
 
 -- every open objective of the quests in the log, laid: its area (MelloUI.QuestAreas: the shape of its places; the
 -- objectives with the same places one area), a mark a loop of its edge (objectives sharing it side by side), the dots
+--------------------------------------------------------------------------------
+-- (2.1.74) The game's own places (docs/plans/game-quest-areas.md; the user, 2026-11-23 in Riverglades: "why cant
+-- we in those cases just use the blizzards own map areas and quest locations and just skin them in MelloUI Style?",
+-- then look A of BuildData/output/game_quest_areas_sketch): a quest in the log Questie has no places for gets its
+-- areas from the game -- traced into places of the data's own shape (MelloUI.QuestObjectives.Traced: QO.Of hands
+-- them out), so they are laid above as Questie's, MelloUI's areas and marks (no dots: .game) -- and, while they are
+-- being traced or where the game draws none, MelloUI's mark at the game's point for it (QO.Game: its first open
+-- objective's kind); complete, the turn-in mark there
+--------------------------------------------------------------------------------
+T.TURNIN = "turnin_mark"
+local TEXT = { ready = "Ready to turn in" }
+
+-- its tooltip: the quest, then its open lines (the game's own words), or that it is ready to turn in
+local function GameTip(tooltip, pin)
+	local d = pin.data
+	local okT, title = pcall(C_QuestLog.GetTitleForQuestID, d.questID)
+	tooltip:SetText(okT and Safe.Text(title) or "")
+	if d.done then
+		tooltip:AddLine(W.Tr(TEXT.ready), 1, 1, 1, true)
+		return
+	end
+	local QO = MelloUI.QuestObjectives
+	local lines = QO and QO.Lines and QO.Lines(d.questID)
+	for _, t in ipairs(type(lines) == "table" and lines or NONE) do
+		if not t[2] and t[6] then
+			tooltip:AddLine(t[6], 1, 1, 1, true)
+		end
+	end
+end
+
+local gameSpecs = {}
+local function GameSpec(kind, done)
+	local icon = done and T.TURNIN or T.KIND_ICON[kind] or "obj_explore"
+	local spec = gameSpecs[icon]
+	if not spec then
+		spec = { icon = T.ICONS .. icon, size = T.MARK_SIZE, fillTip = GameTip, click = MarkClick, sub = 1, lift = icon }
+		gameSpecs[icon] = spec
+	end
+	return spec
+end
+
+-- the quests Questie has no places for and the game draws no area of yet (or none): their marks at the game's points
+local function Game(on)
+	local QO = MelloUI.QuestObjectives
+	if not (on and QO and QO.Game and Objectives.Data()) then
+		return
+	end
+	local pins = S.pins
+	for pass = 1, 2 do
+		local done = pass == 2
+		for _, questID in ipairs(done and S.done or S.quests) do
+			local map, x, y, kind = QO.Game(questID, done)
+			local pin = map and pins:SetAt("objectives", "game:" .. questID, map, x, y, GameSpec(kind, done))
+			if pin then
+				local d = pin.data or {}
+				d.questID, d.game, d.done, d.kind, d.mapID, d.x, d.y = questID, true, done, kind, map, x, y
+				pin.data = d
+			end
+		end
+	end
+end
+Objectives.Game = Game   -- (the tests' way in)
+
 function Objectives.Lay()
 	local pins = S.pins
 	if not pins then
@@ -624,7 +692,7 @@ function Objectives.Lay()
 								g = QA.Keep({ key = key, shape = shape, a = a, objs = {} }, xs, ys, entry[4])
 								byShape[shape] = g
 								S.groups[#S.groups + 1] = g
-								for i = 1, #xs do
+								for i = 1, entry.game and 0 or #xs do   -- (2.1.74: the game's traced places, no dots)
 									local x, y = At(a, xs[i], ys[i])
 									n = n + 1
 									pins:Set("objective_dots", n, x, y, DOT)
@@ -761,6 +829,7 @@ function Objectives.Lay()
 	end
 	Gone(live)
 	Areas()
+	Game(layer and layer.on)   -- (2.1.74: the quests Questie lacks, the game's own areas and points)
 	for _, g in ipairs(S.groups) do
 		local area = g.bump and S.painter.areas[(g.join or g).key]   -- (a joined one's: its outline swells)
 		if area then

@@ -2472,6 +2472,7 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "지도: Questie에 위치 정보가 없는 퀘스트는 게임 자체의 퀘스트 지역과 표시를 MelloUI 스타일로 보여줍니다.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "개인 표시기: 개인 탭에 전용 미리보기가 생겼습니다. 시전 바, 글자, 스윙 배지 또는 재사용 대기시간을 끌어서 옮기세요.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "지도: 전장에서 거점, 탑, 야영지가 누가 차지하고 있는지 게임 기본 지도처럼 표시됩니다.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "이름표 디자이너: 생명력 숫자와 백분율을 따로 옮기고 크기를 바꿀 수 있으며, 이름 크기도 정할 수 있습니다.", -- draft
@@ -2486,7 +2487,6 @@ Lang:Add("koKR", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "개인 표시: 모든 글자의 크기와 색상.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "지도: 추적 중인 퀘스트만, 따라가는 퀘스트만 설정이 열린 지도에 바로 적용됩니다.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "중국어 글자: 제목과 머리글이 올바른 크기로 표시되고, 네모 대신 중국어 글자가 보입니다.", -- draft
-	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "차단된 동작 보고서(/mellobug): 컨트롤러를 쓸 때 게임의 컨트롤러 탐색도 지켜봅니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3265,6 +3265,7 @@ Lang:Add("koKR", {
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "가방: 직접 만든 종류에 규칙을 여러 개 둘 수 있습니다. 그중 하나라도 맞는 아이템은 그 종류에 들어갑니다(채광용 곡괭이와 낚싯대를 한 \"전문 기술 도구\" 종류에).", -- draft
 -- stale: ["Bar Texture (Look)"] = "막대 질감(외형)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "바: 행동 단축바 뒤 그림자 스위치가 이제 배경판과 그림자 아래에 있으며, 검색으로도 찾을 수 있습니다.", -- draft
+-- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "차단된 동작 보고서(/mellobug): 컨트롤러를 쓸 때 게임의 컨트롤러 탐색도 지켜봅니다.", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "차단된 동작 보고서(/mellobug): 컨트롤러를 쓸 때 게임의 컨트롤러 값을 처음 바꾼 것을 기록합니다.", -- draft
 -- stale: ["Browns with gold bevels"] = "금빛 경사의 갈색", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "방어구에는 버클과 판금, 무기에는 강철 미끄러지는 소리, 반지, 목걸이, 장신구에는 장신구 딸깍. 무언가를 벗을 때 끈 풀리는 소리.", -- draft

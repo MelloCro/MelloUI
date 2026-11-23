@@ -2479,6 +2479,7 @@ Lang:Add("deDE", {
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Die Addons, mit denen MelloUI zusammenarbeitet: was es mit jedem macht und wo ihre Einstellungen sind.",
+	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Karte: Quests, für die Questie keine Orte kennt, zeigen das Questgebiet und die Markierung des Spiels im Look von MelloUI.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Persönliche Anzeige: eine eigene Vorschau im Reiter Persönlich. Zieh Zauberleiste, Text, Schwungabzeichen oder Abklingzeiten, um sie zu verschieben.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Karte: In einem Schlachtfeld zeigen seine Basen, Türme und Lager, wer sie hält, wie auf der Karte des Spiels.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Namensplaketten-Designer: Gesundheitszahl und Prozentwert lassen sich einzeln verschieben und skalieren, und die Namen haben eine Größe.", -- draft
@@ -2493,7 +2494,6 @@ Lang:Add("deDE", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "Persönliche Anzeige: Textgröße und Textfarbe für ihren gesamten Text.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Karte: Nur die verfolgten Quests und Nur die verfolgte Quest ändern die offene Karte sofort.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Chinesischer Text: Titel und Überschriften in der richtigen Größe und chinesische Zeichen statt Kästchen.", -- draft
-	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Bericht über blockierte Aktionen (/mellobug): Mit einem Controller beobachtet er auch die Controller-Navigation des Spiels.", -- draft
 	["Report a problem"] = "Ein Problem melden",
 	["Voice pack"] = "Stimmenpaket",
 	["open or close this window"] = "dieses Fenster öffnen oder schließen",
@@ -4171,6 +4171,7 @@ Lang:Add("deDE", {
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "Taschen: Eigene Arten können mehrere Regeln haben; ein Gegenstand, der zu einer davon passt, kommt in die Art (eine Art Berufswerkzeug für Spitzhacken und Angelruten).", -- draft
 -- stale: ["Bar Texture (Look)"] = "Balkentextur (Aussehen)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Leisten: Die Schalter für den Schatten hinter deinen Aktionsleisten stehen jetzt unter Hintergründe und Schatten, und die Suche findet sie.", -- draft
+-- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Bericht über blockierte Aktionen (/mellobug): Mit einem Controller beobachtet er auch die Controller-Navigation des Spiels.", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "Bericht über blockierte Aktionen (/mellobug): Mit einem Controller hält er fest, was die Controller-Werte des Spiels zuerst verändert hat.", -- draft
 -- stale: ["Browns with gold bevels"] = "Brauntöne mit goldenen Fasen", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Schnallen und Platten für Rüstung, ein Stahlgleiten für Waffen, Schmuckklicken für Ringe, Hälse und Schmuckstücke; sich lockernde Riemen, wenn etwas abgelegt wird.", -- draft

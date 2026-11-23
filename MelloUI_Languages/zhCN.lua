@@ -2472,6 +2472,7 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "地图：Questie 没有位置数据的任务会以 MelloUI 的样式显示游戏自带的任务区域和标记。", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "个人显示：在“个人”页签中有了自己的预览。拖动施法条、文字、挥击徽章或冷却图标即可移动它们。", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "地图：在战场中，据点、哨塔和营地会显示由哪一方控制，与游戏自带的地图一样。", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "姓名板设计器：生命值数字和百分比可分别移动和调整大小，名字也可设置大小。", -- draft
@@ -2486,7 +2487,6 @@ Lang:Add("zhCN", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "个人显示：所有文字的大小和颜色。", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "地图：“仅追踪的任务”和“仅聚焦的任务”会立即改变已打开的地图。", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "中文文本：标题和小标题恢复正常大小，中文字符不再显示为方框。", -- draft
-	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "被阻止操作报告（/mellobug）：使用手柄时，也会留意游戏的手柄导航。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3265,6 +3265,7 @@ Lang:Add("zhCN", {
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "背包：自定义类别可以有多条规则，符合任意一条的物品都归入该类别（例如一个“专业工具”类别同时收纳矿工锄和鱼竿）。", -- draft
 -- stale: ["Bar Texture (Look)"] = "条材质（外观）", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
+-- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "被阻止操作报告（/mellobug）：使用手柄时，也会留意游戏的手柄导航。", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "被阻止操作报告（/mellobug）：使用手柄时，会记录最先改动游戏手柄数值的是什么。", -- draft
 -- stale: ["Browns with gold bevels"] = "带金色斜边的棕色", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "护甲用扣带和板甲声，武器用钢铁滑动声，戒指、项链和饰品用首饰叮当声；取下东西时皮带松开的声音。", -- draft

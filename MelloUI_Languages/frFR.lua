@@ -2494,6 +2494,7 @@ Lang:Add("frFR", {
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
+	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Carte : les quêtes pour lesquelles Questie n'a aucun lieu affichent la zone de quête et le marqueur du jeu, dans le style de MelloUI.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Affichage personnel : son propre aperçu dans l'onglet Personnel. Faites glisser la barre d'incantation, le texte, le badge d'attaque ou les temps de recharge pour les déplacer.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Carte : dans un champ de bataille, ses bases, tours et camps montrent qui les tient, comme sur la carte du jeu.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Concepteur de barres d'info : le chiffre de vie et le pourcentage se déplacent et se redimensionnent séparément, et les noms ont une taille.", -- draft
@@ -2508,7 +2509,6 @@ Lang:Add("frFR", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "Affichage personnel : taille et couleur du texte pour tout son texte.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Carte : Seulement les quêtes suivies et Seulement la quête ciblée changent la carte ouverte aussitôt.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Texte chinois : titres et en-têtes à la bonne taille, et caractères chinois au lieu de carrés.", -- draft
-	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Rapport des actions bloquées (/mellobug) : avec une manette, il surveille aussi la navigation à la manette du jeu.", -- draft
 	["Report a problem"] = "Signaler un problème",
 	["Voice pack"] = "Pack de voix",
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre",
@@ -4739,6 +4739,7 @@ Lang:Add("frFR", {
 -- stale: ["Bar Texture (Look)"] = "Texture des barres (Apparence)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barres : les options de l'ombre derrière vos barres d'action se trouvent maintenant sous Fonds et ombres, et la recherche les trouve.", -- draft
 -- stale: ["Blacksmithing trainer"] = "maître forgeron",
+-- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Rapport des actions bloquées (/mellobug) : avec une manette, il surveille aussi la navigation à la manette du jeu.", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "Rapport des actions bloquées (/mellobug) : avec une manette, il note ce qui a modifié en premier les valeurs de manette du jeu.", -- draft
 -- stale: ["Browns with gold bevels"] = "Bruns aux biseaux dorés", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Boucles et plaques pour les armures, un glissement d'acier pour les armes, des tintements de bijoux pour les anneaux, colliers et bijoux ; des sangles qui se desserrent quand on retire quelque chose.", -- draft

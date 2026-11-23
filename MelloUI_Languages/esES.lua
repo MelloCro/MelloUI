@@ -2472,6 +2472,7 @@ Lang:Add("esES", {
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
 	["Addons"] = "Addons", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Los addons con los que funciona MelloUI: qué hace con cada uno y dónde están sus ajustes.", -- draft
+	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Mapa: las misiones para las que Questie no tiene lugares muestran el área de misión y el marcador del propio juego, con el aspecto de MelloUI.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Pantalla personal: su propia vista previa en la pestaña Personal. Arrastra la barra de lanzamiento, el texto, la insignia de golpes o los tiempos de reutilización para moverlos.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Mapa: en un campo de batalla, sus bases, torres y campamentos muestran quién los controla, como en el mapa del juego.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Diseñador de placas de nombre: el número de salud y el porcentaje se mueven y cambian de tamaño por separado, y los nombres tienen tamaño.", -- draft
@@ -2486,7 +2487,6 @@ Lang:Add("esES", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "Pantalla personal: tamaño y color del texto para todo su texto.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Mapa: Solo las misiones seguidas y Solo la misión enfocada cambian el mapa abierto al instante.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Texto chino: títulos y encabezados en su tamaño correcto, y caracteres chinos en lugar de recuadros.", -- draft
-	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Informe de acciones bloqueadas (/mellobug): con un mando, también vigila la navegación con mando del juego.", -- draft
 	["Report a problem"] = "Informar de un problema", -- draft
 	["Voice pack"] = "Paquete de voces", -- draft
 	["open or close this window"] = "abre o cierra esta ventana", -- draft
@@ -3265,6 +3265,7 @@ Lang:Add("esES", {
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "Bolsas: tus propios tipos pueden tener varias reglas; un objeto que cumpla cualquiera de ellas va al tipo (un tipo Herramienta de profesión para picos y cañas de pescar).", -- draft
 -- stale: ["Bar Texture (Look)"] = "Textura de barra (Aspecto)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barras: los interruptores de la sombra detrás de tus barras de acción ahora están en Fondos y sombras, y la búsqueda los encuentra.", -- draft
+-- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Informe de acciones bloqueadas (/mellobug): con un mando, también vigila la navegación con mando del juego.", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "Informe de acciones bloqueadas (/mellobug): con un mando, anota qué cambió primero los valores del mando del juego.", -- draft
 -- stale: ["Browns with gold bevels"] = "Marrones con biseles dorados", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Hebillas y placas para la armadura, un deslizar de acero para las armas, tintineos de joyas para anillos, collares y abalorios; correas aflojándose al quitarse algo.", -- draft

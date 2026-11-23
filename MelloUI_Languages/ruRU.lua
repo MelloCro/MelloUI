@@ -2472,6 +2472,7 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Карта: задания, для которых у Questie нет мест, показывают область задания и метку самой игры в стиле MelloUI.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Личный дисплей: свой предпросмотр на вкладке «Личный». Перетащите полосу заклинаний, текст, значок ударов или восстановления, чтобы переместить их.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Карта: на поле боя его базы, башни и лагеря показывают, кто ими владеет, как на карте самой игры.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Конструктор индикаторов: число здоровья и процент перемещаются и меняют размер отдельно, а у имён есть размер.", -- draft
@@ -2486,7 +2487,6 @@ Lang:Add("ruRU", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "Личная панель: размер и цвет для всего её текста.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Карта: «Только отслеживаемые задания» и «Только выбранное задание» сразу меняют открытую карту.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Китайский текст: заголовки нужного размера и китайские иероглифы вместо квадратов.", -- draft
-	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Отчёт о заблокированных действиях (/mellobug): с геймпадом он также следит за навигацией геймпада в игре.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3265,6 +3265,7 @@ Lang:Add("ruRU", {
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "Сумки: в своих видах теперь может быть несколько правил; предмет, подходящий под любое из них, попадает в вид (один вид «Инструмент профессии» для кирок и удочек).", -- draft
 -- stale: ["Bar Texture (Look)"] = "Текстура полос (Облик)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Панели: переключатели тени за панелями команд теперь находятся в разделе «Подложки и тени», и поиск их находит.", -- draft
+-- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Отчёт о заблокированных действиях (/mellobug): с геймпадом он также следит за навигацией геймпада в игре.", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "Отчёт о заблокированных действиях (/mellobug): с геймпадом он отмечает, что первым изменило значения геймпада в игре.", -- draft
 -- stale: ["Browns with gold bevels"] = "Коричневые с золотыми фасками", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Пряжки и латы для доспехов, скольжение стали для оружия, звон украшений для колец, ожерелий и аксессуаров; ослабляющиеся ремни, когда что-то снимается.", -- draft

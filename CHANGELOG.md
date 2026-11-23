@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.74
+
+- Map and minimap with Questie: a quest in your log that Questie has no places for (new zones such as Riverglades) now shows the game's own quest area, drawn as MelloUI's own areas are: the gold edge and glow, in your colours, with MelloUI's mark. The minimap shows it the same way, and Route can lead you there. Until the area is ready, MelloUI's mark stands at the game's point for it, and once a quest Questie doesn't know is done, the turn-in mark shows where you hand it in. Quests Questie knows look as before.
+
 ## 2.1.73
 
 - Unit & Group Frames > Personal: the Personal Display has its own preview, like Player and the nameplates: the bars, the cast bar, the shield column, the swing badge, the big cooldowns and the text all at once, in the look your display wears. Click a part to open its settings, and drag the cast bar, the text, the swing badge or the big cooldowns to a new place on it: your display follows. The wheel sizes the swing badge and the big cooldowns. Right-click a part and pick Default place to put it back.

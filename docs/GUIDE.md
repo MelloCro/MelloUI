@@ -1161,7 +1161,11 @@ number of levels below you, or between two levels). On MelloUI's map the Quest g
 whatever Other addons' pins is set to; on the game's map Quest Givers On Zone Maps does. MelloUI's objective marks and
 quest areas stay, fed by Questie's data, and Questie's objective icons stay out of sight wherever MelloUI draws them
 (MelloUI's map: while its objectives' layer is on; the game's map: while Objective Marks is on; the minimap: while
-Objective Marks On The Minimap is on). On the minimap, the quest givers are the game's own marks (Questie's stay out of
+Objective Marks On The Minimap is on). A quest in your log that Questie has no places for (a new zone it does not
+cover yet) gets the game's own quest area instead, traced and drawn as MelloUI's own areas are (the gold edge and
+glow, in your colours), on the map and the minimap, and Route can lead you to it (2.1.74). Until it is ready,
+MelloUI's mark stands at the game's point for it, and once a quest Questie doesn't know is done, the turn-in mark. Questie's
+places win wherever it has them, so a quest never shows both. On the minimap, the quest givers are the game's own marks (Questie's stay out of
 sight there, so nothing shows twice); the game only lets addons show or hide its grey ones as a whole.
 Hovering one of Questie's icons that still show lists only what is not drawn by MelloUI already: Questie's tooltip
 gathers the quests of every icon of its own nearby (a dungeon's quests all sit on its entrance), and leaves out the

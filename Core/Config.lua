@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.74", lines = {
+		"Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look.",
+	} },
 	{ version = "2.1.73", lines = {
 		"Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them.",
 		"Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map.",
@@ -198,9 +201,6 @@ local CHANGELOG = {
 		"Personal Display: Text Size and Text Colour for all of its text.",
 		"Map: Only The Tracked Quests and Focused Quest Only change the open map at once.",
 		"Chinese text: titles and headings at their right size, and Chinese letters instead of boxes.",
-	} },
-	{ version = "2.1.69", lines = {
-		"Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation.",
 	} },
 }
 local LINKS = {

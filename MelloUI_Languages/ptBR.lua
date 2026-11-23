@@ -2472,6 +2472,7 @@ Lang:Add("ptBR", {
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
 	["Addons"] = "Addons", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Os addons com que o MelloUI funciona: o que ele faz com cada um e onde ficam as configurações.", -- draft
+	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Mapa: missões para as quais o Questie não tem locais mostram a área de missão e o marcador do próprio jogo, no visual do MelloUI.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Exibição pessoal: sua própria prévia na aba Pessoal. Arraste a barra de lançamento, o texto, o emblema de golpes ou as recargas para movê-los.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Mapa: em um campo de batalha, suas bases, torres e acampamentos mostram quem os controla, como no mapa do jogo.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Designer de placas de identificação: o número de vida e a porcentagem se movem e mudam de tamanho separadamente, e os nomes têm tamanho.", -- draft
@@ -2486,7 +2487,6 @@ Lang:Add("ptBR", {
 	["Personal Display: Text Size and Text Colour for all of its text."] = "Exibição pessoal: tamanho e cor do texto para todo o seu texto.", -- draft
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Mapa: Apenas as missões rastreadas e Apenas a missão em foco mudam o mapa aberto na hora.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Texto chinês: títulos e cabeçalhos no tamanho certo, e caracteres chineses em vez de quadrados.", -- draft
-	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Relatório de ações bloqueadas (/mellobug): com um controle, ele também acompanha a navegação por controle do jogo.", -- draft
 	["Report a problem"] = "Relatar um problema", -- draft
 	["Voice pack"] = "Pacote de vozes", -- draft
 	["open or close this window"] = "abre ou fecha esta janela", -- draft
@@ -3265,6 +3265,7 @@ Lang:Add("ptBR", {
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "Bolsas: seus próprios tipos podem ter várias regras; um item que corresponda a qualquer uma delas vai para o tipo (um tipo Ferramenta de profissão para picaretas e varas de pescar).", -- draft
 -- stale: ["Bar Texture (Look)"] = "Textura das barras (Visual)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Barras: os interruptores da sombra atrás das suas barras de ação agora ficam em Fundos e sombras, e a busca os encontra.", -- draft
+-- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Relatório de ações bloqueadas (/mellobug): com um controle, ele também acompanha a navegação por controle do jogo.", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "Relatório de ações bloqueadas (/mellobug): com um controle, ele anota o que mudou primeiro os valores de controle do jogo.", -- draft
 -- stale: ["Browns with gold bevels"] = "Marrons com chanfros dourados", -- draft
 -- stale: ["Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off."] = "Fivelas e placas para armaduras, um deslizar de aço para armas, tilintar de joias para anéis, colares e berloques; correias afrouxando quando algo é tirado.", -- draft

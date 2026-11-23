@@ -108,8 +108,10 @@ end
 -- watched -- or (Focused Quest Only, O.Focus) the one followed; their ids in a
 -- list made once and reused
 local quests = {}
-local function LogQuests(trackedOnly)
+-- (2.1.74, `ready`: the ones ready to turn in instead -- the game's turn-in point of a quest Questie has no places for)
+local function LogQuests(trackedOnly, ready)
 	wipe(quests)
+	ready = ready and true or false
 	if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo) then
 		return quests
 	end
@@ -120,7 +122,7 @@ local function LogQuests(trackedOnly)
 		local ok, info = pcall(C_QuestLog.GetInfo, i)
 		if ok and type(info) == "table" and not QL.Plain(info.isHeader) and not QL.Plain(info.isHidden) then
 			local id = QL.Plain(info.questID)
-			if type(id) == "number" and id > 0 and not QL.IsReadyForTurnIn(id) then
+			if type(id) == "number" and id > 0 and (QL.IsReadyForTurnIn(id) and true or false) == ready then
 				local watched = true
 				if focus then
 					watched = id == focus
@@ -692,7 +694,11 @@ end
 function O.Tip(tip, data, Line, hints, after)
 	local W = MelloUI.Widgets
 	local row = QL.RowByID()[data.questID]
-	local title = row and row[QL.F_TITLE] or data.name
+	local title = row and row[QL.F_TITLE]
+	if not title then   -- (2.1.74: a quest Questie lacks has no row: the game's own title)
+		local own = O.GameTitle(data.questID)
+		title = own ~= "" and own or data.name
+	end
 	if not after then
 		QL.TipTitle(tip, title)
 	elseif after ~= data.questID then
@@ -839,6 +845,29 @@ O.mini = { points = {}, n = 0, areas = {}, leaving = {}, ghosts = {}, ghostFrame
 	queued = false, built = false, painter = nil, holder = nil, readyAt = (GetTime and GetTime() or 0) + MINI.WAIT,
 	dots = {}, ndots = 0, dotHolder = nil }
 
+-- (2.1.74) a mark of the game's own point (MiniBuild): the quest's title and its open line for the marks' tooltip (O.Tip
+-- reads them as an objective's), its turn-in mark once it is ready
+O.TURNIN = "turnin_mark"
+O.GAME_READY = "Ready to turn in"
+
+function O.GameTitle(questID)
+	local ok, title = pcall(C_QuestLog.GetTitleForQuestID, questID)
+	return ok and MelloUI.Safe.Text(title) or ""
+end
+
+function O.GameLine(questID, done)
+	if done then
+		return { "", true, 0, nil, nil, MelloUI.Widgets.Tr(O.GAME_READY) }
+	end
+	local lines = MelloUI.QuestObjectives.Lines(questID)
+	for _, t in ipairs(type(lines) == "table" and lines or {}) do
+		if not t[2] then
+			return t
+		end
+	end
+	return nil
+end
+
 function O.MiniWanted()
 	local M, R, OV = QL.M, MelloUI.Route, MelloUI.Overlaps
 	-- (2.1.0; the user, 2026-10-31: "Polestar takes priority") not while another addon marks them on the minimap
@@ -936,7 +965,7 @@ function O.MiniBuild()
 						g.x0, g.y0, g.x1, g.y1 = x0, y0, x1, y1
 						-- (2.1.49) its places in Route's yards: a dot each, as on the map (QA.Places' lists are reused)
 						local places = {}
-						for i = 1, #xs do
+						for i = 1, entry.game and 0 or #xs do   -- (2.1.74: the game's traced places, no dots)
 							places[2 * i - 1], places[2 * i] = Carry(a, xs[i], ys[i])
 						end
 						g.places = places
@@ -1016,12 +1045,36 @@ function O.MiniBuild()
 					p = {}
 					mini.points[mini.n] = p
 				end
-				p.cont, p.x, p.y, p.kind, p.area = g.cont, rx, ry, entry[1], g
+				p.cont, p.x, p.y, p.kind, p.area, p.icon = g.cont, rx, ry, entry[1], g, nil
 				-- (2.1.0) its objective, for its tooltip (O.Tip's data, as the maps' marks have it)
 				p.questID, p.index, p.name, p.line = questID, index, entry[2], t
 				p.dx = (j - (#g.objs + 1) / 2) * 2 * MINI.SIDE_PX
 				p.bump, p.pop, p.shownAt = bump, g.fresh or nil, nil
 				seen[#seen + 1] = p
+			end
+		end
+	end
+	-- (2.1.74; docs/plans/game-quest-areas.md) the quests Questie has no places for: a mark at the game's own point
+	-- (QO.GameWorld) -- its open objective's kind; ready to turn in, the turn-in mark -- no area, as MelloUI's map
+	local QO = MelloUI.QuestObjectives
+	if O.MiniWanted() and DataReady() and QO and QO.GameWorld then
+		for pass = 1, 2 do
+			local done = pass == 2
+			for _, questID in ipairs(LogQuests(QL.M.db.objectiveTrackedOnly, done)) do
+				local cont, wx, wy, kind = QO.GameWorld(questID, done)
+				local a = cont and Yards(R, cont, wx, wy)
+				if a then
+					local rx, ry = Carry(a, wx, wy)
+					mini.n = mini.n + 1
+					local p = mini.points[mini.n]
+					if not p then
+						p = {}
+						mini.points[mini.n] = p
+					end
+					p.cont, p.x, p.y, p.kind, p.area, p.icon = a.cont, rx, ry, kind, nil, done and O.TURNIN or nil
+					p.questID, p.index, p.name, p.line = questID, 0, O.GameTitle(questID), O.GameLine(questID, done)
+					p.dx, p.bump, p.pop, p.shownAt = 0, nil, nil, nil
+				end
 			end
 		end
 	end
@@ -1100,9 +1153,10 @@ local function MiniMark(p, kind, size)
 		end
 		p.frame = f
 	end
-	if f.kind ~= kind then
-		f.kind = kind
-		local icon = MelloUI.QuestAreas.KIND_ICON[kind] or "goal_pin"   -- (2.1.49: MelloUI's map's pictures)
+	local want = p.icon or kind   -- (2.1.74: a picture of its own -- the game's turn-in point's)
+	if f.kind ~= want then
+		f.kind = want
+		local icon = p.icon or MelloUI.QuestAreas.KIND_ICON[kind] or "goal_pin"   -- (2.1.49: MelloUI's map's pictures)
 		MelloUI.Widgets.Icon(f.icon, icon)
 		MelloUI.Shade:Lift(f.icon, icon, MINI.MARK)
 	end
