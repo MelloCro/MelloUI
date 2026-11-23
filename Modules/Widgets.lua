@@ -1877,6 +1877,73 @@ local function CdReady()
 	return best and s[best], best
 end
 
+-- (2.1.79; BaQstein, Discord 2026-11-23: "a notification for every single transmute when its ready, but they share a
+-- cooldown. So you get like 8 notification") Recipes of one profession whose cooldowns end together (within a minute:
+-- they were read in one scan) are one cooldown: one notice, told at once, named by what their names share before the
+-- colon ("Transmute: Arcanite", "Transmute: Iron to Gold" -> "Transmute")
+local CD_SAME = 60
+local cdShared = {}
+
+function cd.Shared(e)
+	for i = #cdShared, 1, -1 do
+		cdShared[i] = nil
+	end
+	local s = CdStore()
+	if not (s and e and e.ready) then
+		return cdShared
+	end
+	for _, o in pairs(s) do
+		if type(o) == "table" and o.ready and not o.told and o.prof == e.prof and math.abs(o.ready - e.ready) <= CD_SAME then
+			cdShared[#cdShared + 1] = o
+		end
+	end
+	return cdShared
+end
+
+-- a recipe name's part before its colon (either width), nil without one
+function cd.Before(name)
+	if type(name) ~= "string" then
+		return nil
+	end
+	local a, b = name:find(":", 1, true), name:find("\239\188\154", 1, true)   -- (":" and the full-width one)
+	local at = (a and b) and math.min(a, b) or a or b
+	local part = at and name:sub(1, at - 1):gsub("%s+$", "") or nil
+	return (part and part ~= "") and part or nil
+end
+
+-- the ready one's name: what the recipes sharing its cooldown are called together, else its own
+function cd.Name(e)
+	if not e then
+		return nil
+	end
+	local list = cd.Shared(e)
+	if #list > 1 then
+		local shared = cd.Before(list[1].name)
+		for i = 2, #list do
+			if not shared or cd.Before(list[i].name) ~= shared then
+				shared = nil
+				break
+			end
+		end
+		if shared then
+			return shared
+		end
+	end
+	return e.name
+end
+
+-- the ready one told, with every recipe sharing its cooldown
+function cd.Tell()
+	local e = CdReady()
+	if not e then
+		return
+	end
+	for _, o in ipairs(cd.Shared(e)) do
+		o.told = true
+	end
+	e.told = true
+end
+
 local CdTimer   -- (below)
 
 -- one timer for the next one due (a newer ask makes the older one do nothing)
@@ -1981,7 +2048,7 @@ local COOLDOWN = {
 	end,
 	title = function()
 		local e = CdReady()
-		return M.F(TEXT.cdReady, e and e.name or TEXT.cdLabel)
+		return M.F(TEXT.cdReady, cd.Name(e) or TEXT.cdLabel)
 	end,
 	text = function()
 		local e = CdReady()
@@ -1991,21 +2058,15 @@ local COOLDOWN = {
 		local e = CdReady()
 		return e and e.icon or "Interface\\Icons\\INV_Misc_PocketWatch_01"
 	end,
-	-- (a click: told, the next one ready shows, if any)
+	-- (a click: told, with the recipes sharing its cooldown; the next one ready shows, if any)
 	onClick = function()
-		local e = CdReady()
-		if e then
-			e.told = true
-		end
+		cd.Tell()
 		Refresh("cooldown", true)
 	end,
 	actions = {
 		{ glyph = "check", tip = TEXT.ready_, desc = TEXT.cdLineItem,
 		  fn = function()
-			local e = CdReady()
-			if e then
-				e.told = true
-			end
+			cd.Tell()
 			Refresh("cooldown", true)
 		  end },
 	},

@@ -2486,6 +2486,7 @@ Lang:Add("ptBR", {
 	["%s, %s and %s use MelloUI too"] = "%s, %s e %s também usam o MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "%d jogadores do seu grupo usam o MelloUI", -- draft
 	["Now in your group"] = "Agora no seu grupo", -- draft
+	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "Recargas de profissão: receitas que compartilham uma recarga, como as transmutações, dão um só aviso quando ela termina.", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Minimapa sem o Questie: os círculos azuis de missão do jogo dão lugar às marcas do MelloUI.", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "Mapa: com o mapa do MelloUI desligado, o mapa-múndi do jogo também mostra as áreas de missão do MelloUI sem o Questie.", -- draft
 	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "Barra de serviços e moldura do minimapa: chega de ações bloqueadas quando o botão de minimapa de um addon muda em combate.", -- draft

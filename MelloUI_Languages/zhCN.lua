@@ -2486,6 +2486,7 @@ Lang:Add("zhCN", {
 	["%s, %s and %s use MelloUI too"] = "%s、%s 和 %s 也在用 MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "队伍中有 %d 名玩家在用 MelloUI", -- draft
 	["Now in your group"] = "现在在你的队伍中", -- draft
+	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "专业冷却：共享冷却的配方（如转化）在冷却结束时只提示一次。", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "地图：关闭 MelloUI 的地图时，没有 Questie 的情况下游戏自带的世界地图也会显示 MelloUI 的任务区域。", -- draft
 	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "服务栏和小地图边框：战斗中插件的小地图按钮变化时不再出现被阻止的操作。", -- draft

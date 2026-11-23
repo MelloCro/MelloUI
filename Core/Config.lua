@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.79", lines = {
+		"Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over.",
+	} },
 	{ version = "2.1.78", lines = {
 		"Minimap without Questie: the game's blue quest circles give way to MelloUI's marks.",
 		"Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too.",
@@ -197,9 +200,6 @@ local CHANGELOG = {
 		"Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view.",
 		"Chat: Tab Switches Channel moves to the next chat you can speak in while you type.",
 		"Chat: Short Channel Tags shorten channel names in every game language, in both chat views.",
-	} },
-	{ version = "2.1.74", lines = {
-		"Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look.",
 	} },
 }
 local LINKS = {

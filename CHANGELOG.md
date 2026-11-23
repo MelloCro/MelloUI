@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.79
+
+- Fixed: Profession Cooldowns showed a notice for every transmute when the transmute cooldown was over, though they all share one cooldown. Recipes of one profession whose cooldowns end together now give one notice ("Transmute ready"), and one click clears it.
+
 ## 2.1.78
 
 - Fixed: without Questie, the minimap showed the game's own blue quest circles next to MelloUI's marks. While MelloUI marks your quests on the minimap and Hide The Game's Quest Areas is on (Quest List > Map), the game's quest areas on the minimap are hidden now, as they already were on the map. They come back when you turn that switch or MelloUI's minimap marks off.
