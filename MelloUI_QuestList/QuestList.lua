@@ -115,7 +115,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 		-- (2.1.68; Lively on Discord: "a way to focus on a single quest area on the map at a time like in the base
 		-- version"): QuestListObjectives' O.Focus, read by every place the marks are drawn
 		{ type = "toggle", key = "objectiveFocusedOnly", parent = "objectiveMarks", name = "Focused Quest Only",
-		  new = "2.1.68",
 		  desc = "Marks only the quest you follow (its mark clicked in the Quest Tracker), on the map and the minimap, as the game's own map does. With none followed, every quest is marked." },
 		{ type = "toggle", key = "hideGameObjectives", parent = "objectiveMarks", name = "Hide The Game's Quest Areas",
 		  desc = "Hides the game's blue quest areas while MelloUI's marks are on." },
@@ -2506,6 +2505,38 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 		if look and look.Dump then
 			look.Dump()
 		end
+		return
+	end
+	-- (2.1.70; the user, 2026-11-22: "these options dont do anything on the map") /qlmap focus: the quest Focused Quest
+	-- Only marks alone, and why (the switch, the game's followed quest, Route's pin, the quest in the log)
+	if (msg or ""):lower():match("^%s*focus%s*$") then
+		local db = M.db or {}
+		local Acts = rawget(MelloUI, "QuestActs")
+		local okF, followed, pinned = false, nil, nil
+		if Acts and Acts.Followed then
+			okF, followed, pinned = pcall(Acts.Followed)
+		end
+		local okS, super = pcall(C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID or error)
+		local focus = QL.Objectives and QL.Objectives.Focus and QL.Objectives.Focus() or nil
+		local function Name(id)
+			id = QL.Plain(id)
+			if type(id) ~= "number" or id <= 0 then
+				return "none"
+			end
+			local okT, title = pcall(C_QuestLog.GetTitleForQuestID, id)
+			title = okT and QL.Plain(title) or nil
+			local okL, index = pcall(C_QuestLog.GetLogIndexForQuestID, id)
+			index = okL and QL.Plain(index) or nil
+			return string.format("%s (%d)%s%s", type(title) == "string" and title or "?", id,
+				index and "" or ", not in your log", QL.IsReadyForTurnIn(id) and ", ready to hand in: no marks" or "")
+		end
+		MelloUI:Print("Focused Quest Only: %s; Only The Tracked Quests: %s; Objective Marks: %s.",
+			db.objectiveFocusedOnly and "on" or "off", db.objectiveTrackedOnly and "on" or "off",
+			db.objectiveMarks == false and "off" or "on")
+		MelloUI:Print("Followed: %s (the game's: %s; Route's pin: %s).", okF and Name(followed) or "unknown",
+			okS and Name(super) or "unknown", Name(pinned))
+		MelloUI:Print("Marked: %s.", focus and Name(focus) or (db.objectiveFocusedOnly
+			and "every quest -- none is followed (click a quest's mark in the Quest Tracker to follow it)" or "every quest"))
 		return
 	end
 	local data = QL.Data()

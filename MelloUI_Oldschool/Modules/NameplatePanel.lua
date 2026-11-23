@@ -560,6 +560,85 @@ function NpSet.Level(uf, icon, text, ring)
 	end
 	return true
 end
+--------------------------------------------------------------------------------
+-- (2.1.71; the user, 2026-11-22: "our nameplates in the nameplate preview dont match the actual nameplate look
+-- depending on the selected theme or modifications") The Nameplate Designer's sample (Modules/Nameplates.lua's
+-- 'nameplate' kind) in this kit's dress, by the live plates' own pieces: the frame set's painting round its health
+-- bar (Sets.Strip, kind "np", at the bar's height as the Nameplates module lays it -- NpSet.Lay's numbers), the level
+-- number in its socket (NpSet.Level's), your target's glow (the sample shows your target), the game's art under it
+-- put out. The kit off, or a set with no nameplate: the sample's own, the game's art. Dressed through the preview's
+-- one seam (CP.OnDress: as the sample is made, and again when this module or a border kind changes), laid after each
+-- of the sample's paints (its `dressLay`, called by the stage's Paint: the sample's size is laid there)
+--------------------------------------------------------------------------------
+local Sample = { of = setmetatable({}, { __mode = "k" }) }   -- [sample] = { strip, target }
+
+-- the game's art of the sample (its backing, the dimming band, the target outline, the level circle) seen or put out
+function Sample.Art(f, a)
+	f.bg:SetAlpha(a)
+	f.deselected:SetAlpha(a)
+	f.border:SetAlpha(a)
+	f.level:SetAlpha(a)
+end
+
+function Sample.Lay(f)
+	local e = Sample.of[f]
+	local set = NpSet.Data()
+	local laid = false
+	if e and set and set.np then
+		laid = e.strip:Lay(set, "np", f.bar, f.barH or NpSet.Depth(), NpSet.LENGTH) and true or false
+	end
+	if e then
+		if not laid then
+			e.strip:Hide()
+		end
+		e.strip:GlowState(e.target, laid and "target" or nil)
+	end
+	-- (the painting's place, which the sample grows round: its ends reach past the bar)
+	f.dressBox = laid and e.strip.box or nil
+	Sample.Art(f, laid and 0 or 1)
+	if not laid then
+		return
+	end
+	local x0, y0, x1, y1, at = e.strip:Badge()
+	if x0 then
+		f.level:ClearAllPoints()
+		f.level:SetPoint("TOPLEFT", f.bar, at, x0, -y0)
+		f.level:SetPoint("BOTTOMRIGHT", f.bar, at, x1, -y1)
+	end
+end
+
+function Sample.Dress(f)
+	if type(f) ~= "table" or not (f.bar and f.bg and f.level) then
+		return
+	end
+	local e = Sample.of[f]
+	if active and Kit.Sets then
+		if not e then
+			local strip = Kit.Sets.Strip(f.bar)
+			strip:Ground(true)
+			e = { strip = strip, target = strip:Glow(f.bar, "BACKGROUND", -6) }
+			Sample.of[f] = e
+		end
+		f.dressLay = Sample.Lay
+		Sample.Lay(f)
+		return
+	end
+	f.dressLay, f.dressBox = nil, nil
+	if e then
+		e.strip:Hide()
+		e.strip:GlowState(e.target, nil)
+	end
+	Sample.Art(f, 1)
+end
+M.Sample = Sample   -- (the tests)
+
+do
+	local CP = MelloUI.ConfigPreview
+	if CP and CP.OnDress then
+		CP.OnDress("nameplate", Sample.Dress, { owner = "NameplatePanel", topics = { "border" } })
+	end
+end
+
 -- A plate's name laid again where the kit lays it (CentreName, with the
 -- Nameplates module's lift): true while the kit holds the name, false when
 -- the game's own anchors do (the kit off, a plate it has not dressed, the

@@ -177,40 +177,26 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
-	{ version = "2.1.68", lines = {
-		"Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap.",
-		"Loot All Key: one key takes everything from the loot window (Windows > Loot windows).",
-		"Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars.",
-		"Edit Layout: move and size the totem and minion timers.",
-		"Edit Layout: move the battleground and zone objectives at the top of the screen.",
+	{ version = "2.1.77", lines = {
+		"Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look.",
 	} },
-	{ version = "2.1.67", lines = {
-		"Press and Hold Casting works on MelloUI's action bars.",
+	{ version = "2.1.76", lines = {
+		"Easter egg added.",
 	} },
-	{ version = "2.1.66", lines = {
-		"Cast Marks (off until turned on): your latency hatched at the end of each cast, and a mark for each tick of a channel.",
-		"Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker.",
-		"Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips.",
-		"Mail Recipients: no realm behind your own characters any more when the game names none.",
+	{ version = "2.1.75", lines = {
+		"Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again.",
+		"Nameplates: friendly plates that show only the name no longer get a plate border on mouseover.",
+		"Chat: channels other addons use in the background no longer show up as tabs in the Minimal view.",
+		"Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view.",
+		"Chat: Tab Switches Channel moves to the next chat you can speak in while you type.",
+		"Chat: Short Channel Tags shorten channel names in every game language, in both chat views.",
 	} },
-	{ version = "2.1.65", lines = {
-		"Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values.",
-		"Map's quest log: Show on a quest with no place on the map, such as a crafting writ, says so instead of doing nothing.",
-		"Reminders detached from the portrait keep the size and place you gave them in Edit Layout.",
-		"Map with Questie: Shift over a quest icon opens its full tooltip at once, and letting go folds it again.",
-		"Your corpse shows on the map and the minimap again after you die.",
-		"Oldschool: the map's Quest List tab reads as easily as the Quests tab, with no stray parchment over the map.",
-		"Druid Forms: buffs and debuffs anchored to the player frame hang under its row instead of covering it.",
-		"Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame.",
-		"Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights.",
-		"Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers.",
-		"Mail: an empty subject takes the name of the first item you attach.",
-		"Supporters page: the people who send code and translations on GitHub, credited under the banners.",
+	{ version = "2.1.74", lines = {
+		"Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look.",
 	} },
-	{ version = "2.1.64", lines = {
-		"Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once.",
-		"RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one.",
-		"Dungeon Info: loot for six of Forever's own dungeons that had none, and players' measured drop rates for more bosses.",
+	{ version = "2.1.73", lines = {
+		"Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them.",
+		"Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map.",
 	} },
 }
 local LINKS = {
@@ -1876,6 +1862,19 @@ do
 			end
 			if extra.when then
 				r.when = BindWhen(extra.when, p.key, t.name)
+			end
+			-- (2.1.76; the user, of the group moment: "This is a easter egg, i dont want people to know what it is until
+			-- they join a group with another melloui user") a row kept out until its module's saved value is true
+			-- (extra.reveal = "Module.key"), read as the pages are laid: once revealed it shows from the next layout
+			if extra.reveal then
+				local name, key = tostring(extra.reveal):match("^([^.]+)%.(.+)$")
+				local db = name and MelloUI.modules[name] and MelloUI:GetModuleDB(name)
+				if not (type(db) == "table" and db[key] == true) then
+					for _, b in ipairs(r.distinct or { first }) do
+						hidden[b.id] = true
+					end
+					return nil
+				end
 			end
 			-- a row that only lives while a switch of MelloUI_Oldschool's is on (its gate, its `when`): left out
 			-- while that addon is not loaded

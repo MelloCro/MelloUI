@@ -198,12 +198,30 @@ local function DefaultShows(entry)
 	return not ok or shows and true or false
 end
 
+-- (2.1.75) the key an element's eye is kept under: its own, or the one its `eyeKey` answers (a game element a
+-- MelloUI module stands in for, EditLayoutWindows' StandInEye: the game's damage meter keeps its eye apart while
+-- MelloUI's meter is off)
+local function EyeKey(entry)
+	if type(entry) ~= "table" then
+		return nil
+	end
+	local fn = entry.eyeKey
+	if type(fn) == "function" then
+		local ok, key = pcall(fn, entry)
+		if ok and key ~= nil then
+			return key
+		end
+	end
+	return entry.key
+end
+
 -- an element's eye (the solo aside): the kept choice -- true hidden, false shown even while the game hides it --
 -- else its default
 local function Eye(entry)
 	local h, v = Prefs().hidden, nil
-	if type(entry) == "table" and entry.key ~= nil and type(h) == "table" then
-		v = h[entry.key]   -- (false kept: an and / or would turn it into nil)
+	local key = EyeKey(entry)
+	if key ~= nil and type(h) == "table" then
+		v = h[key]   -- (false kept: an and / or would turn it into nil)
 	end
 	if v == true then
 		return false
@@ -352,7 +370,7 @@ end
 
 local function SetEye(entry, show)
 	local t = Edit()
-	local key = type(entry) == "table" and entry.key or nil
+	local key = EyeKey(entry)
 	if not t or key == nil then
 		return
 	end
@@ -398,7 +416,7 @@ local function SetAll(how)
 	for i = 1, #items do
 		local it = items[i]
 		local hide = how == false or (how == "game" and it.gameHidden)
-		t.hidden[it.key] = EyeValue(it.entry, not hide)
+		t.hidden[EyeKey(it.entry) or it.key] = EyeValue(it.entry, not hide)
 	end
 	Save(t)
 	MelloUI:PlayUISound("tick")
@@ -477,7 +495,7 @@ local EyeClick = Shared("OnClick on an Elements list eye", function(self)
 		S.solo = nil
 		for i = 1, #items do
 			if items[i].cat == it.cat then
-				t.hidden[items[i].key] = EyeValue(items[i].entry, not any)
+				t.hidden[EyeKey(items[i].entry) or items[i].key] = EyeValue(items[i].entry, not any)
 			end
 		end
 		Save(t)

@@ -1,5 +1,58 @@
 # Changelog
 
+## 2.1.77
+
+- Map and minimap without Questie: the quests in your log now show the game's own quest areas and points, drawn in MelloUI's look (the gold edge and glow in your colours, MelloUI's marks), as the game's own map shows them. Before, without Questie MelloUI's map showed no quests at all. Done quests show their turn-in mark. With Questie, nothing changes.
+
+## 2.1.76
+
+- Easter egg added.
+
+## 2.1.75
+
+- Fixed: with MelloUI's Damage Meter turned off, the game's own damage meter sat in a corner of the screen with no way to move it, because Edit Layout hid its plate. While MelloUI's meter is off, the game's meter now has its plate in Edit Layout, so you can drag it anywhere.
+- Fixed: friendly nameplates that show only the name no longer get the plate's border round the name on mouseover.
+- Fixed: the Minimal Chat View no longer gives a tab to channels that other addons join to talk to each other in the background (such as one named GIFM). A channel you join, or put in a chat window, keeps its tab.
+- Chat: One Line Per Message, new (Chat > Messages > Text, off until you turn it on): the Minimal Chat View shows each message on one line, with the time, the channel, the name and the words in the order the game's own chat uses, instead of the name over the message. A long message wraps back to the left edge.
+- Chat: Tab Switches Channel, new (Chat > Messages > Behaviour, off until you turn it on): while you type, Tab moves to the next chat you can speak in (Say, Party, Raid, Instance, Guild, then your channels) and Shift-Tab goes back, your words kept. Name suggestions, whisper targets and slash commands keep their own Tab, and channels other addons use in the background are skipped.
+- Chat: Short Channel Tags now work on game clients in every language, and in both chat views. A channel without a tag of its own is shortened to its first character (综 for 综合, A for Allgemein), with the first character of a part in brackets added where there is one (交服 for 交易（服务）). Before, on a Chinese client the Game Windows view drew half a character and the Minimal view showed the whole name. Forever's own channels (Newcomer Chat, Trade (Local), Trade (Services), OOC, Hardcore Deaths and more) have tags in English too.
+
+## 2.1.74
+
+- Map and minimap with Questie: a quest in your log that Questie has no places for (new zones such as Riverglades) now shows the game's own quest area, drawn as MelloUI's own areas are: the gold edge and glow, in your colours, with MelloUI's mark. The minimap shows it the same way, and Route can lead you there. Until the area is ready, MelloUI's mark stands at the game's point for it, and once a quest Questie doesn't know is done, the turn-in mark shows where you hand it in. Quests Questie knows look as before.
+
+## 2.1.73
+
+- Unit & Group Frames > Personal: the Personal Display has its own preview, like Player and the nameplates: the bars, the cast bar, the shield column, the swing badge, the big cooldowns and the text all at once, in the look your display wears. Click a part to open its settings, and drag the cast bar, the text, the swing badge or the big cooldowns to a new place on it: your display follows. The wheel sizes the swing badge and the big cooldowns. Right-click a part and pick Default place to put it back.
+- Map: inside a battleground, its bases, towers, graveyards and camps show on the map in the game's own icons, which change with who holds them (Alliance, Horde, contested or nobody). Hover one for its name and state.
+
+## 2.1.72
+
+- Nameplate Designer: the health number and the percent are two parts now, Health number and Health percent: drag each one anywhere on the plate, hide either, and give the percent its own size (Percent Size, smaller than the number if you like).
+- Nameplates: Name Size, new (Nameplates > Enemies > Name): the names on the plates in the size you pick. The wheel over the name in the Designer sets it too.
+- Fixed: with Percent Beside The Bar, the swing badge on your target's plate covered the percent. It now stands past it.
+- Lueur: while its glow is on, Loot Sparkles' glints over ore, herbs and quest objects step aside and leave the game's soft targeting settings to it, so the two no longer fight over them. The quest item sparkle stays. On the Addons page, with its own switch.
+- GatherMate2: every ore and every herb now has its own MelloUI icon on the map and the minimap: copper, tin, iron, mithril, thorium and the rest each in their own colour, and each of the 30 herbs drawn as itself (Peacebloom, Silverleaf, Kingsblood, Black Lotus ...). Before, all veins shared one icon and all herbs another.
+
+## 2.1.71
+
+- Nameplate Designer: the preview now wears the look your nameplates wear. With the Oldschool look, the frame set's painting round the health bar, the level in its round socket and your target's glow; with Dark Mode on, its darker bar backing. Before, the preview always showed the game's own plate.
+- ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars, the controller's display buttons too (before, it only reached the game's own buttons, which MelloUI's bars hide). On the Addons page, with its own switch.
+
+## 2.1.70
+
+- Nameplates: Health Text Size, new (Nameplates > Enemies > Health text): the health numbers on the plates in the size you pick, smaller for small plates, the names as they are. Game's keeps the game's size.
+- Nameplates: Percent Beside The Bar, new (off until you turn it on, beside Health Text Size): when the game shows both the health number and the percent on the plates, the number stands in the middle of the bar and the percent beside it.
+- Nameplate Designer: the health numbers are a part of their own, Health text. Drag them anywhere on the plate, size them with the wheel, or hide them. Showing them while the game shows none turns on the game's own number and percent.
+- Personal Display: Percent Position has a third choice, Number On The Bars, Percent Beside: your health and power amounts in the middle of the bars, whole, and the percents beside them.
+- Personal Display: Text Size and Text Colour, new (Unit & Group Frames > Personal, Text): the size and the colour of all of its text. The colour starts as the palette's text colour and follows it until you pick one.
+- Fixed: on MelloUI's map, Only The Tracked Quests and Focused Quest Only (Quest List > Map) took effect only the next time the map opened or your quest log changed. They change the open map at once now. /qlmap focus says which quest Focused Quest Only marks, and why (every quest while you follow none).
+- Fixed in Chinese: titles and headings came out about a quarter larger than their size, and lines of text could run into each other. Chinese letters now take the size the text asks for. On some Chinese clients a few titles showed boxes instead of Chinese letters; they show the letters now.
+
+## 2.1.69
+
+- Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation as it looks through a window for its buttons, and names the part of the window where an addon first got in its way, to track down the actions the game blocks in the Gamepad UI.
+
 ## 2.1.68
 
 - Map: Focused Quest Only, new (off until you turn it on, Quest List > Map, under Objective Marks): the map and the minimap mark only the quest you follow, as the game's own map does. Click a quest's mark in the Quest Tracker to follow it; with none followed, every quest is marked.

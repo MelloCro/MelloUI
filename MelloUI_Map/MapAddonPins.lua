@@ -845,9 +845,33 @@ end
 -- Skull icons"). The minimap wears what the big map wears: its own minimap pins get the same picture while MelloUI's
 -- map is on, laid over its own (its texture's alpha only; given back when it draws its tracking circle or the look
 -- goes). Nothing of GatherMate2's is written but that alpha.
+-- (2.1.72; the user, 2026-11-22: "copper for copper, iron etc ... also for every herb kind") one icon a resource: each
+-- vein and herb GatherMate2 marks in Forever's world by its own node id (its Constants.lua) -> MelloUI's icon for that
+-- metal or herb; the variants of a metal (ooze covered, small, rich, heavy) share its icon. A node with none, or whose
+-- picture the look in use lacks, wears its kind's icon (ICON), else GatherMate2's own picture.
 local Gather = {
 	ICON = { ["Herb Gathering"] = "gather_herb", ["Mining"] = "gather_ore", ["Fishing"] = "gather_fish",
 		["Treasure"] = "ql_chest" },
+	NODE = {
+		["Mining"] = {
+			[201] = "ore_copper", [202] = "ore_tin", [203] = "ore_iron", [204] = "ore_silver", [205] = "ore_gold",
+			[206] = "ore_mithril", [207] = "ore_mithril", [208] = "ore_truesilver", [209] = "ore_silver",
+			[210] = "ore_gold", [211] = "ore_truesilver", [212] = "ore_thorium", [213] = "ore_thorium",
+			[214] = "ore_thorium", [215] = "ore_thorium", [216] = "ore_thorium", [217] = "ore_darkiron",
+			[218] = "ore_bloodstone", [219] = "ore_incendicite", [220] = "ore_indurium", [4201] = "ore_thorium",
+		},
+		["Herb Gathering"] = {
+			[401] = "herb_peacebloom", [402] = "herb_silverleaf", [403] = "herb_earthroot", [404] = "herb_mageroyal",
+			[405] = "herb_briarthorn", [407] = "herb_stranglekelp", [408] = "herb_bruiseweed",
+			[409] = "herb_steelbloom", [410] = "herb_gravemoss", [411] = "herb_kingsblood", [412] = "herb_liferoot",
+			[413] = "herb_fadeleaf", [414] = "herb_goldthorn", [415] = "herb_khadgarswhisker",
+			[416] = "herb_wintersbite", [417] = "herb_firebloom", [418] = "herb_purplelotus",
+			[420] = "herb_arthastears", [421] = "herb_sungrass", [422] = "herb_blindweed",
+			[423] = "herb_ghostmushroom", [424] = "herb_gromsblood", [425] = "herb_goldensansam",
+			[426] = "herb_dreamfoil", [427] = "herb_silversage", [428] = "herb_plaguebloom", [429] = "herb_icecap",
+			[430] = "herb_bloodvine", [431] = "herb_blacklotus", [4401] = "herb_demonsage",
+		},
+	},
 	FRESH = 1,   -- s the answers below are kept (asked for every minimap pin at every update of GatherMate2's)
 	has = {}, dressed = setmetatable({}, { __mode = "k" }),
 }
@@ -864,42 +888,57 @@ local function GatherFresh()
 	end
 end
 
--- MelloUI's icon for a kind of node -- its name in the set -- while the look in use has that picture, else nil
-function Gather.Icon(kind)
+-- a name in the set while the look in use has that picture, else nil
+local function Drawn(name)
+	if not name then
+		return nil
+	end
+	-- (the Default look draws the game's own art: only what it has a game picture for, Core/Skin.lua -- else
+	-- GatherMate2's own pictures stay there, which are the game's item icons already)
+	local Icons, Skin = MelloUI.Icons, rawget(MelloUI, "Skin")
+	local drawn
+	if type(Skin) == "table" and type(Skin.IsDefault) == "function" and Skin.IsDefault() then
+		drawn = type(Skin.Icon) == "function" and Skin.Icon(name) ~= nil
+	else
+		drawn = type(Icons) == "table" and type(Icons.Has) == "function" and Icons.Has(ICONS .. name)
+	end
+	return drawn and name or nil
+end
+
+-- MelloUI's icon for a node -- its name in the set: its resource's (2.1.72, `nodeID` given), else its kind's -- while
+-- the look in use has that picture, else nil
+function Gather.Icon(kind, nodeID)
 	GatherFresh()
-	local known = Gather.has[kind]
+	if kind == nil then
+		return nil
+	end
+	local id = type(nodeID) == "number" and nodeID or nil
+	local key = id and (tostring(kind) .. ":" .. id) or kind
+	local known = Gather.has[key]
 	if known ~= nil then
 		return known or nil
 	end
-	local name = type(kind) == "string" and Gather.ICON[kind] or nil
-	if name then
-		-- (the Default look draws the game's own art: only a kind it has a game picture for, Core/Skin.lua -- else
-		-- GatherMate2's own pictures stay there, which are the game's item icons already)
-		local Icons, Skin = MelloUI.Icons, rawget(MelloUI, "Skin")
-		local drawn
-		if type(Skin) == "table" and type(Skin.IsDefault) == "function" and Skin.IsDefault() then
-			drawn = type(Skin.Icon) == "function" and Skin.Icon(name) ~= nil
-		else
-			drawn = type(Icons) == "table" and type(Icons.Has) == "function" and Icons.Has(ICONS .. name)
-		end
-		name = drawn and name or nil
+	local name
+	if id then
+		local list = type(kind) == "string" and Gather.NODE[kind]
+		name = Drawn(type(list) == "table" and list[id] or nil) or Gather.Icon(kind)
+	else
+		name = Drawn(type(kind) == "string" and Gather.ICON[kind] or nil)
 	end
-	if kind ~= nil then
-		Gather.has[kind] = name or false
-	end
+	Gather.has[key] = name or false
 	return name
 end
 
 -- (GatherMate2's Display:addMiniPin, after it: a minimap pin of its own laid or moved) its picture covered by
--- MelloUI's for its kind; its own again while it shows its tracking circle (pin.isCircle), for a kind with no icon,
--- or with MelloUI's map off. Runs for every pin at each of its updates: nothing is set that already stands.
+-- MelloUI's for its resource or kind (2.1.72); its own again while it shows its tracking circle (pin.isCircle), for a
+-- node with no icon, or with MelloUI's map off. Runs for every pin at each of its updates: nothing is set that already stands.
 local GatherMini = Perf.Shared("GatherMate2's minimap pin laid (MelloUI's icon over its own)", function(_, pin)
 	if type(pin) ~= "table" then
 		return
 	end
 	GatherFresh()
 	local d = Gather.dressed[pin]
-	local name = (Gather.look and not rawget(pin, "isCircle")) and Gather.Icon(rawget(pin, "nodeType")) or nil
+	local name = (Gather.look and not rawget(pin, "isCircle")) and Gather.Icon(rawget(pin, "nodeType"), rawget(pin, "nodeID")) or nil
 	local own = rawget(pin, "texture")
 	if not name then
 		if d and d.on then
@@ -927,7 +966,8 @@ local GatherMini = Perf.Shared("GatherMate2's minimap pin laid (MelloUI's icon o
 end)
 Gather.Mini = GatherMini
 
--- GatherMate2: the zone's nodes of each kind it shows (its own filters), in MelloUI's icon for the kind (Gather)
+-- GatherMate2: the zone's nodes of each kind it shows (its own filters), in MelloUI's icon for the resource or the
+-- kind (Gather)
 Sources[2] = function(id, add)
 	local gm = Used("GatherMate2") and Ace("GatherMate2")
 	if not (gm and gm.db and gm.db.profile and type(gm.db_types) == "table" and type(gm.GetNodesForZone) == "function") then
@@ -946,7 +986,6 @@ Sources[2] = function(id, add)
 		if type(visible) ~= "table" or visible[kind] then
 			local ok, iter, state, value = pcall(gm.GetNodesForZone, gm, dataID, kind)
 			local pics = type(textures) == "table" and textures[kind]
-			local mine = Gather.Icon(kind)   -- (2.1.61: MelloUI's icon for the kind, else its own picture a node)
 			if ok and type(iter) == "function" then
 				local guard = 0
 				while guard < 20000 do
@@ -956,6 +995,8 @@ Sources[2] = function(id, add)
 					end
 					value, guard = coord, guard + 1
 					nodeID = replace[nodeID] or nodeID
+					-- (2.1.72: MelloUI's icon for its resource, else for its kind, else its own picture)
+					local mine = Gather.Icon(kind, nodeID)
 					local okL, x, y = pcall(gm.DecodeLoc, gm, coord)
 					local okT, title = pcall(gm.GetNameForNode, gm, kind, nodeID)
 					if okL and Finite(x) and Finite(y) then

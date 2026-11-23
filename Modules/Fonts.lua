@@ -536,28 +536,38 @@ end
 -- flags }; nil for a font of one face (a member the font hands out for every
 -- alphabet is that one face: kept once, as Latin), or a client without
 -- families
+-- (2.1.70; 轻风细雨 on Discord, a Simplified Chinese client: titles too large, Chinese letters in boxes) an alphabet
+-- whose member is another's (a client whose Latin member is its Chinese face: one member for both) is kept, marked
+-- `shared`: it was dropped, so a family made here had no Chinese member and drew the Chinese in the Latin face, as
+-- boxes. One member for every alphabet is still a font of one face
 function Family.Read(object)
 	if type(object) ~= "table" or type(object.GetFontObjectForAlphabet) ~= "function" then
 		return nil
 	end
-	local list, seen
+	local list, count, distinct = nil, {}, 0
 	for _, alphabet in ipairs(Family.ALPHABETS) do
 		local ok, member = pcall(object.GetFontObjectForAlphabet, object, alphabet)
-		if ok and type(member) == "table" and member ~= object and type(member.GetFont) == "function"
-			and not (seen and seen[member]) then
+		if ok and type(member) == "table" and member ~= object and type(member.GetFont) == "function" then
 			local okF, path, size, flags = pcall(member.GetFont, member)
 			path = okF and SafeText(path) or nil
 			size = okF and SafeNumber(size) or nil
 			if path and size then
-				list, seen = list or {}, seen or {}
-				seen[member] = true
+				list = list or {}
+				if not count[member] then
+					distinct = distinct + 1
+				end
+				count[member] = (count[member] or 0) + 1
 				list[alphabet] = { member = member, path = path, size = size, flags = okF and SafeText(flags) or "" }
 			end
 		end
 	end
 	-- (one member only: a font of one face)
-	if not (list and list.roman) or not (list.korean or list.simplifiedchinese or list.traditionalchinese or list.russian) then
+	if not (list and list.roman) or distinct < 2
+		or not (list.korean or list.simplifiedchinese or list.traditionalchinese or list.russian) then
 		return nil
+	end
+	for _, m in pairs(list) do
+		m.shared = count[m.member] > 1 or nil
 	end
 	return list
 end
@@ -591,11 +601,12 @@ function Family.FileFor(alphabet, own, face, roman)
 	return own
 end
 
--- a game font object's members: the face, the size share and the flags
+-- a game font object's members: the face, the size share and the flags. (2.1.70) A member shared by Latin and another
+-- alphabet keeps its own file: the face on it would draw the other alphabet's letters as boxes
 function Family.Set(members, face, scale, FlagsOf)
 	local roman = members.roman.path
 	for alphabet, m in pairs(members) do
-		pcall(m.member.SetFont, m.member, Family.FileFor(alphabet, m.path, face, roman),
+		pcall(m.member.SetFont, m.member, m.shared and m.path or Family.FileFor(alphabet, m.path, face, roman),
 			math.max(6, math.floor(m.size * scale + 0.5)), FlagsOf(m.flags))
 	end
 end
@@ -621,8 +632,12 @@ end
 -- none), and the region's own alignment, wrapped-line indent and line
 -- spacing (the chat window keeps them on its font object: a font object's
 -- own is centred -- the chat's lines came out centred, user 2026-10-02).
--- nil without families.
-function Family.Make(base, face, size, flags, noShadow, justifyH, justifyV, indent, spacing)
+-- nil without families. (2.1.70) `even`: every member at `size` (MelloUI's
+-- own texts, Glyph.Set) -- not at the base's share: GameFontNormal's, the
+-- usual base, is 15 Chinese to 12 Latin, so a Chinese title came out at 1.25
+-- times its size, and lines measured by the Latin size overlapped (the
+-- game's own families keep about 1.0 from 15 up)
+function Family.Make(base, face, size, flags, noShadow, justifyH, justifyV, indent, spacing, even)
 	if type(CreateFontFamily) ~= "function" or not (base and base.roman) or type(face) ~= "string" then
 		return nil
 	end
@@ -639,7 +654,7 @@ function Family.Make(base, face, size, flags, noShadow, justifyH, justifyV, inde
 	indent = indent and true or false
 	spacing = type(spacing) == "number" and spacing or 0
 	local slot = Slot(Slot(Slot(Family.made, base), face), size)
-	slot = Slot(Slot(Slot(Slot(Slot(slot, flags), justifyH), justifyV), indent), spacing)
+	slot = Slot(Slot(Slot(Slot(Slot(Slot(slot, flags), justifyH), justifyV), indent), spacing), even and true or false)
 	local kind = noShadow and 2 or 1
 	if slot[kind] then
 		return slot[kind]
@@ -650,7 +665,7 @@ function Family.Make(base, face, size, flags, noShadow, justifyH, justifyV, inde
 		local m = base[alphabet]
 		if m then
 			list[#list + 1] = { alphabet = alphabet, file = Family.FileFor(alphabet, m.path, face, base.roman.path),
-				height = math.max(6, math.floor(size * m.size / base.roman.size + 0.5)), flags = flags }
+				height = even and size or math.max(6, math.floor(size * m.size / base.roman.size + 0.5)), flags = flags }
 		end
 	end
 	Family.count = Family.count + 1
@@ -799,8 +814,12 @@ local Glyph = {
 -- family of a family: one more each time a text is styled again); a game object's own as first remembered
 -- (StyleFont's strings), else as they read now; GameFontNormal's for none (read once: never remembered from here,
 -- which would change whose members a sharing font follows)
+-- (2.1.70; 轻风细雨, a Simplified Chinese client: some titles in boxes) a font of one face (a font object of one file,
+-- MelloUI's or the client's) has no other alphabets to give: GameFontNormal's members then, else the client's own
+-- standard font for them (Glyph.Standard) -- before, such a text took SetFont with the face alone, its Chinese boxes
 function Glyph.Base(object)
-	object = type(object) == "table" and object or _G.GameFontNormal
+	local normal = _G.GameFontNormal
+	object = type(object) == "table" and object or normal
 	if type(object) ~= "table" then
 		return nil
 	end
@@ -808,15 +827,44 @@ function Glyph.Base(object)
 		return Glyph.baseOf[object]
 	end
 	local original = originals[object]
-	if original then
-		return original.members
+	local members = original and original.members
+	if not members then
+		members = Glyph.bases[object]
+		if members == nil then
+			members = Family.Read(object) or false
+			Glyph.bases[object] = members
+		end
 	end
-	local members = Glyph.bases[object]
-	if members == nil then
-		members = Family.Read(object) or false
-		Glyph.bases[object] = members
+	if members then
+		return members
 	end
-	return members or nil
+	if object ~= normal and type(normal) == "table" then
+		local m = Glyph.Base(normal)
+		if m then
+			return m
+		end
+	end
+	return Glyph.Standard()
+end
+
+-- the client's standard font (STANDARD_TEXT_FONT: a Chinese client's own Chinese face) for every alphabet but Latin,
+-- read once; nil without one or without GameFontNormal (whose shadow and colour the family takes)
+function Glyph.Standard()
+	if Glyph.standard ~= nil then
+		return Glyph.standard or nil
+	end
+	local path = SafeText(rawget(_G, "STANDARD_TEXT_FONT"))
+	local normal = _G.GameFontNormal
+	if not (path and type(normal) == "table") then
+		Glyph.standard = false
+		return nil
+	end
+	local list = {}
+	for _, alphabet in ipairs(Family.ALPHABETS) do
+		list[alphabet] = { member = normal, path = path, size = 12, flags = "" }
+	end
+	Glyph.standard = list
+	return list
 end
 
 -- a text's own look (nil when any of it reads secret: it keeps SetFont)
@@ -901,7 +949,8 @@ function Glyph.Set(fs, face, size, flags, object)
 		if not okP or set == false then
 			return false
 		end
-		fam = Family.Make(base, face, size, flags, false, false, false, false, 0)
+		-- (2.1.70: every alphabet at the text's own size -- Family.Make's `even`)
+		fam = Family.Make(base, face, size, flags, false, false, false, false, 0, true)
 		if fam then
 			Glyph.baseOf[fam] = base
 		end

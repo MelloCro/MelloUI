@@ -56,6 +56,7 @@ local T = {
 	colW = 7, colH = 70,                 -- the shield column's fill
 	text = 11,                           -- the percents' and the spell's size
 	textGap = 3,                         -- the percents past the widest cap
+	sampleHealth = 4200, samplePower = 3100,   -- (2.1.70) the preview's made-up full amounts (Number On The Bars)
 	hop = 12, hopTime = 0.62,            -- the hop when you jump: how high, how long
 	jumpCheck = 0.06,                    -- the jump key pressed: airborne this soon after, a jump
 	zoomMin = 0.35, zoomMax = 2.5,       -- the zoom's scaling of the display's offset, at most
@@ -246,7 +247,8 @@ Druid.outlined = setmetatable({}, { __mode = "k" })   -- (2.1.61: its numbers, o
 -- bars have" -- the user: the percents, ON the bars) Percent Position: the health and power percents beside the bars
 -- (as ever) or centred on their fills in the form row's numbers' size and outline, over the rims as those are
 -- (Druid.Row). Only where they stand: Percent reads them as before
-local Pct = { texts = setmetatable({}, { __mode = "k" }) }   -- [the two percents' font strings] = true
+local Pct = { texts = setmetatable({}, { __mode = "k" }),   -- [the two percents' font strings] = true
+	values = setmetatable({}, { __mode = "k" }) }            -- (2.1.70) [the two amounts' font strings] = true
 
 local function On()
 	return M and M.isEnabled and true or false
@@ -266,6 +268,62 @@ local function Heights()
 	local h = Num(Db().height) or 10
 	h = math.floor(h + 0.5)
 	return h, math.max(3, math.floor(h * T.power + 0.5)), math.max(3, math.floor(h * T.cast + 0.5))
+end
+
+-- (2.1.73, the Personal Display Designer: docs/plans/personal-designer.md; the user's picks "everything at once" and
+-- "drag to move now") a part's place -- { point, x, y, size } on the health bar's fill's same point, the Nameplate
+-- Designer's shape -- laid on the live display and on the configurator's stage alike: the cast bar, the percents, the
+-- swing badge, the Big Cooldowns' row. None: the code's own place, as before (nothing moves for anyone who never
+-- drags). Places.off: the stage reading its homes (every part at the code's own place for that one lay)
+local Places = { off = false, SIZE = { cooldowns = "cdSize" } }   -- (a size that is an option's goes to it)
+
+function Places.Get(key)
+	if Places.off then
+		return nil
+	end
+	local all = Db().parts
+	local t = type(all) == "table" and all[key]
+	return type(t) == "table" and t or nil
+end
+
+-- (a fresh table each write: the saved one is never changed in place)
+function Places.Set(key, t)
+	local db = M and M.db
+	if not db then
+		return
+	end
+	local sizeKey = Places.SIZE[key]
+	if type(t) == "table" and sizeKey and Num(t.size) then
+		local size = math.floor(Num(t.size) + 0.5)
+		if size ~= Num(db[sizeKey]) then
+			MelloUI:NotifySettingChanged("PersonalDisplay", sizeKey, size)
+		end
+	end
+	local all = {}
+	for k, v in pairs(type(db.parts) == "table" and db.parts or {}) do
+		all[k] = v
+	end
+	if type(t) == "table" then
+		local copy = {}
+		for k, v in pairs(t) do
+			if k ~= "show" and (k ~= "size" or not sizeKey) then
+				copy[k] = v
+			end
+		end
+		all[key] = copy
+	else
+		all[key] = nil
+	end
+	MelloUI:NotifySettingChanged("PersonalDisplay", "parts", next(all) and all or nil)
+end
+
+-- a place laid on a region: its point on the box's same point; `scale` the region's own (its offsets given unscaled)
+function Places.Lay(region, box, place, scale)
+	local point = type(place.point) == "string" and place.point or "CENTER"
+	local s = (Num(scale) and scale > 0) and scale or 1
+	region:ClearAllPoints()
+	region:SetPoint(point, box, point, (Num(place.x) or 0) / s, (Num(place.y) or 0) / s)
+	return point
 end
 
 local function Paint(bar, key)
@@ -323,15 +381,33 @@ function Pct.OnBars()
 	return Db().textPlace == "bars"
 end
 
+-- (2.1.70; Wolvegrimm, Discord 2026-11-22: "Could we have actual values inside the bar and % besides it?") Percent
+-- Position's Number On The Bars, Percent Beside: the health and power amounts centred on the bars, whole (the
+-- player's "actual values": a font string takes the amount as it is, secret or plain, nothing read or compared), the
+-- percents beside them
+function Pct.Number()
+	return Db().textPlace == "number"
+end
+
 local function StyleText(fs, size)
 	-- (one look C11: their own face, Text Font; Shared the Interface text's)
 	S.texts[fs] = size
 	-- (2.1.61: a number on a fill -- Druid Forms' halves -- outlined, so it reads on a bright power's colour; 2.1.65:
-	-- the percents on the bars the same, in the form row's size)
-	local onBar = Pct.texts[fs] and Pct.OnBars() or false
-	MelloUI.Look.Text(fs, "text", onBar and T.formText or size, { face = Db().textFont,
-		outline = Druid.outlined[fs] or onBar })
+	-- the percents on the bars the same, in the form row's size; 2.1.70: the amounts, always on the bars)
+	local onBar = (Pct.texts[fs] and Pct.OnBars()) or Pct.values[fs] or false
+	-- (2.1.70: Text Size, a share of each text's own size)
+	local k = (Num(Db().textSize) or 100) / 100
+	MelloUI.Look.Text(fs, "text", math.max(4, math.floor((onBar and T.formText or size) * k + 0.5)),
+		{ face = Db().textFont, outline = Druid.outlined[fs] or onBar })
 	fs:SetShadowOffset(1, -1)
+	-- (2.1.70: Text Colour; the palette's text colour, the first, left to the look: it follows the palette)
+	local c = Db().textColour
+	if type(c) == "string" and c ~= "palette:text" then
+		local r, g, b = W.ColourValue(c)
+		MelloUI.Look.Colour(fs, { r, g, b })
+	else
+		MelloUI.Look.Colour(fs, nil)
+	end
 end
 
 -- (the setting; Start again: a profile's) the two percents in their size and outline where they stand
@@ -339,16 +415,25 @@ function Pct.Style()
 	for fs in pairs(Pct.texts) do
 		StyleText(fs, S.texts[fs] or T.text)
 	end
+	for fs in pairs(Pct.values) do
+		StyleText(fs, S.texts[fs] or T.text)
+	end
 end
 
--- (LayStack, the setting) each percent past the widest cap on its bar's middle, or centred on its own fill
+-- (LayStack, the setting) each percent past the widest cap on its bar's middle, or centred on its own fill; (2.1.70)
+-- each amount centred on its fill while Number On The Bars, Percent Beside, else hidden
 function Pct.Lay(ui)
 	local onBar = Pct.OnBars()
+	local number = Pct.Number()
 	local textX = (ui.widest or Width()) / 2 + T.textGap
+	local place = Places.Get("text")   -- (2.1.73: the Designer's place, each on its own bar, over Percent Position's)
 	for _, b in ipairs(ui.stack) do
 		if b.text then
 			b.text:ClearAllPoints()
-			if onBar then
+			if place then
+				local point = Places.Lay(b.text, b.strip.fill, place)
+				b.text:SetJustifyH(point:find("LEFT") and "LEFT" or (point:find("RIGHT") and "RIGHT") or "CENTER")
+			elseif onBar then
 				b.text:SetPoint("CENTER", b.strip.fill, "CENTER", 0, 0)
 				b.text:SetJustifyH("CENTER")
 			else
@@ -356,6 +441,22 @@ function Pct.Lay(ui)
 				b.text:SetJustifyH("LEFT")
 			end
 		end
+		if b.value then
+			b.value:ClearAllPoints()
+			b.value:SetPoint("CENTER", b.strip.fill, "CENTER", 0, 0)
+			b.value:SetJustifyH("CENTER")
+			b.value:SetShown(number)
+		end
+	end
+end
+
+-- (Health, Power, the preview) an amount on its bar: blank unless Number On The Bars, Percent Beside and the text on
+function Pct.Value(fs, v)
+	if not fs then
+		return
+	end
+	if not Pct.Number() or Db().text == false or v == nil or not pcall(fs.SetText, fs, v) then
+		fs:SetText("")
 	end
 end
 
@@ -626,8 +727,9 @@ end
 -- a bar's painted reach past its fill, over and under
 function Dress.Reach(b)
 	if b.set then
-		-- (2.1.61: a bar of the block wears the block's one piece, at the health fill's depth)
-		local ui = S.ui
+		-- (2.1.61: a bar of the block wears the block's one piece, at the health fill's depth; 2.1.73: its own
+		-- display's -- the live one or the configurator's stage)
+		local ui = b.ui or S.ui
 		local over, under = Dress.SetReach("plate", Block.Index(ui, b) and ui.health.h or b.h)
 		return Block.Reach(ui, b, over, under)
 	elseif b.gilded then
@@ -649,7 +751,7 @@ end
 -- its painted width past the fill's, both sides together
 function Dress.Side(b)
 	if b.set then
-		local ui = S.ui
+		local ui = b.ui or S.ui
 		local _, _, before, after = Dress.SetReach("plate", Block.Index(ui, b) and ui.health.h or b.h)
 		return before + after
 	elseif b.gilded then
@@ -787,7 +889,7 @@ end
 
 -- a bar's reach past its fill: the rim over and under; the block's bars one frame, a joint between each two
 function Gilded.Reach(b)
-	return Block.Reach(S.ui, b, T.rim, T.rim)
+	return Block.Reach(b.ui or S.ui, b, T.rim, T.rim)
 end
 
 -- a rim on a frame of its own at `level` (laid by Gilded.Round), its shade on `under` (a frame under the fills)
@@ -941,6 +1043,21 @@ end
 -- laid again with the stack, its place under the display)
 local SB = MelloUI.SwingBadge
 local SwingOn   -- (below)
+local Cds = {}  -- (Big Cooldowns: below, after Heal Light From Your Character; 2.1.73: here, LayStack lays its row)
+
+-- (2.1.73) the cast bar at its place: its fill's point on the health fill's same point, its bracket round it (the
+-- strip's insets: the fill's edges in it); Cast Motion's moves start from there (CastFX.Place)
+function Places.Cast(ui, place)
+	local cast = ui.cast
+	local l, r, t, b = cast.strip:GetInsets()
+	l, r, t, b = Num(l) or 0, Num(r) or 0, Num(t) or 0, Num(b) or 0
+	local point = type(place.point) == "string" and place.point or "CENTER"
+	local ox = point:find("LEFT") and -l or (point:find("RIGHT") and r) or (r - l) / 2
+	local oy = point:find("TOP") and t or (point:find("BOTTOM") and -b) or (t - b) / 2
+	cast.anchorTo, cast.anchorPoint, cast.anchorRel = ui.health.strip.fill, point, point
+	cast.anchorX, cast.anchorY = (Num(place.x) or 0) + ox, (Num(place.y) or 0) + oy
+	cast.strip:SetPoint(point, cast.anchorTo, point, cast.anchorX, cast.anchorY)
+end
 
 -- the stack: health, power, the cast bar under them, each bracket's painted edge on the one above's (their
 -- transparent rows overlapping), centred (their fills line up: each cap the same both sides)
@@ -957,22 +1074,29 @@ local function LayStack(ui)
 			laid[#laid + 1] = b
 		end
 	end
+	local castPlace = Places.Get("cast")   -- (2.1.73: the Designer's place for the cast bar, out of the chain)
 	for i, b in ipairs(laid) do
 		local above, below = Dress.Reach(b)
 		local _, _, top = b.strip:GetInsets()   -- (the strip's top to its opening: the fill's)
 		b.strip:ClearAllPoints()
-		if not prev then
+		local placed = castPlace and b == ui.cast
+		if placed then
+			Places.Cast(ui, castPlace)
+		elseif not prev then
 			-- the first one's painted top on the float's
 			b.strip:SetPoint("TOP", float, "TOP", 0, top - above)
 		else
 			-- each painted top a gap under the one before's painted foot (kept: the cast bar's moves start there)
 			b.anchorTo, b.anchorY = prev.strip.fill, top - (prevBelow + T.gap + above)
+			b.anchorPoint, b.anchorRel, b.anchorX = nil, nil, nil
 			b.strip:SetPoint("TOP", b.anchorTo, "BOTTOM", 0, b.anchorY)
 		end
-		if i < #laid then
-			y = y + above + b.h + below + T.gap
+		if not placed then
+			if i < #laid then
+				y = y + above + b.h + below + T.gap
+			end
+			prev, prevBelow = b, below
 		end
-		prev, prevBelow = b, below
 	end
 	-- (the holder: health and power, the cast bar hanging under them when it shows)
 	ui.holder:SetSize(widest, math.max(1, y - T.gap))
@@ -992,6 +1116,10 @@ local function LayStack(ui)
 	end
 	Block.Lay(ui)
 	Gilded.Lay(ui)
+	Cds.Anchor(ui)   -- (2.1.73: the Big Cooldowns' row over the health bar, or at its place)
+	if ui ~= S.ui then
+		return   -- (2.1.73: the configurator's stage -- no badge of the game's, no motion)
+	end
 	if SwingOn() then
 		SB.Lay()
 	end
@@ -1016,44 +1144,57 @@ local function Home(kind)
 end
 
 local Refresh   -- (below)
-local Cds = {}  -- (Big Cooldowns: below, after Heal Light From Your Character)
 local Track = {}   -- (2.1.24, Tracked Spells: below Big Cooldowns, whose icons they wear)
 
-local function Build()
-	local ui = S.ui
-	if ui then
-		return ui
-	end
+-- the display's frames on `host` (Build: the live one, S.ui; 2.1.73, `sample`: a copy on the configurator's stage --
+-- the same bars, look, texts and layout, no name, no motion, no shield on the health bar, never Edit Layout's)
+local function Make(host, sample)
 	local Kit = MelloUI.Kit
 	if not Kit then
 		return nil
 	end
-	ui = {}
-	S.ui = ui
-	-- (0.21.0, the user: "a option in the fader to fade out of combat") both holders on the Fader's host: their own
-	-- fades (the column's, the cast bar's) never meet the Fader's
-	local host = MelloUI.Fader and MelloUI.Fader:Host("personal") or UIParent
+	local ui = { sample = sample or nil }
+	if not sample then
+		S.ui = ui
+	end
 	-- the bars: a holder Edit Layout moves, a float inside it the hop lifts
-	local holder = CreateFrame("Frame", "MelloUIPersonalDisplay", host)
-	holder:SetFrameStrata("MEDIUM")
+	local holder = CreateFrame("Frame", (not sample) and "MelloUIPersonalDisplay" or nil, host)
+	if not sample then
+		holder:SetFrameStrata("MEDIUM")
+		holder:SetClampedToScreen(true)
+	end
 	holder:EnableMouse(false)
-	holder:SetClampedToScreen(true)
 	ui.holder = holder
 	local float = CreateFrame("Frame", nil, holder)
 	float:SetAllPoints(holder)
 	ui.float = float
+	-- (2.1.73) the Big Cooldowns' row: a frame round it, over the health bar or at its place (Cds.Anchor)
+	ui.cdRow = CreateFrame("Frame", nil, float)
+	ui.cdRow:SetSize(1, 1)
+	ui.cdRow:EnableMouse(false)
 	local hh, hp, hc = Heights()
 	ui.health = NewBar(float, hh, "personal", true)
-	MelloUI.Shields.Attach(ui.health.bar)   -- (2.1.0: your shield on it, Core/Shields.lua)
+	if not sample then
+		MelloUI.Shields.Attach(ui.health.bar)   -- (2.1.0: your shield on it, Core/Shields.lua)
+	end
 	ui.power = NewBar(float, hp, "personal", true)
 	-- (2.1.60, Druid Forms) the two powers the power bar does not show, under it; laid only for a druid (Druid.Mark).
 	-- (2.1.61: one row, split in two -- Druid.Row; the list keeps the one bar of the stack)
 	ui.druid = { Druid.Row(float, hp) }
 	ui.cast = NewBar(float, hc, "castbars")
 	ui.stack = { ui.health, ui.power, ui.druid[1], ui.cast }
+	for _, b in ipairs(ui.stack) do
+		b.ui = ui   -- (2.1.73: the look's reach reads its own display's block -- Dress.Reach)
+		if sample and b.ghost then
+			b.ghost:Hide()   -- (no motion on the stage: the part lost and gained not drawn)
+			b.lead:Hide()
+		end
+	end
 	PaintHealth(ui.health.bar)
 	Paint(ui.cast.bar, "personalCast")
-	Motion.Make(ui)
+	if not sample then
+		Motion.Make(ui)
+	end
 	for _, b in ipairs({ ui.health, ui.power }) do
 		-- (2.1.65) on a frame of its own over the fill, over the block's rim as the form row's numbers (Druid.Row):
 		-- with Percent Position On The Bars the percent stands on the fill, and the rim's dark inside edge would cover
@@ -1065,6 +1206,11 @@ local function Build()
 		Pct.texts[b.text] = true
 		StyleText(b.text, T.text)
 		b.text:SetJustifyH("LEFT")
+		-- (2.1.70) the amount, on the bar while Percent Position is Number On The Bars, Percent Beside (Pct.Lay)
+		b.value = b.over:CreateFontString(nil, "OVERLAY")
+		Pct.values[b.value] = true
+		StyleText(b.value, T.text)
+		b.value:Hide()
 	end
 	-- the cast bar: the spell on its left, the seconds on its right (the engine writes them: Anim:TimerText)
 	local cast = ui.cast
@@ -1078,14 +1224,18 @@ local function Build()
 	cast.timed = Anim:TimerText(cast.time, cast.bar)
 	cast.strip:SetAlpha(0)
 	cast.strip:Hide()
-	CastFX.Make(ui)
+	if not sample then
+		CastFX.Make(ui)
+	end
 	LayStack(ui)
 
 	-- the shield column: its own holder beside the character, a float the hop lifts with the bars
-	local colHolder = CreateFrame("Frame", "MelloUIPersonalShield", host)
-	colHolder:SetFrameStrata("MEDIUM")
+	local colHolder = CreateFrame("Frame", (not sample) and "MelloUIPersonalShield" or nil, host)
+	if not sample then
+		colHolder:SetFrameStrata("MEDIUM")
+		colHolder:SetClampedToScreen(true)
+	end
 	colHolder:EnableMouse(false)
-	colHolder:SetClampedToScreen(true)
 	local colFloat = CreateFrame("Frame", nil, colHolder)
 	colFloat:SetAllPoints(colHolder)
 	-- (the user's video, 2026-10-12: a shield broken before its time left its column up -- its 0 is secret, no Lua
@@ -1093,16 +1243,20 @@ local function Build()
 	-- while any is left, empty at 0) and a frame clipping the column to that fill -- at 0 the column is clipped away,
 	-- whatever Lua knows. The column itself anchored to the float, not the clip: its rect stays readable (the light,
 	-- the zoom)
-	local presence = CreateFrame("StatusBar", nil, colFloat)
-	presence:SetOrientation("VERTICAL")
-	presence:SetStatusBarTexture(W.BarFill("personal"))
-	presence:GetStatusBarTexture():SetAlpha(0)
-	presence:SetMinMaxValues(0, 1)
-	presence:SetValue(0)
-	local clip = CreateFrame("Frame", nil, colFloat)
-	clip:SetClipsChildren(true)
-	clip:SetPoint("TOPLEFT", presence:GetStatusBarTexture(), "TOPLEFT")
-	clip:SetPoint("BOTTOMRIGHT", presence:GetStatusBarTexture(), "BOTTOMRIGHT")
+	-- (2.1.73: the configurator's stage has no shield's 0 to hide -- its column whole on its float, no presence)
+	local presence, clip = nil, colFloat
+	if not sample then
+		presence = CreateFrame("StatusBar", nil, colFloat)
+		presence:SetOrientation("VERTICAL")
+		presence:SetStatusBarTexture(W.BarFill("personal"))
+		presence:GetStatusBarTexture():SetAlpha(0)
+		presence:SetMinMaxValues(0, 1)
+		presence:SetValue(0)
+		clip = CreateFrame("Frame", nil, colFloat)
+		clip:SetClipsChildren(true)
+		clip:SetPoint("TOPLEFT", presence:GetStatusBarTexture(), "TOPLEFT")
+		clip:SetPoint("BOTTOMRIGHT", presence:GetStatusBarTexture(), "BOTTOMRIGHT")
+	end
 	local strip = Kit.VBar and Kit:VBar(clip, { kind = "frame", width = Dress.Across("frame") }) or PlainStrip(clip, true)
 	local ins = strip.insets
 	strip:SetHeight(T.colH + ins[3] + ins[4])
@@ -1110,8 +1264,10 @@ local function Build()
 	colHolder:SetSize(strip:GetWidth(), strip:GetHeight())
 	-- (the presence's fill covers the column, its rim and its number under it, and the shields' icons on its right --
 	-- 2.1.0, fr-19: at a secret 0 they go with the column, whatever Lua knows of the shields)
-	presence:SetPoint("TOPLEFT", strip, "TOPLEFT", -T.text, T.gap + T.rim + T.partIcon)
-	presence:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT", T.text + T.partGap + T.partIcon, -(T.text + 6))
+	if presence then
+		presence:SetPoint("TOPLEFT", strip, "TOPLEFT", -T.text, T.gap + T.rim + T.partIcon)
+		presence:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT", T.text + T.partGap + T.partIcon, -(T.text + 6))
+	end
 	-- the part lost (pale, under the fill) and the fill, upright
 	local loss = CreateFrame("StatusBar", nil, strip.fill)
 	loss:SetAllPoints(strip.fill)
@@ -1134,10 +1290,26 @@ local function Build()
 	colHolder:SetAlpha(0)
 	ui.column = { holder = colHolder, float = colFloat, strip = strip, bar = bar, loss = loss, amount = amount,
 		presence = presence, clip = clip }   -- (clip: the tests' Q6 reads the column's structure from it)
-	Motion.MakeCrack(ui)
+	if not sample then
+		Motion.MakeCrack(ui)
+	end
 	-- every part in the Personal Resource Border's look, the bars stacked by it
 	Dress.Apply(ui)
 	LayStack(ui)
+	return ui
+end
+
+local function Build()
+	if S.ui then
+		return S.ui
+	end
+	-- (0.21.0, the user: "a option in the fader to fade out of combat") both holders on the Fader's host: their own
+	-- fades (the column's, the cast bar's) never meet the Fader's
+	local ui = Make(MelloUI.Fader and MelloUI.Fader:Host("personal") or UIParent, false)
+	if not ui then
+		return nil
+	end
+	local holder, colHolder = ui.holder, ui.column.holder
 	-- (Follow Camera Zoom's frame: its OnUpdate set only while the zoom moves)
 	S.zoomFrame = CreateFrame("Frame", nil, holder)
 
@@ -1196,6 +1368,7 @@ local function Health()
 		ui.health.bar:SetMinMaxValues(0, max)
 		ui.health.bar:SetValue(v, EASE)
 		Motion.Value(ui.health, max, v)
+		Pct.Value(ui.health.value, v)   -- (2.1.70)
 		-- (its share only where both read plain: the beat as it turns low; else the game's curves, secret)
 		local pm, pv = Num(max), Num(v)
 		local share = pm and pv and pm > 0 and pv / pm or nil
@@ -1232,6 +1405,7 @@ local function Power()
 		ui.power.bar:SetMinMaxValues(0, max)
 		ui.power.bar:SetValue(v, EASE)
 		Motion.Value(ui.power, max, v, shifted)
+		Pct.Value(ui.power.value, v)   -- (2.1.70)
 		if shifted then
 			S.powerLast = nil
 		end
@@ -1466,7 +1640,9 @@ end
 -- the bar where LayStack hangs it, moved by dx, dy (the jolt, the drop, the fold's middle)
 function CastFX.Place(cast, dx, dy)
 	if cast.anchorTo then
-		cast.strip:SetPoint("TOP", cast.anchorTo, "BOTTOM", dx, cast.anchorY + dy)
+		-- (2.1.73: or at the Designer's place -- Places.Cast)
+		cast.strip:SetPoint(cast.anchorPoint or "TOP", cast.anchorTo, cast.anchorRel or "BOTTOM", (cast.anchorX or 0) + dx,
+			cast.anchorY + dy)
 	end
 end
 
@@ -4016,6 +4192,9 @@ function Motion.FormApply()
 		if b.text then
 			b.text:SetAlpha(1 - math.max(rest, dead))
 		end
+		if b.value then
+			b.value:SetAlpha(1 - math.max(rest, dead))
+		end
 	end
 	-- (2.1.60) a druid's form row slim at rest, folds and opens from the middle with them (the German player's
 	-- screenshots: out of a fight it stood thicker than the slimmed health and power); 2.1.61: as slim as the power
@@ -4240,6 +4419,21 @@ end
 -- Over The Personal Display: centred above the health bar at the Swing Badge Size; (2.1.20, the crest -- the user's
 -- pick D of 2026-11-08) on the Big Cooldowns' row, in its middle, standing where they stand (Cds.X lays them beside
 -- it), the off hand's small one at its lower left -- the row keeps its width, nothing climbs toward your character
+-- (2.1.73) where the big badge stands on `ui` (the live display or the configurator's stage): its scale against the
+-- badge's made size, its point on the health bar's fill and the fill's point, the offsets in the display's units, and
+-- how ("place": the Designer's, its size in px; "over"; "here")
+function Host.Spot(ui)
+	local place = Places.Get("swing")
+	if place then
+		local point = type(place.point) == "string" and place.point or "CENTER"
+		return (Num(place.size) or T.badgeHere) / SB.T.badge, point, point, Num(place.x) or 0, Num(place.y) or 0, "place"
+	end
+	if Host.Over() then
+		return (SB.PlateScale and SB.PlateScale()) or 1, "BOTTOM", "TOP", 0, Dress.Reach(ui.health) + T.cdLift, "over"
+	end
+	return T.badgeHere / SB.T.badge, "RIGHT", "BOTTOMLEFT", -(Dress.Side(ui.health) / 2 + T.badgeGap), -(T.gap / 2), "here"
+end
+
 function Host.Here(big, small)
 	local ui = S.ui
 	if not ui then
@@ -4247,14 +4441,13 @@ function Host.Here(big, small)
 	end
 	local fill = ui.health.strip.fill
 	local level = ui.float:GetFrameLevel() + 12
-	if Host.Over() then
-		local k = (SB.PlateScale and SB.PlateScale()) or 1
-		SB.Attach(big, ui.float, level, k)
-		SB.Attach(small, ui.float, level, k)
-		local over = Dress.Reach(ui.health) + T.cdLift
-		big:ClearAllPoints()
-		big:SetPoint("BOTTOM", fill, "TOP", 0, over / k)
-		small:ClearAllPoints()
+	local k, point, rel, x, y, how = Host.Spot(ui)
+	SB.Attach(big, ui.float, level, k)
+	SB.Attach(small, ui.float, level, k)
+	big:ClearAllPoints()
+	big:SetPoint(point, fill, rel, x / k, y / k)
+	small:ClearAllPoints()
+	if how == "over" then
 		small:SetPoint("CENTER", big, "BOTTOMLEFT", SB.T.badge * 0.12, SB.T.badge * 0.12)
 		small:SetFrameLevel(big:GetFrameLevel() + 6)
 		-- (the badge's size changed -- Swing Badge Size --: the cooldowns beside it laid again)
@@ -4264,12 +4457,6 @@ function Host.Here(big, small)
 		end
 		return
 	end
-	local k = T.badgeHere / SB.T.badge
-	SB.Attach(big, ui.float, level, k)
-	SB.Attach(small, ui.float, level, k)
-	big:ClearAllPoints()
-	big:SetPoint("RIGHT", fill, "BOTTOMLEFT", -(Dress.Side(ui.health) / 2 + T.badgeGap) / k, -(T.gap / 2) / k)
-	small:ClearAllPoints()
 	small:SetPoint("RIGHT", big, "LEFT", -3, 0)
 end
 
@@ -4705,8 +4892,9 @@ function Cds.SetIcon(ic, tex)
 	ic.icon:SetTexture(tex)
 end
 
-function Cds.Make()
-	local ic = CreateFrame("Frame", nil, S.ui.float)
+-- one icon on `parent` (Cds.Make: the live row's; 2.1.73: the configurator's stage's too)
+function Cds.New(parent)
+	local ic = CreateFrame("Frame", nil, parent)
 	ic:SetSize(T.cdIcon, T.cdIcon)
 	ic:EnableMouse(false)   -- (the pointer passes through the display to the world)
 	ic.icon = ic:CreateTexture(nil, "ARTWORK")
@@ -4742,6 +4930,11 @@ function Cds.Make()
 	ic.flare:SetPoint("CENTER", ic, "CENTER", 0, 0)
 	ic.flare:SetSize(T.cdIcon * 2.2, T.cdIcon * 2.2)
 	ic.flare:SetAlpha(0)
+	return ic
+end
+
+function Cds.Make()
+	local ic = Cds.New(S.ui.float)
 	S.cdIcons[#S.cdIcons + 1] = ic
 	return ic
 end
@@ -4840,8 +5033,9 @@ function Cds.Place(ic)
 		-- (2.1.24, Tracked Spells) hung under the cast bar's place (`above`: its painted foot), clear of a cast
 		ic:SetPoint("TOP", S.ui.cast.strip.fill, "BOTTOM", x / sc, -(ic.above / (k * sc) + (T.trackDrop + T.cdRim) / sc))
 	else
-		-- (2.1.20: its rim's depth under it too, so the rim stands on the bar's top, never over it)
-		ic:SetPoint("BOTTOM", S.ui.health.strip.fill, "TOP", x / sc, ic.above / (k * sc) + (T.cdLift + T.cdRim) / sc)
+		-- (2.1.20: its rim's depth under it too, so the rim stands on the bar's top, never over it; 2.1.73: on its row's
+		-- frame -- over the health bar, or at the Designer's place: Cds.Anchor)
+		ic:SetPoint("BOTTOM", S.ui.cdRow, "BOTTOM", x / sc, T.cdRim / sc)
 	end
 	ic.flare:SetAlpha(flare)
 end
@@ -4880,7 +5074,35 @@ function Cds.Crest()
 	if not (Db().swingOver == true and SwingOn() and SB and SB.T and SB.PlateScale) then
 		return nil
 	end
+	-- (2.1.73: the badge or the row at a place of the Designer's: each where it was put, the row centred)
+	if Places.Get("swing") or Places.Get("cooldowns") then
+		return nil
+	end
 	return SB.T.badge * SB.PlateScale() / 2
+end
+
+-- (2.1.73) the row's frame round its `n` icons at their size `k`: its foot over the health bar's painted top (the
+-- rims stand there, the lift over them scaled with the icons), or at the Designer's place
+function Cds.Anchor(ui)
+	local row = ui and ui.cdRow
+	if not row then
+		return
+	end
+	local n, k = ui.cdN or 0, ui.cdK or 1
+	local half = Cds.Crest()
+	local w = math.max(1, n) * (T.cdIcon + 2 * T.cdRim + T.cdGap) - T.cdGap
+	if half and n > 0 then
+		w = 2 * math.abs(Cds.X(n, n, k)) + T.cdIcon + 2 * T.cdRim   -- (the crest: the outermost icon's reach both ways)
+	end
+	row:SetSize(math.max(1, w * k), (T.cdIcon + 2 * T.cdRim) * k)
+	local fill = ui.health.strip.fill
+	local place = Places.Get("cooldowns")
+	if place then
+		Places.Lay(row, fill, place)
+	else
+		row:ClearAllPoints()
+		row:SetPoint("BOTTOM", fill, "TOP", 0, Dress.Reach(ui.health) + T.cdLift * k)
+	end
 end
 
 -- the i-th of n icons' place on the row (its own units: Big Cooldown Size scales it): centred, or (the crest) beside
@@ -4943,6 +5165,8 @@ function Cds.Icons()
 	local k = math.max(12, math.min(40, Num(Db().cdSize) or T.cdIcon)) / T.cdIcon
 	local above = Dress.Reach(ui.health)
 	local _, below = Dress.Reach(ui.cast)
+	ui.cdN, ui.cdK = math.min(#S.cdOrder, T.cdMax), k   -- (2.1.73: the row's frame round them -- Cds.Anchor)
+	Cds.Anchor(ui)
 	LayRow(S.cdOrder, math.min(#S.cdOrder, T.cdMax), k, above, nil)
 	LayRow(S.trackOrder, math.min(#S.trackOrder, T.trackMax), k * T.trackShare, below, "track")
 	-- (the size changed: the ones leaving keep their place at the new size)
@@ -5509,11 +5733,13 @@ local function SampleHealth(pct)
 	Motion.HealthMoment(pct / 100, S.samplePct ~= nil and pct > S.samplePct)
 	S.samplePct = pct
 	ui.health.text:SetFormattedText("%.0f%%", pct)
+	Pct.Value(ui.health.value, math.floor(pct * T.sampleHealth / 100 + 0.5))   -- (2.1.70: a made-up amount)
 	ui.power.bar:SetMinMaxValues(0, 100)
 	ui.power.bar:SetValue(power, EASE)
 	Motion.Value(ui.power, 100, power)
 	Motion.Gain(100, power, nil)
 	ui.power.text:SetFormattedText("%.0f%%", power)
+	Pct.Value(ui.power.value, math.floor(power * T.samplePower / 100 + 0.5))
 end
 
 -- (the preview's own cast ended: a real one begun after the preview's stop left running)
@@ -5736,6 +5962,329 @@ Moment.PLAYS = {
 }
 
 --------------------------------------------------------------------------------
+-- The configurator's stage (2.1.73, the Personal Display Designer: docs/plans/personal-designer.md; the user,
+-- 2026-11-22: "the personal nameplate section needs its own preview window like we already have for unitframes and
+-- nameplates", then "everything at once" and "drag to move now"): the 'personal' wide kind of Core/ConfigPreview.lua,
+-- the Unit & Group Frames designer's Personal. A copy of the display made by its own build (Make) and laid by its
+-- own code -- the bars in the look they wear, the percents, the cast bar part way, the shield column beside them, the
+-- swing badge and three big cooldowns, all at once; the values made up (no unit is read but your own power's kind).
+-- The cast bar, the percents, the badge and the cooldowns' row dragged, put on a spot and sized: their places the
+-- display's own (Places), the live display following them; the shield column picked (its place Edit Layout's). Made
+-- with the page, never at login.
+--------------------------------------------------------------------------------
+
+do
+	local CP = MelloUI.ConfigPreview
+	local Fin = MelloUI.Safe.Finite
+	local Stage = {
+		HEALTH = 72, POWER = 55, CAST = 0.45, CAST_LEFT = "1.2", SHIELD = 0.6, SHIELD_TEXT = "600", SWING = 0.6,
+		WEAPON = "Interface\\Icons\\INV_Sword_04",   -- (the nameplates' stage's)
+		CDS = { 871, 1719, 2565 }, CD_SECS = { "12", "8", "" },   -- (the preview's: Shield Wall, Recklessness, Shield Block)
+		PAD = 10, COL_GAP = 28, ROOM_TOP = 8, ROOM_BOTTOM = 22,
+		MOVES = { cast = true, text = true, swing = true, cooldowns = true },
+		SIZES = { swing = { min = 12, max = 64, step = 1 }, cooldowns = { min = 12, max = 40, step = 1 } },
+		homes = {}, retry = setmetatable({}, { __mode = "k" }), parts = nil,
+		TEXT = { off = "The Personal Display is off: switch it on to see it here." },
+	}
+	-- each part's region on the sample, and whether it shows (its own switch)
+	Stage.FIELDS = {
+		cast = function(f) return f.ui.cast.strip.fill end,
+		text = function(f) return f.ui.health.text end,
+		swing = function(f) return f.swing end,
+		cooldowns = function(f) return f.ui.cdRow end,
+		shield = function(f) return f.ui.column.strip end,
+	}
+	Stage.ON = {
+		cast = function() return true end,
+		text = function() return Db().text ~= false end,
+		swing = function() return SwingOn() end,
+		cooldowns = function() return CdsOn() end,
+		shield = function() return Db().shield ~= false end,
+	}
+
+	function Stage.SpellName(spell, fallback)
+		local Text = MelloUI.Safe.Text
+		local api = rawget(_G, "C_Spell")
+		local get = api and api.GetSpellName or rawget(_G, "GetSpellInfo")
+		local ok, name = false, nil
+		if get then
+			ok, name = pcall(get, spell)
+		end
+		return (ok and Text(name)) or fallback
+	end
+
+	function Stage.Main(stage)
+		local f = CreateFrame("Frame", nil, stage.holder)
+		f:SetSize(300, 150)
+		f:EnableMouse(false)
+		f.stage = stage   -- (Stage.Again repaints it while a place is unread)
+		local ui = Make(f, true)
+		if not ui then
+			return f
+		end
+		f.ui = ui
+		ui.holder:SetPoint("CENTER", f, "CENTER", 0, 0)
+		local col = ui.column
+		col.holder:SetAlpha(1)
+		col.holder:ClearAllPoints()
+		col.holder:SetPoint("LEFT", ui.holder, "RIGHT", Stage.COL_GAP, 0)
+		-- the badge: Core/SwingBadge.lua's look on a ring of its own (as the nameplates' stage draws it)
+		f.swing = W.RoundIcon(ui.float, (SB and SB.T and SB.T.badge) or 24, nil)
+		f.swing:EnableMouse(false)
+		f.swing:SetKit(W.KitFor("unitframes"))
+		f.swing:SetIcon(Stage.WEAPON)
+		f.swing:SetFrameLevel(ui.float:GetFrameLevel() + 12)
+		f.cds = {}
+		for i, spell in ipairs(Stage.CDS) do
+			local ic = Cds.New(ui.float)
+			ic:SetIcon(SpellIcon(spell))
+			ic.secs:SetText(Stage.CD_SECS[i])
+			f.cds[i] = ic
+		end
+		return f
+	end
+
+	-- the made-up values, each part shown with its switch
+	function Stage.Values(f)
+		local ui = f.ui
+		local h, p = Stage.HEALTH, Stage.POWER
+		PaintHealth(ui.health.bar)
+		ui.health.bar:SetMinMaxValues(0, 100)
+		ui.health.bar:SetValue(h)
+		local okT, _, token = pcall(UnitPowerType, "player")
+		local cr, cg, cb = MelloUI.Colours.Power(okT and not Secret(token) and type(token) == "string" and token or nil)
+		if cr then
+			ui.power.bar:SetStatusBarColor(cr, cg, cb)
+		else
+			Paint(ui.power.bar, "combatResource")
+		end
+		ui.power.bar:SetMinMaxValues(0, 100)
+		ui.power.bar:SetValue(p)
+		local textOn = Stage.ON.text()
+		ui.health.text:SetText(h .. "%")
+		ui.power.text:SetText(p .. "%")
+		ui.health.text:SetShown(textOn)
+		ui.power.text:SetShown(textOn)
+		Pct.Value(ui.health.value, math.floor(h * T.sampleHealth / 100 + 0.5))
+		Pct.Value(ui.power.value, math.floor(p * T.samplePower / 100 + 0.5))
+		local cast = ui.cast
+		cast.strip:Show()
+		cast.strip:SetAlpha(1)
+		cast.bar:SetMinMaxValues(0, 1)
+		cast.bar:SetValue(Stage.CAST)
+		local spell = SAMPLE.casts.pull
+		cast.name:SetText(Stage.SpellName(spell[3], spell[1]))
+		cast.time:SetText(Stage.CAST_LEFT)
+		local g = ui.gild
+		if g and g.icon then
+			pcall(g.icon.icon.SetTexture, g.icon.icon, SpellIcon(spell[3]))
+		end
+		local col = ui.column
+		col.holder:SetShown(Stage.ON.shield())
+		col.bar:SetValue(Stage.SHIELD)
+		col.amount:SetText(Stage.SHIELD_TEXT)
+		f.swing:SetShown(Stage.ON.swing())
+		if SB and SB.SampleFill then
+			SB.SampleFill(f.swing, Stage.SWING)   -- (its ring as a fight's, filled part of the way)
+		end
+		local on = Stage.ON.cooldowns()
+		ui.cdN = on and #f.cds or 0
+		ui.cdK = math.max(12, math.min(40, Num(Db().cdSize) or T.cdIcon)) / T.cdIcon
+		ui.cdRow:SetShown(on)
+		for _, ic in ipairs(f.cds) do
+			ic:SetShown(on)
+		end
+	end
+
+	-- the badge and the cooldowns on the sample, as Host.Here and Cds.Place lay them on the live display
+	function Stage.LayExtras(f)
+		local ui = f.ui
+		local fill = ui.health.strip.fill
+		local k, point, rel, x, y = Host.Spot(ui)
+		f.swing:SetScale(k)
+		W.RoundIconRefit(f.swing)
+		f.swing:ClearAllPoints()
+		f.swing:SetPoint(point, fill, rel, x / k, y / k)
+		local n, ck = ui.cdN or 0, ui.cdK or 1
+		for i, ic in ipairs(f.cds) do
+			ic:SetScale(ck)
+			ic.top:SetScale(1 / ck)
+			ic:ClearAllPoints()
+			ic:SetPoint("BOTTOM", ui.cdRow, "BOTTOM", Cds.X(i, n, ck), T.cdRim)
+			Cds.TimeFont(ic.secs, T.cdIcon * ck)
+		end
+	end
+
+	-- a region's centre and size against the health bar's fill's centre, in its units (nil: not laid yet)
+	function Stage.Rect(f, r)
+		local box = f.ui.health.strip.fill
+		local okR, rx, ry = pcall(r.GetCenter, r)
+		local okB, bx, by = pcall(box.GetCenter, box)
+		local okS, w, h = pcall(r.GetSize, r)
+		rx, ry, bx, by, w, h = Fin(rx), Fin(ry), Fin(bx), Fin(by), Fin(w), Fin(h)
+		if not (okR and okB and okS and rx and ry and bx and by and w and h) then
+			return nil
+		end
+		local k = (Fin(r:GetEffectiveScale()) or 1) / (Fin(box:GetEffectiveScale()) or 1)
+		return rx * k - bx, ry * k - by, w * k, h * k
+	end
+
+	-- the parts' homes, read off the sample laid at the code's own places (Places.off): their centres (the badge's
+	-- size its width, the cooldowns' Big Cooldown Size); true while one is unread
+	function Stage.Homes(f)
+		local unread = false
+		for key in pairs(Stage.MOVES) do
+			local x, y, w = Stage.Rect(f, Stage.FIELDS[key](f))
+			if x then
+				local home = Stage.homes[key] or {}
+				home.point, home.x, home.y = "CENTER", math.floor(x + 0.5), math.floor(y + 0.5)
+				home.size = (key == "swing" and math.floor(w + 0.5))
+					or (key == "cooldowns" and math.floor((Num(Db().cdSize) or T.cdIcon) + 0.5)) or nil
+				Stage.homes[key] = home
+			else
+				unread = true
+			end
+		end
+		return unread
+	end
+
+	-- the sample's size round everything it shows, the bars' holder set in it (PAD round the outermost); true unread
+	function Stage.Fit(f)
+		local ui = f.ui
+		local Rect = MelloUI.Safe.ScreenRect   -- (screen pixels: each part's own scale in them)
+		local hl, hb, hr, ht = Rect(ui.holder)
+		local fs = Fin(f:GetEffectiveScale())
+		if not (hl and fs and fs > 0) then
+			return true
+		end
+		local minX, minY, maxX, maxY = 0, 0, hr - hl, ht - hb
+		local list = { ui.health.strip, ui.power.strip, ui.druid[1].strip, ui.cast.strip, ui.column.holder, f.swing,
+			ui.cdRow, ui.health.text, ui.power.text, ui.gild and ui.gild.icon or nil }
+		for i = 1, #list do
+			local r = list[i]
+			if r and r:IsShown() then
+				local l, b, rt, t = Rect(r)
+				if l then
+					minX, minY = math.min(minX, l - hl), math.min(minY, b - hb)
+					maxX, maxY = math.max(maxX, rt - hl), math.max(maxY, t - hb)
+				end
+			end
+		end
+		-- (back in the sample's units)
+		minX, minY, maxX, maxY = minX / fs, minY / fs, maxX / fs, maxY / fs
+		f:SetSize(maxX - minX + 2 * Stage.PAD, maxY - minY + 2 * Stage.PAD)
+		ui.holder:ClearAllPoints()
+		ui.holder:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", Stage.PAD - minX, Stage.PAD - minY)
+		return false
+	end
+
+	-- a place not read yet: the stage painted again on the next frame, a few times at most (the nameplates' Again)
+	function Stage.Again(f)
+		local n = (Stage.retry[f] or 0) + 1
+		Stage.retry[f] = n
+		local stage = f.stage
+		if n <= 5 and type(stage) == "table" and stage.Repaint then
+			MelloUI.Schedule:NextFrame(Stage.retry, function()
+				stage:Repaint()
+			end)
+		end
+	end
+
+	-- every paint: the look and the values, the homes read at the code's own places, then the places laid -- the
+	-- live display's own code both times
+	function Stage.Paint(f)
+		local ui = f and f.ui
+		if not ui then
+			return
+		end
+		Refit(ui)   -- (Height; the look: Dress.Apply)
+		Stage.Values(f)
+		Places.off = true
+		LayStack(ui)
+		Stage.LayExtras(f)
+		local unread = Stage.Homes(f)
+		Places.off = false
+		LayStack(ui)
+		Stage.LayExtras(f)
+		if Stage.Fit(f) or unread then
+			Stage.Again(f)
+		end
+	end
+
+	function Stage.Room(stage)
+		local w, h = Fin(stage:GetWidth()) or 0, Fin(stage:GetHeight()) or 0
+		local bottom = stage.opts and stage.opts.captionBelow and 8 or Stage.ROOM_BOTTOM
+		return 8, Stage.ROOM_TOP, w - 16, h - Stage.ROOM_TOP - bottom
+	end
+
+	function Stage.Part(key, label, text)
+		local part = { key = key, label = label, drag = false, text = text,
+			region = function(f)
+				local r = f and f.ui and Stage.ON[key]() and Stage.FIELDS[key](f)
+				return r or nil
+			end }
+		if Stage.MOVES[key] then
+			part.drag, part.size = nil, Stage.SIZES[key]
+			part.sizeRow = key == "cooldowns" or nil   -- (Big Cooldown Size: its own row on the tab)
+			part.box = function(f)
+				return f.ui.health.strip.fill
+			end
+			part.store = { get = function()
+				local place = Places.Get(key)
+				if not place then
+					return nil
+				end
+				local t = {}
+				for k, v in pairs(place) do
+					t[k] = v
+				end
+				if key == "cooldowns" then
+					t.size = Num(Db().cdSize) or T.cdIcon
+				elseif key == "swing" and not Num(t.size) then
+					t.size = Stage.homes.swing and Stage.homes.swing.size
+				end
+				return t
+			end, set = function(_, t)
+				Places.Set(key, t)
+			end }
+			part.home = function()
+				return Stage.homes[key]
+			end
+			part.homeLabel = "Its own place"
+		end
+		return part
+	end
+
+	function Stage.Parts()
+		if not Stage.parts then
+			Stage.parts = {
+				Stage.Part("cast", "Cast"),
+				Stage.Part("text", "Text", true),
+				Stage.Part("swing", "Swing badge"),
+				Stage.Part("cooldowns", "Big cooldowns"),
+				Stage.Part("shield", "Shield column"),   -- (picked, never dragged: its place is Edit Layout's)
+			}
+		end
+		return Stage.parts
+	end
+
+	function Stage.Empty()
+		return not On() and Stage.TEXT.off or nil
+	end
+
+	if CP and CP.Register then
+		CP.Register("personal", {
+			place = "wide", height = 230, maxScale = 1.5,
+			picks = { personal = true }, first = "personal",
+			watch = { PersonalDisplay = true, BarTextures = true, UIModifications = true, Tweaks = true,
+				SwingTimers = true, DarkMode = true, CooldownText = true },
+			Main = Stage.Main, Paint = Stage.Paint, Room = Stage.Room, parts = Stage.Parts, Empty = Stage.Empty,
+		})
+	end
+	Host.Stage = Stage   -- (the tests' way in)
+end
+
+--------------------------------------------------------------------------------
 -- The module
 --------------------------------------------------------------------------------
 
@@ -5753,7 +6302,8 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		healFrom = true, swing = true, swingOver = false, cooldowns = true, cdSize = 16, textFont = "shared",
 		chunk = true, lead = true, heavy = true, spend = true, gain = true, avoid = true, lowHealth = true,
 		stun = true, settle = true, classColour = false, castMotion = true, fiveSecond = true, druidForms = true,
-		textPlace = "beside", clickThrough = false },
+		textPlace = "beside", clickThrough = false,
+		textSize = 100, textColour = "palette:text" },   -- (2.1.70: the text's size, a percentage; its colour)
 	options = {
 		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "A bar beside your character for all your shields, each in its school's colour. It drains as they take hits." },
@@ -5797,13 +6347,22 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		-- Druid bars have" -- the user: the percents on the bars, as an option)
 		{ type = "dropdown", key = "textPlace", name = "Percent Position",
 		  search = "percent number numbers text value on inside bar bars health power position place",
-		  desc = "Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers.",
+		  desc = "Where the health and power percents stand: beside the bars, centred on them like Druid Forms' numbers, or beside them with the amounts themselves centred on the bars.",
 		  values = {
 			{ value = "beside", label = "Beside The Bars" },
 			{ value = "bars", label = "On The Bars" },
+			-- (2.1.70; Wolvegrimm, Discord 2026-11-22: "actual values inside the bar and % besides it")
+			{ value = "number", label = "Number On The Bars, Percent Beside" },
 		  } },
 		{ type = "dropdown", key = "textFont", name = "Text Font", values = MelloUI.FontFaces,
 		  desc = "The font of the display's text. Shared: the interface font." },
+		-- (2.1.70; the user, 2026-11-22: "give me a size slider on the personal nameplate, a colour picker for the Color
+		-- of the personal nameplate text") every text of the display (StyleText)
+		{ type = "slider", key = "textSize", name = "Text Size", min = 50, max = 200, step = 5,
+		  format = function(v) return string.format("%d%%", v) end,
+		  desc = "The size of the display's text: the percents, the amounts, the spell's name and time, and Druid Forms' numbers." },
+		{ type = "colour", key = "textColour", name = "Text Colour",
+		  desc = "The colour of the display's text. Its first colour is the palette's text colour, which follows the palette." },
 		-- (2.1.60; #12, a player: "show the Rage, Energy and Mana each druid form would give you before you shift")
 		{ type = "toggle", key = "druidForms", name = "Druid Forms",
 		  search = "druid form forms shapeshift cat bear mana energy rage",
@@ -5846,7 +6405,7 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 		-- (2.1.68; Slayristo on Discord: "Clique interacts with the Personal Bar, so accidentally wasting mana at the
 		-- wrong click when just moving screen around ... if Click through Frames is possible option that would be
 		-- great") the click-cast button over the bars lets the pointer through (Click.Through)
-		{ type = "toggle", key = "clickThrough", name = "Click Through", new = "2.1.68",
+		{ type = "toggle", key = "clickThrough", name = "Click Through",
 		  search = "click through clickthrough clique click cast casting healbot mouse camera drag pass ignore",
 		  desc = "Clicks and camera drags over the bars pass through to the world. With a click-cast addon like Clique, the bars no longer cast, target you or open your menu. Edit Layout still moves the display." },
 		{ type = "button", name = "Preview", text = "Play",
@@ -6104,6 +6663,7 @@ function Druid.TestStep()
 	Druid.Fill(ui.power.bar, token, 100, step[2])
 	Motion.Value(ui.power, 100, step[2], true)   -- (its pale layers with it, not the last real amount)
 	ui.power.text:SetFormattedText("%.0f%%", step[2])
+	Pct.Value(ui.power.value, math.floor(step[2] * T.samplePower / 100 + 0.5))
 	local i = 0
 	for _, other in ipairs(Druid.POWERS) do
 		if other ~= token and i < 2 then
@@ -6319,16 +6879,29 @@ function M:OnSettingChanged(key, _, db)
 		Motion.HoldBanner()
 	elseif key == "settle" then
 		Motion.SettleGo(MelloUI.InCombat(), true)
-	elseif key == "textFont" then
+	elseif key == "textFont" or key == "textSize" or key == "textColour" then   -- (2.1.70: the size and colour too)
 		for fs, size in pairs(S.texts) do
 			StyleText(fs, size)
 		end
 	elseif key == "textPlace" then
-		-- (2.1.65, Percent Position) the two percents in their size and outline there, laid there
+		-- (2.1.65, Percent Position) the two percents in their size and outline there, laid there; (2.1.70) the
+		-- amounts shown or hidden with them, read again
 		Pct.Style()
 		Pct.Lay(ui)
+		if not S.preview then
+			Health()
+			Power()
+		end
 	elseif key == "clickThrough" then
 		Click.Through()   -- (2.1.68: in a fight, set at its end)
+	elseif key == "parts" then
+		-- (2.1.73, the Designer's places) the bars and the cast bar, the percents, the badge and the cooldowns again
+		LayStack(ui)
+		Place()
+		if SB and SB.Lay then
+			SB.Lay()
+		end
+		Cds.Refresh()
 	end
 end
 
