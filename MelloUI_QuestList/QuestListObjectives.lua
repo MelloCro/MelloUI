@@ -148,6 +148,14 @@ local function DataReady()
 	return QS == nil or QS.Look()
 end
 
+-- (2.1.77; the user: "i want people without questie to have those visible since the game itself shows them") the
+-- minimap's areas and points as MelloUI's map has them: also without Questie at all, the game's own (QS.Marks). The
+-- game's own world map keeps DataReady: without Questie the game draws its areas there itself
+local function MarksReady()
+	local QS = MelloUI.QuestSource
+	return QS == nil or QS.Marks()
+end
+
 -- (1.2.0) world yards to a map's 0..1: the client's own answer at three points by a place (one ask a point
 -- otherwise; the edge's points lie off the map at its borders, where the zone map's own check refuses them), kept by
 -- map and continent: { x0, y0, dx/dwx, dy/dwx, dx/dwy, dy/dwy }, or false
@@ -940,7 +948,7 @@ function O.MiniBuild()
 	end
 	wipe(mini.areas)
 	local of, byShape = {}, {}
-	if O.MiniWanted() and DataReady() and QA then
+	if O.MiniWanted() and MarksReady() and QA then
 		mini.built = true
 		for _, questID in ipairs(LogQuests(QL.M.db.objectiveTrackedOnly)) do
 			EachOpen(questID, function(index, entry, t)
@@ -1057,7 +1065,7 @@ function O.MiniBuild()
 	-- (2.1.74; docs/plans/game-quest-areas.md) the quests Questie has no places for: a mark at the game's own point
 	-- (QO.GameWorld) -- its open objective's kind; ready to turn in, the turn-in mark -- no area, as MelloUI's map
 	local QO = MelloUI.QuestObjectives
-	if O.MiniWanted() and DataReady() and QO and QO.GameWorld then
+	if O.MiniWanted() and MarksReady() and QO and QO.GameWorld then
 		for pass = 1, 2 do
 			local done = pass == 2
 			for _, questID in ipairs(LogQuests(QL.M.db.objectiveTrackedOnly, done)) do

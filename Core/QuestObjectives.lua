@@ -75,7 +75,12 @@ end
 function QO.Of(questID)
 	local QS = MelloUI.QuestSource
 	if not (QS and QS.Lib()) then
-		return nil   -- (no Questie: no quests anywhere, the learned places too)
+		-- (2.1.77) no Questie at all: the game's own areas for every quest in the log (QS.GameOnly); a Questie whose data
+		-- cannot be read: none (its own icons show)
+		if QS and QS.GameOnly() then
+			return QO.Traced(questID)
+		end
+		return nil
 	end
 	local data, learned = DataOf(questID), LearnedOf(questID)
 	if not learned then
@@ -185,10 +190,10 @@ function QO.Game(questID, done)
 		return nil
 	end
 	local QS = MelloUI.QuestSource
-	if (QS and not QS.Look()) or QO.Of(id) ~= nil then   -- (Questie's places or the learned ones: MelloUI's own areas)
+	if (QS and not QS.Marks()) or QO.Of(id) ~= nil then   -- (Questie's places, the learned ones or the traced: areas)
 		return nil
 	end
-	if done and QS and QS.Knows and QS.Knows(id) then
+	if done and QS and QS.Look() and QS.Knows and QS.Knows(id) then
 		return nil   -- (its turn-in Questie's own "?")
 	end
 	local api = rawget(_G, "C_QuestLog")
@@ -506,7 +511,7 @@ end
 
 function QO.Traced(questID)
 	local QS = MelloUI.QuestSource
-	if not (QS and QS.Look()) then
+	if not (QS and QS.Marks()) then   -- (2.1.77: Questie in MelloUI's look, or no Questie at all)
 		return nil
 	end
 	local api, Finite = rawget(_G, "C_QuestLog"), MelloUI.Safe.Finite

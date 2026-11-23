@@ -112,6 +112,20 @@ function QS.Look()
 	return not (I and not I.Use("Questie"))
 end
 
+-- (2.1.77; the user, 2026-11-23: "i want people without questie to have those visible since the game itself shows them")
+-- no Questie at all: MelloUI's map and the minimap mark the game's own quest areas and points for every quest in the log
+-- (Core/QuestObjectives.lua: QO.Of hands out QO.Traced's areas, QO.Game the points). Questie there -- in MelloUI's
+-- look, or its switch off (its own icons), or a Questie whose data MelloUI cannot read (its own icons too) -- as before,
+-- so nothing shows twice
+function QS.GameOnly()
+	return type(rawget(_G, "Questie")) ~= "table"
+end
+
+-- MelloUI's map and the minimap mark the quests: Questie's places in MelloUI's look, or the game's own without Questie
+function QS.Marks()
+	return QS.Look() or QS.GameOnly()
+end
+
 function QS.State()
 	return not QS.Lib() and "none" or (QS.Look() and "look" or "questie")
 end

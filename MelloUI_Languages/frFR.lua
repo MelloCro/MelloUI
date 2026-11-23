@@ -2508,6 +2508,7 @@ Lang:Add("frFR", {
 	["%s, %s and %s use MelloUI too"] = "%s, %s et %s utilisent aussi MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "%d joueurs de votre groupe utilisent MelloUI", -- draft
 	["Now in your group"] = "Maintenant dans votre groupe", -- draft
+	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Carte et minicarte sans Questie : vos quêtes affichent les zones et les points du jeu, dans le style de MelloUI.", -- draft
 	["Easter egg added."] = "Easter egg ajouté.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Compteur de dégâts : avec le compteur de MelloUI désactivé, celui du jeu se déplace de nouveau dans Edit Layout.", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Barres de nom : les barres alliées qui n'affichent que le nom n'ont plus de bordure de barre au survol.", -- draft

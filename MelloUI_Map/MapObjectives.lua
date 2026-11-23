@@ -102,12 +102,13 @@ local function QuestList()
 end
 
 -- (2.1.52, stage 2) the objectives' places are Questie's (Core/QuestSource.lua), and this map lays its own marks and
--- areas of them only in MelloUI's look: with Questie's switch off Questie's own objective icons show (MapAddonPins),
--- without Questie there are no quests at all
+-- areas of them only in MelloUI's look: with Questie's switch off Questie's own objective icons show (MapAddonPins);
+-- (2.1.77; the user: "i want people without questie to have those visible since the game itself shows them") without
+-- Questie at all, the game's own areas and points for every quest in the log (QS.Marks)
 -- (a world without the quest source -- a test's: the places are whatever MelloUI.QuestObjectives hands out)
 function Objectives.Data()
 	local QS = MelloUI.QuestSource
-	return QS == nil or QS.Look()
+	return QS == nil or QS.Marks()
 end
 
 -- (2.1.68) Focused Quest Only: the one quest to mark (the Quest List's switch and its one reader, QL.Objectives.Focus:

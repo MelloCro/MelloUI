@@ -2486,6 +2486,7 @@ Lang:Add("koKR", {
 	["%s, %s and %s use MelloUI too"] = "%s님, %s님, %s님도 MelloUI를 씁니다", -- draft
 	["%d players in your group use MelloUI"] = "파티원 %d명이 MelloUI를 씁니다", -- draft
 	["Now in your group"] = "이제 같은 파티입니다", -- draft
+	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Questie 없이도 지도와 미니맵: 퀘스트가 게임 자체의 지역과 지점을 MelloUI 스타일로 보여줍니다.", -- draft
 	["Easter egg added."] = "이스터 에그가 추가되었습니다.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "피해량 측정기: MelloUI 측정기를 끄면 게임 자체 측정기를 Edit Layout에서 다시 옮길 수 있습니다.", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "이름표: 이름만 표시하는 아군 이름표에 마우스를 올려도 더 이상 이름표 테두리가 나타나지 않습니다.", -- draft

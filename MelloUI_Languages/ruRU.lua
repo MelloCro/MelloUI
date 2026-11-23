@@ -2486,6 +2486,7 @@ Lang:Add("ruRU", {
 	["%s, %s and %s use MelloUI too"] = "%s, %s и %s тоже пользуются MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "Игроков в группе с MelloUI: %d", -- draft
 	["Now in your group"] = "Теперь в вашей группе", -- draft
+	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Карта и миникарта без Questie: ваши задания показывают области и точки самой игры в стиле MelloUI.", -- draft
 	["Easter egg added."] = "Добавлена пасхалка.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Счётчик урона: когда счётчик MelloUI выключен, счётчик самой игры снова можно двигать в Edit Layout.", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Индикаторы: дружеские индикаторы, показывающие только имя, больше не получают рамку индикатора при наведении.", -- draft

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.77
+
+- Map and minimap without Questie: the quests in your log now show the game's own quest areas and points, drawn in MelloUI's look (the gold edge and glow in your colours, MelloUI's marks), as the game's own map shows them. Before, without Questie MelloUI's map showed no quests at all. Done quests show their turn-in mark. With Questie, nothing changes.
+
 ## 2.1.76
 
 - Easter egg added.

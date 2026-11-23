@@ -2493,6 +2493,7 @@ Lang:Add("deDE", {
 	["%s, %s and %s use MelloUI too"] = "%s, %s und %s nutzen auch MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "%d Spieler in deiner Gruppe nutzen MelloUI", -- draft
 	["Now in your group"] = "Jetzt in deiner Gruppe", -- draft
+	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Karte und Minikarte ohne Questie: Deine Quests zeigen die Questgebiete und Punkte des Spiels im Look von MelloUI.", -- draft
 	["Easter egg added."] = "Osterei hinzugefügt.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Schadensanzeige: Ist MelloUIs Anzeige aus, lässt sich die Anzeige des Spiels im Edit Layout wieder verschieben.", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Namensplaketten: Freundliche Plaketten, die nur den Namen zeigen, bekommen beim Darüberfahren keinen Plakettenrahmen mehr.", -- draft

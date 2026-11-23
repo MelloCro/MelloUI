@@ -2486,6 +2486,7 @@ Lang:Add("zhCN", {
 	["%s, %s and %s use MelloUI too"] = "%s、%s 和 %s 也在用 MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "队伍中有 %d 名玩家在用 MelloUI", -- draft
 	["Now in your group"] = "现在在你的队伍中", -- draft
+	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "没有 Questie 时的地图和小地图：你的任务会以 MelloUI 的样式显示游戏自带的任务区域和地点。", -- draft
 	["Easter egg added."] = "新增了一个彩蛋。", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "伤害统计：关闭 MelloUI 的伤害统计后，游戏自带的伤害统计可以再次在 Edit Layout 中移动。", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "姓名板：只显示名字的友方姓名板在鼠标悬停时不再出现姓名板边框。", -- draft

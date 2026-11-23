@@ -1174,7 +1174,9 @@ Objective Marks On The Minimap is on). A quest in your log that Questie has no p
 cover yet) gets the game's own quest area instead, traced and drawn as MelloUI's own areas are (the gold edge and
 glow, in your colours), on the map and the minimap, and Route can lead you to it (2.1.74). Until it is ready,
 MelloUI's mark stands at the game's point for it, and once a quest Questie doesn't know is done, the turn-in mark. Questie's
-places win wherever it has them, so a quest never shows both. On the minimap, the quest givers are the game's own marks (Questie's stay out of
+places win wherever it has them, so a quest never shows both. Without Questie at all (2.1.77), every quest in your
+log gets the game's own areas and points this way on MelloUI's map and the minimap, as the game's own map shows
+them; with Questie installed but its Use with MelloUI off, Questie's own icons show instead, as before. On the minimap, the quest givers are the game's own marks (Questie's stay out of
 sight there, so nothing shows twice); the game only lets addons show or hide its grey ones as a whole.
 Hovering one of Questie's icons that still show lists only what is not drawn by MelloUI already: Questie's tooltip
 gathers the quests of every icon of its own nearby (a dungeon's quests all sit on its entrance), and leaves out the

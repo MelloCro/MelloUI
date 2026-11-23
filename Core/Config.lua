@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.77", lines = {
+		"Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look.",
+	} },
 	{ version = "2.1.76", lines = {
 		"Easter egg added.",
 	} },
@@ -194,12 +197,6 @@ local CHANGELOG = {
 	{ version = "2.1.73", lines = {
 		"Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them.",
 		"Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map.",
-	} },
-	{ version = "2.1.72", lines = {
-		"Nameplate Designer: the health number and the percent move and size on their own, and the names have a size.",
-		"Nameplates: the swing badge steps past the percent when it stands beside the bar.",
-		"Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it.",
-		"GatherMate2: every ore and every herb has its own icon on the map and the minimap.",
 	} },
 }
 local LINKS = {
