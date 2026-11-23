@@ -5161,6 +5161,9 @@ Lang:Add("frFR", {
 	[", about %s"] = ", environ %s",
 	["elves"] = "elfes",
 	["trolls"] = "trolls",
+	["The frame around progress bars: reputation, skills, professions, experience, tooltips and the damage meter. Frame Set is your Frame Set's own bar frame."] = "Cadre des barres de progression : réputation, compétences, métiers, expérience, infobulles et compteur de dégâts. Style de cadres reprend le cadre de barre du style choisi.",
+	["Level orb changed: type /reload to see it on frames already shown."] = "Orbe de niveau modifié. Tapez /reload pour voir le changement sur les cadres déjà affichés.",
+	["Window look changed: type /reload to see it on windows already opened."] = "Style des fenêtres modifié. Tapez /reload pour voir le changement dans les fenêtres déjà ouvertes.",
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
