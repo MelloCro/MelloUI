@@ -2,9 +2,9 @@
 -- translations are in MelloUI, the most merged first, shown on the configurator's Supporters page
 -- (Core/SupportersHall.lua). Do not edit by hand: a name to leave out goes in Tools/contributors-exclude.txt.
 MelloUI_Contributors = {
-	updated = "2026-11-21",
+	updated = "2026-11-23",
 	{ name = "Glockta-code", what = "code", merged = 22 },
-	{ name = "woofix", what = "code and translations", merged = 15 },
+	{ name = "woofix", what = "code and translations", merged = 16 },
 	{ name = "pmyszczynski", what = "code", merged = 6 },
 	{ name = "TribalInstincts", what = "code", merged = 3 },
 	{ name = "Baine", what = "code", merged = 1 },

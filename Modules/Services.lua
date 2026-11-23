@@ -3546,7 +3546,16 @@ local function ApplyIconShape()
 	MenuBox(kit)
 end
 
+-- (2.1.78; a controller player's blocked-actions report on 2.1.75, 2026-11-23: an addon showed its minimap button in a
+-- fight, Addon.Changed laid the bar, and the game refused its size, place, level and show, then the minimap frame's
+-- and the cluster's clamp after it) The bar and the column under the minimap are laid out of combat only: something
+-- protected can hang from them (in the Gamepad UI the minimap cluster itself is), and what changed in a fight is laid
+-- once it is over, from what stands then.
 local function ApplyBar()
+	if InCombatLockdown() then
+		MelloUI.Schedule:WhenOutOfCombat(ApplyBar, "Services: the bar laid")
+		return
+	end
 	if M.db.showBar and M.isEnabled then
 		CreateBar()
 	end

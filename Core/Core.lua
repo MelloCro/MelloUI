@@ -1243,6 +1243,58 @@ function MelloUI:HoldCVar(db, name, savedKey, on, want)
 	return false
 end
 
+-- (2.1.78) One of the minimap's tracking types held off while `on`, as HoldCVar
+-- holds a CVar: found by its filter (Enum.MinimapTrackingFilter), turned off
+-- once, db[savedKey] noting that MelloUI turned it off, and turned on again only
+-- then when the module lets go (one the player turned off stays off). Players
+-- with Questie off, 2026-11-23: the minimap's blue quest areas are its always-on
+-- Quest POIs tracking, not the questPOI CVar the world map asks. A client
+-- without the type: nothing. Returns true when it changed the tracking.
+--   MelloUI:HoldTracking(db, filterID, savedKey, on)
+do
+	local function Find(api, filterID)
+		local ok, n = pcall(api.GetNumTrackingTypes)
+		n = ok and Safe.Number(n) or 0
+		for i = 1, n do
+			local okF, f = pcall(api.GetTrackingFilter, i)
+			if okF and type(f) == "table" and Safe.Value(f.filterID) == filterID then
+				local okI, info = pcall(api.GetTrackingInfo, i)
+				return i, (okI and type(info) == "table" and Safe.Value(info.active) == true) or false
+			end
+		end
+		return nil
+	end
+
+	function MelloUI:HoldTracking(db, filterID, savedKey, on)
+		local api = rawget(_G, "C_Minimap")
+		if not (db and filterID and api and api.SetTracking and api.GetNumTrackingTypes and api.GetTrackingFilter
+			and api.GetTrackingInfo) then
+			return false
+		end
+		if not (on or db[savedKey]) then
+			return false   -- (nothing held: not even looked for)
+		end
+		local index, active = Find(api, filterID)
+		if not index then
+			return false
+		end
+		if on then
+			if active then
+				db[savedKey] = true
+				pcall(api.SetTracking, index, false)
+				return true
+			end
+		else
+			db[savedKey] = nil
+			if not active then
+				pcall(api.SetTracking, index, true)
+				return true
+			end
+		end
+		return false
+	end
+end
+
 function MelloUI:CVarHeldBy(name)
 	local mods, holders = self.db and self.db.modules, cvarHolds[name]
 	if type(mods) ~= "table" or not holders then
@@ -2632,10 +2684,30 @@ do
 	-- none). -> true when the insets changed
 	local clampOf = setmetatable({}, { __mode = "k" })   -- [frame] = { left, right, top, bottom }: the game's last
 	local clampLaying = false
+	local clampLater = setmetatable({}, { __mode = "k" })   -- [frame] = its key in the combat queue
 	local function SetClamp(frame, l, r, t, b)
 		local ok0, l0, r0, t0, b0 = pcall(frame.GetClampRectInsets, frame)
 		if ok0 and Num(l0) == l and Num(r0) == r and Num(t0) == t and Num(b0) == b then
 			return false
+		end
+		-- (2.1.78; a blocked-actions report, 2026-11-23: the minimap's cluster, protected in the Gamepad UI, clamped
+		-- again in a fight as the column under the map was laid) a protected frame clamped after the fight, by its box
+		-- as it stands then
+		if InCombatLockdown() then
+			local okP, protected = pcall(frame.IsProtected, frame)
+			if not okP or Secret(protected) or protected then
+				local S = rawget(MelloUI, "Schedule")
+				if S and S.WhenOutOfCombat then
+					clampLater[frame] = clampLater[frame] or {}   -- (its own key: never the frame's other queued work)
+					S:WhenOutOfCombat(function()
+						local entry = byFrame[frame]
+						if entry and entry.box then
+							ClampToBox(entry)
+						end
+					end, clampLater[frame])
+				end
+				return false
+			end
 		end
 		clampLaying = true
 		local ok, err = pcall(frame.SetClampRectInsets, frame, l, r, t, b)

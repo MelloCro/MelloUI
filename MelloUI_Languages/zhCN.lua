@@ -2486,6 +2486,11 @@ Lang:Add("zhCN", {
 	["%s, %s and %s use MelloUI too"] = "%s、%s 和 %s 也在用 MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "队伍中有 %d 名玩家在用 MelloUI", -- draft
 	["Now in your group"] = "现在在你的队伍中", -- draft
+	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
+	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "地图：关闭 MelloUI 的地图时，没有 Questie 的情况下游戏自带的世界地图也会显示 MelloUI 的任务区域。", -- draft
+	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "服务栏和小地图边框：战斗中插件的小地图按钮变化时不再出现被阻止的操作。", -- draft
+	["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "手柄：使用简洁聊天视图时，背景不透明度不再改动游戏隐藏的聊天窗口。", -- draft
+	["French: many more settings and messages are translated (thanks to woofix)."] = "法语：更多设置和消息已翻译（感谢 woofix）。", -- draft
 	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "没有 Questie 时的地图和小地图：你的任务会以 MelloUI 的样式显示游戏自带的任务区域和地点。", -- draft
 	["Easter egg added."] = "新增了一个彩蛋。", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "伤害统计：关闭 MelloUI 的伤害统计后，游戏自带的伤害统计可以再次在 Edit Layout 中移动。", -- draft

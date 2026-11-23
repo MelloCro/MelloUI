@@ -277,9 +277,21 @@ end
 --------------------------------------------------------------------------------
 
 local Alpha = { applying = false, watched = false, reskin = false, listening = false }
+M.Alpha = Alpha   -- (2.1.78: Chat View's off branch writes the windows then: Alpha.Held)
 
 function Alpha.On()
 	return (M.isEnabled or Alpha.reskin) and M.db and M.db.windowAlphaOn == true
+end
+
+-- (2.1.78; a controller player's blocked-actions report on 2.1.75, 2026-11-23: the chat's pad bindings written by
+-- MelloUI, then the game's interact target refused) While the Minimal Chat View is on, the game's windows are held out
+-- of sight and the view paints its own ground from this same setting (ChatView's PanelAlpha), so nothing is written
+-- into them: the game's function run from MelloUI's code leaves each window's remembered opacity (its oldAlpha)
+-- MelloUI's, and the game reads that in its own fades and in its controller focus of the chat. The view switched off
+-- writes them then (ChatView's off branch).
+function Alpha.Held()
+	local V = M.View
+	return type(V) == "table" and (V.on or (V.Wanted and V.Wanted())) and true or false
 end
 
 function Alpha.Wanted()
@@ -313,6 +325,9 @@ function Alpha.Apply()
 		return
 	end
 	Alpha.Watch()
+	if Alpha.Held() then
+		return
+	end
 	local want = Alpha.Wanted()
 	Alpha.applying = true
 	local any = false
@@ -339,7 +354,7 @@ end
 -- the game's chat-window updates puts it back to 100%: below 100% it is
 -- set again here each time (at 100% nothing is written)
 function Alpha.OnGameSet(cf, _, doNotSave)
-	if Alpha.applying or not doNotSave or not Alpha.On() then
+	if Alpha.applying or not doNotSave or not Alpha.On() or Alpha.Held() then
 		return
 	end
 	Alpha.applying = true

@@ -1670,6 +1670,50 @@ function BUG.NavWalk(check, nav, panel)
 	return out[1] and out or nil
 end
 
+-- (2.1.78; the controller player's 2.1.75 report, 2026-11-23: the chat's footer bindings written as an addon's inside
+-- the game's own focus of a chat window (FloatingChatFrame FocusGamepad, from the Open Chat key), while the manager's
+-- focus, written just before it, and the navigation stayed the game's) The values that focus reads between the two,
+-- asked of the game as a write is noted: those an addon wrote, one line each ("" when none)
+BUG.CHAT_GLOBALS = { "DEFAULT_CHAT_FRAME", "LAST_ACTIVE_CHAT_EDIT_BOX", "ACTIVE_CHAT_EDIT_BOX", "SELECTED_DOCK_FRAME",
+	"GENERAL_CHAT_DOCK", "CHAT_FRAMES", "CHAT_FRAME_TEXTURES", "CHAT_FRAME_FADE_TIME", "DEFAULT_CHATFRAME_ALPHA",
+	"GamepadScrollBarHint" }
+BUG.CHAT_KEYS = { "oldAlpha", "isDocked", "dock", "editBox", "ScrollBar", "buttonFrame", "footer" }
+function BUG.ChatSuspects(check)
+	local out = {}
+	local function Mark(label, t, key)
+		local by = type(t) == "table" and WrittenBy(check, t, key)
+		if by then
+			out[#out + 1] = format("%s (%s)", label, by)
+		end
+	end
+	for _, name in ipairs(BUG.CHAT_GLOBALS) do
+		Mark(name, _G, name)
+	end
+	local main = rawget(_G, "DEFAULT_CHAT_FRAME")
+	local box = type(main) == "table" and rawget(main, "editBox") or nil
+	Mark("DEFAULT_CHAT_FRAME.editBox.languageID", box, "languageID")
+	local dock = rawget(_G, "GENERAL_CHAT_DOCK")
+	if type(dock) == "table" then
+		Mark("GENERAL_CHAT_DOCK.selected", dock, "selected")
+		Mark("GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES", dock, "DOCKED_CHAT_FRAMES")
+		local list = rawget(dock, "DOCKED_CHAT_FRAMES")
+		for i = 1, math.min(type(list) == "table" and #list or 0, 20) do
+			Mark(format("GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES[%d]", i), list, i)
+		end
+	end
+	local frames = rawget(_G, "CHAT_FRAMES")
+	for i = 1, math.min(type(frames) == "table" and #frames or 0, 20) do
+		local name = rawget(frames, i)
+		local cf = type(name) == "string" and not Secret(name) and rawget(_G, name) or nil
+		if type(cf) == "table" then
+			for _, key in ipairs(BUG.CHAT_KEYS) do
+				Mark(name .. "." .. key, cf, key)
+			end
+		end
+	end
+	return out
+end
+
 function BUG.Wrote(spec, label, t, method, arg)
 	if #BUG.writes >= BUG.WRITES then
 		return
@@ -1719,6 +1763,13 @@ function BUG.Wrote(spec, label, t, method, arg)
 	end
 	if not found then
 		return
+	end
+	local okC, suspects = pcall(BUG.ChatSuspects, check)
+	for _, line in ipairs(okC and type(suspects) == "table" and suspects or {}) do
+		if not BUG.writeState["chat: " .. line] then   -- (each once)
+			BUG.writeState["chat: " .. line] = true
+			found[#found + 1] = "chat: " .. line
+		end
 	end
 	local okW, way = pcall(BUG.Way)
 	BUG.writes[#BUG.writes + 1] = {

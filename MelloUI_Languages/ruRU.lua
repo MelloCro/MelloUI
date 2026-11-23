@@ -2486,6 +2486,11 @@ Lang:Add("ruRU", {
 	["%s, %s and %s use MelloUI too"] = "%s, %s и %s тоже пользуются MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "Игроков в группе с MelloUI: %d", -- draft
 	["Now in your group"] = "Теперь в вашей группе", -- draft
+	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Миникарта без Questie: синие круги заданий игры уступают место меткам MelloUI.", -- draft
+	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "Карта: при выключенной карте MelloUI карта мира игры тоже показывает области заданий MelloUI без Questie.", -- draft
+	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "Панель услуг и рамка миникарты: больше никаких заблокированных действий, когда кнопка миникарты аддона меняется в бою.", -- draft
+	["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "Геймпад: прозрачность фона больше не трогает скрытые окна чата игры при минимальном виде чата.", -- draft
+	["French: many more settings and messages are translated (thanks to woofix)."] = "Французский: переведено гораздо больше настроек и сообщений (спасибо woofix).", -- draft
 	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Карта и миникарта без Questie: ваши задания показывают области и точки самой игры в стиле MelloUI.", -- draft
 	["Easter egg added."] = "Добавлена пасхалка.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Счётчик урона: когда счётчик MelloUI выключен, счётчик самой игры снова можно двигать в Edit Layout.", -- draft

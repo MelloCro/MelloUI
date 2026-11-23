@@ -143,14 +143,10 @@ end
 -- and the minimap -- are laid only in MelloUI's look: with Questie's switch off Questie's own icons show, without
 -- Questie there are no quests at all
 -- (a world without the quest source -- a test's: the places are whatever MelloUI.QuestObjectives hands out)
-local function DataReady()
-	local QS = MelloUI.QuestSource
-	return QS == nil or QS.Look()
-end
-
 -- (2.1.77; the user: "i want people without questie to have those visible since the game itself shows them") the
--- minimap's areas and points as MelloUI's map has them: also without Questie at all, the game's own (QS.Marks). The
--- game's own world map keeps DataReady: without Questie the game draws its areas there itself
+-- minimap's areas and points as MelloUI's map has them: also without Questie at all, the game's own (QS.Marks).
+-- (2.1.78) the game's own world map too (O.Add): its blue areas are held off there with Hide The Game's Quest Areas
+-- (O.GameMarks), so without Questie it showed nothing at all
 local function MarksReady()
 	local QS = MelloUI.QuestSource
 	if QS == nil then
@@ -384,7 +380,7 @@ function O.Add(map, mapID)
 	local list = LogQuests(QL.M.db.objectiveTrackedOnly)
 	local canvas = map:GetCanvas()
 	local W, H = QL.Plain(canvas:GetWidth()), QL.Plain(canvas:GetHeight())
-	if #list == 0 or not DataReady() or not (Finite(W) and Finite(H) and W > 0 and H > 0) then
+	if #list == 0 or not MarksReady() or not (Finite(W) and Finite(H) and W > 0 and H > 0) then
 		if painter then
 			painter:Begin()
 			O.Gone(map, mapID, live)
@@ -792,11 +788,23 @@ end
 -- quest buttons ask (MelloUI:HoldCVar: the player's value kept in the
 -- module's savedQuestPOI, never in a profile, and given back when they go).
 -- Written out of combat (at the fight's end: Kit:WhenOutOfCombat)
+-- (2.1.78; players with Questie off, 2026-11-23: "minimap is showing default
+-- quest objectives (the blue circles, not skinned in melloui markers)") the
+-- minimap's blue areas are not the CVar's: they are its always-on Quest POIs
+-- tracking (Enum.MinimapTrackingFilter.QuestPOIs), held off the same way
+-- (MelloUI:HoldTracking, heldMinimapQuestPOIs) while MelloUI's own marks are
+-- on the minimap (O.MiniWanted, MarksReady)
 --------------------------------------------------------------------------------
 function O.GameMarksWanted()
 	local M = QL.M
 	return (M.isEnabled and M.db and M.db.objectiveMarks and M.db.hideGameObjectives) and true or false
 end
+
+function O.GameMiniWanted()
+	return (O.GameMarksWanted() and O.MiniWanted() and MarksReady()) and true or false
+end
+
+local QUEST_POIS = Enum and Enum.MinimapTrackingFilter and Enum.MinimapTrackingFilter.QuestPOIs or 65536
 
 function O.GameMarks()
 	local M = QL.M
@@ -805,6 +813,9 @@ function O.GameMarks()
 	end
 	MelloUI.Kit:WhenOutOfCombat(function()
 		MelloUI:HoldCVar(M.db, "questPOI", "savedQuestPOI", O.GameMarksWanted(), "0")
+		if MelloUI.HoldTracking then
+			MelloUI:HoldTracking(M.db, QUEST_POIS, "heldMinimapQuestPOIs", O.GameMiniWanted())
+		end
 	end, "Quest List: the game's quest areas")
 end
 

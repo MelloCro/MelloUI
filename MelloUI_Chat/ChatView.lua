@@ -3339,6 +3339,9 @@ function View.Apply()
 		end
 		View.pad.Off()   -- (2.1.58: the controller given back with the view)
 		HideGame(false)
+		if M.Alpha then
+			M.Alpha.Apply()   -- (2.1.78: the game's windows take Background Opacity now that they show: Alpha.Held)
+		end
 		PlaceEditBoxes(false)
 		Log.Keep(false)   -- (the game's own again: on while its window shows)
 		Log.Show()

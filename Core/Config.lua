@@ -177,6 +177,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.78", lines = {
+		"Minimap without Questie: the game's blue quest circles give way to MelloUI's marks.",
+		"Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too.",
+		"Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight.",
+		"Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View.",
+		"French: many more settings and messages are translated (thanks to woofix).",
+	} },
 	{ version = "2.1.77", lines = {
 		"Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look.",
 	} },
@@ -193,10 +200,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.74", lines = {
 		"Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look.",
-	} },
-	{ version = "2.1.73", lines = {
-		"Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them.",
-		"Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map.",
 	} },
 }
 local LINKS = {

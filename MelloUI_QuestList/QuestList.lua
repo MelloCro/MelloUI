@@ -37,7 +37,8 @@ local M = MelloUI:RegisterModule("QuestList", {
 	group = "Quests and travel", navOrder = 1,
 	area = { key = "questList" },   -- MelloUI's own look, always since onelook stage C (it followed the quest log's kit before)
 	keep = { "learnedEntrances", "learnedTransports",   -- pins recorded by hand (older versions kept them here): never in a profile
-		"savedQuestPOI" },   -- (0.19.5) the game's Quest Objectives setting as the player had it (Hide The Game's Quest Areas)
+		"savedQuestPOI",   -- (0.19.5) the game's Quest Objectives setting as the player had it (Hide The Game's Quest Areas)
+		"heldMinimapQuestPOIs" },   -- (2.1.78) MelloUI turned the minimap's Quest POIs tracking off (the same switch)
 	enabledByDefault = true,
 	defaults = {
 		filter = "zone",
@@ -2297,6 +2298,12 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 		if QL.Objectives then
 			QL.Objectives.FocusChanged()
 		end
+	elseif event == "MINIMAP_UPDATE_TRACKING" then
+		-- (2.1.78) the minimap's tracking changed (its menu's Uncheck All turns the always-on types back on): the game's
+		-- quest areas held off again while MelloUI's minimap marks are on (QuestListObjectives' O.GameMarks)
+		if QL.Objectives then
+			QL.Objectives.GameMarks()
+		end
 	elseif event == "PLAYER_LOGOUT" then
 		-- (0.19.9) this character into the account record (QL.Record)
 		QL.Record.Write()
@@ -2425,6 +2432,7 @@ function M:OnEnable(db)
 	-- audit 2026-09-22)
 	eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
 	eventFrame:RegisterEvent("SUPER_TRACKING_CHANGED")   -- (2.1.68: the quest followed, Focused Quest Only)
+	pcall(eventFrame.RegisterEvent, eventFrame, "MINIMAP_UPDATE_TRACKING")   -- (2.1.78: the minimap's quest areas)
 	eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 	eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
 	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")

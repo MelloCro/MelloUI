@@ -2486,6 +2486,11 @@ Lang:Add("ptBR", {
 	["%s, %s and %s use MelloUI too"] = "%s, %s e %s também usam o MelloUI", -- draft
 	["%d players in your group use MelloUI"] = "%d jogadores do seu grupo usam o MelloUI", -- draft
 	["Now in your group"] = "Agora no seu grupo", -- draft
+	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Minimapa sem o Questie: os círculos azuis de missão do jogo dão lugar às marcas do MelloUI.", -- draft
+	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "Mapa: com o mapa do MelloUI desligado, o mapa-múndi do jogo também mostra as áreas de missão do MelloUI sem o Questie.", -- draft
+	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "Barra de serviços e moldura do minimapa: chega de ações bloqueadas quando o botão de minimapa de um addon muda em combate.", -- draft
+	["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "Controle: a opacidade do fundo deixa em paz as janelas de chat ocultas do jogo com a visualização de chat mínima.", -- draft
+	["French: many more settings and messages are translated (thanks to woofix)."] = "Francês: muitas outras configurações e mensagens foram traduzidas (obrigado, woofix).", -- draft
 	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Mapa e minimapa sem o Questie: suas missões mostram as áreas e os pontos do próprio jogo, no visual do MelloUI.", -- draft
 	["Easter egg added."] = "Easter egg adicionado.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Medidor de dano: com o medidor do MelloUI desligado, o medidor do próprio jogo pode ser movido de novo no Edit Layout.", -- draft

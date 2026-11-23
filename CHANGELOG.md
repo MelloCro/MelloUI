@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.78
+
+- Fixed: without Questie, the minimap showed the game's own blue quest circles next to MelloUI's marks. While MelloUI marks your quests on the minimap and Hide The Game's Quest Areas is on (Quest List > Map), the game's quest areas on the minimap are hidden now, as they already were on the map. They come back when you turn that switch or MelloUI's minimap marks off.
+- Fixed: with MelloUI's map turned off, the game's own world map showed no quests at all without Questie. It shows MelloUI's quest areas there now too.
+- Fixed: when an addon showed or hid its minimap button during a fight, the game blocked MelloUI from moving the Services bar and the minimap's frame (seen with a controller). They now settle once the fight is over.
+- Controller: with the Minimal Chat View on, Background Opacity no longer writes into the game's hidden chat windows. Those writes could make the game block actions after you opened the chat with a controller.
+- Blocked actions report (/mellobug): with a controller, it also names the game's chat values an addon changed.
+- French: loot rolls, the layout picker, the Addons page, auras, nameplates, Group Frames, Fight History, bag rules, key bindings and many more lines are translated (thanks to woofix).
+
 ## 2.1.77
 
 - Map and minimap without Questie: the quests in your log now show the game's own quest areas and points, drawn in MelloUI's look (the gold edge and glow in your colours, MelloUI's marks), as the game's own map shows them. Before, without Questie MelloUI's map showed no quests at all. Done quests show their turn-in mark. With Questie, nothing changes.

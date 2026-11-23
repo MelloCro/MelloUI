@@ -2486,6 +2486,11 @@ Lang:Add("koKR", {
 	["%s, %s and %s use MelloUI too"] = "%s님, %s님, %s님도 MelloUI를 씁니다", -- draft
 	["%d players in your group use MelloUI"] = "파티원 %d명이 MelloUI를 씁니다", -- draft
 	["Now in your group"] = "이제 같은 파티입니다", -- draft
+	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Questie 없는 미니맵: 게임의 파란 퀘스트 원 대신 MelloUI의 표시가 나옵니다.", -- draft
+	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "지도: MelloUI 지도를 끄면 Questie 없이도 게임의 세계 지도에 MelloUI의 퀘스트 지역이 표시됩니다.", -- draft
+	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "서비스 바와 미니맵 테두리: 전투 중 애드온의 미니맵 버튼이 바뀌어도 더 이상 동작이 차단되지 않습니다.", -- draft
+	["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "컨트롤러: 최소 채팅 보기에서는 배경 불투명도가 게임의 숨겨진 채팅 창을 건드리지 않습니다.", -- draft
+	["French: many more settings and messages are translated (thanks to woofix)."] = "프랑스어: 훨씬 더 많은 설정과 메시지가 번역되었습니다 (woofix 님께 감사드립니다).", -- draft
 	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Questie 없이도 지도와 미니맵: 퀘스트가 게임 자체의 지역과 지점을 MelloUI 스타일로 보여줍니다.", -- draft
 	["Easter egg added."] = "이스터 에그가 추가되었습니다.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "피해량 측정기: MelloUI 측정기를 끄면 게임 자체 측정기를 Edit Layout에서 다시 옮길 수 있습니다.", -- draft
