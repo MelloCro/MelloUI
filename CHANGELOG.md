@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.75
+
+- Fixed: with MelloUI's Damage Meter turned off, the game's own damage meter sat in a corner of the screen with no way to move it, because Edit Layout hid its plate. While MelloUI's meter is off, the game's meter now has its plate in Edit Layout, so you can drag it anywhere.
+- Fixed: friendly nameplates that show only the name no longer get the plate's border round the name on mouseover.
+- Fixed: the Minimal Chat View no longer gives a tab to channels that other addons join to talk to each other in the background (such as one named GIFM). A channel you join, or put in a chat window, keeps its tab.
+- Chat: One Line Per Message, new (Chat > Messages > Text, off until you turn it on): the Minimal Chat View shows each message on one line, with the time, the channel, the name and the words in the order the game's own chat uses, instead of the name over the message. A long message wraps back to the left edge.
+- Chat: Tab Switches Channel, new (Chat > Messages > Behaviour, off until you turn it on): while you type, Tab moves to the next chat you can speak in (Say, Party, Raid, Instance, Guild, then your channels) and Shift-Tab goes back, your words kept. Name suggestions, whisper targets and slash commands keep their own Tab, and channels other addons use in the background are skipped.
+- Chat: Short Channel Tags now work on game clients in every language, and in both chat views. A channel without a tag of its own is shortened to its first character (综 for 综合, A for Allgemein), with the first character of a part in brackets added where there is one (交服 for 交易（服务）). Before, on a Chinese client the Game Windows view drew half a character and the Minimal view showed the whole name. Forever's own channels (Newcomer Chat, Trade (Local), Trade (Services), OOC, Hardcore Deaths and more) have tags in English too.
+
 ## 2.1.74
 
 - Map and minimap with Questie: a quest in your log that Questie has no places for (new zones such as Riverglades) now shows the game's own quest area, drawn as MelloUI's own areas are: the gold edge and glow, in your colours, with MelloUI's mark. The minimap shows it the same way, and Route can lead you there. Until the area is ready, MelloUI's mark stands at the game's point for it, and once a quest Questie doesn't know is done, the turn-in mark shows where you hand it in. Quests Questie knows look as before.

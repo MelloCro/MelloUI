@@ -1823,6 +1823,10 @@ Lang:Add("ruRU", {
 	["Minimal"] = "Минимальный", -- draft
 	["Channel List As Icons"] = "Список каналов значками", -- draft
 	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "Список каналов минимального вида чата показывает только значки и оставляет больше места сообщениям. Наведите курсор на значок, чтобы увидеть название. Маленькая ручка на краю списка делает то же самое.", -- draft
+	["One Line Per Message"] = "Одна строка на сообщение", -- draft
+	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "Минимальный вид чата показывает каждое сообщение в одну строку: время, канал, имя и текст в порядке самого игрового чата. Выкл.: имя над сообщением.", -- draft
+	["Tab Switches Channel"] = "Tab переключает канал", -- draft
+	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "Пока вы печатаете, Tab переходит к следующему чату, в котором можно говорить: Сказать, Группа, Рейд, Подземелье, Гильдия, затем ваши каналы. Shift-Tab возвращает назад, текст остаётся. Подсказки имён, адресаты шёпота и слэш-команды сохраняют свой Tab.", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "Фон чата: тёмный, игровой, без фона или фон, которым делится аддон SharedMedia.", -- draft
 	["Set The Background Opacity"] = "Задать непрозрачность фона", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "Все окна чата с одинаковой прозрачностью фона. Выкл.: у каждого своя.", -- draft
@@ -2472,6 +2476,12 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Счётчик урона: когда счётчик MelloUI выключен, счётчик самой игры снова можно двигать в Edit Layout.", -- draft
+	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Индикаторы: дружеские индикаторы, показывающие только имя, больше не получают рамку индикатора при наведении.", -- draft
+	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "Чат: каналы, которые другие аддоны используют в фоне, больше не появляются вкладками в минимальном виде.", -- draft
+	["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "Чат: «Одна строка на сообщение» выводит время, канал, имя и текст в одну строку в минимальном виде.", -- draft
+	["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "Чат: «Tab переключает канал» во время набора переходит к следующему чату, в котором можно говорить.", -- draft
+	["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "Чат: короткие метки каналов сокращают названия каналов на любом языке игры, в обоих видах чата.", -- draft
 	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Карта: задания, для которых у Questie нет мест, показывают область задания и метку самой игры в стиле MelloUI.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Личный дисплей: свой предпросмотр на вкладке «Личный». Перетащите полосу заклинаний, текст, значок ударов или восстановления, чтобы переместить их.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Карта: на поле боя его базы, башни и лагеря показывают, кто ими владеет, как на карте самой игры.", -- draft

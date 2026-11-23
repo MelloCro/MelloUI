@@ -1829,6 +1829,10 @@ Lang:Add("deDE", {
 	["Minimal"] = "Minimal",
 	["Channel List As Icons"] = "Kanalliste als Symbole",
 	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "Die Kanalliste der minimalen Chatansicht zeigt nur ihre Symbole und lässt mehr Platz für die Nachrichten. Zeige auf ein Symbol für seinen Namen. Der kleine Griff am Rand der Liste macht dasselbe.",
+	["One Line Per Message"] = "Eine Zeile pro Nachricht", -- draft
+	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "Die minimale Chatansicht zeigt jede Nachricht in einer Zeile: Uhrzeit, Kanal, Name und Text, in der Reihenfolge des Spiel-Chats. Aus: der Name über der Nachricht.", -- draft
+	["Tab Switches Channel"] = "Tab wechselt den Kanal", -- draft
+	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "Beim Tippen wechselt Tab zum nächsten Chat, in dem du sprechen kannst: Sagen, Gruppe, Schlachtzug, Instanz, Gilde, dann deine Kanäle. Umschalt-Tab geht zurück, dein Text bleibt. Namensvorschläge, Flüsterziele und Slash-Befehle behalten ihr eigenes Tab.", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "Der Hintergrund des Chats: Dunkel, der des Spiels, keiner oder einer, den ein SharedMedia-Addon teilt.",
 	["Set The Background Opacity"] = "Hintergrunddeckkraft festlegen",
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "Jedes Chatfenster nutzt dieselbe Hintergrundtransparenz. Aus: jedes behält seine eigene.",
@@ -2479,6 +2483,12 @@ Lang:Add("deDE", {
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Die Addons, mit denen MelloUI zusammenarbeitet: was es mit jedem macht und wo ihre Einstellungen sind.",
+	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Schadensanzeige: Ist MelloUIs Anzeige aus, lässt sich die Anzeige des Spiels im Edit Layout wieder verschieben.", -- draft
+	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Namensplaketten: Freundliche Plaketten, die nur den Namen zeigen, bekommen beim Darüberfahren keinen Plakettenrahmen mehr.", -- draft
+	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "Chat: Kanäle, die andere Addons im Hintergrund nutzen, erscheinen in der minimalen Ansicht nicht mehr als Reiter.", -- draft
+	["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "Chat: Eine Zeile pro Nachricht zeigt Uhrzeit, Kanal, Name und Text in der minimalen Ansicht in einer Zeile.", -- draft
+	["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "Chat: Tab wechselt den Kanal springt beim Tippen zum nächsten Chat, in dem du sprechen kannst.", -- draft
+	["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "Chat: Kurze Kanal-Kürzel kürzen Kanalnamen jetzt in jeder Spielsprache, in beiden Chat-Ansichten.", -- draft
 	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Karte: Quests, für die Questie keine Orte kennt, zeigen das Questgebiet und die Markierung des Spiels im Look von MelloUI.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Persönliche Anzeige: eine eigene Vorschau im Reiter Persönlich. Zieh Zauberleiste, Text, Schwungabzeichen oder Abklingzeiten, um sie zu verschieben.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Karte: In einem Schlachtfeld zeigen seine Basen, Türme und Lager, wer sie hält, wie auf der Karte des Spiels.", -- draft

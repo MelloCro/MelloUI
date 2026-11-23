@@ -1823,6 +1823,10 @@ Lang:Add("zhCN", {
 	["Minimal"] = "极简", -- draft
 	["Channel List As Icons"] = "频道列表仅显示图标", -- draft
 	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "极简聊天视图的频道列表只显示图标，为消息留出更多空间。将鼠标指向图标可查看名称。列表边缘的小把手也能实现同样效果。", -- draft
+	["One Line Per Message"] = "每条消息一行", -- draft
+	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "极简聊天视图将每条消息显示在一行：时间、频道、名字和内容，顺序与游戏自带聊天相同。关闭：名字显示在消息上方。", -- draft
+	["Tab Switches Channel"] = "Tab 切换频道", -- draft
+	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "输入时按 Tab 会切换到下一个可以发言的聊天：说、小队、团队、副本、公会，然后是你的频道。Shift-Tab 返回上一个，已输入的文字保留。名字提示、密语对象和斜杠命令仍使用它们自己的 Tab。", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "聊天框背景：暗色、游戏自带、无，或由 SharedMedia 插件共享的背景。", -- draft
 	["Set The Background Opacity"] = "统一背景不透明度", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "所有聊天窗口使用相同的背景不透明度。关闭：各自保留自己的。", -- draft
@@ -2472,6 +2476,12 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "伤害统计：关闭 MelloUI 的伤害统计后，游戏自带的伤害统计可以再次在 Edit Layout 中移动。", -- draft
+	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "姓名板：只显示名字的友方姓名板在鼠标悬停时不再出现姓名板边框。", -- draft
+	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "聊天：其他插件在后台使用的频道不再以页签形式出现在极简视图中。", -- draft
+	["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "聊天：“每条消息一行”让极简视图把时间、频道、名字和内容放在同一行。", -- draft
+	["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "聊天：“Tab 切换频道”让你在输入时切换到下一个可以发言的聊天。", -- draft
+	["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "聊天：频道简称现在适用于所有游戏语言，两种聊天视图都会缩短频道名称。", -- draft
 	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "地图：Questie 没有位置数据的任务会以 MelloUI 的样式显示游戏自带的任务区域和标记。", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "个人显示：在“个人”页签中有了自己的预览。拖动施法条、文字、挥击徽章或冷却图标即可移动它们。", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "地图：在战场中，据点、哨塔和营地会显示由哪一方控制，与游戏自带的地图一样。", -- draft

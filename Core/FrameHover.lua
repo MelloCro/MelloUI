@@ -226,6 +226,7 @@ local function PlateOutline(uf)
 		return nil
 	end
 	o = CreateFrame("Frame", nil, uf)
+	o.uf = uf   -- (our own frame's field: the plate it outlines, for Lit's name-only test)
 	o:SetAllPoints(uf)
 	o:EnableMouse(false)
 	local okL, level = pcall(bar.GetFrameLevel, bar)
@@ -250,10 +251,23 @@ local function PlateOutline(uf)
 	return o
 end
 
+-- (2.1.75; a player on Discord: a friendly plate that shows only the name got the plate's own border round it on
+-- mouseover, which looked odd round a bare name) a name-only plate (Nameplates' IsNameOnly: the game's answer, a
+-- secret or refused one counting as name-only) has no plate to outline: none shows. Asked as the mouseover unit
+-- changes, so a plate that turns name-only (or back) while shown follows.
+local function NameOnly(o)
+	local np = MelloUI:GetModule("Nameplates")
+	if not (np and np.IsNameOnly) then
+		return false
+	end
+	local ok, only = pcall(np.IsNameOnly, np, o.uf)
+	return ok and only == true
+end
+
 -- each shown plate lit or not by the game's answer: is it the mouseover unit -- a plain answer shows the one plate
 -- (the rest hidden: nothing laid out); a secret one shows each, its alpha the answer (never read)
 local function Lit(o, unit, exists)
-	if not exists then
+	if not exists or NameOnly(o) then
 		o:Hide()
 		return
 	end

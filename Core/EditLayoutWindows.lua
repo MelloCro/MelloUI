@@ -190,7 +190,9 @@ local SHARED = {
 	-- Objective Tracker tab, not MelloUI's own tracker's first one)
 	ObjectiveTrackerFrame = { label = "Objective tracker", page = "TrackerPanel", system = "ObjectiveTracker",
 		category = "quests" },
-	DamageMeter = { label = "Damage meter", page = "DamageMeterPanel", system = "DamageMeter", category = "combat" },
+	-- (2.1.75) standIn: the MelloUI module that takes its place while on (StandInEye below)
+	DamageMeter = { label = "Damage meter", page = "DamageMeterPanel", system = "DamageMeter", category = "combat",
+		standIn = "Meter" },
 }
 local function SharedNames()
 	local fit = MelloUI.LayoutFit
@@ -642,6 +644,21 @@ local function BoxedRelay()
 	end
 end
 
+-- (2.1.75; a player on Discord: with MelloUI's Damage Meter off, the game's meter "gets stuck in the top-left corner
+-- of the screen and cannot be moved") The eye in Edit Layout's Elements list for one of the four that a MelloUI module
+-- stands in for (its `standIn`: the game's damage meter, MelloUI's own meter). While that module is on, the eye is
+-- kept under the element's key. The game's frame never shows then, and the shipped profile hides its plate. While
+-- the module is off, the game's own frame is in use, so its eye is kept apart (key .. ":game"): its plate shows
+-- unless the player hides it then. (The shipped hide had left the game's meter with no plate to drag, and MelloUI's
+-- place outlasts a drag in Edit Mode.)
+function GW.StandInEye(entry)
+	local m = type(entry) == "table" and type(entry.standIn) == "string" and MelloUI.modules[entry.standIn] or nil
+	if m and m.isEnabled then
+		return entry.key
+	end
+	return entry.key ~= nil and (tostring(entry.key) .. ":game") or nil
+end
+
 -- a candidate by its name (and its frame, when known) registered, once
 local function RegisterNamed(name, frame)
 	frame = frame or _G[name]
@@ -662,6 +679,9 @@ local function RegisterNamed(name, frame)
 			local Bridge = MelloUI.EditLayout and MelloUI.EditLayout.Bridge
 			if SHARED[name] and Bridge and Bridge.Placeholder then
 				Bridge.Placeholder(entry)
+			end
+			if SHARED[name] and SHARED[name].standIn then
+				entry.standIn, entry.eyeKey = SHARED[name].standIn, GW.StandInEye
 			end
 			if entry.box and not boxed[entry] then
 				if next(boxed) == nil then

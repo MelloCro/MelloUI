@@ -56,6 +56,7 @@ local RAIL_W, ROW_H, ICON, LETTER, PAD = 112, 34, 24, 24, 6
 -- clamped togther" -- a little more air between speakers, inside a run and round the lines: the area 16 off the rail,
 -- 12 off the top and the right, 10 over the buttons; a wrapped line's own lines 1 apart)
 local GAP_RUN, GAP_LINE, GAP_PLAIN, INDENT, RUN_SECONDS = 10, 2, 3, 10, 120
+local GAP_ONE = 5   -- (2.1.75, One Line Per Message: between two speakers' lines, the sketch's)
 View.RAIL_W = RAIL_W   -- (the whisper window's people list as wide: its divider under the rail's, ChatWhispers.lua)
 -- (2.1.37; NiceGuyBadGamer in feature-requests, "Move chat tabs": the rail takes room the messages need on a small
 -- screen; the user offered "the option to colapse the channel names into icons only" -- "Sure would!") the rail
@@ -390,6 +391,41 @@ function View.BodyShown(rec)
 	return style and M.Whisper.ShortNames(text, style) or text
 end
 
+-- (2.1.75; a player on Discord wanted no line break between the name, the channel and the message; the user's pick A
+-- of BuildData/output/chat_oneline_sketch, "Game order") with Chat's One Line Per Message, a headed line whole, as the
+-- game's own chat writes it: its time (the palette's muted text), its channel's tag, its name (its class colour; on the
+-- paper the names' ink after the class gem, as the header has them), a colon and its words, in ONE string, so a long
+-- message wraps back to the left edge. nil when its name or words are secret (never joined to another string): that
+-- line keeps its name over it. `fs`: the row's string (the gem's size).
+local function Hex(r, g, b)
+	return ("%02x%02x%02x"):format(math.floor((r or 1) * 255 + 0.5), math.floor((g or 1) * 255 + 0.5),
+		math.floor((b or 1) * 255 + 0.5))
+end
+function View.OneLine(rec, fs)
+	local name, words = View.NameShown(rec), View.BodyShown(rec)
+	if Secret(name) or Secret(words) or type(name) ~= "string" or type(words) ~= "string" then
+		return nil
+	end
+	local time, tag, gem = rec.time, rec.tag, ""
+	local nameHex
+	if View.paper then
+		nameHex = Hex(Pal("text"))
+		if rec.cr then
+			gem = View.Gem(rec.cr, rec.cg, rec.cb, fs)
+		end
+	else
+		nameHex = Hex(rec.nr or rec.r, rec.ng or rec.g, rec.nb or rec.b)
+	end
+	local head = ""
+	if type(time) == "string" and time ~= "" then
+		head = "|cff" .. Hex(Pal("mutedText")) .. time .. "|r "
+	end
+	if type(tag) == "string" and tag ~= "" then
+		head = head .. tag .. " "
+	end
+	return View.Codes(head .. gem .. "|cff" .. nameHex .. name .. "|r: ") .. words
+end
+
 -- a line as the game added it (the Chat module's AddMessage post-hook)
 function View.Line(frame, text, r, g, b, _, _, _, event, args)
 	if not View.on then
@@ -683,6 +719,7 @@ function View.Lay()
 	local prev, prevX, gap = nil, 0, 0
 	local k = 0
 	local j = View.offset
+	local oneMode = M.db and M.db.oneLine and true or false   -- (2.1.75: One Line Per Message)
 	while k < LAY do
 		local rec = Nth(buf, j)
 		if not rec then
@@ -690,7 +727,8 @@ function View.Lay()
 		end
 		k = k + 1
 		local row = Row(k)
-		local x = rec.headed and INDENT or 0
+		local one = oneMode and rec.headed and View.OneLine(rec, row.body) or nil
+		local x = (rec.headed and not one) and INDENT or 0
 		local body = row.body
 		body:ClearAllPoints()
 		if prev then
@@ -700,12 +738,26 @@ function View.Lay()
 			View.firstX = x
 		end
 		body:SetWidth(math.max(40, width - x - 4))
-		pcall(body.SetText, body, View.BodyShown(rec))
+		pcall(body.SetText, body, one or View.BodyShown(rec))
 		View.ChatColour(body, rec.r, rec.g, rec.b)
 		View.Shadow(body)
 		body:Show()
 		local older = Nth(buf, j + 1)
-		if rec.headed and not SameRun(rec, older) then
+		if one then
+			-- (2.1.75) one line: no header; the same speaker's lines close together, the rest a little apart
+			row.name:Hide()
+			row.tag:Hide()
+			row.time:Hide()
+			prev, prevX = body, x
+			if SameRun(rec, older) then
+				gap = GAP_LINE
+			else
+				gap = GAP_ONE
+			end
+			if k == 1 then
+				View.firstTop = 0
+			end
+		elseif rec.headed and not SameRun(rec, older) then
 			-- the run's first line: its header over it
 			local name, tag, time = row.name, row.tag, row.time
 			name:ClearAllPoints()
@@ -749,7 +801,7 @@ function View.Lay()
 			elseif not rec.headed and older and not older.headed then
 				gap = GAP_PLAIN   -- (the game's notices, loot, prints: one under the other)
 			else
-				gap = GAP_RUN
+				gap = oneMode and GAP_ONE or GAP_RUN   -- (2.1.75: one-line messages above a notice, a little apart)
 			end
 			if k == 1 then
 				View.firstTop = 0
@@ -1789,6 +1841,29 @@ function View.ScrollRail(delta)
 end
 
 -- the channels you made (the Channels window's custom ones: GetChannelDisplayInfo's category), fn(name, number)
+-- (2.1.75; a player on Discord: a channel "GIFM1456" on the rail "out of nowhere") whether one of the game's chat
+-- windows shows a channel (its channel list, read: the game's own chat shows a channel's lines only in a window that
+-- lists it, matched as it matches them, without case). Addons join channels of their own to talk to each other and
+-- keep them out of every window, so no line of theirs ever shows; a channel the player joins (/join puts it in the
+-- chat window) or adds to a window keeps its tab.
+local function InAWindow(name)
+	local want = name:lower()
+	for i = 1, tonumber(rawget(_G, "NUM_CHAT_WINDOWS")) or 10 do
+		local f = _G["ChatFrame" .. i]
+		local list = type(f) == "table" and rawget(f, "channelList")
+		if type(list) == "table" then
+			for _, v in pairs(list) do
+				if type(v) == "string" and not Secret(v) and v:lower() == want then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+View.InAWindow = InAWindow   -- (2.1.75: Chat's Tab Switches Channel leaves the same channels out)
+
 local function CustomChannels(fn)
 	local count, info = rawget(_G, "GetNumDisplayChannels"), rawget(_G, "GetChannelDisplayInfo")
 	if type(count) ~= "function" or type(info) ~= "function" then
@@ -1800,7 +1875,7 @@ local function CustomChannels(fn)
 		local ok, name, header, _, number, _, _, category = pcall(info, i)
 		name, number = ok and Plain(name), ok and Num(number)
 		if ok and not Plain(header) and Plain(category) == "CHANNEL_CATEGORY_CUSTOM" and type(name) == "string"
-			and name ~= "" and number then
+			and name ~= "" and number and InAWindow(name) then
 			fn(name, number)
 		end
 	end

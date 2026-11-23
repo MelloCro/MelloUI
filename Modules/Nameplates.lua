@@ -2037,6 +2037,11 @@ function M:IsNameCovered(uf)
 	return uf ~= nil and uf.name ~= nil and Plate.coverOn[uf.name] ~= nil
 end
 
+-- (2.1.75) a plate that shows only the name (Plate.NameOnly; Core/FrameHover.lua: no outline round a bare name)
+function M:IsNameOnly(uf)
+	return uf ~= nil and Plate.NameOnly(uf)
+end
+
 --------------------------------------------------------------------------------
 -- Quest icon
 --------------------------------------------------------------------------------

@@ -451,7 +451,16 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   Warning, W for whispers, and G, T, LD, WD, LFG for the numbered channels, each in the game's own
   chat colour of that chat (2.1.40: the colours you set in the game's chat settings follow). Brackets can be
   removed as well (Hide Brackets). The Minimal Chat View's headers follow them: the tag alone, or the
-  channel's name with Short Channel Tags off.
+  channel's name with Short Channel Tags off. (2.1.75) On a client in another language, and for a channel of your
+  own, a channel is shortened to its first character (综 for 综合, A for Allgemein), adding the first character of a
+  part in brackets (交服 for 交易（服务）); Forever's own channels have tags in English too (N, TL, SV, OOC, HC).
+- One Line Per Message (2.1.75; Chat > Messages > Text, off by default, only with the Minimal Chat View): each message
+  on one line, the time, the channel's tag, the name and the words, in the order the game's own chat uses, instead of
+  the name over the message; a long message wraps back to the left edge.
+- Tab Switches Channel (2.1.75; Chat > Messages > Behaviour, off by default, both chat views): while you type, Tab
+  moves the line to the next chat you can speak in (Say, Party, Raid, Instance, Guild, then the channels a chat window
+  shows) and Shift-Tab to the one before, your words and the cursor kept. The game's own Tab comes first: name
+  suggestions, a whisper's next target and a slash command's completion are as before.
 - Chat Timestamps (2.1.40; Chat > Messages > Text): the time before each chat line, None for no time,
   or one of the game's six formats. It is the game's own Chat Timestamps setting, so both chat views
   follow it; until you pick one here, the Minimal Chat View keeps its 15:27 times while the game's is

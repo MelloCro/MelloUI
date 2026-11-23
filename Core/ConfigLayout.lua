@@ -1176,7 +1176,11 @@ function L.Define(R, Link)
 	R("Chat", "Messages", "Text", "Chat.shortChannels")
 	R("Chat", "Messages", "Text", "Chat.hideBrackets")
 	R("Chat", "Messages", "Text", "Chat.timestamps")   -- (2.1.40: the game's own Chat Timestamps, both views')
+	-- (2.1.75: the Minimal view's messages on one line, the user's pick A of chat_oneline_sketch)
+	R("Chat", "Messages", "Text", "Chat.oneLine", { when = { key = "Chat.view", value = "minimal",
+		line = "Only with the Minimal Chat View" } })
 	R("Chat", "Messages", "Behaviour", "Chat.fakeLinks")   -- (2.1.50: Fake Link Warning)
+	R("Chat", "Messages", "Behaviour", "Chat.tabSwitch")   -- (2.1.75: Tab Switches Channel, both views)
 	-- (free: read by MelloUI:Notice with Tweaks, and UI Modifications, off)
 	-- (0.23.0: the Minimal Chat View's whisper window takes the whispers while it is on)
 	R("Chat", "Whispers", "General", "Chat.whisperPopup", { when = { key = "Chat.view", notValue = "minimal",

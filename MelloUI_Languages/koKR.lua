@@ -1823,6 +1823,10 @@ Lang:Add("koKR", {
 	["Minimal"] = "최소", -- draft
 	["Channel List As Icons"] = "채널 목록 아이콘만", -- draft
 	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "미니멀 채팅 보기의 채널 목록에 아이콘만 표시해 메시지 공간을 넓힙니다. 아이콘을 가리키면 이름이 나옵니다. 목록 가장자리의 작은 손잡이도 같은 기능을 합니다.", -- draft
+	["One Line Per Message"] = "메시지당 한 줄", -- draft
+	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "최소 채팅 보기에서 각 메시지를 한 줄로 보여줍니다: 시간, 채널, 이름, 내용을 게임 자체 채팅과 같은 순서로. 끄면 이름이 메시지 위에 표시됩니다.", -- draft
+	["Tab Switches Channel"] = "Tab으로 채널 전환", -- draft
+	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "입력하는 동안 Tab을 누르면 말할 수 있는 다음 채팅으로 넘어갑니다: 일반 대화, 파티, 공격대, 인스턴스, 길드, 그다음 내 채널. Shift-Tab은 이전으로 돌아가며, 입력한 내용은 그대로입니다. 이름 추천, 귓속말 대상, 슬래시 명령은 원래의 Tab을 유지합니다.", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "대화창 배경: 어두움, 게임 기본, 없음, 또는 SharedMedia 애드온이 공유하는 배경.", -- draft
 	["Set The Background Opacity"] = "배경 불투명도 정하기", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "모든 대화창이 같은 배경 투명도를 씁니다. 끄면: 창마다 따로.", -- draft
@@ -2472,6 +2476,12 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "피해량 측정기: MelloUI 측정기를 끄면 게임 자체 측정기를 Edit Layout에서 다시 옮길 수 있습니다.", -- draft
+	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "이름표: 이름만 표시하는 아군 이름표에 마우스를 올려도 더 이상 이름표 테두리가 나타나지 않습니다.", -- draft
+	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "채팅: 다른 애드온이 뒤에서 쓰는 채널이 더 이상 최소 보기에서 탭으로 나타나지 않습니다.", -- draft
+	["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "채팅: 메시지당 한 줄로 최소 보기에서 시간, 채널, 이름, 내용을 한 줄에 보여줍니다.", -- draft
+	["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "채팅: Tab으로 채널 전환은 입력 중에 말할 수 있는 다음 채팅으로 넘어갑니다.", -- draft
+	["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "채팅: 짧은 채널 태그가 모든 게임 언어에서, 두 채팅 보기 모두에서 채널 이름을 줄입니다.", -- draft
 	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "지도: Questie에 위치 정보가 없는 퀘스트는 게임 자체의 퀘스트 지역과 표시를 MelloUI 스타일로 보여줍니다.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "개인 표시기: 개인 탭에 전용 미리보기가 생겼습니다. 시전 바, 글자, 스윙 배지 또는 재사용 대기시간을 끌어서 옮기세요.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "지도: 전장에서 거점, 탑, 야영지가 누가 차지하고 있는지 게임 기본 지도처럼 표시됩니다.", -- draft

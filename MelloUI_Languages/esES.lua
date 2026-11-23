@@ -1823,6 +1823,10 @@ Lang:Add("esES", {
 	["Minimal"] = "Mínima", -- draft
 	["Channel List As Icons"] = "Lista de canales como iconos", -- draft
 	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "La lista de canales de la vista de chat mínima muestra solo sus iconos y deja más espacio a los mensajes. Pasa el cursor por un icono para ver su nombre. El pequeño asa en el borde de la lista hace lo mismo.", -- draft
+	["One Line Per Message"] = "Una línea por mensaje", -- draft
+	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "La vista mínima del chat muestra cada mensaje en una línea: la hora, el canal, el nombre y el texto, en el orden del chat del propio juego. Desactivado: el nombre sobre el mensaje.", -- draft
+	["Tab Switches Channel"] = "Tab cambia de canal", -- draft
+	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "Mientras escribes, Tab pasa al siguiente chat en el que puedes hablar: Decir, Grupo, Banda, Estancia, Hermandad y luego tus canales. Mayús-Tab vuelve atrás y tu texto se mantiene. Las sugerencias de nombres, los destinatarios de susurros y los comandos con barra conservan su propio Tab.", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "El fondo del chat: oscuro, el del juego, ninguno o uno que comparte un addon de SharedMedia.", -- draft
 	["Set The Background Opacity"] = "Fijar la opacidad del fondo", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "Cada ventana de chat usa la misma opacidad de fondo. Desactivado: cada una conserva la suya.", -- draft
@@ -2472,6 +2476,12 @@ Lang:Add("esES", {
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
 	["Addons"] = "Addons", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Los addons con los que funciona MelloUI: qué hace con cada uno y dónde están sus ajustes.", -- draft
+	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Medidor de daño: con el medidor de MelloUI apagado, el medidor propio del juego se puede mover de nuevo en Edit Layout.", -- draft
+	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Placas de nombre: las placas amistosas que solo muestran el nombre ya no reciben un borde de placa al pasar el ratón.", -- draft
+	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "Chat: los canales que otros addons usan en segundo plano ya no aparecen como pestañas en la vista mínima.", -- draft
+	["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "Chat: Una línea por mensaje pone la hora, el canal, el nombre y el texto en una línea en la vista mínima.", -- draft
+	["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "Chat: Tab cambia de canal pasa al siguiente chat en el que puedes hablar mientras escribes.", -- draft
+	["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "Chat: las etiquetas cortas de canal acortan los nombres de canal en todos los idiomas del juego, en ambas vistas del chat.", -- draft
 	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Mapa: las misiones para las que Questie no tiene lugares muestran el área de misión y el marcador del propio juego, con el aspecto de MelloUI.", -- draft
 	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Pantalla personal: su propia vista previa en la pestaña Personal. Arrastra la barra de lanzamiento, el texto, la insignia de golpes o los tiempos de reutilización para moverlos.", -- draft
 	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Mapa: en un campo de batalla, sus bases, torres y campamentos muestran quién los controla, como en el mapa del juego.", -- draft

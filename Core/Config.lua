@@ -177,6 +177,14 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.75", lines = {
+		"Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again.",
+		"Nameplates: friendly plates that show only the name no longer get a plate border on mouseover.",
+		"Chat: channels other addons use in the background no longer show up as tabs in the Minimal view.",
+		"Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view.",
+		"Chat: Tab Switches Channel moves to the next chat you can speak in while you type.",
+		"Chat: Short Channel Tags shorten channel names in every game language, in both chat views.",
+	} },
 	{ version = "2.1.74", lines = {
 		"Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look.",
 	} },
@@ -193,14 +201,6 @@ local CHANGELOG = {
 	{ version = "2.1.71", lines = {
 		"Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too.",
 		"ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars.",
-	} },
-	{ version = "2.1.70", lines = {
-		"Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar.",
-		"Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them.",
-		"Personal Display: Number On The Bars, Percent Beside shows your health and power amounts in the middle of the bars.",
-		"Personal Display: Text Size and Text Colour for all of its text.",
-		"Map: Only The Tracked Quests and Focused Quest Only change the open map at once.",
-		"Chinese text: titles and headings at their right size, and Chinese letters instead of boxes.",
 	} },
 }
 local LINKS = {
