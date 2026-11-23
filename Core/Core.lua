@@ -921,7 +921,7 @@ end
 --   Lang.LIST           the languages, each with its own name (never
 --                       translated: a player who reads no English still finds it)
 --   Lang:Fire()         'language' on the bus (the windows lay their texts again)
--- Nothing here runs at login but these definitions.
+-- Binding captions are applied when the selected catalogue is loaded.
 --------------------------------------------------------------------------------
 
 do
@@ -957,6 +957,7 @@ do
 		known[l.code] = l
 	end
 
+	local bindingLabels = {}
 	local current   -- the table in use (nil: English)
 	local loaded    -- the addon's load was asked (true), or failed ("failed")
 	local Secret = Safe.IsSecret
@@ -1034,10 +1035,18 @@ do
 		end
 	end
 
+	function Lang:BindingLabel(binding, text)
+		bindingLabels[binding] = text
+		_G[binding] = self.T(text)
+	end
+
 	local function Use(code)
 		local t = code ~= Lang.ENGLISH and Lang.tables[code] or nil
 		current = t
 		Lang.code = t and code or Lang.ENGLISH
+		for binding, text in pairs(bindingLabels) do
+			_G[binding] = Lang.T(text)
+		end
 	end
 
 	function Lang:Load()
@@ -7141,6 +7150,9 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 			self:InitDB()
 		end
 		self:AdoptSavedVariables("PLAYER_LOGIN")
+		if not self.dbIsTemporary then
+			self.Lang:Load()
+		end
 		-- (2.1.33) an Oldschool from another patch of the same series dresses: before the palette and the modules
 		self:OldschoolFit()
 		-- (saved variables still missing here: the settings are a new
@@ -7217,6 +7229,7 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 			end
 		end
 		if self:AdoptSavedVariables("PLAYER_ENTERING_WORLD") then
+			self.Lang:Load()
 			-- (2.1.46: this character's profile, which restarts them itself when it is another)
 			if not self:CharacterProfileAtLogin() then
 				self:RestartModules()
@@ -7240,6 +7253,7 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 					if not self:CharacterProfileAtLogin() then
 						self:RestartModules()
 					end
+					self.Lang:Load()
 					self:Notice("Settings loaded late by the client and applied.")
 					ticker:Cancel()
 					self.adoptTicker = nil
@@ -7248,6 +7262,7 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 					self.adoptTicker = nil
 					-- none came: a fresh start (/mello status says so)
 					self.savedVariablesNone = true
+					self.Lang:Load()
 				end
 			end)
 		end

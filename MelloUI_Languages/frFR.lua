@@ -105,13 +105,13 @@ Lang:Add("frFR", {
 	["The rim on the windows' side tabs and the spellbook's tabs."] = "Le contour des onglets latéraux des fenêtres et des onglets du grimoire.",
 	["Gem slot"] = "Châsse de gemme",
 	["Progress Bar Border"] = "Bordure des barres de progression",
-	["Frame Set"] = "Jeu de cadres", -- draft
+	["Frame Set"] = "Style des cadres",
 	["Cast bar"] = "Barre de sorts",
 	["Rounded"] = "Arrondi",
-	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "Les cadres peints des cadres d'unité, des barres de sorts, de l'Affichage personnel, des barres d'info et du chat.", -- draft
-	["Gilded Stone"] = "Pierre dorée", -- draft
-	["Forged Iron"] = "Fer forgé", -- draft
-	["Carved Wood"] = "Bois sculpté", -- draft
+	["The painted frames of the unit frames, cast bars, Personal Display, nameplates and chat."] = "L’habillage peint des cadres d’unité, des barres d’incantation, de l’Affichage personnel, des barres d’info et de la discussion.",
+	["Gilded Stone"] = "Pierre dorée",
+	["Forged Iron"] = "Fer forgé",
+	["Carved Wood"] = "Bois sculpté",
 	["Nameplate Border"] = "Bordure des barres d'info",
 	["The frame around the nameplates' health bars."] = "Le cadre autour des barres de vie des barres d’info.",
 	["Ornate"] = "Orné",
@@ -555,13 +555,13 @@ Lang:Add("frFR", {
 	["Shows 4.3 instead of 5 in a cooldown's last seconds."] = "Affiche 4,3 au lieu de 5 dans les dernières secondes d'un temps de recharge.",
 	["Colour And Size By Time Left"] = "Couleur et taille selon le temps restant",
 	["Timers turn red and larger under 5 seconds, yellow under a minute, and smaller for minutes and hours. Off: all white."] = "Les minuteurs deviennent rouges et plus grands sous 5 secondes, jaunes sous une minute, et plus petits pour les durées en minutes et en heures. Désactivé : tout en blanc.",
-	["Numbers In Fights"] = "Chiffres en combat", -- draft
-	["In fights the game hides cooldown times from addons, and its own numbers count instead, the global cooldown too. Off: only the dark sweep shows the time left."] = "En combat, le jeu cache les temps de recharge aux addons, et ses propres chiffres comptent à la place, recharge globale comprise. Désactivé : seul le balayage sombre montre le temps restant.", -- draft
-	["Sweep Darkness"] = "Obscurité du balayage", -- draft
-	["How dark the sweep over an action button runs while it cools down. Back to the game's after a /reload."] = "L'obscurité du balayage sur un bouton d'action pendant sa recharge. Retour à celle du jeu après un /reload.", -- draft
-	["The Game's"] = "Celle du jeu", -- draft
+	["Numbers In Fights"] = "Chiffres pendant le combat",
+	["In fights the game hides cooldown times from addons, and its own numbers count instead, the global cooldown too. Off: only the dark sweep shows the time left."] = "En combat, le jeu masque les temps de recharge aux addons et affiche ses propres chiffres, y compris pour le temps de recharge global. Désactivé : seul le balayage sombre indique le temps restant.",
+	["Sweep Darkness"] = "Assombrissement du balayage",
+	["How dark the sweep over an action button runs while it cools down. Back to the game's after a /reload."] = "Règle l’assombrissement du balayage sur les boutons d’action pendant leur recharge. Le réglage du jeu est rétabli après un /reload.",
+	["The Game's"] = "Réglage du jeu",
 	["Dark"] = "Sombre",
-	["Darker"] = "Plus sombre", -- draft
+	["Darker"] = "Plus sombre",
 	-- Tweaks
 	["Tweaks"] = "Réglages",
 	["Hide the micro menu and bag bar, and scale the floating combat text."] = "Masque le micro-menu et la barre de sacs, et redimensionne le texte de combat flottant.",
@@ -736,8 +736,8 @@ Lang:Add("frFR", {
 	["Reminds you when an item drops below this share of its amount."] = "Vous rappelle quand un objet tombe sous cette part de sa quantité.",
 	["Shopping List At The Shop"] = "Liste de courses chez le marchand",
 	["At a merchant, a shopping list of what you are low on. Nothing is bought until you click Buy."] = "Chez un marchand, une liste de ce qui vous manque. Rien n'est acheté avant un clic sur Acheter.",
-	["Shopping List Below"] = "Liste de courses sous", -- draft
-	["The shopping list opens when an item the merchant sells is below this share of its amount. At 100% it opens whenever anything is missing. An item you are reminded of always opens it."] = "La liste de courses s’ouvre quand un objet que vend le marchand est sous cette part de sa quantité. À 100% elle s’ouvre dès qu’il manque quelque chose. Un objet pour lequel vous recevez un rappel l’ouvre toujours.", -- draft
+	["Shopping List Below"] = "Seuil d’ouverture de la liste",
+	["The shopping list opens when an item the merchant sells is below this share of its amount. At 100% it opens whenever anything is missing. An item you are reminded of always opens it."] = "La liste s’ouvre si votre stock d’un objet vendu par le marchand passe sous ce pourcentage de la quantité souhaitée. À 100 %, elle s’ouvre dès qu’il manque un objet. Elle s’ouvre toujours pour les objets signalés par un rappel.",
 	["Restock List"] = "Liste de réapprovisionnement",
 	["What to keep in your bags, and how many. Each character has its own list. /restock opens it too."] = "Ce qu'il faut garder dans vos sacs, et en quelle quantité. Chaque personnage a sa liste. /restock l'ouvre aussi.",
 	["Edit"] = "Modifier",
@@ -810,13 +810,13 @@ Lang:Add("frFR", {
 	["Never Throw Away Items Worth"] = "Toujours conserver les objets valant au moins",
 	["Stacks worth this many silver or more are never thrown away (they can still be sold)."] = "Les piles d’une valeur égale ou supérieure à ce seuil ne sont jamais jetées, mais peuvent toujours être vendues.",
 	-- LootAllKey
-	["Loot All Key"] = "Touche Tout ramasser", -- draft
-	["While a loot window is open, your Interact key takes everything in it at once, then goes back to its own job. Not in a fight: the game lets no addon change a key then."] = "Tant qu'une fenêtre de butin est ouverte, votre touche d'interaction prend tout d'un coup, puis reprend son rôle habituel. Pas en combat : le jeu ne laisse alors aucun addon changer une touche.", -- draft
-	["See what it dropped, then take it all with one key."] = "Voyez ce qu'il a laissé tomber, puis prenez tout d'une seule touche.", -- draft
-	["Which Key"] = "Quelle touche", -- draft
-	["The key that takes everything while a loot window is open: your Interact key (as set in the game's Key Bindings), or one of these. In a fight the key keeps its own job; it takes over again once the fight ends."] = "La touche qui prend tout tant qu'une fenêtre de butin est ouverte : votre touche d'interaction (selon les raccourcis du jeu) ou l'une de celles-ci. En combat, la touche garde son rôle ; elle reprend après le combat.", -- draft
-	["Your Interact Key"] = "Votre touche d'interaction", -- draft
-	["Space"] = "Espace", -- draft
+	["Loot All Key"] = "Touche « Tout ramasser »",
+	["While a loot window is open, your Interact key takes everything in it at once, then goes back to its own job. Not in a fight: the game lets no addon change a key then."] = "Quand une fenêtre de butin est ouverte, votre touche d’interaction permet de tout ramasser d’un coup, puis reprend sa fonction habituelle. En combat, le jeu interdit aux addons de modifier les touches.",
+	["See what it dropped, then take it all with one key."] = "Vérifiez le butin, puis ramassez tout d’une seule touche.",
+	["Which Key"] = "Quelle touche utiliser",
+	["The key that takes everything while a loot window is open: your Interact key (as set in the game's Key Bindings), or one of these. In a fight the key keeps its own job; it takes over again once the fight ends."] = "Touche utilisée pour tout ramasser lorsqu’une fenêtre de butin est ouverte : votre touche d’interaction (définie dans les raccourcis du jeu) ou l’une des touches ci-dessous. En combat, elle conserve sa fonction habituelle et ne reprend son rôle qu’à la fin du combat.",
+	["Your Interact Key"] = "Votre touche d'interaction",
+	["Space"] = "Espace",
 	-- Gains
 	["Gains"] = "Gains",
 	["Short lines beside your character for what you just gained: skill ups, items and money. Move them in Edit Layout."] = "De courtes lignes près de votre personnage pour ce que vous venez de gagner : compétences, objets et argent. Déplacez-les avec Modifier la disposition.",
@@ -853,14 +853,15 @@ Lang:Add("frFR", {
 	["Race Bar"] = "Barre de performance",
 	["In a fight, a race bar of your group's damage, with you highlighted. Point at it for everyone's numbers."] = "En combat, une barre de performance des dégâts de votre groupe, avec votre score mis en évidence. Survolez-la pour voir les valeurs de chaque joueur.",
 	["Race Bar Shows"] = "La barre de performance montre",
-	["Auto: one row, healing as a healer and damage otherwise. Your Pick: the rows ticked below, one under the other."] = "Auto : une seule rangée, les soins en soigneur et sinon les dégâts. Votre choix : les rangées cochées ci-dessous, l’une sous l’autre.", -- draft
+	["Auto: one row, healing as a healer and damage otherwise. Your Pick: the rows ticked below, one under the other."] = "Auto : une seule ligne, avec les soins si vous jouez soigneur et les dégâts dans les autres cas. Personnalisé : affiche les lignes cochées ci-dessous, les unes sous les autres.",
 	["Auto"] = "Auto",
-	["Your Pick"] = "Votre choix", -- draft
+	["Your Pick"] = "Personnalisé",
 	["Damage"] = "Dégâts",
-	["A row of your group's damage."] = "Une rangée des dégâts de votre groupe.", -- draft
+	["A row of your group's damage."] = "Une rangée des dégâts de votre groupe.",
 	["Healing"] = "Soins",
-	["A row of your group's healing."] = "Une rangée des soins de votre groupe.", -- draft
-	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "En groupe ou avec votre familier, une rangée de la menace de chacun sur votre cible. Son extrémité droite est le point où vous prenez l’aggro.", -- draft
+	["A row of your group's healing."] = "Une rangée des soins de votre groupe.",
+	["In a group or with your pet out, a row of everyone's threat on your target. Its right end is where you pull."] = "En groupe ou avec votre familier, affiche la menace de chacun sur votre cible. L’extrémité droite indique le moment où vous prenez l’aggro.",
+	["Only with Race Bar Shows: Your Pick"] = "Disponible uniquement si « Barre de performance » est réglé sur « Personnalisé »",
 	["Race Bar Pins"] = "Repères de la barre de performance",
 	["How many players the race bar shows. You are always on it."] = "Nombre de joueurs affichés par la barre de performance. Vous y êtes toujours.",
 	["Race Bar Width"] = "Largeur de la barre de performance",
@@ -891,13 +892,13 @@ Lang:Add("frFR", {
 	["Swing Ring Colour"] = "Couleur de l'anneau d'attaque",
 	["The colour of the ring that fills as your next swing nears; the palette's gold until you pick one. The Personal Display's badge wears it too."] = "La couleur de l'anneau qui se remplit à l'approche de votre prochaine attaque ; l'or de la palette tant que vous n'en choisissez pas. Le badge de l'affichage personnel le porte aussi.",
 	-- CastMarks
-	["Cast Marks"] = "Repères d'incantation", -- draft
-	["Your latency at the end of each cast and a mark for each tick of a channel, on your cast bar and the Personal Display's."] = "Votre latence à la fin de chaque incantation et un repère pour chaque tick d'une canalisation, sur votre barre d'incantation et celle de l'affichage personnel.", -- draft
-	["Press the next spell the moment you can."] = "Lancez le sort suivant dès que possible.", -- draft
-	["Latency"] = "Latence", -- draft
-	["The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell."] = "La fin de chaque incantation est hachurée : la fenêtre de file d'attente des sorts du jeu et votre latence. Dès que le remplissage l'atteint, vous pouvez lancer le sort suivant.", -- draft
-	["Channel Ticks"] = "Ticks de canalisation", -- draft
-	["A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles."] = "Un fin repère là où tombe chaque tick d'un sort canalisé, comme Drain de vie, Flammes infernales ou Projectiles des arcanes.", -- draft
+	["Cast Marks"] = "Repères d’incantation",
+	["Your latency at the end of each cast and a mark for each tick of a channel, on your cast bar and the Personal Display's."] = "Affiche votre latence à la fin de chaque incantation et un repère pour chaque pulsation d’un sort canalisé, sur la barre d’incantation et l’Affichage personnel.",
+	["Press the next spell the moment you can."] = "Lancez le sort suivant dès que possible.",
+	["Latency"] = "Latence",
+	["The end of each cast hatched: the game's spell queue window and your latency. Once the fill reaches it, you can press the next spell."] = "La zone hachurée à la fin de l’incantation représente la fenêtre de mise en file des sorts du jeu et votre latence. Dès que le remplissage l’atteint, vous pouvez lancer le sort suivant.",
+	["Channel Ticks"] = "Pulsations des sorts canalisés",
+	["A thin mark where each tick of a channelled spell lands, such as Drain Life, Hellfire or Arcane Missiles."] = "Un repère fin indique chaque pulsation d’un sort canalisé, comme Drain de vie, Flammes infernales ou Projectiles des arcanes.",
 	-- PartyMarkers
 	["Party Markers"] = "Marqueurs de groupe",
 	["A class medallion over your party members' nameplates, ringed in their role's colour. Open world only."] = "Un médaillon de classe au-dessus des barres d'info des membres du groupe, cerclé de la couleur de leur rôle. Uniquement en monde ouvert.",
@@ -915,32 +916,32 @@ Lang:Add("frFR", {
 	["A ring in the member's role colour around the medallion: green healer, blue tank, red damage."] = "Un anneau à la couleur du rôle autour du médaillon : vert soigneur, bleu tank, rouge dégâts.",
 	["Open world only: inside instances the game keeps friendly nameplates to itself"] = "Uniquement en monde ouvert : dans les instances, le jeu gère lui-même les barres d'info alliées.",
 	-- RolePicker
-	["Role Picker"] = "Choix du rôle", -- draft
-	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "Quand vous entrez dans un donjon ou un raid en groupe, les rôles de votre classe apparaissent au-dessus de votre personnage : cliquez sur l’un d’eux et il est à vous. Cochez Retenir pour les prochains donjons et les suivants le choisissent tout seuls.", -- draft
-	["Tank, heal or hit: one click at the door."] = "Tank, soin ou dégâts : un clic à l’entrée.", -- draft
-	["Role On Entering"] = "Rôle en entrant", -- draft
-	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "Demander à chaque fois montre les rôles quand vous entrez. Un rôle choisi ici est le vôtre dans chaque donjon et raid où vous entrez en groupe, sans choix à faire. Retenir pour les prochains donjons sur le sélecteur le règle aussi.", -- draft
-	["Ask Every Time"] = "Demander à chaque fois", -- draft
-	["Tank"] = "Tank", -- draft
-	["Healer"] = "Soigneur", -- draft
-	["Role Picker Motion"] = "Animation du choix du rôle", -- draft
-	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "Les rôles tombent l’un après l’autre au-dessus de votre personnage, et celui que vous choisissez grossit sur une explosion d’étoiles. Désactivé : ils apparaissent et partent aussitôt.", -- draft
+	["Role Picker"] = "Choix du rôle",
+	["As you enter a dungeon or a raid in a group, the roles your class can take appear above your character: click one and it is yours. Tick Remember for future dungeons and the next ones set it by themselves."] = "À l’entrée d’un donjon ou d’un raid en groupe, les rôles possibles pour votre classe apparaissent au-dessus de votre personnage. Cliquez sur un rôle pour le choisir. Cochez « Mémoriser » pour que ce rôle soit sélectionné automatiquement lors de vos prochains donjons.",
+	["Tank, heal or hit: one click at the door."] = "Tank, soins ou dégâts : choisissez votre rôle d’un clic à l’entrée.",
+	["Role On Entering"] = "Rôle à l’entrée",
+	["Ask Every Time shows the roles as you enter. A role set here is yours at every dungeon and raid you enter in a group, with no picker. Remember for future dungeons on the picker sets it too."] = "« Demander à chaque fois » affiche les rôles à l’entrée de chaque donjon ou raid. Sinon, le rôle choisi ici sera automatiquement sélectionné à chaque entrée en groupe. L’option « Mémoriser » du sélecteur permet aussi de retenir le rôle choisi.",
+	["Ask Every Time"] = "Demander à chaque fois",
+	["Tank"] = "Tank",
+	["Healer"] = "Soigneur",
+	["Role Picker Motion"] = "Animation du choix du rôle",
+	["The roles drop in above your character one after another, and the one you pick swells over a star burst. Off: they show and go at once."] = "Les rôles apparaissent successivement au-dessus de votre personnage. Celui que vous choisissez s’agrandit dans une explosion d’étoiles. Désactivé : ils apparaissent et disparaissent aussitôt.",
 	-- MailRecipients
-	["Mail Recipients"] = "Destinataires du courrier", -- draft
-	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Un bouton à côté du champ Destinataire de la boîte aux lettres liste vos personnages et ceux de vos amis Battle.net : cliquez sur l’un d’eux et son nom est saisi.", -- draft
-	["Who was that again? One click and the letter has its name."] = "C’était qui, déjà ? Un clic et la lettre a son destinataire.", -- draft
-	["Battle.net Friends' Characters"] = "Personnages des amis Battle.net", -- draft
-	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "La liste montre aussi vos amis Battle.net, chacun avec les personnages que le jeu a montrés d’eux pendant qu’ils jouaient. Désactivé : vos propres personnages seulement, et aucun des leurs n’est retenu.", -- draft
-	["Subject from the First Item"] = "Sujet tiré du premier objet", -- draft
-	["An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays."] = "Un sujet vide prend le nom du premier objet joint, avec sa quantité pour une pile. Ce que vous tapez vous-même reste.", -- draft
+	["Mail Recipients"] = "Destinataires du courrier",
+	["A button beside the mailbox's To field lists your characters and your Battle.net friends' characters: click one and its name is filled in."] = "Un bouton à côté du champ Destinataire de la boîte aux lettres liste vos personnages et ceux de vos amis Battle.net : cliquez sur l’un d’eux et son nom est saisi.",
+	["Who was that again? One click and the letter has its name."] = "C’était qui, déjà ? Un clic et la lettre a son destinataire.",
+	["Battle.net Friends' Characters"] = "Personnages des amis Battle.net",
+	["The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted."] = "La liste affiche aussi vos amis Battle.net et les personnages associés que le jeu a rencontrés. Désactivé : seuls vos personnages sont affichés.",
+	["Subject from the First Item"] = "Sujet tiré du premier objet",
+	["An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays."] = "Si le sujet est vide, le nom du premier objet joint est utilisé, avec sa quantité s’il s’agit d’une pile. Un sujet que vous avez saisi reste inchangé.",
 	-- DemonGrimoires
-	["Demon Grimoires"] = "Grimoires démoniaques", -- draft
-	["Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor. Summon each demon once first, so MelloUI can note what it knows."] = "Note ce que chacun de vos démons connaît dès qu'il est invoqué, et marque les grimoires chez le marchand et dans les infobulles comme connus ou nouveaux : plus besoin d'invoquer chaque démon devant le marchand. Invoquez d'abord chaque démon une fois, pour que MelloUI note ce qu'il connaît.", -- draft
-	["The Imp already knows that one. It told you. Twice."] = "Le diablotin le connaît déjà. Il vous l'a dit. Deux fois.", -- draft
-	["Mark Grimoires At The Vendor"] = "Marquer les grimoires chez le marchand", -- draft
-	["Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green."] = "Chaque grimoire de la page du marchand indique si votre démon le connaît : Connu en gris, Nouveau en vert.", -- draft
-	["Line In Grimoire Tooltips"] = "Ligne dans l'infobulle des grimoires", -- draft
-	["A grimoire's tooltip says whether your demon knows it, or that it still needs summoning once."] = "L'infobulle d'un grimoire indique si votre démon le connaît, ou s'il faut encore l'invoquer une fois.", -- draft
+	["Demon Grimoires"] = "Grimoires démoniaques",
+	["Notes what each of your demons knows whenever it is out, and marks the grimoires at the vendor and in tooltips as known or new: no need to summon each demon in front of the vendor. Summon each demon once first, so MelloUI can note what it knows."] = "Note ce que chacun de vos démons connaît dès qu'il est invoqué, et marque les grimoires chez le marchand et dans les infobulles comme connus ou nouveaux : plus besoin d'invoquer chaque démon devant le marchand. Invoquez d'abord chaque démon une fois, pour que MelloUI note ce qu'il connaît.",
+	["The Imp already knows that one. It told you. Twice."] = "Le diablotin le connaît déjà. Il vous l'a dit. Deux fois.",
+	["Mark Grimoires At The Vendor"] = "Marquer les grimoires chez le marchand",
+	["Each grimoire on a merchant's page shows whether your demon knows it: Known in grey, New in green."] = "Chaque grimoire de la page du marchand indique si votre démon le connaît : Connu en gris, Nouveau en vert.",
+	["Line In Grimoire Tooltips"] = "Ligne dans l'infobulle des grimoires",
+	["A grimoire's tooltip says whether your demon knows it, or that it still needs summoning once."] = "L'infobulle d'un grimoire indique si votre démon le connaît, ou s'il faut encore l'invoquer une fois.",
 	-- Sparkles
 	["Loot Sparkles"] = "Étincelles de butin",
 	["Keeps the sparkle on lootable quest items, and adds glints over nearby ore and herbs."] = "Garde l'éclat sur les objets de quête à ramasser, et ajoute des reflets sur le minerai et les herbes proches.",
@@ -1151,10 +1152,10 @@ Lang:Add("frFR", {
 	["The whole plate's width: the health bar and the level badge's room beside it."] = "La largeur de toute la barre : la barre de vie et la place de l'insigne de niveau à côté.",
 	["Plate Height"] = "Hauteur de barre",
 	["The health bar's height."] = "La hauteur de la barre de vie.",
-	["Health Text Size"] = "Taille du texte de vie", -- draft
-	["The size of the health numbers on the nameplates. Game's: the size the game gives them, the name's."] = "La taille des chiffres de vie sur les barres d'info. Jeu : la taille que le jeu leur donne, celle du nom.", -- draft
-	["Percent Beside The Bar"] = "Pourcentage à côté de la barre", -- draft
-	["When the game shows both the health number and the percent on the nameplates (its Nameplates options), the number stands in the middle of the bar and the percent beside it, right of the level."] = "Quand le jeu affiche à la fois le chiffre de vie et le pourcentage sur les barres d'info (ses options de barres d'info), le chiffre se place au milieu de la barre et le pourcentage à côté, à droite du niveau.", -- draft
+	["Health Text Size"] = "Taille des chiffres de vie",
+	["The size of the health numbers on the nameplates. Game's: the size the game gives them, the name's."] = "Taille des chiffres de vie sur les barres d’info. Jeu : reprend la taille du nom.",
+	["Percent Beside The Bar"] = "Pourcentage à côté de la barre",
+	["When the game shows both the health number and the percent on the nameplates (its Nameplates options), the number stands in the middle of the bar and the percent beside it, right of the level."] = "Lorsque le jeu affiche à la fois les points de vie et leur pourcentage sur les barres d’info, la valeur s’affiche au centre, et le pourcentage à côté de la barre, à droite du niveau.",
 	["Percent Size"] = "Taille du pourcentage", -- draft
 	["The size of the health percent on the nameplates. Number's: the health number's size."] = "La taille du pourcentage de vie sur les barres d'info. Chiffre : la taille du chiffre de vie.", -- draft
 	["Name Size"] = "Taille du nom", -- draft
@@ -1248,8 +1249,8 @@ Lang:Add("frFR", {
 	["Shows who your target is targeting, under the target frame, and who your focus is targeting, under the focus frame. This is the game's own Target of Target setting. A change here takes effect after a /reload."] = "Affiche la cible de votre cible sous le cadre de cible, et celle de votre focalisation sous le cadre de focalisation. C'est le réglage « Cible de la cible » du jeu. Un changement ici s'applique après un /reload.",
 	["Flip Horizontally"] = "Retourner horizontalement",
 	["Mirrors the party frames for a party on the right of the screen: portraits on the right."] = "Inverse les cadres de groupe pour un groupe à droite de l'écran : portraits à droite.",
-	["Druid Forms"] = "Formes de druide", -- draft
-	["For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values."] = "Pour un druide : une ligne de plus sous votre barre de ressource, coupée en deux, montre les deux ressources qu’elle n’affiche pas en ce moment. Énergie et rage en forme humanoïde, mana et rage en forme de félin, mana et énergie en forme d’ours. Leurs nombres suivent les Valeurs des barres.", -- draft
+	["Druid Forms"] = "Formes de druide",
+	["For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values."] = "Pour un druide : une ligne de plus sous votre barre de ressource, coupée en deux, montre les deux ressources qu’elle n’affiche pas en ce moment. Énergie et rage en forme humanoïde, mana et rage en forme de félin, mana et énergie en forme d’ours. Leurs nombres suivent les Valeurs des barres.",
 	["Names"] = "Noms",
 	["Name Font"] = "Police des noms",
 	["The font of names on the unit frames and party portraits. Shared: the interface font."] = "La police des noms sur les cadres d'unité et portraits de groupe. Partagée : la police de l'interface.",
@@ -1479,8 +1480,9 @@ Lang:Add("frFR", {
 	["The XP each quest gives at your level, beside its name (the game's own figure; none at the top level)."] = "L’XP accordée par chaque quête à votre niveau, affichée à côté de son nom (valeur fournie par le jeu ; aucune au niveau maximum).",
 	["Turn-in Line"] = "Ligne de remise de quête",
 	["A finished quest says who takes it and where."] = "Une quête terminée dit qui la reprend et où.",
-	["Guide: Next Steps"] = "Guide : étapes suivantes", -- draft
-	["How many of a leveling guide's next steps show under its current one, dimmed (RestedXP Guides). Off: only the current step."] = "Nombre d’étapes suivantes d’un guide de montée en niveau affichées sous l’étape actuelle, atténuées (RestedXP Guides). Désactivé : seulement l’étape actuelle.", -- draft
+	["Guide: Next Steps"] = "Guide : étapes suivantes",
+	["How many of a leveling guide's next steps show under its current one, dimmed (RestedXP Guides). Off: only the current step."] = "Nombre d’étapes suivantes d’un guide de progression affichées en grisé sous l’étape actuelle (RestedXP Guides). Désactivé : seule l’étape actuelle s’affiche.",
+	["Click: open the link to copy it"] = "Clic : ouvrir le lien pour le copier",
 	["Reset Position"] = "Position par défaut",
 	["Puts the tracker back in its starting place."] = "Remet le suivi à sa place de départ.",
 	["back under the minimap (or on the game's tracker's place)"] = "de retour sous la minicarte (ou à la place du suivi du jeu)",
@@ -1511,6 +1513,7 @@ Lang:Add("frFR", {
 	["Opens Edit Layout, with your buffs and debuffs shown so you can drag them where you want."] = "Ouvre Modifier la disposition et affiche vos améliorations et affaiblissements pour que vous puissiez les faire glisser à l'emplacement voulu.",
 	["drag your buffs and debuffs"] = "faire glisser vos améliorations et affaiblissements",
 	["Edit Layout"] = "Modifier la disposition",
+	["Something lies under this bar: hold Alt to see it and drag it."] = "Un élément est caché derrière cette barre. Maintenez Alt pour l’afficher et le déplacer.",
 	["Direction"] = "Direction",
 	["Which way your icons run under the player frame."] = "Dans quelle direction vos icônes s'alignent sous le cadre du joueur.",
 	["Left To Right"] = "De gauche à droite",
@@ -1771,8 +1774,8 @@ Lang:Add("frFR", {
 	["Marks where your quests' objectives are on the zone map, with their progress. Click a mark for a waypoint."] = "Marque sur la carte de zone où sont les objectifs de vos quêtes, avec leur progression. Un clic sur une marque pose un point de passage.",
 	["Only The Tracked Quests"] = "Seulement les quêtes suivies",
 	["Marks only the quests you track."] = "Marque seulement les quêtes suivies.",
-	["Focused Quest Only"] = "Quête suivie uniquement", -- draft
-	["Marks only the quest you follow (its mark clicked in the Quest Tracker), on the map and the minimap, as the game's own map does. With none followed, every quest is marked."] = "Ne marque que la quête que vous suivez (sa marque cliquée dans le suivi des quêtes), sur la carte et la minicarte, comme la carte du jeu. Sans quête suivie, toutes les quêtes sont marquées.", -- draft
+	["Focused Quest Only"] = "Quête suivie uniquement",
+	["Marks only the quest you follow (its mark clicked in the Quest Tracker), on the map and the minimap, as the game's own map does. With none followed, every quest is marked."] = "Comme la carte du jeu, n’affiche que la quête suivie sur la carte et la minicarte. Cliquez sur son marqueur dans le suivi pour la suivre. Si aucune quête n’est suivie, toutes sont marquées.",
 	["Hide The Game's Quest Areas"] = "Masquer les zones de quête du jeu",
 	["Hides the game's blue quest areas while MelloUI's marks are on."] = "Masque les zones de quête bleues du jeu tant que les marques de MelloUI sont actives.",
 	["On The Minimap"] = "Sur la minicarte",
@@ -1827,6 +1830,10 @@ Lang:Add("frFR", {
 	["Arrival"] = "Arrivée",
 	["Arrived Within (yards)"] = "Arrivée à moins de (mètres)",
 	["How close you must get for the route to end."] = "La distance à atteindre pour terminer l'itinéraire.",
+	["Click: focus %s"] = "Cliquez pour suivre %s",
+	["Right-click: remove its mark"] = "Clic droit : retirer le marqueur",
+	["Next guide tab: %s (%d/%d)"] = "Onglet de guide suivant : %s (%d/%d)",
+	["Viewing step %s. Click: back to step %s."] = "Étape %s affichée. Cliquez pour revenir à l’étape %s.",
 	["Flights"] = "Vols",
 	["Flight Map Help"] = "Aide de la carte de vol",
 	["At a flight master, shows where your route flies to and how long the flight takes."] = "Chez un maître de vol, indique la destination de votre itinéraire et la durée du vol.",
@@ -2097,17 +2104,17 @@ Lang:Add("frFR", {
 	["Type a buff or debuff's name (or its spell ID) to see it in the Tracked Spells row while it lasts on you, like a talent's proc. In a fight the game tells only some spells; those it keeps hidden show out of a fight."] = "Saisissez le nom (ou l'ID de sort) d'une amélioration ou d'un affaiblissement pour le voir dans la rangée des sorts suivis tant qu'il dure sur vous, comme l'effet d'un talent. En combat, le jeu n'indique que certains sorts ; ceux qu'il cache s'affichent hors combat.",
 	["Percent And Spell Text"] = "Pourcentage et texte de sort",
 	["Health and power percent, spell names and times."] = "Pourcentage de vie et de ressource, nom et durée des sorts.",
-	["Percent Position"] = "Position du pourcentage", -- draft
-	["Where the health and power percents stand: beside the bars, centred on them like Druid Forms' numbers, or beside them with the amounts themselves centred on the bars."] = "Où se placent les pourcentages de vie et de puissance : à côté des barres, centrés dessus comme les chiffres des formes de druide, ou à côté avec les montants eux-mêmes centrés sur les barres.", -- draft
-	["Beside The Bars"] = "À côté des barres", -- draft
-	["On The Bars"] = "Sur les barres", -- draft
-	["Number On The Bars, Percent Beside"] = "Chiffre sur les barres, pourcentage à côté", -- draft
+	["Percent Position"] = "Position des pourcentages",
+	["Where the health and power percents stand: beside the bars, centred on them like Druid Forms' numbers, or beside them with the amounts themselves centred on the bars."] = "Les pourcentages de vie et de ressource peuvent être à côté des barres, centrés comme les valeurs des formes de druide, ou à côté avec les valeurs centrées sur les barres.",
+	["Beside The Bars"] = "À côté des barres",
+	["On The Bars"] = "Sur les barres",
+	["Number On The Bars, Percent Beside"] = "Valeur sur les barres, pourcentage à côté",
 	["Text Font"] = "Police du texte",
 	["The font of the display's text. Shared: the interface font."] = "La police du texte de l'affichage. Partagée : la police de l'interface.",
-	["The size of the display's text: the percents, the amounts, the spell's name and time, and Druid Forms' numbers."] = "La taille du texte de l'affichage : les pourcentages, les montants, le nom et le temps du sort, et les chiffres des formes de druide.", -- draft
-	["Text Colour"] = "Couleur du texte", -- draft
-	["The colour of the display's text. Its first colour is the palette's text colour, which follows the palette."] = "La couleur du texte de l'affichage. Au départ, c'est la couleur de texte de la palette, qui suit la palette.", -- draft
-	["For a druid: one more row under the power bar, split in two, shows the two powers it does not show right now, each with its number. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "Pour un druide : une ligne de plus sous la barre de ressource, coupée en deux, montre les deux ressources qu’elle n’affiche pas en ce moment, chacune avec son nombre. Énergie et rage en forme humanoïde, mana et rage en forme de félin, mana et énergie en forme d’ours.", -- draft
+	["The size of the display's text: the percents, the amounts, the spell's name and time, and Druid Forms' numbers."] = "Taille du texte de l’affichage : pourcentages, valeurs, nom et durée du sort et valeurs des formes de druide.",
+	["Text Colour"] = "Couleur du texte",
+	["The colour of the display's text. Its first colour is the palette's text colour, which follows the palette."] = "Couleur du texte de l’affichage. Par défaut, elle suit la couleur du texte de la palette.",
+	["For a druid: one more row under the power bar, split in two, shows the two powers it does not show right now, each with its number. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form."] = "Pour un druide : une ligne de plus sous la barre de ressource, coupée en deux, montre les deux ressources qu’elle n’affiche pas en ce moment, chacune avec son nombre. Énergie et rage en forme humanoïde, mana et rage en forme de félin, mana et énergie en forme d’ours.",
 	["Class Colours"] = "Couleurs de classe",
 	["The health bar in your class colour instead of green."] = "La barre de vie dans votre couleur de classe au lieu du vert.",
 	["How wide the bars are."] = "La largeur des barres.",
@@ -2127,8 +2134,8 @@ Lang:Add("frFR", {
 	["The power an ability costs stays lit for a moment, so you see the cost."] = "La ressource que coûte une technique reste éclairée un instant, pour voir le coût.",
 	["Power Gained"] = "Ressource gagnée",
 	["New power lights up ahead of the bar before it fills."] = "La nouvelle ressource s'éclaire devant la barre avant qu'elle se remplisse.",
-	["Mana Regen Pause"] = "Pause de régénération du mana", -- draft
-	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "Après un sort qui vous coûte du mana, l’Esprit ne régénère plus votre mana pendant cinq secondes. Une lumière parcourt la barre de ressource pendant ce temps, et la barre s’illumine quand la régénération reprend.", -- draft
+	["Mana Regen Pause"] = "Pause de régénération du mana",
+	["After a spell costs you mana, Spirit stops regenerating your mana for five seconds. A light runs along the power bar for that time, and the bar lights up when regeneration starts again."] = "Après un sort qui vous coûte du mana, l’Esprit ne régénère plus votre mana pendant cinq secondes. Une lumière parcourt la barre de ressource pendant ce temps, et la barre s’illumine quand la régénération reprend.",
 	["Dodge, Parry, Block"] = "Esquive, Parade, Blocage",
 	["Your dodge, parry or block flicks its word off the health bar."] = "Votre esquive, parade ou blocage s'envole de la barre de vie.",
 	["Low Health"] = "Vie basse",
@@ -2137,8 +2144,8 @@ Lang:Add("frFR", {
 	["While you are stunned, feared or silenced, the bars turn red and a line counts down its time. Replaces the game's own banner."] = "Quand vous êtes étourdi, apeuré ou réduit au silence, les barres rougissent et une ligne décompte le temps. Remplace la bannière du jeu.",
 	["Combat Settle"] = "Posture de combat",
 	["The bars rise into place when a fight starts and settle lower and slimmer after it. (To fade them out of combat: the Fader.)"] = "Les barres montent en place au début d'un combat et se posent plus bas et plus fines après. (Pour les estomper hors combat : le Fondu.)",
-	["Click Through"] = "Clics traversants", -- draft
-	["Clicks and camera drags over the bars pass through to the world. With a click-cast addon like Clique, the bars no longer cast, target you or open your menu. Edit Layout still moves the display."] = "Les clics et les glissements de caméra sur les barres passent jusqu'au monde. Avec un addon de clic-sort comme Clique, les barres ne lancent plus de sort, ne vous ciblent plus et n'ouvrent plus votre menu. Modifier la disposition déplace toujours l'affichage.", -- draft
+	["Click Through"] = "Clics traversants",
+	["Clicks and camera drags over the bars pass through to the world. With a click-cast addon like Clique, the bars no longer cast, target you or open your menu. Edit Layout still moves the display."] = "Les clics sur les barres et les glissements destinés à déplacer la caméra passent au jeu. Avec un addon comme Clique, les barres ne lancent plus de sort, ne vous ciblent plus et n’ouvrent plus votre menu. Vous pouvez toujours déplacer l’affichage avec Modifier la disposition.",
 	["Plays a short sample fight on the display."] = "Lance un court combat d'exemple sur l'affichage.",
 	["a shield going up, hit, low and broken, casts, and the bars in the fight"] = "un bouclier levé, frappé, bas et brisé, des incantations, et les barres en combat",
 	-- VoiceOver
@@ -2426,7 +2433,6 @@ Lang:Add("frFR", {
 	["Only with the painted Minimap skin"] = "Seulement avec l'habillage peint de la minicarte",
 	["Use MelloUI's Damage Meter (replaces the game's)"] = "Utiliser le compteur de dégâts de MelloUI (remplace celui du jeu)",
 	["Only for the game's meter (MelloUI's meter off)"] = "Seulement pour le compteur du jeu (compteur de MelloUI désactivé)",
-	["Only with Race Bar Shows: Your Pick"] = "Seulement avec La barre de performance montre : Votre choix", -- draft
 	["Only with Chat Tweaks on or the painted chat (its Painted Skin, the reskin on)"] = "Seulement avec les Retouches de discussion activées ou la discussion peinte (son habillage peint, la refonte activée)",
 	["Only with the Minimal Chat View"] = "Uniquement avec la vue de chat minimale",
 	["Chat Background"] = "Fond de discussion",
@@ -2455,7 +2461,7 @@ Lang:Add("frFR", {
 	["Only with Raid Frames"] = "Seulement avec les cadres de raid",
 	["Only with Flat colour"] = "Seulement avec une couleur unie",
 	["Only with Missing Health on"] = "Seulement avec Vie manquante activée",
-	["Only with Percent And Spell Text on"] = "Seulement avec Pourcentage et texte de sort activé", -- draft
+	["Only with Percent And Spell Text on"] = "Disponible uniquement si « Pourcentage et texte des sorts » est activé",
 	["Only with Big Cooldowns on"] = "Seulement avec Gros temps de recharge activé",
 	["Only while the tracker does not match the minimap (Match Minimap or MelloUI's minimap off)"] = "Seulement tant que le suivi ne suit pas la minicarte (Même largeur que la minicarte ou la minicarte de MelloUI désactivée)",
 	["Only with Auto Hand In"] = "Seulement avec Rendu automatique",
@@ -2496,6 +2502,13 @@ Lang:Add("frFR", {
 	["Your whole setup under one name. Each character keeps its own, and your changes are saved into it as you play."] = "Toute votre configuration sous un nom. Chaque personnage garde le sien, et vos changements y sont enregistrés pendant que vous jouez.",
 	["Supporters"] = "Soutiens",
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
+	-- (2.1.63) a guide's card on the Addons page: where its steps show
+	["Guide steps in"] = "Étapes du guide dans",
+	["MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side."] = "Suivi des quêtes de MelloUI : les étapes s’affichent dans le suivi et le marqueur de MelloUI indique le chemin ; la fenêtre et la flèche du guide sont masquées. Fenêtre du guide : ses étapes, sa flèche et ses marqueurs de carte restent dans sa propre fenêtre ; MelloUI n’intervient pas. Les deux : le suivi de MelloUI et la fenêtre du guide sont affichés côte à côte.",
+	["Its own window"] = "Sa propre fenêtre",
+	["Both"] = "Les deux",
+	["Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons, one a kind: herbs, veins, fishing pools and treasures."] = "Affiche ses ressources sur la carte de MelloUI et ses repères sur la minicarte avec les icônes de MelloUI : herbes, filons, bancs de poissons et trésors.",
+	["Its gathering nodes in MelloUI's icons"] = "Ses gisements avec les icônes de MelloUI",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
 	["MelloUI Player Joins"] = "Un joueur MelloUI rejoint", -- draft
@@ -2523,14 +2536,14 @@ Lang:Add("frFR", {
 	["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "Barres d'info : le badge de frappe se place après le pourcentage quand celui-ci est à côté de la barre.", -- draft
 	["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur : tant que sa lueur est active, les reflets de récolte des Étincelles de butin s'effacent pour elle.", -- draft
 	["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2 : chaque minerai et chaque plante a sa propre icône sur la carte et la mini-carte.", -- draft
-	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "Concepteur de barres d'info : l'aperçu porte l'apparence de vos barres, y compris l'ensemble de cadres Oldschool et le mode sombre.", -- draft
-	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise : son remplissage de mana, de rage et d'énergie s'affiche maintenant sur les barres d'action de MelloUI.", -- draft
-	["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "Barres d'info : Taille du texte de vie réduit les chiffres de vie, et Pourcentage à côté de la barre garde le chiffre dans la barre.", -- draft
-	["Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them."] = "Concepteur de barres d'info : faites glisser les chiffres de vie n'importe où sur la barre, changez leur taille ou masquez-les.", -- draft
-	["Personal Display: Number On The Bars, Percent Beside shows your health and power amounts in the middle of the bars."] = "Affichage personnel : Chiffre sur les barres, pourcentage à côté affiche vos montants de vie et de puissance au milieu des barres.", -- draft
-	["Personal Display: Text Size and Text Colour for all of its text."] = "Affichage personnel : taille et couleur du texte pour tout son texte.", -- draft
-	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Carte : Seulement les quêtes suivies et Seulement la quête ciblée changent la carte ouverte aussitôt.", -- draft
-	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Texte chinois : titres et en-têtes à la bonne taille, et caractères chinois au lieu de carrés.", -- draft
+	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "Éditeur de barres d’info : l’aperçu reprend le style de vos barres, y compris le style de cadres Oldschool et le mode sombre.",
+	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise : ses indicateurs de mana, de rage et d’énergie s’affichent désormais sur les barres d’action de MelloUI.",
+	["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "Barres d’info : Taille des chiffres de vie permet de les réduire. Pourcentage à côté de la barre garde la valeur au centre de la barre.",
+	["Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them."] = "Éditeur de barres d’info : déplacez les chiffres de vie sur la barre, redimensionnez-les ou masquez-les.",
+	["Personal Display: Number On The Bars, Percent Beside shows your health and power amounts in the middle of the bars."] = "Affichage personnel : Valeur sur les barres, pourcentage à côté centre les valeurs de vie et de ressource sur les barres.",
+	["Personal Display: Text Size and Text Colour for all of its text."] = "Affichage personnel : réglez la taille et la couleur de l’ensemble de ses textes.",
+	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Carte : les options Quêtes suivies uniquement et Quête ciblée uniquement s’appliquent immédiatement à la carte ouverte.",
+	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Texte chinois : les titres et les en-têtes ont la bonne taille, et les caractères chinois remplacent les carrés.",
 	["Report a problem"] = "Signaler un problème",
 	["Voice pack"] = "Pack de voix",
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre",
@@ -2914,17 +2927,17 @@ Lang:Add("frFR", {
 	["Nearest trainer: %s"] = "Maître le plus proche : %s",
 	["Visit your class trainer"] = "Rendez visite à votre maître de classe",
 	-- Modules/RolePicker.lua
-	["Role: %s"] = "Rôle : %s", -- draft
-	["Role: %s (remembered)"] = "Rôle : %s (retenu)", -- draft
-	["Remember for future dungeons"] = "Retenir pour les prochains donjons", -- draft
-	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Le choix du rôle est désactivé : activez-le dans Confort > Choix du rôle.", -- draft
+	["Role: %s"] = "Rôle : %s",
+	["Role: %s (remembered)"] = "Rôle : %s (mémorisé)",
+	["Remember for future dungeons"] = "Mémoriser pour les prochains donjons",
+	["The Role Picker is off: switch it on in Quality of Life > Role Picker."] = "Le choix du rôle est désactivé : activez-le dans Confort > Choix du rôle.",
 	-- Modules/MailRecipients.lua
-	["Recipients"] = "Destinataires", -- draft
-	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Choisissez l’un de vos personnages ou celui d’un ami Battle.net pour lui envoyer cette lettre.", -- draft
-	["Your Characters"] = "Vos personnages", -- draft
-	["Battle.net Friends"] = "Amis Battle.net", -- draft
-	["No other characters."] = "Aucun autre personnage.", -- draft
-	["None yet: a friend's characters are noted while they play."] = "Aucun pour l’instant : les personnages d’un ami sont retenus pendant qu’il joue.", -- draft
+	["Recipients"] = "Destinataires",
+	["Pick one of your characters or a Battle.net friend's character to send this letter to."] = "Choisissez l’un de vos personnages ou celui d’un ami Battle.net pour lui envoyer cette lettre.",
+	["Your Characters"] = "Vos personnages",
+	["Battle.net Friends"] = "Amis Battle.net",
+	["No other characters."] = "Aucun autre personnage.",
+	["None yet: a friend's characters are noted while they play."] = "Aucun pour l’instant : les personnages d’un ami sont retenus pendant qu’il joue.",
 	-- Core/Integrations.lua
 	["Quests and guides"] = "Quêtes et guides",
 	["Map and minimap"] = "Carte et minicarte",
@@ -2968,7 +2981,6 @@ Lang:Add("frFR", {
 	["its finds"] = "ses trouvailles",
 	["Its alert button"] = "Son bouton d'alerte",
 	["Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons: each ore and each herb its own (copper, iron, peacebloom ...), and one each for fishing pools and treasures."] = "Ses points de récolte sur la carte de MelloUI et sur ses propres repères de la mini-carte avec les icônes de MelloUI : chaque minerai et chaque plante a la sienne (cuivre, fer, pacifique...), et une pour les bancs de poissons et une pour les trésors.", -- draft
-	["Its gathering nodes in MelloUI's icons"] = "Ses gisements avec les icônes de MelloUI", -- draft
 	["its nodes"] = "ses points",
 	["Its notes on MelloUI's map."] = "Ses notes sur la carte de MelloUI.",
 	["Its notes on MelloUI's map"] = "Ses notes sur la carte de MelloUI",
@@ -3034,19 +3046,19 @@ Lang:Add("frFR", {
 	["Shields"] = "Boucliers",
 	["Your absorbs on them."] = "Les absorptions que vous leur appliquez.",
 	["Your other buffs"] = "Vos autres améliorations",
-	["The rest you put on them: Thorns, Fear Ward, Abolish Poison."] = "Les autres effets que vous leur appliquez : Thorns, Fear Ward, Abolish Poison.",
+	["The rest you put on them: Thorns, Fear Ward, Abolish Poison."] = "Les autres effets que vous leur appliquez : Épines, Gardien de peur, Abolir le poison.",
 	["Defensives from others"] = "Défensifs lancés par les autres",
-	["Anyone's defensive cast on them: Blessing of Protection, Blessing of Sacrifice."] = "Les sorts défensifs lancés sur eux par les autres : Blessing of Protection, Blessing of Sacrifice.",
-	["Their own defensives"] = "Leurs propres défensifs",
-	["Their own cooldowns, whatever their class: Shield Wall, Evasion, Ice Block."] = "Leurs propres temps de recharge, quelle que soit leur classe : Shield Wall, Evasion, Ice Block.",
+	["Anyone's defensive cast on them: Blessing of Protection, Blessing of Sacrifice."] = "Les sorts défensifs lancés sur eux par les autres : Bénédiction de protection, Bénédiction de sacrifice.",
+	["Their own defensives"] = "Leurs propres techniques défensives",
+	["Their own cooldowns, whatever their class: Shield Wall, Evasion, Ice Block."] = "Leurs propres techniques défensives, quelle que soit leur classe : Mur protecteur, Évasion, Bloc de glace.",
 	["Group defensives"] = "Défensifs de groupe",
 	["Cooldowns on the whole group or an area."] = "Les temps de recharge qui protègent tout le groupe ou une zone.",
 	["Haste and power"] = "Hâte et puissance",
-	["Power and mana given to them: Power Infusion, Innervate, Mana Tide."] = "La puissance et le mana qui leur sont conférés : Power Infusion, Innervate, Mana Tide.",
+	["Power and mana given to them: Power Infusion, Innervate, Mana Tide."] = "La puissance et le mana qu’ils reçoivent : Infusion de puissance, Innervation, Vague de mana.",
 	["Speed and freedom"] = "Vitesse et liberté",
-	["Speed and freedom on them: Blessing of Freedom, Aspect of the Pack."] = "Les effets de vitesse et de liberté qu’ils reçoivent : Blessing of Freedom, Aspect of the Pack.",
+	["Speed and freedom on them: Blessing of Freedom, Aspect of the Pack."] = "Les effets de vitesse et de liberté qu’ils reçoivent : Bénédiction de liberté, Aspect de la meute.",
 	["Group buffs"] = "Améliorations de groupe",
-	["The lasting buffs the group shares: Power Word: Fortitude, Blessing of Kings, Battle Shout."] = "Les améliorations durables partagées par le groupe : Power Word: Fortitude, Blessing of Kings, Battle Shout.",
+	["The lasting buffs the group shares: Power Word: Fortitude, Blessing of Kings, Battle Shout."] = "Les améliorations durables partagées par le groupe : Mot de pouvoir : Robustesse, Bénédiction des rois, Cri de guerre.",
 	["Dispellable debuffs"] = "Affaiblissements dissipables",
 	["A debuff on them by its kind."] = "Les affaiblissements qui les affectent, classés par type.",
 	["Boss debuffs"] = "Affaiblissements des boss",
@@ -3058,28 +3070,28 @@ Lang:Add("frFR", {
 	["As they came"] = "Ordre d’application",
 	["Your order"] = "Votre ordre",
 	-- MelloUI_Map/MapTownMarks.lua
-	["Riding trainers"] = "Maîtres d’équitation", -- draft
-	["Mount sellers"] = "Vendeurs de montures", -- draft
-	["Your professions' trainers"] = "Maîtres de vos métiers", -- draft
-	["Your class's trainers"] = "Maîtres de votre classe", -- draft
-	["Innkeepers"] = "Aubergistes", -- draft
-	["Mailboxes"] = "Boîtes aux lettres", -- draft
-	["Stable masters"] = "Maîtres des écuries", -- draft
-	["Vendors: reagents"] = "Marchands : composants", -- draft
-	["Vendors: food and drink"] = "Marchands : nourriture et boissons", -- draft
-	["Vendors: general goods"] = "Marchands : fournitures générales", -- draft
-	["Vendors: bags"] = "Marchands : sacs", -- draft
-	["Vendors: pets"] = "Marchands : mascottes", -- draft
-	["Vendors: weapons"] = "Marchands : armes", -- draft
-	["Vendors: armor"] = "Marchands : armures", -- draft
-	["Vendors: profession supplies"] = "Marchands : fournitures d’artisanat", -- draft
-	["Vendors: quartermasters"] = "Marchands : intendants", -- draft
-	["Vendors: other"] = "Marchands : autres", -- draft
-	["Battlemasters"] = "Maîtres de guerre", -- draft
-	["Weapon masters"] = "Maîtres d’armes", -- draft
-	["Guild masters and tabards"] = "Maîtres de guilde et tabards", -- draft
-	["Transmogrifiers"] = "Transmogrifieurs", -- draft
-	["Spirit healers"] = "Gardiens des âmes", -- draft
+	["Riding trainers"] = "Maîtres d’équitation",
+	["Mount sellers"] = "Vendeurs de montures",
+	["Your professions' trainers"] = "Maîtres de vos métiers",
+	["Your class's trainers"] = "Maîtres de votre classe",
+	["Innkeepers"] = "Aubergistes",
+	["Mailboxes"] = "Boîtes aux lettres",
+	["Stable masters"] = "Maîtres des écuries",
+	["Vendors: reagents"] = "Marchands : composants",
+	["Vendors: food and drink"] = "Marchands : nourriture et boissons",
+	["Vendors: general goods"] = "Marchands : fournitures générales",
+	["Vendors: bags"] = "Marchands : sacs",
+	["Vendors: pets"] = "Marchands : mascottes",
+	["Vendors: weapons"] = "Marchands : armes",
+	["Vendors: armor"] = "Marchands : armures",
+	["Vendors: profession supplies"] = "Marchands : fournitures d’artisanat",
+	["Vendors: quartermasters"] = "Marchands : intendants",
+	["Vendors: other"] = "Marchands : autres",
+	["Battlemasters"] = "Maîtres de guerre",
+	["Weapon masters"] = "Maîtres d’armes",
+	["Guild masters and tabards"] = "Maîtres de guilde et tabards",
+	["Transmogrifiers"] = "Transmogrifieurs",
+	["Spirit healers"] = "Gardiens des âmes",
 	-- Core/Core.lua
 	["Ctrl+A, Ctrl+C to copy  -  Esc closes"] = "Ctrl+A, Ctrl+C pour copier  –  Échap pour fermer",
 	["Ctrl+V to paste  -  Esc closes"] = "Ctrl+V pour coller  –  Échap pour fermer",
@@ -3087,6 +3099,9 @@ Lang:Add("frFR", {
 	["|cffff4040Error|r in module '%s' (%s): %s"] = "|cffff4040Erreur|r dans le module « %s » (%s) : %s",
 	-- Core/RareScannerLook.lua
 	["Rare"] = "Rare",
+	-- (2.1.64, #34) the tracked boxes of a zone and of the whole log (MelloUI_Map/MapQuestLog.lua)
+	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "Toutes les quêtes de cette zone dans le suivi : cliquez pour toutes les afficher ou toutes les retirer.",
+	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Toutes vos quêtes dans le suivi : cliquez pour toutes les afficher ou toutes les retirer.",
 	["Treasure"] = "Trésor",
 	["Event"] = "Événement",
 	["Seen just now"] = "Vu à l'instant",
@@ -3132,6 +3147,7 @@ Lang:Add("frFR", {
 	-- Core/LevelCard.lua
 	["Route after the fight"] = "Itinéraire après le combat",
 	-- Core/QuestMoments.lua
+	["the boat"] = "le bateau",
 	["QUEST COMPLETE"] = "QUÊTE TERMINÉE",
 	["Ready to turn in"] = "À rendre",
 	["COMPLETE"] = "TERMINÉ",
@@ -3161,9 +3177,9 @@ Lang:Add("frFR", {
 	["Want your name on a banner? Support MelloUI on Patreon, and come say hello on Discord."] = "Envie de voir votre nom sur une bannière ? Soutenez MelloUI sur Patreon et venez nous dire bonjour sur Discord.",
 	["Waiting for its first name"] = "En attente d’un premier nom",
 	["As of %s"] = "Mis à jour le %s",
-	["Contributors"] = "Contributeurs", -- draft
-	["The people whose code and translations are in MelloUI, sent as pull requests on GitHub. Thank you!"] = "Les personnes dont le code et les traductions sont dans MelloUI, envoyés en pull requests sur GitHub. Merci !", -- draft
-	["code and translations"] = "code et traductions", -- draft
+	["Contributors"] = "Contributeurs",
+	["The people whose code and translations are in MelloUI, sent as pull requests on GitHub. Thank you!"] = "Merci aux personnes qui ont contribué au code ou aux traductions de MelloUI par des pull requests sur GitHub !",
+	["code and translations"] = "code et traductions",
 	-- Core/AddonsPage.lua
 	["Use with MelloUI"] = "Utiliser avec MelloUI",
 	["What MelloUI does with it"] = "Ce que MelloUI en fait",
@@ -3188,10 +3204,6 @@ Lang:Add("frFR", {
 	["Who does what"] = "Qui fait quoi",
 	["Job"] = "Tâche",
 	["Done by"] = "Fait par",
-	["Guide steps in"] = "Étapes du guide dans", -- draft
-	["MelloUI's Quest Tracker: its steps in the tracker, MelloUI's World Marker points the way, its own window and arrow hidden. Its own window: its window, arrow and map marks as it shows them, MelloUI leaves its steps alone. Both: the tracker and its own window side by side."] = "Suivi des quêtes de MelloUI : ses étapes dans le suivi, le marqueur du monde de MelloUI montre le chemin, sa propre fenêtre et sa flèche masquées. Sa propre fenêtre : sa fenêtre, sa flèche et ses marques sur la carte comme il les montre ; MelloUI laisse ses étapes tranquilles. Les deux : le suivi et sa propre fenêtre côte à côte.", -- draft
-	["Its own window"] = "Sa propre fenêtre", -- draft
-	["Both"] = "Les deux", -- draft
 	["Show its own arrow too"] = "Afficher aussi sa propre flèche",
 	["Its arrow stays on screen beside MelloUI's World Marker while Route follows it. Off: only the World Marker points the way."] = "Sa flèche reste à l'écran à côté du Marqueur du monde de MelloUI tant que Route la suit. Désactivé : seul le Marqueur du monde montre le chemin.",
 	["Install it, then type /reload."] = "Installez-le, puis saisissez /reload.",
@@ -3280,7 +3292,6 @@ Lang:Add("frFR", {
 	["It lets go of the other element and keeps its place on the screen. Saved with Save."] = "Il se détache de l’autre élément et garde sa position à l’écran. Enregistrez pour conserver ce changement.",
 	["Its size is set on its page."] = "Sa taille se règle dans sa page.",
 	["Its size is among its Edit Mode settings below."] = "Sa taille figure dans ses réglages du mode Édition ci-dessous.",
-	["Something lies under this bar: hold Alt to see it and drag it."] = "Quelque chose se trouve sous cette barre : maintenez Alt pour le voir et le déplacer.", -- draft
 	["Edit Layout is paused for combat. It comes back when the fight is over."] = "La modification de la disposition est suspendue pendant le combat. Elle reprendra à la fin.",
 	["Edit Layout opens when the fight is over."] = "La fenêtre de modification de la disposition s’ouvrira à la fin du combat.",
 	["Edit Layout opens when you close Edit Mode."] = "La fenêtre de modification de la disposition s’ouvrira à la fermeture du mode Édition.",
@@ -3474,7 +3485,7 @@ Lang:Add("frFR", {
 	["in bags %d"] = "Dans les sacs : %d",
 	["quiver %d of %d"] = "Carquois : %d / %d",
 	["ammo pouch %d of %d"] = "Giberne : %d / %d",
-	["no quiver or ammo pouch equipped"] = "Aucun sac à munitions équipé",
+	["no quiver or ammo pouch equipped"] = "Aucun carquois ni sac à munitions équipé",
 	["level %d"] = "niveau %d",
 	["%s, your pet eats this"] = "%s, votre familier peut en manger",
 	["your pet eats this"] = "votre familier peut en manger",
@@ -3644,13 +3655,13 @@ Lang:Add("frFR", {
 	["No healing in this fight."] = "Aucun soin pendant ce combat.",
 	["%s/s  #%d"] = "%s/s  n° %d",
 	-- Modules/DemonGrimoires.lua
-	["Demon Grimoires: nothing noted yet. Summon each demon once."] = "Grimoires démoniaques : rien de noté pour l'instant. Invoquez chaque démon une fois.", -- draft
+	["Demon Grimoires: nothing noted yet. Summon each demon once."] = "Grimoires démoniaques : rien de noté pour l'instant. Invoquez chaque démon une fois.",
 	["Known"] = "Connu",
-	["Your %s knows this (rank %s)."] = "Votre %s connaît ceci (rang %s).", -- draft
-	["Your %s knows this."] = "Votre %s connaît ceci.", -- draft
-	["Your %s does not know this yet."] = "Votre %s ne connaît pas encore ceci.", -- draft
-	["Your %s knows rank %s: this one is new."] = "Votre %s connaît le rang %s : celui-ci est nouveau.", -- draft
-	["Summon your %s once and MelloUI notes what it knows."] = "Invoquez votre %s une fois et MelloUI note ce qu'il connaît.", -- draft
+	["Your %s knows this (rank %s)."] = "Votre %s connaît déjà ce sort (rang %s).",
+	["Your %s knows this."] = "Votre %s connaît déjà ce grimoire.",
+	["Your %s does not know this yet."] = "Votre %s ne connaît pas encore ce grimoire.",
+	["Your %s knows rank %s: this one is new."] = "Votre %s connaît le rang %s ; ce grimoire lui est encore inconnu.",
+	["Summon your %s once and MelloUI notes what it knows."] = "Invoquez votre %s une fois et MelloUI note ce qu'il connaît.",
 	-- Modules/CustomSounds.lua
 	["Every sound Custom Sounds plays, yours to change: MelloUI's sound, the game's own, none, or any sound from SharedMedia, your own files included. A pick plays in every skin. Add your own files with the guide:"] = "Chaque son que jouent les Sons personnalisés, à votre goût : celui de MelloUI, celui du jeu, aucun, ou n'importe quel son de SharedMedia, vos propres fichiers compris. Un choix vaut pour chaque habillage. Ajoutez vos propres fichiers avec le guide :",
 	-- Modules/ActionBars.lua
@@ -3747,8 +3758,6 @@ Lang:Add("frFR", {
 	["folded into one slot"] = "regroupé dans un seul emplacement",
 	["Bag window: no two items in one row to move -- put some in your bags first."] = "Fenêtre des sacs : aucun duo d’objets sur une même ligne à déplacer. Placez-en d’abord dans vos sacs.",
 	-- Modules/QuestTracker.lua
-	["Click: focus %s"] = "Clic : suivre %s", -- draft
-	["Right-click: remove its mark"] = "Clic droit : retirer son marqueur", -- draft
 	["Click: mark this step on the map again  -  Right-click: remove its mark"] = "Clic : replacer cette étape sur la carte  -  Clic droit : retirer son marqueur",
 	["Click: open the recipe  -  Shift-click: stop tracking"] = "Clic : ouvrir la recette  -  Maj-clic : arrêter le suivi",
 	["Difficulty: %s"] = "Difficulté : %s",
@@ -3757,7 +3766,6 @@ Lang:Add("frFR", {
 	["Turn in: %s"] = "À rendre à %s",
 	["Turn in: %s, %s"] = "À rendre à %s, %s",
 	["Back a step"] = "Revenir à l’étape précédente",
-	["Click: open the link to copy it"] = "Clic : ouvrir le lien pour le copier", -- draft
 	-- MelloUI_Map/MapLayers.lua
 	["Not learned yet"] = "Pas encore appris",
 	["Your pin"] = "Votre repère",
@@ -3800,7 +3808,7 @@ Lang:Add("frFR", {
 	["Read"] = "Écouter",
 	["Read the quest aloud: its description in the quest giver's voice, then the recorded objectives when the voice pack has them (Voice Over). Again: stop."] = "Lire la quête à voix haute : sa description avec la voix du donneur, puis les objectifs enregistrés si le pack vocal les propose (Voice Over). Cliquez de nouveau pour arrêter.",
 	["The map goes to where this quest is done (its turn-in once it is ready)."] = "Centrer la carte sur le lieu de la quête, ou sur son lieu de remise lorsqu'elle est terminée.",
-	["This quest has no place on the map."] = "Cette quête n'a aucun emplacement sur la carte.", -- draft
+	["This quest has no place on the map."] = "Aucun emplacement n’est indiqué sur la carte pour cette quête.",
 	["Follow this quest: Route shows the way to it. Click again to let it go."] = "Suivre cette quête : Itinéraire vous guidera jusqu'à elle. Cliquez de nouveau pour arrêter le suivi.",
 	["Share this quest with your group."] = "Partager cette quête avec votre groupe.",
 	["Only a quest that can be shared, while you are in a group."] = "Disponible uniquement pour une quête partageable lorsque vous êtes en groupe.",
@@ -3812,8 +3820,6 @@ Lang:Add("frFR", {
 	["Click: its page   Shift-click: link it in the chat"] = "Clic : ouvrir la page   Maj-clic : partager le lien dans le chat",
 	["Tracked in the Quest Tracker: click to take it off, or to show it there"] = "Quête suivie : cliquez pour arrêter le suivi ou l'afficher dans le suivi des quêtes",
 	["Click: fold or unfold this zone"] = "Clic : replier ou déplier cette zone",
-	["All quests of this zone in the Quest Tracker: click to show them all there, or to take them all off"] = "Toutes les quêtes de cette zone dans le suivi des quêtes : cliquez pour toutes les y afficher ou toutes les retirer", -- draft
-	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Toutes vos quêtes dans le suivi des quêtes : cliquez pour toutes les y afficher ou toutes les retirer", -- draft
 	["Quests on the map come from Questie."] = "Les quêtes affichées sur la carte proviennent de Questie.",
 	-- MelloUI_Map/MapSearch.lua
 	["Quest: %s"] = "Quête : %s",
@@ -3861,7 +3867,7 @@ Lang:Add("frFR", {
 	["Hide completed quests"] = "Masquer les quêtes terminées",
 	["Show hidden quests (%d)"] = "Afficher les quêtes masquées (%d)",
 	["Filter"] = "Filtrer",
-	["%d of %d done"] = "%d sur %d terminées", -- draft
+	["%d of %d done"] = "%d sur %d terminées",
 	["No quests match the filter."] = "Aucune quête ne correspond aux filtres.",
 	["No quests known for this zone."] = "Aucune quête connue dans cette zone.",
 	["All completed."] = "Toutes les quêtes sont terminées.",
@@ -3938,8 +3944,6 @@ Lang:Add("frFR", {
 	["Click: its guides  -  Right-click: its settings"] = "Clic : ses guides — clic droit : ses réglages",
 	["%s - step %s%s"] = "%s – étape %s%s",
 	["Click: its menu  -  Right-click: its settings"] = "Clic : son menu — clic droit : ses réglages",
-	["Next guide tab: %s (%d/%d)"] = "Onglet de guide suivant : %s (%d/%d)", -- draft
-	["Viewing step %s. Click: back to step %s."] = "Étape %s affichée. Clic : retour à l’étape %s.", -- draft
 	["Click: the way there"] = "Clic : afficher l’itinéraire",
 	["The other guides are switched off for this character: type /reload to finish."] = "Les autres guides sont désactivés pour ce personnage ; tapez /reload pour terminer.",
 	-- MelloUI_Route/RouteRecorder.lua
@@ -4110,6 +4114,10 @@ Lang:Add("frFR", {
 	["%d s"] = "%d s",
 	["Click: the map shows it"] = "Clic : afficher sur la carte",
 	-- MelloUI_FrameEffects/HealFlight.lua
+	-- (2.1.64, #40) RestedXP's Back only looks
+	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "Étape précédente : RestedXP y revient tant qu’elle n’est pas terminée. Une étape déjà terminée reste affichée ici, tandis que RestedXP conserve son étape actuelle.",
+	["Shows the next step here, back up to RestedXP's own step."] = "Affiche ici les étapes suivantes jusqu’à celle de RestedXP.",
+	["No earlier step to show here."] = "Aucune étape précédente à afficher ici.",
 	["Heal Effects: your cast bar has no place on the screen yet (cast something once)."] = "Effets de soin : la barre d’incantation n’a pas encore été repérée à l’écran (lancez un sort une fois).",
 	["Heal Effects: no party or raid frame of yours is shown."] = "Effets de soin : aucun de vos cadres de groupe ou de raid n’est affiché.",
 	["Heal Effects: Reduce Motion is on, so nothing flies."] = "Effets de soin : la réduction des animations est activée, aucun effet ne se déplace.",
@@ -4135,6 +4143,7 @@ Lang:Add("frFR", {
 	["Immunity"] = "Immunité",
 	["Dodge / parry"] = "Esquive / parade",
 	-- MelloUI_GroupFrames/GroupSpellGroupsPage.lua
+	["What they cannot have again yet: Forbearance, Weakened Soul. The game shows only those it never hides."] = "Les effets qui les empêchent de recevoir à nouveau certains sorts : Longanimité, Âme affaiblie. Seuls ceux que le jeu ne masque jamais sont affichés.",
 	["Spell groups for %s: drag one onto your frame"] = "Groupes de sorts de %s : faites-en glisser un sur votre cadre",
 	["Everyone's"] = "Tout le monde",
 	["Single spells"] = "Sorts individuels",
@@ -4146,15 +4155,15 @@ Lang:Add("frFR", {
 	["Off the frame"] = "Retirer du cadre",
 	["Onto the frame"] = "Ajouter au cadre",
 	["No spell of that name: type it as the game writes it, or its spell ID."] = "Aucun sort ne porte ce nom : saisissez-le comme dans le jeu ou indiquez son identifiant.",
-	["X / Y"] = "X / Y", -- draft
+	["X / Y"] = "X / Y",
 	["Per line"] = "Par ligne",
 	["Room"] = "Espacement",
 	["Which"] = "Lequel",
 	["Its time"] = "Durée",
 	["Its stacks"] = "Charges",
-	["Colour"] = "Couleur", -- draft
+	["Colour"] = "Couleur",
 	["Colour: %s"] = "Couleur : %s",
-	["Strength"] = "Intensité", -- draft
+	["Strength"] = "Intensité",
 	["Colour from"] = "Couleur selon",
 	["Off from the start: a lockout of your own."] = "Désactivé au départ : il s’agit d’un effet qui vous bloque.",
 	["Added by you"] = "Ajouté par vous",
@@ -4188,7 +4197,7 @@ Lang:Add("frFR", {
 	["shared"] = "réglage commun",
 	-- kept: Core/Integrations.lua
 	["RareScanner"] = "RareScanner",
-	["HandyNotes"] = "HandyNotes", -- draft
+	["HandyNotes"] = "HandyNotes",
 	["repair"] = "réparation",
 	-- kept: Core/Perf.lua
 	["Already recording. /melloperf stop ends it."] = "Un enregistrement est déjà en cours. Saisissez /melloperf stop pour l’arrêter.",
@@ -4230,10 +4239,10 @@ Lang:Add("frFR", {
 	["The slash commands, the links, and where your settings are kept."] = "Les commandes, les liens et l’emplacement de vos réglages.",
 	["credits thanks github curseforge bug report problem issue links voice pack slash commands"] = "crédits remerciements liens bug signaler problème pack de voix commandes credits thanks github curseforge bug report issue voice pack slash commands", -- draft
 	-- kept: Core/SupportersHall.lua
-	["code"] = "code", -- draft
-	["translations"] = "traductions", -- draft
+	["code"] = "code",
+	["translations"] = "traductions",
 	-- kept: Core/ConfigLayout.lua
-	["The loot window's Discard button and Loot All Key."] = "Le bouton Jeter de la fenêtre de butin et la touche Tout ramasser.", -- draft
+	["The loot window's Discard button and Loot All Key."] = "Le bouton Jeter de la fenêtre de butin et la touche Tout ramasser.",
 	["arrows"] = "flèches",
 	-- kept: Core/Tutorial.lua
 	["This client has no help tips; the tour needs them."] = "Ce client ne propose pas d’astuces d’aide ; la visite guidée en a besoin.",
@@ -4241,10 +4250,10 @@ Lang:Add("frFR", {
 	["Macro Backup is gone (the game keeps your settings): its %d account macros were removed, so the slots are free again."] = "Macro Backup n’est plus installé (le jeu conserve vos réglages) : ses %d macros de compte ont été supprimées, les emplacements sont de nouveau libres.",
 	["Macro Backup is gone (the game keeps your settings): its account macro was removed, so the slot is free again."] = "Macro Backup n’est plus installé (le jeu conserve vos réglages) : sa macro de compte a été supprimée, l’emplacement est de nouveau libre.",
 	-- kept: Core/LayoutFit.lua
-	["Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."] = "Votre écran est trop petit pour la disposition de Mello à votre échelle d’interface ; votre propre disposition du mode Édition est conservée.", -- draft
-	["Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."] = "La disposition de Mello tient sur votre écran, mais pas avec certains de vos réglages ; votre propre disposition du mode Édition est conservée.", -- draft
-	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "La disposition de Mello est ajustée au mieux de ce que permet cet écran ; quelques éléments se chevauchent ou sont près du bord, et Modifier la disposition les déplace.", -- draft
-	["Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."] = "La disposition de Mello est conçue pour cet écran, elle est donc appliquée ; certains de vos réglages la chevauchent, et Modifier la disposition les déplace.", -- draft
+	["Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."] = "À votre échelle d’interface, l’écran est trop petit pour la disposition de Mello. Votre disposition du mode Édition est conservée.",
+	["Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."] = "La disposition de Mello tient sur votre écran, mais pas avec certains de vos réglages. Votre disposition du mode Édition est conservée.",
+	["Mello's layout is fitted as close as this screen allows; a few parts overlap or sit near the edge, and Edit Layout moves them."] = "La disposition de Mello est adaptée au mieux à votre écran. Quelques éléments se chevauchent ou frôlent le bord ; vous pouvez les déplacer dans « Modifier la disposition ».",
+	["Mello's layout is drawn for this screen, so it goes in; some of your settings overlap it, and Edit Layout moves them."] = "La disposition de Mello est conçue pour cet écran et sera appliquée. Certains de vos réglages la chevauchent ; vous pouvez les déplacer dans « Modifier la disposition ».",
 	["the boss frames clear of the group frames"] = "les cadres de boss dégagés des cadres de groupe",
 	["the boss frames clear of the group frames, the extra ability's spot in the centre too"] = "les cadres de boss dégagés des cadres de groupe, avec un emplacement central pour la capacité supplémentaire",
 	-- kept: Core/EditModeLayout.lua
@@ -4264,10 +4273,10 @@ Lang:Add("frFR", {
 	["PvP scoreboard"] = "Tableau des scores JcJ",
 	["PvP results"] = "Résultats JcJ",
 	["Clock"] = "Horloge",
-	["Zone objectives"] = "Objectifs de zone", -- draft
-	["Back to the game's place"] = "Retour à la place du jeu", -- draft
-	["The game's scores, timers and objectives at the top of the screen (battlegrounds, world events)."] = "Les scores, minuteurs et objectifs du jeu en haut de l'écran (champs de bataille, événements mondiaux).", -- draft
-	["Totem & minion timers"] = "Délais des totems et serviteurs", -- draft
+	["Zone objectives"] = "Objectifs de zone",
+	["Back to the game's place"] = "Retour à la place du jeu",
+	["The game's scores, timers and objectives at the top of the screen (battlegrounds, world events)."] = "Affiche en haut de l’écran les scores, les minuteurs et les objectifs du jeu (champs de bataille et événements mondiaux).",
+	["Totem & minion timers"] = "Minuteurs des totems et des serviteurs",
 	-- kept: Media/QuestListData.lua
 	["Alterac Mountains"] = "Montagnes d’Alterac",
 	["Ratchet"] = "Cabestan",
@@ -4404,7 +4413,7 @@ Lang:Add("frFR", {
 	-- kept: Modules/SwingTimers.lua
 	["Swing Timer"] = "Minuteur d’attaque",
 	-- kept: Modules/MailRecipients.lua
-	["online"] = "en ligne", -- draft
+	["online"] = "en ligne",
 	-- kept: Modules/Sparkles.lua
 	["Mine"] = "Les miens", -- draft
 	-- kept: Modules/CustomSounds.lua
@@ -4464,7 +4473,6 @@ Lang:Add("frFR", {
 	["Click: follow it  -  Click again: stop following"] = "Clic : suivre cette quête  -  Nouveau clic : arrêter le suivi",
 	["Forward a step"] = "Passer à l’étape suivante",
 	["Skip this step"] = "Ignorer cette étape",
-	["No earlier step to show here."] = "Aucune étape précédente à afficher ici.", -- draft
 	["Drag to size the tracker"] = "Faites glisser pour redimensionner le suivi des quêtes",
 	-- kept: Modules/Auras.lua
 	["Buffs & Debuffs: your debuffs' block could not be made (%s)."] = "Améliorations et affaiblissements : impossible de créer le bloc de vos affaiblissements (%s).",
@@ -4532,7 +4540,6 @@ Lang:Add("frFR", {
 	["|cffff4040Error|r in module 'Route' (finding a way): %s"] = "|cffff4040Erreur|r dans le module Itinéraire (recherche d’un trajet) : %s",
 	["|cffff4040Error|r in module 'Route' (after finding a way): %s"] = "|cffff4040Erreur|r dans le module Itinéraire (après la recherche d’un trajet) : %s",
 	[" straight"] = " en ligne droite",
-	["the boat"] = "le bateau", -- draft
 	["World Marker: the game tracks %s; the marker hangs on it: %s"] = "Repère du monde : le jeu suit %s ; le marqueur s’y rattache : %s",
 	["Route: the road data could not be loaded (%s); routes follow the paths you have walked until the next /reload."] = "Itinéraire : impossible de charger les données des routes (%s) ; les itinéraires suivront les chemins parcourus jusqu’au prochain /reload.",
 	["|cffff4040Error|r in module 'Route' (building the road graph): %s"] = "|cffff4040Erreur|r dans le module Itinéraire (création du réseau routier) : %s",
@@ -4545,8 +4552,6 @@ Lang:Add("frFR", {
 	["This wipes every learned path. Type  /route reset confirm  to do it."] = "Cette action efface tous les trajets mémorisés. Saisissez /route reset confirm pour continuer.",
 	-- kept: MelloUI_Route/Guides.lua
 	["Following guides: %s"] = "Suivi des guides : %s",
-	["The step before: RestedXP goes back to it while it is not done yet. A done one is only shown here, and RestedXP stays on its own step."] = "L’étape précédente : RestedXP y revient tant qu’elle n’est pas faite. Une étape faite est seulement affichée ici, et RestedXP reste sur sa propre étape.", -- draft
-	["Shows the next step here, back up to RestedXP's own step."] = "Affiche ici l’étape suivante, jusqu’à revenir à l’étape de RestedXP.", -- draft
 	["Keep them all"] = "Tout conserver",
 	-- kept: MelloUI_Route/RouteRecorder.lua
 	["Gate"] = "Entrée de ville",
@@ -4589,6 +4594,573 @@ Lang:Add("frFR", {
 	["Quest progress"] = "Progression de quête",
 	["Quest turn-in"] = "Remise de quête",
 	["Click: pause or resume. Right-click: stop."] = "Clic : mettre en pause ou reprendre. Clic droit : arrêter.",
+	-- the role picker (Modules/RolePicker.lua, 2.1.55)
+	["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "Choix du rôle : à l’entrée d’un donjon en groupe, les rôles possibles pour votre classe apparaissent au-dessus de votre personnage. Un clic suffit pour choisir le vôtre, que vous pouvez mémoriser pour les prochains donjons.",
+	["Addons page: it opens again with MaxDPS installed, where it stayed on Profiles."] = "Page Addons : elle s’ouvre de nouveau avec MaxDPS installé, alors qu’elle restait sur Profils.",
+	-- the mailbox's recipients (Modules/MailRecipients.lua, 2.1.59)
+	-- the installer's layout check: why Mello's layout goes in or not (Core/LayoutFit.lua's verdicts, 2.1.56)
+	-- the map's layers page: HandyNotes' places (MelloUI_Map/MapTownMarks.lua, 2.1.53)
+	-- the Quest List's count (2.1.56)
+	["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Carte : avec Questie, les marqueurs de quête « ! » et « ? » sont plus grands et suivent le réglage Taille des icônes. Cliquez près d’un marqueur pour lancer l’itinéraire vers ce point.",
+	["Questie: every version of its database is read now, older and newer ones too."] = "Questie : toutes les versions de sa base de données sont lues désormais, les plus anciennes comme les plus récentes.",
+	["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Carte : si RareScanner et un module HandyNotes marquent tous deux les créatures rares, celles-ci ne sont plus signalées deux fois. Le marqueur de RareScanner est conservé sur la carte et la minicarte de MelloUI.",
+	["Map: without RareScanner, a HandyNotes plugin's rares wear MelloUI's rare seal too, on the map and the minimap."] = "Carte : sans RareScanner, les créatures rares signalées par un module HandyNotes reçoivent aussi le marqueur de rareté de MelloUI, sur la carte et la minicarte.",
+	["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "Manette : la croix directionnelle ignore le bouton de fermeture et les onglets des fenêtres (B ferme, LB/RB changent d’onglet). Un clic sur le bouton MelloUI sous le menu du jeu ferme aussi ce menu.",
+	["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "Carte à la manette : la croix directionnelle permet d’atteindre les boutons près de la liste des quêtes. Le bouton Marqueur supprime votre repère, le réticule répond plus vite et un clic sur le X ferme aussi la carte du jeu.",
+	["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Manette : le pointeur jaune du jeu ne s’affiche plus sur les fenêtres de MelloUI et les indications des touches sont centrées et plus lisibles.",
+	["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Discussion à la manette : choisissez Discussion dans le menu circulaire du jeu, puis LB / RB changent d'onglet et la croix directionnelle ou le stick droit fait défiler.",
+	["Discard: answering Discard now throws a white item away. Before, the game refused it every time and the chat said so. An item the game itself keeps is passed over."] = "Jeter : confirmer l’action permet maintenant de jeter les objets blancs. Auparavant, le jeu les refusait et l’indiquait dans la discussion. Les objets que le jeu interdit de jeter sont ignorés.",
+	["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "Infobulles : avec Questie et Polestar, les objectifs de quête des créatures ne sont plus affichés en double. Les informations de Questie sont conservées et la ligne d’objet de MelloUI est masquée.",
+	["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name."] = "Destinataires du courrier : un bouton à côté du champ Destinataire de la boîte aux lettres liste vos personnages et ceux de vos amis Battle.net ; un clic inscrit le nom.",
+	["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "Affichage personnel : Pause de régénération du mana. Après un sort qui vous coûte du mana, une lumière parcourt la barre de ressource pendant les cinq secondes où votre mana ne se régénère pas.",
+	["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "Affichage personnel : Formes de druide. Pour un druide, deux barres fines sous la barre de ressource montrent les ressources des autres formes.",
+	["Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up."] = "Réapprovisionnement : le seuil d’ouverture de la liste de courses permet de l’ouvrir avant l’apparition du rappel.",
+	["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Fenêtre des sacs : l’équipement porté déposé sur une case + va dans un emplacement libre. Avant, il retournait sur le personnage.",
+	["Dungeon Info: dungeons, zones and bosses are named in your client's language, and a boss row's drops show their item tooltip."] = "Infos des donjons : les donjons, les zones et les boss s’affichent dans la langue du jeu. Sur chaque ligne de boss, le butin affiche l’infobulle de l’objet.",
+	["Languages: German checked line by line by a German player, and more of the chat, the map and the menus in French."] = "Langues : l’allemand a été relu ligne par ligne par un joueur germanophone ; davantage d’éléments de la discussion, de la carte et des menus sont maintenant traduits en français.",
+	["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "Journal des quêtes de la carte : chaque zone dispose d’une case de suivi, ainsi qu’une case « Toutes les quêtes » pour les ajouter d’un coup au suivi.",
+	["RestedXP in the Quest Tracker: Back goes back to a step not done yet, and only shows a done one."] = "RestedXP dans le suivi des quêtes : Retour revient à une étape non terminée et affiche les étapes terminées sans y revenir.",
+	["Dungeon Info: loot for six of Forever's own dungeons that had none, and players' measured drop rates for more bosses."] = "Infos des donjons : ajout du butin pour six donjons propres à Forever qui n’en avaient pas, et de taux de drop mesurés par les joueurs pour d’autres boss.",
+	["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "Rapport des actions bloquées (/mellobug) : avec une manette, indique quel élément a modifié en premier les réglages de la manette du jeu.",
+	["Map's quest log: Show on a quest with no place on the map, such as a crafting writ, says so instead of doing nothing."] = "Journal des quêtes de la carte : afficher une quête sans emplacement sur la carte, comme une commande d’artisanat, indique pourquoi rien ne se passe.",
+	["Map with Questie: Shift over a quest icon opens its full tooltip at once, and letting go folds it again."] = "Carte avec Questie : maintenez Maj au-dessus d’une icône de quête pour afficher son infobulle complète ; relâchez Maj pour la refermer.",
+	["Your corpse shows on the map and the minimap again after you die."] = "Votre cadavre s'affiche de nouveau sur la carte et la minicarte après votre mort.",
+	["Druid Forms: buffs and debuffs anchored to the player frame hang under its row instead of covering it."] = "Formes de druide : les améliorations et affaiblissements ancrés au cadre du joueur se placent sous sa rangée au lieu de la couvrir.",
+	["Pet frame: one you moved stays where you put it in fights, instead of jumping under the player frame."] = "Cadre du familier : déplacé, il reste là où vous l'avez mis en combat au lieu de sauter sous le cadre du joueur.",
+	["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Modifier la disposition : au prochain /reload, MelloUI utilisera sa copie de la disposition du jeu. Les barres déplacées, comme celle des totems, garderont ainsi leur place en combat.",
+	["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "Affichage personnel : Position des pourcentages affiche les pourcentages de vie et de ressource sur les barres, comme les valeurs des Formes de druide.",
+	["Mail: an empty subject takes the name of the first item you attach."] = "Courrier : un sujet vide prend le nom du premier objet joint.",
+	["Supporters page: the people who send code and translations on GitHub, credited under the banners."] = "Page des soutiens : les personnes qui envoient du code et des traductions sur GitHub, remerciées sous les bannières.",
+	["Cast Marks (off until turned on): your latency hatched at the end of each cast, and a mark for each tick of a channel."] = "Repères d’incantation (désactivés par défaut) : une zone hachurée indique votre latence à la fin de chaque incantation, avec un repère pour chaque pulsation d’un sort canalisé.",
+	["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "Temps de recharge : Chiffres pendant le combat peut masquer le compte à rebours du jeu en combat, et Assombrissement du balayage permet de régler l’obscurité du balayage.",
+	["Demon Grimoires (off until turned on): what your demons know, marked at the vendor and in grimoire tooltips."] = "Grimoires démoniaques (désactivés par défaut) : ce que savent vos démons, marqué chez le marchand et dans les infobulles des grimoires.",
+	["Mail Recipients: no realm behind your own characters any more when the game names none."] = "Destinataires du courrier : le nom du royaume n’est plus ajouté à vos personnages lorsque le jeu ne le fournit pas.",
+	["Press and Hold Casting works on MelloUI's action bars."] = "La fonction « Maintenir la touche pour lancer » est compatible avec les barres d’action de MelloUI.",
+	["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "Quête suivie uniquement (Liste des quêtes > Carte) : affiche uniquement la quête suivie sur la carte et la minicarte.",
+	["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "Touche « Tout ramasser » : une touche permet de tout prendre dans la fenêtre de butin (Fenêtres > Fenêtres de butin).",
+	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Affichage personnel : les clics traversent les barres, ce qui évite à Clique de lancer un sort lorsque vous déplacez la caméra.",
+	["Edit Layout: move and size the totem and minion timers."] = "Modifier la disposition : déplacez et redimensionnez les minuteurs des totems et des serviteurs.",
+	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "Modifier la disposition : déplacer les objectifs de champ de bataille et de zone en haut de l'écran.",
+	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Rapport des actions bloquées (/mellobug) : avec une manette, le rapport surveille aussi la navigation du jeu à la manette.",
+	["Where the health and power percents stand: beside the bars, or centred on them like Druid Forms' numbers."] = "Où se placent les pourcentages de vie et de puissance : à côté des barres, ou centrés dessus comme les nombres des Formes de druide.",
+	["Guides: each guide's card under Addons picks where its steps show: MelloUI's Quest Tracker, the guide's own window, or both."] = "Guides : la fiche de chaque guide dans Addons permet de choisir où afficher ses étapes : dans le suivi des quêtes de MelloUI, dans la fenêtre du guide ou dans les deux.",
+	["Polestar in the Quest Tracker: each step shows who or where it is, and Polestar's note under its goals."] = "Polestar dans le suivi des quêtes : chaque étape indique la cible ou le lieu à rejoindre et affiche les notes de Polestar sous ses objectifs.",
+	["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "Marqueur du monde : sur une quête, il se place sur le point du jeu lui-même, à sa vraie hauteur, même quand vous regardez depuis une colline.",
+	["Leveling guides: a step whose quest is in your log puts the World Marker on the game's own point for it too."] = "Guides de progression : si la quête d’une étape figure dans votre journal, le marqueur du monde indique aussi son emplacement sur la carte du jeu.",
+	["World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does."] = "Marqueur du monde : hors de l'écran, sa flèche suit un ovale autour du centre de l'écran, comme le marqueur de focus du jeu lui-même.",
+	["Action bars: the range colour no longer sticks after a vehicle or form bar, and cooldown numbers keep showing when the game hides cooldown times."] = "Barres d’action : la couleur de portée ne reste plus après l’utilisation d’une barre de véhicule ou de forme. Les chiffres de recharge restent visibles même lorsque le jeu masque les temps de recharge.",
+	["Race bar: a new choice, Your Pick, shows damage, healing and threat as rows, one under the other. Auto stays the default and stays one row."] = "Barre de performance : le nouveau mode Personnalisé affiche les dégâts, les soins et la menace sur des lignes distinctes. Le mode Auto reste le réglage par défaut et n’affiche qu’une ligne.",
+	["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "Destinataires du courrier : le bouton près du champ Destinataire ouvre une liste à côté de la fenêtre d’envoi. Les personnages des amis se déplient dans la liste, qui conserve son état ouvert ou fermé.",
+	["More in French: Edit Layout, the Quest List's filters, Follow The Arrow's menu, Voice Over's buttons, the Stats tooltip and the boat route markers."] = "Traductions françaises ajoutées : Modifier la disposition, les filtres de la liste des quêtes, le menu de Follow The Arrow, les boutons de Voice Over, l’infobulle des statistiques et les repères des trajets en bateau.",
+	["Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before."] = "Cadres de groupe Oldschool : l’insigne de niveau et sa bordure sont dessinés par-dessus l’anneau du portrait. Auparavant, l’anneau passait en travers de l’insigne.",
+	["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "Les jets de butin ont maintenant leur propre fenêtre : elle affiche les choix et les résultats, puis l’objet est envoyé au gagnant.",
+	["Polestar in the Quest Tracker: click a goal line to follow its quest. The step shows its distance, its quest item and a button for Polestar's open guide tabs."] = "Polestar dans le suivi des quêtes : cliquez sur un objectif pour suivre sa quête. L’étape indique la distance, l’objet de quête et propose un bouton vers les guides Polestar ouverts.",
+	["Polestar in the Quest Tracker: step numbers match Polestar's window, and the guide section no longer vanishes on some steps."] = "Polestar dans le Suivi des quêtes : les numéros d’étape correspondent à la fenêtre de Polestar, et la section du guide ne disparaît plus à certaines étapes.",
+	["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "Contrôle mental et autres prises de contrôle : la barre du familier et les techniques de la créature contrôlée restent affichées.",
+	["GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap."] = "GatherMate2 : ses herbes, filons, bancs de poissons et trésors avec les icônes de MelloUI, sur la carte et la minicarte.",
+	["Druid Forms on the player frame too: your other two powers in one row under the power bar, split in two, each with its number. The Personal Display shows them the same way."] = "Les formes de druide s’affichent aussi sur le cadre du joueur : les deux autres ressources apparaissent sous la barre, chacune avec sa valeur. L’Affichage personnel les présente de la même façon.",
+	["Questing with Questie: no more hitch each time an item is picked up, a kill counts or a quest is finished."] = "Quêtes avec Questie : plus de saccade à chaque objet ramassé, chaque ennemi compté ou chaque quête terminée.",
+	-- the options new in 2.1.60 (the Personal Display's Mana Regen Pause and Druid Forms, Restock's Shopping List Below)
+	["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "Animations de quête : l’animation des objets ramassés dure plus longtemps. Leur icône et leur quantité restent affichées deux secondes avant de rejoindre le suivi.",
+	["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "Oldschool : les animations de quête reprennent le style de cadres choisi. L’icône apparaît dans son anneau et le texte sur une plaque assortie, avec un effet peint.",
+	["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "Oldschool : les barres de progression reprennent le style de cadres choisi au lieu de l’encadrement à extrémités en losange. Les lignes des listes sont fines et posées sur un fond sombre, au lieu de larges barres dorées.",
+	["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool : choisissez parmi trois styles de cadres dans Bordures > Style de cadres : Pierre dorée, Fer forgé ou Bois sculpté. Ils habillent les cadres d’unité, la barre d’incantation, l’Affichage personnel, les barres d’info et la discussion.",
+	-- Additional interface labels and messages
+	["Nothing found."] = "Aucun résultat.",
+	["Buff name or ID"] = "Nom ou ID de l’amélioration",
+	["+ Add"] = "+ Ajouter",
+	["+ Spell"] = "+ Sort",
+	["Most shown"] = "Nombre maximal affiché",
+	["Order"] = "Ordre",
+	["When"] = "Quand",
+	["Drag it onto another group's card to move it there, onto another row for your order, onto the frame for a spell of its own."] = "Faites glisser le sort sur la carte d’un autre groupe pour l’y déplacer, sur une autre ligne pour changer son ordre ou sur le cadre pour l’afficher séparément.",
+	["%s is a debuff: the game does not let a debuff be picked by its spell. Put the Lockouts group on the frame: it shows the ones you cast."] = "%s est un affaiblissement. Le jeu ne permet pas de sélectionner un affaiblissement par son sort. Placez le groupe Restrictions temporaires sur le cadre pour afficher ceux que vous lancez.",
+	["Add by name"] = "Ajouter par nom",
+	["a buff or debuff on you"] = "une amélioration ou un affaiblissement qui vous affecte",
+	["by its name"] = "par son nom",
+	["Voice Over: no text-to-speech voices installed. Add voices in Windows speech settings."] = "Voice Over : aucune voix de synthèse n’est installée. Ajoutez-en dans les réglages de synthèse vocale de votre système.",
+	["Voice Over: text-to-speech playback failed. Check that a voice is installed and selected."] = "Voice Over : la lecture par synthèse vocale a échoué. Vérifiez qu’une voix est installée et sélectionnée.",
+	["Voice Over: nothing to read for this quest."] = "Voice Over : aucun texte à lire pour cette quête.",
+	["Select a quest in the quest log first."] = "Sélectionnez d’abord une quête dans le journal des quêtes.",
+	["Nothing to read for that quest."] = "Aucun texte à lire pour cette quête.",
+	["The widgets' place reset."] = "La position des éléments d’interface a été réinitialisée.",
+	["Collected so far: %d quest lines from %d quests (%d without a recording), %d greetings (%d without)."] = "Collecte actuelle : %d répliques de quête issues de %d quêtes (%d sans enregistrement) et %d salutations (%d sans enregistrement).",
+	["Voice Over plays %s."] = "Voice Over lit %s.",
+	["Voice pack %s: build %s, %d lines, %d recordings, %d NPCs."] = "Pack de voix %s : version %s, %d répliques, %d enregistrements et %d PNJ.",
+	["No old voice packs installed."] = "Aucun ancien pack de voix installé.",
+	["Pack %s: %d recorded lines (priority %d)."] = "Pack %s : %d répliques enregistrées (priorité %d).",
+	["Pack %s could not be loaded: %s"] = "Impossible de charger le pack %s : %s",
+	["The Voice Over widget is not showing."] = "L’élément d’interface de Voice Over est masqué.",
+	["Portrait: creature %s, loaded %s, tries %s, shown %s, size %dx%d"] = "Portrait : créature %s, chargé %s, tentatives %s, visible %s, taille %d × %d",
+	["Voice Over is disabled. Enable it under /mello."] = "Voice Over est désactivé. Activez-le dans /mello.",
+	["Reading as %s (%s, %s)."] = "Lecture avec la voix de %s (%s, %s).",
+	["No NPC targeted; reading with the male voice."] = "Aucun PNJ ciblé. Lecture avec la voix masculine.",
+	["No text-to-speech voices found."] = "Aucune voix de synthèse trouvée.",
+	["Installed voices (male pick: %s, female pick: %s):"] = "Voix installées (voix masculine sélectionnée : %s, voix féminine sélectionnée : %s) :",
+	["Target or talk to an NPC first."] = "Ciblez d’abord un PNJ ou parlez-lui.",
+	["%s  (NPC ID %d)"] = "%s  (ID du PNJ : %d)",
+	["Voice Over: this client has no text-to-speech API; the module will do nothing."] = "Voice Over : ce client ne prend pas en charge la synthèse vocale. Le module restera inactif.",
+	["Unknown command or page '%s'. /mello help lists the commands, /mello list the modules."] = "Commande ou page « %s » inconnue. /mello help affiche les commandes et /mello list les modules.",
+	["Modules:"] = "Modules :",
+	["Unknown module '%s'. Use /mello list."] = "Module « %s » inconnu. Utilisez /mello list.",
+	["No default profile."] = "Aucun profil par défaut.",
+	["Profile '%s' imported (%d settings). /mello profile load %s to use it."] = "Profil « %s » importé (%d réglages). Utilisez /mello profile load %s pour l’activer.",
+	["Profiles (%d). Active: %s, default: %s."] = "Profils (%d). Actif : %s. Par défaut : %s.",
+	["The installer is not available."] = "L’installateur est indisponible.",
+	["The Personal Display is not loaded."] = "L’Affichage personnel n’est pas chargé.",
+	["Status (v%s):"] = "État (v%s) :",
+	["Commands:"] = "Commandes :",
+	["Press the controller's buttons now: the dump opens in 8 seconds."] = "Appuyez maintenant sur les boutons de la manette. Le rapport s’ouvrira dans 8 secondes.",
+	["No whisper window open (Whisper Popup Window makes them)."] = "Aucune fenêtre de chuchotement ouverte. L’option de fenêtre de chuchotement permet de les afficher.",
+	["Combat Text: the order of hits and threat updates on the plates for %d seconds. Pull a fresh mob."] = "Texte de combat : l’ordre des coups et des mises à jour de menace sur les barres d’info sera relevé pendant %d secondes. Engagez un nouvel ennemi.",
+	["Route: %d learned points, %d traced road points, %d links, %d docks, %d flight points (%d usable)%s."] = "Itinéraire : %d points appris, %d points routiers tracés, %d liaisons, %d quais et %d points de vol (%d utilisables)%s.",
+	["%s did not play (a new sound file needs a full client restart)."] = "Impossible de jouer %s. Tout nouveau fichier audio nécessite de relancer le jeu.",
+	["Custom Sounds: this client has no MuteSoundFile, the game's own sounds cannot be silenced; the custom ones play on top of them."] = "Sons personnalisés : ce client ne permet pas de couper les sons du jeu. Les sons personnalisés se superposent aux sons d’origine.",
+	["No sound '%s'. /sfx list names them."] = "Aucun son nommé « %s ». Utilisez /sfx list pour afficher les noms.",
+	["Sounds:"] = "Sons :",
+	["No minimap cluster."] = "Le cadre de la minicarte est introuvable.",
+	-- Group Frames, combat labels and key bindings
+	["What your own spells left on them: Weakened Soul after your shield, Forbearance after your blessing. The game does not let a debuff be picked by its spell, so another player's are not shown."] = "Les affaiblissements laissés par vos sorts : Âme affaiblie après votre bouclier, Longanimité après votre bénédiction. Le jeu ne permet pas de sélectionner un affaiblissement par son sort, donc ceux des autres joueurs ne sont pas affichés.",
+	["absorb"] = "absorption",
+	["Stunned"] = "Étourdi",
+	["Interrupted"] = "Interrompu",
+	["Failed"] = "Échec",
+	["Miss"] = "Raté",
+	["Dodge"] = "Esquive",
+	["Parry"] = "Parade",
+	["Evade"] = "Évite",
+	["Immune"] = "Insensible",
+	["Deflect"] = "Dévié",
+	["Reflect"] = "Renvoyé",
+	["Misfire"] = "Raté",
+	["Block"] = "Blocage",
+	["Absorb"] = "Absorption",
+	["Resist"] = "Résiste",
+	["Dispelled"] = "Dissipé",
+	["Extra Attack"] = "Attaque supplémentaire",
+	["+Combat"] = "+Combat",
+	["-Combat"] = "−Combat",
+	["Honor"] = "Honneur",
+	["Open or close Dungeon Info"] = "Ouvrir ou fermer les Infos des donjons",
+	["Open or close MelloUI's map"] = "Ouvrir ou fermer la carte de MelloUI",
+	["Open MelloUI's map with your quests"] = "Ouvrir la carte de MelloUI avec vos quêtes",
+	["Quest Tracker: step in with the controller"] = "Suivi des quêtes : ouvrir avec la manette",
+	["Quest Tracker: next quest"] = "Suivi des quêtes : quête suivante",
+	["No secret value in reach right now. Part 2 runs by itself as soon as the game hands one out: target an enemy and fight it. /mello secrets again re-runs part 1."] = "Aucune valeur secrète accessible pour l’instant. La deuxième partie se lance dès que le jeu en fournit une : ciblez un ennemi et engagez le combat. Tapez à nouveau /mello secrets pour relancer la première partie.",
+	-- Addon messages and diagnostics
+	["UIParent scale = %s, effective = %s, size = %s x %s UI units"] = "Échelle de UIParent = %s, effective = %s, dimensions = %s × %s unités d’interface",
+	["physical screen = %s x %s px; a pixel-exact UI scale here would be %s"] = "Écran physique = %s × %s px. Échelle de l’interface pour un rendu au pixel près : %s",
+	["one UI unit = %s screen px"] = "Une unité d’interface = %s px à l’écran",
+	["Kit.scale = %s UI units per piece px; backgrounds registered = %d; scale listeners through the kit = %d"] = "Kit.scale = %s unités d’interface par pixel d’élément, fonds enregistrés = %d, abonnés aux changements d’échelle via le kit = %d",
+	["last refit (%s, %.0f s ago, UIParent effective %s): %d backgrounds laid again, %d left (size unreadable), the 'scale' listeners told"] = "Dernier réajustement (%s, il y a %.0f s, échelle effective de UIParent %s) : %d fonds repositionnés, %d conservés (taille illisible), abonnés à « scale » avertis",
+	["the UI scale changed since the last refit and none ran: /uiscaledump refit"] = "L’échelle de l’interface a changé sans réajustement depuis. Utilisez /uiscaledump refit.",
+	["no refit since the last reload (the UI scale has not changed); /uiscaledump refit runs one"] = "Aucun réajustement depuis le dernier /reload (échelle inchangée). Utilisez /uiscaledump refit pour en lancer un.",
+	["  also on the minimap: %s, %d px, draws %s%s"] = "  Également sur la minicarte : %s, %d px, affichage %s%s",
+	["  other pictures in sight on the minimap: %d"] = "  Autres icônes visibles sur la minicarte : %d",
+	["  near you on the minimap: its place unreadable"] = "  À proximité sur la minicarte : position illisible",
+	["== Pictures near you on the minimap (within %d px; a mark not listed is the game's own): %d"] = "== Icônes proches sur la minicarte (dans un rayon de %d px, les repères absents de la liste viennent du jeu) : %d",
+	["== Questie's icons: Use with MelloUI %s, MelloUI's minimap marks %s, MelloUI's map %s; hooks: picture %s, minimap pins %s"] = "== Icônes de Questie : utilisation avec MelloUI %s, repères MelloUI sur la minicarte %s, carte de MelloUI %s. Fonctions interceptées : icônes %s, repères de minicarte %s",
+	["  QuestieFrame%d: %s, Icon %s, quest %s, alpha %s, glow %s; seen %s, out of sight %s, own hook %s, its UpdateTexture the hooked one %s, on %s; look %s, cover %s, drawn here %s; in sight: %s"] = "  QuestieFrame%d : %s, icône %s, quête %s, opacité %s, halo %s. Détecté %s, hors champ %s, pris en charge %s, UpdateTexture interceptée %s, actif %s. Style %s, recouvrement %s, dessiné ici %s. Dans le champ : %s",
+	["Secret-value tools on this client (part 1 of 2):"] = "Outils de valeurs secrètes sur ce client (partie 1 sur 2) :",
+	["  present (%d): %s"] = "  Présents (%d) : %s",
+	["  MISSING (%d): %s"] = "  MANQUANTS (%d) : %s",
+	["  StatusBar:SetValue with smoothing: %s"] = "  StatusBar:SetValue avec lissage : %s",
+	["  AuraContainer frame type: %s"] = "  Type de cadre AuraContainer : %s",
+	["  event ADDON_RESTRICTION_STATE_CHANGED: %s"] = "  Événement ADDON_RESTRICTION_STATE_CHANGED : %s",
+	["  secret restrictions active on this client: %s"] = "  Restrictions sur les valeurs secrètes actives sur ce client : %s",
+	["  colour curve through UnitHealthPercent: %s"] = "  Courbe de couleur via UnitHealthPercent : %s",
+	["Secret found (part 2 of 2): a %s of %s. What this client allows with it:"] = "Valeur secrète trouvée (partie 2 sur 2) : %s de %s. Opérations autorisées par ce client :",
+	["/mello profile save <name> | load <name> | delete <name> | default <name|none> | export <name> | import <name> | list"] = "/mello profile save <nom> | load <nom> | delete <nom> | default <nom|none> | export <nom> | import <nom> | list",
+	["Edit Mode layout '%s' (%d chars), the game's share string, ready to copy:"] = "Disposition du mode Édition « %s » (%d caractères). Chaîne de partage du jeu prête à copier :",
+	["/mello layout export (the active layout's share string, to copy) | apply (Mello's layout, fitted to your screen, into Edit Mode and made active) | check (what the game holds for the layout, to copy and send)"] = "/mello layout export (copie la chaîne de partage de la disposition active) | apply (adapte la disposition de Mello à votre écran et l’active dans le mode Édition) | check (affiche la disposition enregistrée par le jeu, prête à copier et à envoyer)",
+	["CPU profiling is off. Run  /console scriptProfile 1  then /reload, and /mello cpu again. Turn it off afterwards with  /console scriptProfile 0  (profiling itself costs a little performance)."] = "Le profilage du processeur est désactivé. Tapez /console scriptProfile 1, puis /reload, puis /mello cpu. Désactivez-le ensuite avec /console scriptProfile 0, car le profilage réduit légèrement les performances.",
+	["CPU counters reset. Play a while, then /mello cpu."] = "Compteurs du processeur remis à zéro. Jouez un moment, puis tapez /mello cpu.",
+	["CPU since login or the last reset: %.0f ms in MelloUI in total."] = "Temps processeur depuis la connexion ou la dernière remise à zéro : %.0f ms au total dans MelloUI.",
+	["Preload Artwork: nothing held (the option, the reskin or UI Modifications is off)."] = "Préchargement des éléments graphiques : aucun fichier conservé (l’option, le thème ou les Modifications de l’interface sont désactivés).",
+	["Preload Artwork: %d files held, %d of them loaded."] = "Préchargement des éléments graphiques : %d fichiers conservés, dont %d chargés.",
+	["Preload Artwork: %d files held (this client does not report which are loaded)."] = "Préchargement des éléments graphiques : %d fichiers conservés (ce client n’indique pas lesquels sont chargés).",
+	["%s %s: stored %s/%s %.1f %.1f | layout %s %s/%s %s %s%s | now %s | %s, %s%s"] = "%s %s : enregistré %s/%s %.1f %.1f | disposition %s %s/%s %s %s%s | actuel %s | %s, %s%s",
+	["%d stored Edit Mode place(s); Edit Mode %s"] = "%d positions enregistrées pour le mode Édition. Mode Édition %s",
+	["Classes in this client: %s"] = "Classes disponibles sur ce client : %s",
+	["Class icons mapped (%d/%d): %s"] = "Icônes de classe associées (%d/%d) : %s",
+	["Faction icons mapped: %s"] = "Icônes de faction associées : %s",
+	["%s: no portrait found"] = "%s : aucun portrait trouvé",
+	["%s portrait: no cover made"] = "Portrait de %s : aucun recouvrement créé",
+	["%s portrait: cover %s, class %s, the game's portrait %s (portrait %s %s, cover %s %s)"] = "Portrait de %s : recouvrement %s, classe %s, portrait du jeu %s (portrait %s %s, recouvrement %s %s)",
+	["target: none"] = "Cible : aucune",
+	["target: not a player, keeps the game's own portrait"] = "Cible : personnage non joueur, portrait du jeu conservé",
+	["target: class is a secret value on this client, cannot pick an icon"] = "Cible : classe masquée par le client, impossible de choisir une icône",
+	["target: portrait replaced with the %s medallion"] = "Cible : portrait remplacé par le médaillon %s",
+	["target: class %s has no mapped icon, portrait unchanged"] = "Cible : aucune icône associée à la classe %s, portrait inchangé",
+	["Bar Textures on: %s   Execute Range: %s   below: %s%%   unit frames: %s   nameplates: %s"] = "Textures de barre : %s   Seuil d’exécution : %s   sous : %s %%   cadres d’unité : %s   barres d’info : %s",
+	["curve: %s   C_CurveUtil: %s   UnitHealthPercent: %s"] = "Courbe : %s   C_CurveUtil : %s   UnitHealthPercent : %s",
+	["curve methods: %s"] = "Méthodes de la courbe : %s",
+	["   curve at %.1f: %s %s %s alpha %s"] = "   Courbe à %.1f : %s %s %s, opacité %s",
+	["   curve at %.1f: %s"] = "   Courbe à %.1f : %s",
+	["target's health percent (no curve): %s"] = "Pourcentage de vie de la cible (sans courbe) : %s",
+	["bar %d: unit %s, group %s, attackable %s"] = "Barre %d : unité %s, groupe %s, attaquable %s",
+	["   curve answer: %s (%s)"] = "   Valeur renvoyée par la courbe : %s (%s)",
+	["   alpha field: %s   GetRGBA: %s %s %s %s"] = "   Champ d’opacité : %s   GetRGBA : %s %s %s %s",
+	["   fill: %s, layer %s %s"] = "   Remplissage : %s, couche %s %s",
+	["   tint: shown %s, alpha %s, layer %s %s, points %s"] = "   Teinte : visible %s, opacité %s, couche %s %s, points d’ancrage %s",
+	["   no tint made on this bar yet"] = "   Aucune teinte appliquée à cette barre pour l’instant",
+	["No health bar of your target is known to Bar Textures (target something first)."] = "Textures de barre ne détecte aucune barre de vie pour votre cible. Sélectionnez d’abord une cible.",
+	["surface %s: on=%s active=%s"] = "Surface %s : activée=%s, active=%s",
+	["  %q recorded=%s ink=%s role=%s colour=%.2f,%.2f,%.2f skip=%s default=%s"] = "  %q enregistré=%s encre=%s rôle=%s couleur=%.2f,%.2f,%.2f ignoré=%s défaut=%s",
+	["    over plate: %s"] = "    Au-dessus de la barre d’info : %s",
+	["    kit %s key=%s base=%s body=%s obj=%s level=%s"] = "    Kit %s clé=%s base=%s corps=%s objectif=%s niveau=%s",
+	["    texture d%d %s atlas=%s tex=%s kit=%s alpha=%.2f"] = "    Texture d%d %s atlas=%s tex=%s kit=%s opacité=%.2f",
+	["    parent%d %s %s shown=%s rep=%s"] = "    Parent %d %s %s visible=%s recouvrement=%s",
+	["      strip %s shown=%s inside=%s"] = "      Bande %s visible=%s à l’intérieur=%s",
+	["      kit texture %s shown=%s inside=%s"] = "      Texture du kit %s visible=%s à l’intérieur=%s",
+	["%d string(s) under the mouse."] = "%d chaînes sous le pointeur.",
+	["Swing log for %d seconds: fire a few shots standing still, then a few while stepping (a melee or wand fight works too). Copy it from /mellolog."] = "Journal des attaques pendant %d secondes : tirez quelques fois à l’arrêt, puis en vous déplaçant. Un combat en mêlée ou à la baguette fonctionne aussi. Copiez le journal depuis /mellolog.",
+	["No nameplates readable."] = "Aucune barre d’info lisible.",
+	["Party Markers: module %s, instance=%s, %d plates handed to addons"] = "Marqueurs de groupe : module %s, instance=%s, %d barres d’info accessibles aux extensions",
+	["%d %s: plate forbidden=%s frame forbidden=%s  class=%s role=%s  marker=%s  |%s"] = "%d %s : barre d’info protégée=%s, cadre protégé=%s, classe=%s, rôle=%s, marqueur=%s  |%s",
+	["Inside an instance this game draws friendly nameplates on its own side and hands none of them to addons: they cannot carry a marker here."] = "En instance, le jeu affiche lui-même les barres d’info alliées et ne les rend pas accessibles aux extensions. MelloUI ne peut donc pas y poser de marqueur.",
+	["Custom Sounds: module %s, set %s, MuteSoundFile %s, %d files muted, channel %s, hook %s, %d wheel hooks, live log %s"] = "Sons personnalisés : module %s, ensemble %s, MuteSoundFile %s, %d fichiers rendus muets, canal %s, interception %s, %d interceptions de molette, journal en direct %s",
+	["Groups: %s"] = "Groupes : %s",
+	["PlaySoundFile, slowest: %s"] = "Appels les plus lents à PlaySoundFile : %s",
+	["Sounds: %s"] = "Sons : %s",
+	["Custom Sounds live log %s%s"] = "Journal en direct des sons personnalisés %s%s",
+	["kit %d %s: file %s, replacement %s (group %s)"] = "Kit %d %s : fichier %s, remplacement %s (groupe %s)",
+	["/sfx play <name>, /sfx list, /sfx log (print each sound the game plays and what replaced it), /sfx kit <id>, /sfxdump"] = "/sfx play <nom>, /sfx list, /sfx log (affiche chaque son joué par le jeu et son remplacement), /sfx kit <id>, /sfxdump",
+	["Last %d sound events (time within the hour, newest last):"] = "Derniers événements sonores (%d, heure relative à l’heure en cours, les plus récents en dernier) :",
+	["unit %s (Action Bar 1's button, screen px), drawer %s, %d members"] = "Unité %s (bouton de la barre d’action 1, en pixels écran), tiroir %s, %d éléments",
+	["%d %s: %s  %.0f,%.0f - %.0f,%.0f  size %s  in a backdrop %s"] = "%d %s : %s  %.0f,%.0f - %.0f,%.0f  taille %s  dans un fond %s",
+	["holder of %s: shown=%s  %s"] = "Conteneur de %s : visible=%s  %s",
+	["fit %s: x%.3f on %.3f, default place %s"] = "Ajustement %s : ×%.3f sur %.3f, position par défaut %s",
+	["== MinimapCluster  %s L%d; Minimap L%d; backdrop L%d"] = "== MinimapCluster %s L%d, minicarte L%d, fond L%d",
+	["== size  asked %s x %s; map %s square, shows %s x %s (%s); Edit Mode's Size %s, container %s"] = "== Taille demandée %s × %s, carte %s carrée, affichage %s × %s (%s), taille en mode Édition %s, conteneur %s",
+	["== look  border %s (saved %s); merged %s; painted skin %s; square frame %s"] = "== Apparence : bordure %s (enregistrée %s), fusionnée %s, thème peint %s, cadre carré %s",
+	["/chatink: no chat window %d."] = "/chatink : aucune fenêtre de discussion n° %d.",
+	["ChatFrame%d: %d lines drawn, %d inked, %d protected. Parchment ink %s."] = "ChatFrame%d : %d lignes affichées, %d encrées, %d protégées. Encre sur parchemin %s.",
+	["  ink engine %s, chat reskin covered %s, parchment_chat %s, surface %s (active %s), ink on its lines %s, outline flags %q"] = "  Moteur d’encrage %s, habillage de la discussion couvert %s, parchment_chat %s, surface %s (active %s), encre des lignes %s, options de contour %q",
+	["  name shade: visible lines %s, RefreshDisplay %s, bands shown %d"] = "  Ombre des noms : lignes visibles %s, RefreshDisplay %s, bandes affichées %d",
+	["  names in ink %d, with their class gem %d (the class from the line's GUID: C_ChatInfo.GetChatLineSenderGUID %s)"] = "  %d noms encrés, dont %d avec leur emblème de classe (classe obtenue à partir du GUID de la ligne, C_ChatInfo.GetChatLineSenderGUID %s)",
+	["  still bright: %s"] = "  Toujours lumineux : %s",
+	["  line: %s"] = "  Ligne : %s",
+	["Chat hooks: %s"] = "Fonctions de discussion interceptées : %s",
+	["Fonts: module %s, style %s"] = "Polices : module %s, style %s",
+	["  chat %s | chat text %s | chat on parchment %s"] = "  Discussion %s | texte de discussion %s | discussion sur parchemin %s",
+	["  wanted on this window: %s %s"] = "  Réglage souhaité pour cette fenêtre : %s %s",
+	["  window: %s | its font object %s: %s"] = "  Fenêtre : %s | son objet de police %s : %s",
+	["  drawn line: %s | its font object %s: %s"] = "  Ligne affichée : %s | son objet de police %s : %s",
+	["%s: watched %s, gliding now %s, glides %d, jumps %d; hooks: %s"] = "%s : surveillée %s, défilement en cours %s, %d défilements fluides, %d sauts, fonctions interceptées : %s",
+	["  drawn lines %s, messages %s, history readable %s, offset %s of %s (glide at %s, to %s)"] = "  Lignes affichées %s, messages %s, historique lisible %s, décalage %s sur %s (défilement à %s, vers %s)",
+	["  no drawn line to look at"] = "  Aucune ligne affichée à examiner",
+	["  lines' parent: %s, clips its children %s"] = "  Parent des lignes : %s, rogne ses éléments enfants %s",
+	["  first line: %s anchor(s), %s to %s %s (%s, %s)"] = "  Première ligne : %s points d’ancrage, %s vers %s %s (%s, %s)",
+	["  glide can move it: %s; a line's step %.1f px"] = "  Déplacement possible pendant le défilement : %s. Hauteur d’une ligne : %.1f px",
+	["Smooth Scrolling: %s (option %s, Reduce Motion %s, Chat module %s)"] = "Défilement fluide : %s (option %s, réduction des animations %s, module Discussion %s)",
+	["  OFF for this session: a glide failed (%s); the wheel scrolls as the game's"] = "  Désactivé pour cette session : un défilement fluide a échoué (%s). La molette utilise le défilement du jeu.",
+	["  OFF on the game's chat windows: their scroll offset turned tainted (by %s) after MelloUI set it"] = "  Désactivé dans les fenêtres de discussion du jeu : le décalage de défilement a été contaminé (par %s) après sa modification par MelloUI.",
+	["/chatscroll: no chat window %d."] = "/chatscroll : aucune fenêtre de discussion n° %d.",
+	["  scroll offset the game's own (untainted): %s%s"] = "  Décalage de défilement du jeu (non contaminé) : %s%s",
+	["Last events (seconds, newest last):"] = "Derniers événements (en secondes, les plus récents en dernier) :",
+	["Group Frames on %s  retail %s  In A Party %s  solo %s  Out Of Range Opacity %s  the game's hidden %s"] = "Cadres de groupe %s, Retail %s, en groupe %s, en solo %s, opacité hors de portée %s, cadres du jeu masqués %s",
+	["   the game's %s: shown %s alpha %s visible %s"] = "   Cadre du jeu %s : affiché %s, opacité %s, visible %s",
+	["parts: name [%s]  level [%s]  buffs [%s]"] = "Éléments : nom [%s], niveau [%s], améliorations [%s]",
+	["%s: none"] = "%s : aucun",
+	["%s: unit %s shown %s alpha %s range %s/%s"] = "%s : unité %s, affichée %s, opacité %s, portée %s/%s",
+	["   name: %s"] = "   Nom : %s",
+	["   level: %s"] = "   Niveau : %s",
+	["   buff row: %s"] = "   Rangée d’améliorations : %s",
+	["replica against %s:"] = "Comparaison de la réplique avec %s :",
+	["   %s: %s | replica %s | %s %s"] = "   %s : %s | réplique %s | %s %s",
+	["replica against the frames: open the Designer's Party > Portraits first"] = "Pour comparer la réplique aux cadres, ouvrez d’abord Groupe > Portraits dans l’éditeur.",
+	["  %-28s not on this client"] = "  %-28s indisponible sur ce client",
+	["Personal Display: the player's values now"] = "Affichage personnel : valeurs actuelles du joueur",
+	["Follow Camera Zoom: placed at zoom %s, scaled by %.2f now"] = "Suivre le zoom de la caméra : position réglée au zoom %s, échelle actuelle %.2f",
+	["Read while it ran: the shield %s, the cast's times %s"] = "Valeurs relevées pendant le test : bouclier %s, durées d’incantation %s",
+	["The shield's last reads, oldest first:"] = "Dernières mesures du bouclier, les plus anciennes en premier :",
+	["The shields' own auras known now (%d), as the game hands them:"] = "Auras de bouclier connues (%d), telles que le jeu les transmet :",
+	["  aura %s: %s"] = "  Aura %s : %s",
+	["  aura %s: spell %s, name %s, amounts [%s], school kept %s"] = "  Aura %s : sort %s, nom %s, montants [%s], école retenue %s",
+	["  (none: put a shield up, then type this again -- in a fight and out of it)"] = "  (Aucune : activez un bouclier, puis relancez la commande, en combat et hors combat.)",
+	["Personal Display %s, its Shield Column %s; in a fight: %s."] = "Affichage personnel %s, colonne de bouclier %s, en combat : %s.",
+	["The display is not made yet (it is made when it is turned on)."] = "L’affichage n’a pas encore été créé. Il sera créé à l’activation.",
+	["The column: %s; the total %s; shown %s."] = "Colonne : %s, total : %s, affichée : %s.",
+	["Your shields known (%d), bottom up:"] = "Vos boucliers connus (%d), du bas vers le haut :",
+	["  %d. %s: %s, %s; icon %s%s"] = "  %d. %s : %s, %s, icône %s%s",
+	["       its data now: %s; cast by you: %s"] = "       Données actuelles : %s, lancé par vous : %s",
+	["Waiting: %s; buffs of yours not told yet: %d."] = "En attente : %s. Nombre de vos améliorations encore non communiquées : %d.",
+	["Your buffs were read last through: %s."] = "Dernière lecture de vos améliorations via : %s.",
+	["The client's list of your buffs now: %s."] = "Liste actuelle de vos améliorations selon le client : %s.",
+	["The shield's events, oldest first (the time, since the one before, the event, what it held -> your shields known / not known yet after it):"] = "Événements du bouclier, du plus ancien au plus récent (heure, délai depuis le précédent, événement, données de l’événement → vos boucliers connus ou encore inconnus après celui-ci) :",
+	["  (none yet: put a shield up, then type this again)"] = "  (Aucun pour l’instant : activez un bouclier, puis relancez la commande.)",
+	["The column's last notes, oldest first:"] = "Dernières notes de la colonne, les plus anciennes en premier :",
+	["%s painter: %s, used=%d, frame shown=%s alpha=%s"] = "Rendu de %s : %s, utilisés=%d, cadre visible=%s, opacité=%s",
+	["  dot %d: tex=%s piece=%s uv=%s..%s,%s size=%.1f alpha=%.2f rgb=%.2f %.2f %.2f shown=%s layer=%s"] = "  Point %d : tex=%s, élément=%s, uv=%s..%s,%s, taille=%.1f, opacité=%.2f, RVB=%.2f %.2f %.2f, visible=%s, couche=%s",
+	["kit: %s"] = "Kit : %s",
+	["module enabled=%s worldMap=%s minimap=%s provider=%s destination=%s route=%s (%d points) map shown=%s"] = "Module activé=%s, carte du monde=%s, minicarte=%s, fournisseur=%s, destination=%s, itinéraire=%s (%d points), carte visible=%s",
+	["user waypoint=%s supertracking waypoint=%s"] = "Repère utilisateur=%s, repère suivi=%s",
+	["Tracked quest: %s   (C_SuperTrack %s, GetSuperTrackedQuestID %s, watch index %s)"] = "Quête suivie : %s   (C_SuperTrack %s, GetSuperTrackedQuestID %s, index de suivi %s)",
+	-- French translation audit (2.1.71)
+	["The border of buffs and debuffs of this type on MelloUI's icons: yours, your target's and enemy nameplates', where their type borders are on."] = "Bordure de cette couleur sur les améliorations et les affaiblissements de MelloUI : les vôtres, ceux de votre cible et ceux des barres d’info ennemies, lorsque les bordures par type sont activées.",
+	["Bleed"] = "Saignement",
+	["Untyped"] = "Sans type",
+	["Window Opened"] = "Ouverture d’une fenêtre",
+	["A window opening: the character sheet, the spellbook, the quest log, a profession. MelloUI's sound: Page Turn's"] = "Ouverture d’une fenêtre, par exemple la fiche de personnage, le grimoire, le journal des quêtes ou un métier. Son de MelloUI : Tourner la page.",
+	["Window Closed"] = "Fermeture d’une fenêtre",
+	["A window closing. MelloUI's sound: Cancel and Close's"] = "Fermeture d’une fenêtre. Son de MelloUI : Annuler et fermer.",
+	["Window Tab"] = "Onglet de fenêtre",
+	["A tab of one of the game's windows. MelloUI's sound: Light Click's"] = "Sélection d’un onglet dans une fenêtre du jeu. Son de MelloUI : Clic léger.",
+	["Bags Opened"] = "Ouverture des sacs",
+	["The bags opening. MelloUI's sound: Item Picked Up's"] = "Ouverture des sacs. Son de MelloUI : Objet ramassé.",
+	["Bags Closed"] = "Fermeture des sacs",
+	["The bags closing. MelloUI's sound: Item Put Down's"] = "Fermeture des sacs. Son de MelloUI : Objet posé.",
+	["Cast Bar Height"] = "Hauteur de la barre d’incantation",
+	["The height of the cast bar on enemy nameplates. Game's: the height the game gives it."] = "Hauteur de la barre d’incantation sur les barres d’info ennemies. Jeu : conserve la hauteur du jeu.",
+	["Threat Colours By Role"] = "Couleurs de menace par rôle",
+	["In group fights, an enemy's health bar takes a colour by its threat on you and your role. Tanks see the mobs they hold, are losing and have lost; healers and damage dealers see the mobs about to turn on them and the ones that have."] = "En groupe, la couleur de la barre de vie d’un ennemi dépend de sa menace envers vous et de votre rôle. Les tanks voient quels ennemis ils tiennent, sont sur le point de perdre ou ont perdus. Les soigneurs et les DPS voient lesquels vont se tourner vers eux ou l’ont déjà fait.",
+	["Safe Colour"] = "Couleur de menace stable",
+	["Threat Colours By Role: a mob that is safe. For a tank, one it holds; for a healer or damage dealer, one nowhere near turning on them."] = "Couleurs de menace par rôle : ennemi sans risque immédiat. Le tank le tient, ou il est loin de se tourner vers le soigneur ou le DPS.",
+	["Close Colour"] = "Couleur de menace imminente",
+	["Threat Colours By Role: a mob a tank is losing, or one close to turning on a healer or damage dealer."] = "Couleurs de menace par rôle : ennemi que le tank risque de perdre ou qui est sur le point de se tourner vers le soigneur ou le DPS.",
+	["Aggro Colour"] = "Couleur de l’aggro",
+	["Threat Colours By Role: a mob a tank has lost, or one that has turned on a healer or damage dealer."] = "Couleurs de menace par rôle : ennemi que le tank a perdu ou qui s’est tourné vers le soigneur ou le DPS.",
+	["MelloUI Lists The Quests"] = "Liste des quêtes de MelloUI",
+	["Whether MelloUI's tracker lists the quests itself, not Questie's tracker in MelloUI's look."] = "Utilise le suivi de MelloUI pour lister les quêtes. Lorsque l’option est désactivée, le suivi de Questie utilise le style de MelloUI.",
+	["Debuff Type Borders"] = "Bordures par type d’affaiblissement",
+	["A border in your debuffs' type colour: Magic blue, Curse purple, Disease orange, Poison green, Bleed red."] = "Colore les bordures de vos affaiblissements selon leur type : Magie en bleu, Malédiction en violet, Maladie en orange, Poison en vert et Saignement en rouge.",
+	["Untyped Debuffs Too"] = "Inclure les affaiblissements sans type",
+	["A border on your debuffs that have no type too, such as physical ones."] = "Ajoute une bordure à vos affaiblissements sans type, notamment certains effets physiques.",
+	["Buff Type Borders"] = "Bordures par type d’amélioration",
+	["A border in your buffs' type colour too, such as blue for Magic ones."] = "Colore aussi les bordures de vos améliorations selon leur type, par exemple en bleu pour la Magie.",
+	["A border in your target's debuffs' type colour: Magic blue, Curse purple, Disease orange, Poison green, Bleed red."] = "Colore les bordures des affaiblissements de votre cible selon leur type : Magie en bleu, Malédiction en violet, Maladie en orange, Poison en vert et Saignement en rouge.",
+	["A border on your target's debuffs that have no type too, such as physical ones."] = "Ajoute aussi une bordure aux affaiblissements sans type de votre cible, notamment certains effets physiques.",
+	["A border in your target's buffs' type colour, so you see the Magic buffs you can purge or steal."] = "Colore les bordures des améliorations de votre cible selon leur type pour repérer les effets de Magie que vous pouvez dissiper ou voler.",
+	["Only Stealable"] = "Seulement les améliorations volables",
+	["Only the buffs a mage can steal get their border."] = "Affiche une bordure uniquement sur les améliorations qu’un mage peut voler.",
+	["Timer Position"] = "Position du temps restant",
+	["Where the time left stands on the debuff icons on enemy nameplates."] = "Position du temps restant sur les icônes d’affaiblissement des barres d’info ennemies.",
+	["On The Icon"] = "Sur l’icône",
+	["Above The Icon"] = "Au-dessus de l’icône",
+	["Under The Icon"] = "Sous l’icône",
+	["A border in the debuffs' type colour on enemy nameplates: Magic blue, Curse purple, Disease orange, Poison green, Bleed red."] = "Colore les bordures des affaiblissements sur les barres d’info ennemies selon leur type : Magie en bleu, Malédiction en violet, Maladie en orange, Poison en vert et Saignement en rouge.",
+	["A border on the nameplates' debuffs that have no type too, such as physical ones."] = "Ajoute aussi une bordure aux affaiblissements sans type des barres d’info ennemies, notamment certains effets physiques.",
+	["Where the time left stands on your buff and debuff icons."] = "Position du temps restant sur vos icônes d’amélioration et d’affaiblissement.",
+	["%I:%M %p "] = "%I:%M %p ",
+	["%I:%M:%S %p "] = "%I:%M:%S %p ",
+	["Debuff Type Colours"] = "Couleurs par type d’affaiblissement",
+	["Only with Threat Colours By Role on"] = "Disponible uniquement si Couleurs de menace par rôle est activé",
+	["Moved on the preview: use Place, or its Default place"] = "Déplacé dans l’aperçu : utilisez Placer ou Position par défaut.",
+	["Party & Raid"] = "Groupe et raid",
+	["Only while MelloUI's tracker lists the quests (Questie's tracker has none of it)"] = "Disponible lorsque MelloUI liste les quêtes. Le suivi de Questie ne propose pas ces options.",
+	["Windows and bags"] = "Fenêtres et sacs",
+	["Questie"] = "Questie",
+	["Quests on the map and minimap, the Quest List and Route to a quest come from Questie."] = "Questie fournit les quêtes affichées sur la carte et la minicarte, la liste des quêtes et le calcul d’itinéraire vers une quête.",
+	["MelloUI's look"] = "Style de MelloUI",
+	["Questie's look"] = "Style de Questie",
+	["Questie shows its own icons and its own tracker, on MelloUI's map too. MelloUI's Quest List and Route to a quest still use its quest data."] = "Questie affiche ses propres icônes et son propre suivi, y compris sur la carte de MelloUI. La liste des quêtes et les itinéraires de MelloUI continuent d’utiliser ses données.",
+	["Its quest data feeds MelloUI's Quest List, map marks and Route."] = "Ses données alimentent la liste des quêtes, les repères sur la carte et les itinéraires de MelloUI.",
+	["Its icons and its tracker wear MelloUI's look."] = "Ses icônes et son suivi adoptent le style de MelloUI.",
+	["Its tracker follows the Quest Tracker page's width, height, text sizes, Nearest Quest First and Reset Position; its own come back with the look off."] = "Son suivi reprend la largeur, la hauteur, la taille des textes, l’ordre par proximité et la position de la page Suivi des quêtes. Désactivez le style de MelloUI pour retrouver les réglages de Questie.",
+	["Leveling guide steps dock under its tracker, and stand on their own while it has no quest."] = "Les étapes des guides de progression se placent sous son suivi. Elles s’affichent seules lorsque le suivi ne contient aucune quête.",
+	["Its quest lines in tooltips are the ones: Polestar's on creatures and objects and MelloUI's own on items step aside."] = "Ses lignes de quête sont utilisées dans les infobulles. Celles de Polestar sur les créatures et objets, et celles de MelloUI sur les objets d’inventaire, sont masquées.",
+	["Its quest data for MelloUI's quests; its icons and its tracker in MelloUI's look"] = "Données de quête de Questie pour MelloUI, icônes et suivi au style de MelloUI",
+	["its spell highlights"] = "sa mise en évidence des sorts",
+	["RestedXP Guide"] = "RestedXP Guide",
+	["Zygor Guides"] = "Zygor Guides",
+	["Polestar"] = "Polestar",
+	["With Questie, its quest lines on creatures and objects are left out: Questie writes them."] = "Avec Questie, les lignes de Polestar sur les créatures et objets sont masquées, car Questie les affiche.",
+	["Azeroth Pilot Reloaded"] = "Azeroth Pilot Reloaded",
+	["Guidelime"] = "Guidelime",
+	["One addon draws the rares: while it shows them, other addons' rare marks are not drawn too, on MelloUI's map and the minimap."] = "Une seule extension affiche les ennemis rares. Lorsqu’elle les affiche, les repères des autres extensions sont masqués sur la carte et la minicarte de MelloUI.",
+	["A plugin's rares wear MelloUI's rare seal, on the map and the minimap. While RareScanner shows its rares, they step aside."] = "Les ennemis rares d’un module complémentaire utilisent l’emblème de MelloUI sur la carte et la minicarte. Lorsque RareScanner affiche ses rares, ces repères sont masqués.",
+	["HandyNotes: NPCs (Forever)"] = "HandyNotes: NPCs (Forever)",
+	["Its own look"] = "Son propre style",
+	["It shows its own icons, chosen in its own menu, on MelloUI's map and on the minimap."] = "Affiche ses propres icônes, choisies dans son menu, sur la carte et la minicarte de MelloUI.",
+	["Its places of the auction house, the bank, trainers, mount sellers and more on MelloUI's map and the minimap, in MelloUI's icons."] = "Affiche l’hôtel des ventes, la banque, les maîtres, les vendeurs de montures et d’autres lieux sur la carte et la minicarte de MelloUI, avec les icônes de MelloUI.",
+	["The map's layers page chooses which kinds show, under HandyNotes: your side's only, and trainers of your own professions and class."] = "Dans les calques de la carte, la section HandyNotes permet de choisir les catégories affichées, les lieux de votre faction et les maîtres de votre classe ou de vos métiers.",
+	["One addon draws a kind of place: its places stand before Questie's innkeepers and mailboxes and other addons' pins of the same kind."] = "Une seule extension affiche chaque catégorie de lieux. Ses lieux ont priorité sur les aubergistes et boîtes aux lettres de Questie et sur les repères similaires des autres extensions.",
+	["Its town NPC places in MelloUI's icons, chosen on the map's layers page"] = "PNJ des villes avec les icônes de MelloUI, sélectionnés dans les calques de la carte",
+	["its places"] = "ses lieux",
+	["Controller Forever"] = "Controller Forever",
+	["The controller's buttons and binds are its own: MelloUI's gamepad bars are not shown while it runs."] = "Controller Forever gère les boutons et les raccourcis de la manette. Les barres de manette de MelloUI sont masquées tant qu’il est actif.",
+	["While a MelloUI window holds the controller, its bind manager gives MelloUI the buttons, so the D-pad, A and B walk MelloUI's window."] = "Lorsqu’une fenêtre de MelloUI utilise la manette, le gestionnaire de raccourcis lui cède les commandes. La croix directionnelle et les boutons A et B permettent alors de parcourir la fenêtre.",
+	["Where MelloUI has the part (unit frames, party frames, minimap, chat, damage meter, bags, automatic quests) its own version steps back, and its menu says so."] = "Lorsque MelloUI gère un élément, comme les cadres d’unité, les cadres de groupe, la minicarte, la discussion, le compteur de dégâts, les sacs ou les quêtes automatiques, Controller Forever désactive son propre équivalent et l’indique dans son menu.",
+	["Its buttons and binds, MelloUI's windows and frames"] = "Ses boutons et raccourcis, avec les fenêtres et cadres de MelloUI",
+	["its bind manager"] = "son gestionnaire de raccourcis",
+	["its list of parts another addon has"] = "sa liste des éléments gérés par une autre extension",
+	["its healer mode's list of party frames"] = "la liste des cadres de groupe de son mode soigneur",
+	["Offhand"] = "Offhand",
+	["Quest Moments play on that screen too, and the Level Up card, the on-screen line, Combat Text, Gains, the reminders and the Personal Display start there until you give them a place of your own."] = "Les animations de quête, la carte de gain de niveau, les annonces, le texte de combat, les gains, les rappels et l’affichage personnel s’ouvrent aussi sur cet écran tant que vous ne les avez pas placés ailleurs.",
+	["Lueur"] = "Lueur",
+	["Its mana, rage and energy fill on MelloUI's action bars, including the controller's display buttons."] = "Affiche le mana, la rage et l’énergie sur les barres d’action de MelloUI, y compris les boutons affichés pour la manette.",
+	["Its resource fill on MelloUI's action bars"] = "Ses indicateurs de ressources sur les barres d’action de MelloUI",
+	["its fill on MelloUI's action bars"] = "ses indicateurs sur les barres d’action",
+	["Clique"] = "Clique",
+	["Baganator"] = "Baganator",
+	["Bagnon"] = "Bagnon",
+	["AHledger"] = "AHledger",
+	["Questie's quest data, in MelloUI's look"] = "Données de quête de Questie, au style de MelloUI",
+	["Questie, in its own look"] = "Questie, avec son propre style",
+	["Not shown (Questie adds them)"] = "Masqués (affichés par Questie)",
+	["Auction houses, banks, trainers, inns and mailboxes on the maps"] = "Hôtels des ventes, banques, maîtres, auberges et boîtes aux lettres sur les cartes",
+	["HandyNotes: NPCs (Forever), in MelloUI's icons"] = "HandyNotes: NPCs (Forever), avec les icônes de MelloUI",
+	["Questie's innkeepers and mailboxes"] = "Aubergistes et boîtes aux lettres de Questie",
+	["Not shown (HandyNotes: NPCs (Forever) adds them)"] = "Masqués (affichés par HandyNotes: NPCs (Forever))",
+	["Questie's of the same kinds hidden on MelloUI's map"] = "Repères Questie des mêmes catégories masqués sur la carte de MelloUI",
+	["Rares, treasures and events on the map"] = "Ennemis rares, trésors et événements sur la carte",
+	["Other addons' rare marks hidden on MelloUI's map and the minimap"] = "Repères d’ennemis rares des autres extensions masqués sur la carte et la minicarte de MelloUI",
+	["Quest lines in creature and object tooltips"] = "Lignes de quête dans les infobulles des créatures et des objets",
+	["Polestar's of the same kind are left out"] = "Lignes du même type de Polestar masquées",
+	["MelloUI's own steps aside while Questie's tooltips are on"] = "Lignes de MelloUI masquées tant que les infobulles de Questie sont activées",
+	["The controller's buttons and binds"] = "Boutons et raccourcis de la manette",
+	["MelloUI's gamepad bars step aside"] = "Barres de manette de MelloUI masquées",
+	["MelloUI's gamepad bars and Controller Forever's, both"] = "Barres de manette de MelloUI et de Controller Forever",
+	["Import"] = "Importer",
+	["Not in combat."] = "Hors combat.",
+	["Paused"] = "En pause",
+	["%s left"] = "Encore %s",
+	["Waiting"] = "En attente",
+	["Fellaria"] = "Fellaria",
+	["Shadeleaf"] = "Shadeleaf",
+	["Tarnok"] = "Tarnok",
+	["Brightwood"] = "Brightwood",
+	["pick"] = "choisir",
+	["Plays this animation once, so you can see it."] = "Joue cette animation une fois pour vous permettre de la voir.",
+	["This switch's own settings."] = "Réglages propres à cette option.",
+	["cast bar"] = "barre d’incantation",
+	["CPU %s ms"] = "Processeur : %s ms",
+	["%.1f MB"] = "%.1f Mo",
+	["MelloUI %s"] = "MelloUI %s",
+	["MelloUI's share of each frame (its average this session) and the memory it holds, read when the configurator opens."] = "Temps moyen que MelloUI utilise par image depuis le début de la session et mémoire occupée, mesurés à l’ouverture du configurateur.",
+	["Patreon"] = "Patreon",
+	["Discord"] = "Discord",
+	["MelloUI"] = "MelloUI",
+	["%s  ·  X %d  Y %d  ·  %d × %d"] = "%s  ·  X %d  Y %d  ·  %d × %d",
+	["Lock"] = "Verrouiller",
+	["This character only"] = "Ce personnage uniquement",
+	["New, Copy and Import make a layout for this character only, as Edit Mode's Character Specific Layout does; off, every character of the account has it."] = "Nouveau, Copier et Importer créent une disposition réservée à ce personnage, comme l’option de disposition propre au personnage du mode Édition. Si l’option est désactivée, la disposition est accessible à tout le compte.",
+	["Game's"] = "Du jeu",
+	["Account"] = "Compte",
+	["Character"] = "Personnage",
+	["%s  (after /reload)"] = "%s  (après /reload)",
+	["Makes the picked layout the one the game uses (after a /reload). Double-click a row does it too."] = "Active la disposition sélectionnée après un /reload. Vous pouvez aussi double-cliquer sur sa ligne.",
+	["A new layout under the name typed, from the game's own default layout."] = "Crée une disposition sous le nom saisi, à partir de celle du jeu par défaut.",
+	["A copy of the picked layout under the name typed."] = "Copie la disposition sélectionnée sous le nom saisi.",
+	["Rename"] = "Renommer",
+	["Gives the picked layout the name typed."] = "Donne à la disposition sélectionnée le nom saisi.",
+	["Deletes the picked layout (it asks first). The game's own can't be deleted."] = "Supprime la disposition sélectionnée après confirmation. Les dispositions du jeu ne peuvent pas être supprimées.",
+	["Paste a layout's share string; it comes in under the name typed."] = "Collez la chaîne de partage d’une disposition pour l’importer sous le nom saisi.",
+	["The picked layout's share string, to copy and give to someone."] = "Chaîne de partage de la disposition sélectionnée, prête à copier et à partager.",
+	["Save or discard your Edit Layout changes first."] = "Enregistrez ou annulez d’abord vos changements de disposition.",
+	["Pick a layout in the list first."] = "Sélectionnez d’abord une disposition dans la liste.",
+	["Saved. Type /reload to see it."] = "Enregistré. Tapez /reload pour voir le résultat.",
+	["'%s' is the active layout after a /reload."] = "« %s » sera la disposition active après un /reload.",
+	["The game kept '%s' as the active layout: pick it in the game's Edit Mode instead."] = "Le jeu a conservé « %s » comme disposition active. Sélectionnez la disposition voulue dans le mode Édition du jeu.",
+	["'%s' becomes the active layout when you press Reload now."] = "« %s » deviendra la disposition active lorsque vous cliquerez sur Recharger maintenant.",
+	["Reload now"] = "Recharger maintenant",
+	["The game switches Edit Mode layouts only with a reload: this makes the waiting layout the active one and reloads the interface."] = "Le jeu change de disposition du mode Édition lors d’un rechargement. Ce bouton active la disposition en attente et recharge l’interface.",
+	["After the fight, press Reload now again."] = "Après le combat, cliquez de nouveau sur Recharger maintenant.",
+	["Delete the Edit Mode layout '%s'? This can't be undone."] = "Supprimer la disposition du mode Édition « %s » ? Cette action est irréversible.",
+	["Edit Mode layout"] = "Disposition du mode Édition",
+	["Edit Mode layout '%s'"] = "Disposition du mode Édition « %s »",
+	["%s >"] = "%s >",
+	["Services: no group button is shown under the minimap (Button Layout: Groups)."] = "Services : aucun bouton de groupe n’est affiché sous la minicarte (Disposition des boutons : Groupes).",
+	["More for your level"] = "Autres objets pour votre niveau",
+	["Not on your list"] = "Absent de votre liste",
+	["Nothing of this kind for your level yet."] = "Aucun objet de ce type pour votre niveau pour l’instant.",
+	["Dismiss"] = "Masquer",
+	["Need"] = "Besoin",
+	["Greed"] = "Cupidité",
+	["Pass"] = "Passer",
+	["Rolls"] = "Jets",
+	["%d of %d"] = "%d sur %d",
+	["Deciding"] = "En cours de décision",
+	["%d passed"] = "%d ont passé",
+	["%d still deciding"] = "%d hésitent encore",
+	["Ready"] = "Prêt",
+	["to %s"] = "à %s",
+	["Someone"] = "Quelqu’un",
+	["Accept"] = "Accepter",
+	["Decline"] = "Refuser",
+	["from %s"] = "de %s",
+	["Aggro"] = "Aggro",
+	["Reply"] = "Répondre",
+	["Won: %s"] = "Remporté : %s",
+	["an item"] = "un objet",
+	["Group"] = "Groupe",
+	["or %s"] = "ou %s",
+	["For %s"] = "Pour %s",
+	["%d items"] = "%d objets",
+	["1 item"] = "1 objet",
+	["+%d more waiting"] = "+%d en attente",
+	["%d of %d picked"] = "%d choix sur %d",
+	["%s wins"] = "%s remporte le jet",
+	["You win"] = "Vous remportez le jet",
+	["Everyone passed"] = "Tout le monde a passé",
+	["%d deciding"] = "%d en attente",
+	["point for names"] = "Survolez pour voir les noms",
+	["You cannot roll Need on this."] = "Vous ne pouvez pas choisir Besoin pour cet objet.",
+	["You cannot roll Greed on this."] = "Vous ne pouvez pas choisir Cupidité pour cet objet.",
+	["Master Loot"] = "Responsable du butin",
+	["Master Loot · %s"] = "Responsable du butin · %s",
+	["On the boss · not given yet"] = "Sur le boss · attribution en attente",
+	["Roll"] = "Lancer un jet",
+	["Assign"] = "Attribuer",
+	["Rolling"] = "Jets en cours",
+	["Given to %s"] = "Attribué à %s",
+	["Given to you"] = "Vous avez reçu l’objet",
+	["Given by %s, the loot master"] = "Attribué par %s, responsable du butin",
+	["Given by the loot master"] = "Attribué par le responsable du butin",
+	["Give"] = "Donner",
+	["Give %s to %s?"] = "Donner %s à %s ?",
+	["By group"] = "Par groupe",
+	["By class"] = "Par classe",
+	["Starts a roll for it: Need, Greed or Pass for everyone who can use it."] = "Lance un jet pour l’objet. Les joueurs qui peuvent l’utiliser peuvent choisir Besoin, Cupidité ou Passer.",
+	["Give it to a player of your choice."] = "Attribue l’objet au joueur de votre choix.",
+	["The game keeps this for its own menu here: right-click the item in the loot window."] = "Cette action est disponible dans le menu du jeu. Faites un clic droit sur l’objet dans la fenêtre de butin.",
+	["Left-click: sell it"] = "Clic gauche : vendre",
+	["Left-click: throw it away"] = "Clic gauche : jeter",
+	["Prices from AHledger (ahledger.com)"] = "Prix fournis par AHledger (ahledger.com)",
+	["Lina Brightwater"] = "Lina Brightwater",
+	["Quest Tracker: Progress Motion is off, or Reduce Motion is on."] = "Suivi des quêtes : l’animation de progression est désactivée, ou la réduction des animations est activée.",
+	["Quest Tracker: no watched quest with a count is shown."] = "Suivi des quêtes : aucune quête suivie avec un compteur n’est affichée.",
+	["Use Item"] = "Utiliser l’objet",
+	["Menu"] = "Menu",
+	["Back / Skip A Step"] = "Retour / Passer une étape",
+	["Nothing in the Quest Tracker to step through."] = "Aucune quête à parcourir dans le suivi.",
+	["The Quest Tracker opens for the controller after the fight."] = "Le suivi des quêtes sera accessible à la manette après le combat.",
+	["Corpse"] = "Cadavre",
+	["Boss"] = "Boss",
+	["These places come from the addon HandyNotes: NPCs (Forever)."] = "Ces lieux proviennent de l’extension HandyNotes: NPCs (Forever).",
+	["HandyNotes: NPCs (Forever) shows its own icons: MelloUI's look of it is off."] = "HandyNotes: NPCs (Forever) affiche ses propres icônes. Le style de MelloUI est désactivé.",
+	["Quest Log"] = "Journal des quêtes",
+	["Not in this client"] = "Indisponible sur ce client",
+	["Off while MelloUI draws your damage (Your Damage)"] = "Désactivé lorsque MelloUI affiche vos dégâts (Vos dégâts)",
+	["Focused Quest Only: %s; Only The Tracked Quests: %s; Objective Marks: %s."] = "Quête suivie uniquement : %s. Quêtes suivies uniquement : %s. Repères d’objectif : %s.",
+	["Followed: %s (the game's: %s; Route's pin: %s)."] = "Quête suivie : %s (jeu : %s, repère d’Itinéraire : %s).",
+	["Marked: %s."] = "Repères affichés : %s.",
+	["every quest -- none is followed (click a quest's mark in the Quest Tracker to follow it)"] = "toutes les quêtes. Aucune quête n’est ciblée. Cliquez sur le repère d’une quête dans le suivi pour la cibler.",
+	["every quest"] = "toutes les quêtes",
+	["unknown"] = "inconnu",
+	-- (merged from pull request #64: texts the code still uses, kept active)
+	["The frame around progress bars: reputation, skills, professions, experience, tooltips and the damage meter."] = "Le cadre des barres de progression : réputation, compétences, métiers, expérience, encadrés d'aide et compteur de dégâts.",
+	["Unit Frame Border"] = "Bordure des cadres d’unité",
+	["Cast Bar Border"] = "Bordure de la barre de sorts",
+	["Personal Display Border"] = "Bordure de l'Affichage personnel",
+	["Container"] = "Conteneur",
+	["Bags by Kind"] = "Sacs par type",
+	["Attunements"] = "Accès",
+	[": %s"] = " : %s",
+	["auction house"] = "hôtel des ventes",
+	["profession trainer"] = "maître de métier",
+	["transmogrifier"] = "transmogrifieur",
+	["Riding trainer"] = "maître d’équitation",
+	["Its gathering nodes on MelloUI's map"] = "Ses points de récolte sur la carte de MelloUI",
+	["Replace ...?"] = "Remplacer… ?",
+	["Available"] = "Disponible",
+	["about %s"] = "environ %s",
+	["straight"] = "à vol d'oiseau",
+	["your corpse"] = "votre cadavre",
+	[", about %s"] = ", environ %s",
+	["elves"] = "elfes",
+	["trolls"] = "trolls",
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
@@ -4602,10 +5174,8 @@ Lang:Add("frFR", {
 -- stale: ["'No reskin, features on' suits this screen."] = "« Sans habillage, fonctions actives » convient à cet écran.", -- draft
 -- stale: ["+ Buff"] = "+ Amélioration", -- draft
 -- stale: ["+ Debuff (by kind)"] = "+ Affaiblissement (par type)", -- draft
--- stale: [", about %s"] = ", environ %s",
 -- stale: ["/mellobug's report now also shows how the bag buttons were made, to help track down items the game blocks in the bags."] = "Le rapport de /mellobug montre aussi comment les boutons des sacs ont été créés, pour retrouver la cause des objets bloqués par le jeu.", -- draft
 -- stale: ["/mellobug's report now shows what led up to a blocked action, to help track down items the game blocks in the bags."] = "Le rapport de /mellobug montre désormais ce qui a mené à une action bloquée, pour retrouver la cause des objets de sac bloqués par le jeu.", -- draft
--- stale: [": %s"] = " : %s",
 -- stale: ["A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read."] = "Un bouton Lire sur le détail du journal des quêtes : la description de la quête avec la voix du donneur (la ligne d'offre enregistrée quand un pack l'a), puis les objectifs enregistrés quand le pack de voix les a (Objectifs de quête). Aussi /vo read.", -- draft
 -- stale: ["A Supporters page under Profiles: the people who help keep MelloUI going."] = "Une page Soutiens sous Profils : les personnes qui font vivre MelloUI.", -- draft
 -- stale: ["A backdrop around %s. Neighbours with a backdrop share one."] = "Ajoute un fond autour de %s. Les éléments voisins qui en ont un partagent le même fond.",
@@ -4742,12 +5312,9 @@ Lang:Add("frFR", {
 -- stale: ["Attach To The Minimap Column"] = "Attacher à la colonne de la minicarte", -- draft
 -- stale: ["Attach To The Player Frame"] = "Attacher au cadre du joueur", -- draft
 -- stale: ["Attacks that miss you: misses, dodges, parries, blocks, absorbs, resists and immunes."] = "Les attaques qui vous ratent : ratés, esquives, parades, blocages, absorptions, résistances et immunités.", -- draft
--- stale: ["Attunements"] = "Accès",
 -- stale: ["Automation"] = "Automatisation", -- draft
--- stale: ["Available"] = "Disponible",
 -- stale: ["BUFFS by spell (yours and your group's)"] = "AMÉLIORATIONS par sort (les vôtres et celles du groupe)", -- draft
 -- stale: ["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Fenêtre des sacs : l’équipement porté déposé sur une case + va dans un emplacement libre. Avant, il retournait sur le personnage.", -- draft
--- stale: ["Bags by Kind"] = "Sacs par type",
 -- stale: ["Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so."] = "Sacs par type : Alerte sacs pleins -- sacs pleins, Vide affiche un emplacement 0 qui tremble et flashe en rouge quand le jeu le dit.", -- draft
 -- stale: ["Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in."] = "Sacs par type : Les objets glissent -- les objets glissent vers leurs nouveaux emplacements quand la fenêtre se retrie ; les nouveaux apparaissent en fondu.", -- draft
 -- stale: ["Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it."] = "Sacs par type : Argent qui défile -- l'argent de la fenêtre de sacs défile jusqu'à sa nouvelle somme ; les pièces ramassées y volent.", -- draft
@@ -4769,7 +5336,6 @@ Lang:Add("frFR", {
 -- stale: ["Buffs & Debuffs: a page of its own. Buffs and debuffs stand apart, each with its own size and rows; pick an Anchor, and Free ones show in Edit Layout at once."] = "Améliorations et affaiblissements : une page à part. Ils sont séparés, chacun avec sa taille et ses rangées ; choisissez un ancrage, et en Libre ils s'affichent aussitôt dans Modifier la disposition.", -- draft
 -- stale: ["Buttons, checkboxes, tabs and scroll arrows: light clicks, a heavy one for Okay/Accept, a latch releasing for Cancel, Quit and abandoning a quest."] = "Boutons, cases à cocher, onglets et flèches de défilement : des clics légers, un lourd pour Accepter/Valider, un loquet qui se relâche pour Annuler, Quitter et l'abandon d'une quête.", -- draft
 -- stale: ["Calendar, clock, help, channels"] = "Calendrier, horloge, aide, canaux", -- draft
--- stale: ["Cast Bar Border"] = "Bordure de la barre de sorts",
 -- stale: ["Cast Marks (off until turned on): your latency hatched at the end of each cast, and a mark for each tick of a channel."] = "Marques d'incantation (désactivées par défaut) : votre latence hachurée à la fin de chaque sort et une marque pour chaque tick d'une canalisation.", -- draft
 -- stale: ["Channel the recorded lines play on; its volume slider in the game's sound settings controls them."] = "Le canal sur lequel jouent les lignes enregistrées ; son curseur de volume dans les réglages audio du jeu les contrôle.", -- draft
 -- stale: ["Chat & Map"] = "Discussion et carte", -- draft
@@ -4816,7 +5382,6 @@ Lang:Add("frFR", {
 -- stale: ["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "Configurateur : Animations, Améliorations et affaiblissements, Carte et Soutiens ont leurs propres icônes dans chaque apparence.", -- draft
 -- stale: ["Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page."] = "Configurateur : Cadres d'unité et de groupe, Barres d'info, Barres et Minicarte sont des concepteurs : choisissez un cadre, puis une partie, faites glisser noms et valeurs ; une nouvelle page Automatisation.", -- draft
 -- stale: ["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "Configurateur : une nouvelle page Addons liste les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun, leurs liens, qui fait quelle tâche, et un interrupteur pour que MelloUI cesse d'en utiliser un.",
--- stale: ["Container"] = "Conteneur",
 -- stale: ["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "Manette : la croix directionnelle passe le bouton de fermeture et les onglets d'une fenêtre (B ferme, LB / RB changent d'onglet), et un clic de souris sur le bouton MelloUI sous le menu du jeu ferme le menu.", -- draft
 -- stale: ["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Manette : le pointeur jaune du jeu ne s'affiche plus par-dessus les fenêtres de MelloUI, et les indications de boutons sont centrées et plus lisibles.", -- draft
 -- stale: ["Cooking trainer"] = "maître cuisinier",
@@ -5074,7 +5639,6 @@ Lang:Add("frFR", {
 -- stale: ["Iron in warm browns"] = "Fer aux bruns chauds", -- draft
 -- stale: ["Iron, leather, parchment and stone. Every click, page, pouch and buckle of the interface, re-recorded."] = "Fer, cuir, parchemin et pierre. Chaque clic, page, bourse et boucle de l'interface, réenregistré.", -- draft
 -- stale: ["Item names in their quality colour (green, blue, purple) beside the quality gem. Blue and purple read less well over bright ground. Off: the names in the text colour."] = "Les noms d'objets dans leur couleur de qualité (vert, bleu, violet) à côté de la gemme de qualité. Le bleu et le violet se lisent moins bien sur fond clair. Désactivé : les noms dans la couleur du texte.", -- draft
--- stale: ["Its gathering nodes on MelloUI's map"] = "Ses points de récolte sur la carte de MelloUI",
 -- stale: ["Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons, one a kind: herbs, veins, fishing pools and treasures."] = "Ses gisements sur la carte de MelloUI et sur ses propres repères de la minicarte, avec les icônes de MelloUI, une par type : herbes, filons, bancs de poissons et trésors.", -- draft
 -- stale: ["Its gathering nodes on MelloUI's map."] = "Ses points de récolte sur la carte de MelloUI.",
 -- stale: ["Its keys work while it is faded. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Ses touches fonctionnent tant qu'elle est estompée. Toujours : jamais estompé. En combat : estompé hors combat, de retour en combat. Au survol : estompé en permanence, affiché quand vous la survolez.", -- draft
@@ -5261,7 +5825,6 @@ Lang:Add("frFR", {
 -- stale: ["Party and raid frames: members standing near you no longer look out of range; a member fades only when the game has measured them as too far away."] = "Cadres de groupe et de raid : les membres proches de vous ne semblent plus hors de portée ; un membre ne s'estompe que lorsque le jeu l'a mesuré trop loin.", -- draft
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "Cadres de groupe : Retourner horizontalement pour un groupe à droite ; Vous afficher dans le groupe corrigé pour les portraits ; la surbrillance au survol allume le cadre sous votre souris.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "Paie les réparations avec la banque de guilde quand c'est permis. Se rabat sur votre or si la guilde ne peut pas couvrir le coût.", -- draft
--- stale: ["Personal Display Border"] = "Bordure de l'Affichage personnel",
 -- stale: ["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Affichage personnel : Clics traversants, pour que Clique ne lance plus de sort quand vous déplacez la caméra sur les barres.", -- draft
 -- stale: ["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "Affichage personnel : Formes de druide. Pour un druide, deux barres fines sous la barre de ressource montrent les ressources des autres formes.", -- draft
 -- stale: ["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "Affichage personnel : Pause de régénération du mana. Après un sort qui vous coûte du mana, une lumière parcourt la barre de ressource pendant les cinq secondes où votre mana ne se régénère pas.", -- draft
@@ -5340,7 +5903,6 @@ Lang:Add("frFR", {
 -- stale: ["Remove the gold and bronze colours so the art becomes grey before it is darkened."] = "Retire les couleurs or et bronze pour que l'art devienne gris avant d'être assombri.", -- draft
 -- stale: ["Repair all equipped and carried items when a merchant that can repair is opened."] = "Répare tous les objets équipés et portés à l'ouverture d'un marchand qui peut réparer.", -- draft
 -- stale: ["Repair your gear and sell junk automatically at a merchant."] = "Répare votre équipement et vend la camelote automatiquement chez un marchand.", -- draft
--- stale: ["Replace ...?"] = "Remplacer… ?",
 -- stale: ["Replace [Guild], [Party], [1. General] and so on with short, saturated coloured tags."] = "Remplace [Guilde], [Groupe], [1. Général] etc. par de courtes étiquettes aux couleurs vives.", -- draft
 -- stale: ["Replace player portraits (yourself, target, focus, party) with the player's class medallion. NPC portraits are never touched."] = "Remplace les portraits des joueurs (vous, la cible, la focalisation, le groupe) par le médaillon de classe du joueur. Les portraits des PNJ ne sont jamais touchés.", -- draft
 -- stale: ["Replaces the interface's sounds with MelloUI's own: clicks, windows, bags, gear, vendors and more."] = "Remplace les sons de l'interface par ceux de MelloUI : clics, fenêtres, sacs, équipement, marchands et plus.", -- draft
@@ -5352,7 +5914,6 @@ Lang:Add("frFR", {
 -- stale: ["Restock: Not offered: %s. You carry better %s."] = "Réapprovisionnement : %s indisponibles. Vous avez déjà mieux dans les catégories suivantes : %s.",
 -- stale: ["Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up."] = "Réapprovisionner : Liste de courses sous donne à la liste du marchand sa propre part, pour qu’elle puisse s’ouvrir avant le rappel.", -- draft
 -- stale: ["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "Réapprovisionnement : les chasseurs peuvent garder de la nourriture pour familier par régime (viande, poisson, pain, fromage, fruits, champignons), et la liste contient 40 lignes.", -- draft
--- stale: ["Riding trainer"] = "maître d’équitation",
 -- stale: ["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "Choix du rôle : en entrant dans un donjon en groupe, les rôles de votre classe tombent au-dessus de votre personnage. Un clic règle le vôtre, et il peut le retenir pour les suivants.", -- draft
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "Les bordures rondes sont nettes en petite taille : les anneaux des boutons Services et des styles Bordure ronde sont pleins, pas en pointillés.", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route suit Follow The Arrow, Azeroth Pilot Reloaded, la flèche de TomTom et Guidelime, comme il suit RestedXP. Plusieurs guides actifs ? MelloUI demande lequel garder.", -- draft
@@ -5521,7 +6082,6 @@ Lang:Add("frFR", {
 -- stale: ["The fill of the player, pet, target, focus and boss cast bars, and MelloUI's swing timers (Minimalist there on The game's): Shared, the game's own art, or a picture of their own."] = "Le remplissage des barres d'incantation du joueur, du familier, de la cible, de la focalisation et des boss, et des minuteurs d'attaque de MelloUI (Minimaliste pour Celle du jeu) : Partagée, l'art du jeu, ou une image à elles.", -- draft
 -- stale: ["The finish of health and mana bars (flat, smooth, glossy, minimalist) and their colours; the fill under the kit's brackets."] = "La finition des barres de vie et de mana (plate, lisse, brillante, minimaliste) et leurs couleurs ; le remplissage sous les supports du kit.", -- draft
 -- stale: ["The fonts and sizes used by the whole interface. Off: the game's own fonts."] = "Les polices et tailles de toute l'interface. Désactivé : les polices du jeu.", -- draft
--- stale: ["The frame around progress bars: reputation, skills, professions, experience, tooltips and the damage meter."] = "Le cadre des barres de progression : réputation, compétences, métiers, expérience, encadrés d'aide et compteur de dégâts.",
 -- stale: ["The frame around the Personal Display's bars and shield column."] = "Le cadre des barres et de la colonne de bouclier de l'Affichage personnel.",
 -- stale: ["The frame around the health and power bars of the player, target, focus, pet and party frames."] = "Le cadre autour des barres de vie et de ressource des cadres du joueur, de la cible, de focalisation, du familier et du groupe.",
 -- stale: ["The frame around your cast bar."] = "Le cadre de votre barre d'incantation.",
@@ -5673,7 +6233,6 @@ Lang:Add("frFR", {
 -- stale: ["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "L'ombre de l'interface couvre maintenant l'affichage personnel, avec son propre interrupteur et le curseur de force de l'ombre.", -- draft
 -- stale: ["Under 35% health the health bar turns ember."] = "Sous 35% de vie, la barre de vie devient braise.", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "Barres des portraits d'unités : taille de police", -- draft
--- stale: ["Unit Frame Border"] = "Bordure des cadres d’unité",
 -- stale: ["Unit Frame Tweaks"] = "Réglages des portraits d'unités", -- draft
 -- stale: ["Unit Frames, Nameplates and Action Bars: each switch now turns off everything MelloUI shows there, the rest keeps working."] = "Cadres d'unité, Barres de nom et Barres d'action : chaque interrupteur désactive désormais tout ce que MelloUI y affiche, le reste continue de fonctionner.", -- draft
 -- stale: ["Unit Frames: XP Gain -- the stretch of the experience bar you just gained lights up as a light runs along it."] = "Portraits d'unités : Gain d'expérience -- le tronçon de la barre d'expérience que vous venez de gagner s'illumine pendant qu'une lumière la parcourt.", -- draft
@@ -5792,13 +6351,10 @@ Lang:Add("frFR", {
 -- stale: ["Your unit, party and raid frames, the experience bars and the bag bar are MelloUI's own: placed by Edit Layout and your profiles."] = "Vos cadres d'unité, de groupe et de raid, les barres d'expérience et la barre des sacs sont ceux de MelloUI : placés par Modifier la disposition et vos profils.", -- draft
 -- stale: ["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "Toute votre configuration sous un nom. Enregistrez-la, chargez-la, ou faites-en la configuration par défaut d'une nouvelle installation.",
 -- stale: ["Zephras Isle on the map, with its airship trails."] = "Zephras Isle sur la carte, avec les trajets de ses dirigeables.", -- draft
--- stale: ["about %s"] = "environ %s",
--- stale: ["auction house"] = "hôtel des ventes",
 -- stale: ["boss and target of target"] = "boss et cible de la cible", -- draft
 -- stale: ["bread for your pet"] = "pain pour votre familier",
 -- stale: ["cheese for your pet"] = "fromage pour votre familier",
 -- stale: ["dwarves"] = "nains",
--- stale: ["elves"] = "elfes",
 -- stale: ["fish for your pet"] = "poisson pour votre familier",
 -- stale: ["fruit for your pet"] = "fruits pour votre familier",
 -- stale: ["fungus for your pet"] = "champignons pour votre familier",
@@ -5810,13 +6366,8 @@ Lang:Add("frFR", {
 -- stale: ["ogres & giants"] = "ogres et géants",
 -- stale: ["on (a test)"] = "activé (test)",
 -- stale: ["orcs"] = "orcs",
--- stale: ["profession trainer"] = "maître de métier",
--- stale: ["straight"] = "à vol d'oiseau",
 -- stale: ["the level-up: your XP bar's light and the notice"] = "la montée de niveau : la lumière de votre barre d'XP et l'avis", -- draft
 -- stale: ["the level-up: your XP bar's light, the notice and the Level Up Card"] = "le gain de niveau : la lumière de votre barre d'expérience, l'annonce et la carte de niveau", -- draft
 -- stale: ["the nameplates' debuffs"] = "les affaiblissements des barres d'info", -- draft
--- stale: ["transmogrifier"] = "transmogrifieur",
--- stale: ["trolls"] = "trolls",
 -- stale: ["what the game holds for your Edit Mode layout, to copy and send"] = "ce que le jeu garde de votre disposition du mode Édition, à copier et envoyer", -- draft
 -- stale: ["with Services on"] = "avec les Services", -- draft
--- stale: ["your corpse"] = "votre cadavre",

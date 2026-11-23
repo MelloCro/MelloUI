@@ -141,7 +141,7 @@ end
 --------------------------------------------------------------------------------
 local function Say(text)
 	if bar then
-		bar.status:SetText(text or "")
+		bar.status:SetText(W.Tr(text or ""))
 	end
 end
 
@@ -210,9 +210,9 @@ end
 local function Describe(command)
 	local k1, k2 = KeysOf(command)
 	if k1 then
-		Say(string.format(TEXT.keys, NameOf(command), k2 and (KeyText(k1) .. ", " .. KeyText(k2)) or KeyText(k1)))
+		Say(string.format(W.Tr(TEXT.keys), NameOf(command), k2 and (KeyText(k1) .. ", " .. KeyText(k2)) or KeyText(k1)))
 	else
-		Say(string.format(TEXT.noKey, NameOf(command)))
+		Say(string.format(W.Tr(TEXT.noKey), NameOf(command)))
 	end
 end
 
@@ -248,7 +248,7 @@ local function Bind(command, input)
 		if k2 then
 			Set(k2, command, ctx)
 		end
-		Say(string.format(TEXT.refused, KeyText(chord)))
+		Say(string.format(W.Tr(TEXT.refused), KeyText(chord)))
 		return
 	end
 	-- the chord takes the first key's place and its second key stays, as the game's Quick Keybind binds (slot 1:
@@ -261,9 +261,9 @@ local function Bind(command, input)
 	S.changed = true
 	MelloUI:PlayUISound("option_on")
 	if type(was) == "string" and was ~= "" and was ~= command then
-		Say(string.format(TEXT.took, KeyText(chord), NameOf(command), NameOf(was)))
+		Say(string.format(W.Tr(TEXT.took), KeyText(chord), NameOf(command), NameOf(was)))
 	else
-		Say(string.format(TEXT.bound, KeyText(chord), NameOf(command)))
+		Say(string.format(W.Tr(TEXT.bound), KeyText(chord), NameOf(command)))
 	end
 	ShowKeys()
 end
@@ -281,7 +281,7 @@ local function Clear(command)
 		S.changed = true
 		MelloUI:PlayUISound("option_off")
 	end
-	Say(string.format(TEXT.cleared, NameOf(command)))
+	Say(string.format(W.Tr(TEXT.cleared), NameOf(command)))
 	ShowKeys()
 end
 
@@ -452,7 +452,7 @@ local function MakeBar()
 		fs:SetWordWrap(true)
 		bar[key] = fs
 	end
-	bar.hint:SetText(TEXT.hint)
+	bar.hint:SetText(W.Tr(TEXT.hint))
 	-- its place: Core's store, dragged by itself at any time (a tool, as Edit Layout's bar)
 	MelloUI:RegisterMover(bar, bar, { key = BAR_KEY, group = "tool", plainDrag = "always", label = TEXT.name,
 		anchor = "TOP", default = BarDefault })
@@ -547,7 +547,7 @@ function K:Start(from)
 		cfg:Hide()
 	end
 	Dress(true)
-	bar.set:SetText(CharacterSet() and TEXT.character or TEXT.account)
+	bar.set:SetText(W.Tr(CharacterSet() and TEXT.character or TEXT.account))
 	Say(TEXT.none)
 	LayBar()
 	bar:Show()

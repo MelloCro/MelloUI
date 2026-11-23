@@ -1475,7 +1475,7 @@ local GLYPH = { taken = "ct_taken", heal = "ct_heal", notice = "ct_notice", avoi
 
 -- a word the game names (COMBAT_TEXT_DODGE, ENTERING_COMBAT ...), else ours
 local function Word(w)
-	return Text(rawget(_G, "COMBAT_TEXT_" .. w)) or Text(rawget(_G, w)) or TEXT[w] or w
+	return Text(rawget(_G, "COMBAT_TEXT_" .. w)) or Text(rawget(_G, w)) or MelloUI.Widgets.Tr(TEXT[w] or w)
 end
 
 -- a value that is there: a secret one, or a plain one that is not nil
@@ -1541,7 +1541,7 @@ local function Entry(kind, data, arg3, arg4)
 	elseif k == "heal" then
 		e.value, e.sign, e.colour = arg3, "+", Meaning.combatHeal
 		if spec.shield then
-			e.tail = TEXT.absorbed
+			e.tail = MelloUI.Widgets.Tr(TEXT.absorbed)
 		end
 		-- the healer: a plain name that is not yours (the feed shows it)
 		local name = Text(data)

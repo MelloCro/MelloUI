@@ -4051,7 +4051,7 @@ function D.Fill(holder, r)
 		end
 	end
 	if own then
-		c.takesTip:SetText(nRules > 1 and TEXT.takesAny or TEXT.takesTip)
+		c.takesTip:SetText(W.Tr(nRules > 1 and TEXT.takesAny or TEXT.takesTip))
 		At(c.takes, D.LABEL_X, y + 4)
 		At(c.takesTip, D.LABEL_X + 60, y + 6)
 		y = y + D.ROW - 6

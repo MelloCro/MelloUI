@@ -256,7 +256,7 @@ local function MineText(fight)
 	if of <= 1 then
 		return TEXT.perSecond:format(Meter.Plain(rate))
 	end
-	return TEXT.rankOf:format(Meter.Plain(rate), rank)
+	return W.Tr(TEXT.rankOf):format(Meter.Plain(rate), rank)
 end
 
 local Select   -- (below)
@@ -379,8 +379,8 @@ local function RunRow()
 	end
 	row:Show()
 	local name = Meter.RunName(st.run)
-	row.sub:SetText(c.fights == 1 and TEXT.runLineOne:format(name, Meter.Clock(c.dur))
-		or TEXT.runLine:format(name, c.fights, Meter.Clock(c.dur)))
+	row.sub:SetText(c.fights == 1 and W.Tr(TEXT.runLineOne):format(name, Meter.Clock(c.dur))
+		or W.Tr(TEXT.runLine):format(name, c.fights, Meter.Clock(c.dur)))
 	-- your rank in the run by damage
 	local mine, rank, of = nil, 1, 0
 	for _, e in pairs(c.by) do
@@ -396,7 +396,7 @@ local function RunRow()
 			end
 		end
 		local rate = c.dur > 0 and mine.d / c.dur or 0
-		row.right:SetText(of > 1 and TEXT.rankOf:format(Meter.Plain(rate), rank) or TEXT.perSecond:format(Meter.Plain(rate)))
+		row.right:SetText(of > 1 and W.Tr(TEXT.rankOf):format(Meter.Plain(rate), rank) or TEXT.perSecond:format(Meter.Plain(rate)))
 	else
 		row.right:SetText("")
 	end
@@ -595,7 +595,7 @@ local function LayLedger()
 		row:Show()
 	end
 	if n == 0 then
-		win.boardEmpty:SetText(win.tab == "healing" and TEXT.noHealing or TEXT.empty)
+		win.boardEmpty:SetText(W.Tr(win.tab == "healing" and TEXT.noHealing or TEXT.empty))
 		win.boardEmpty:Show()
 	end
 	-- under Damage, your top spells when there is room
@@ -618,14 +618,14 @@ local function LayHead()
 	end
 	if sel.kind == "run" then
 		local c = Meter.RunStats(sel.run)
-		win.headName:SetText(TEXT.thisRun)
+		win.headName:SetText(W.Tr(TEXT.thisRun))
 		win.headSub:SetText(Meter.RunName(sel.run) .. "  \194\183  " .. (c and c.fights or 0) .. "  \194\183  "
 			.. Meter.Clock(c and c.dur or 0))
 		return
 	end
 	local f = sel.fight
 	win.headName:SetText(f.name or "")
-	win.headSub:SetText(Meter.Clock(f.dur) .. "  \194\183  " .. (f.won and TEXT.won or TEXT.lost) .. "  \194\183  "
+	win.headSub:SetText(Meter.Clock(f.dur) .. "  \194\183  " .. W.Tr(f.won and TEXT.won or TEXT.lost) .. "  \194\183  "
 		.. (f.clock or ""))
 end
 
@@ -668,7 +668,7 @@ local function LayAll()
 	LayTabs()
 	LayLedger()
 	local n = #Meter.Fights()
-	win.count:SetText(n == 1 and TEXT.sessionOne or TEXT.session:format(n))
+	win.count:SetText(n == 1 and W.Tr(TEXT.sessionOne) or W.Tr(TEXT.session):format(n))
 	Ink()
 end
 
@@ -851,7 +851,7 @@ local function Build()
 	local class = MyClass()
 	win.shell = Kit:OwnWindow(f, {
 		area = "config", ring = { at = "tl", texture = class and Meter.ClassIcon(class) or nil }, plate = "rail",
-		title = TEXT.title, close = true, escape = true, fit = true, sounds = true,
+		title = W.Tr(TEXT.title), close = true, escape = true, fit = true, sounds = true,
 		mover = { key = "MelloUIFightHistory", label = TEXT.title, page = "BarsMeters", default = Home,
 			plainDrag = "always" },
 		-- (the modern look: the brand row at the list column's head, the drag
@@ -877,7 +877,7 @@ local function Build()
 	runRow:SetHeight(H.RUN_ROW)
 	runRow.head:Hide()
 	runRow.line:Hide()
-	runRow.name:SetText(TEXT.thisRun)
+	runRow.name:SetText(W.Tr(TEXT.thisRun))
 	Look.Tint(runRow.name, "gold")
 	Perf.SetScript(runRow, "OnClick", RunClick)
 	win.runRow = runRow
@@ -892,7 +892,7 @@ local function Build()
 	win.empty:SetPoint("TOPLEFT", list, "TOPLEFT", 8, -8)
 	win.empty:SetPoint("RIGHT", list, "RIGHT", -8, 0)
 	win.empty:SetWordWrap(true)
-	win.empty:SetText(TEXT.empty)
+	win.empty:SetText(W.Tr(TEXT.empty))
 	win.count = Font(left, 11, "note")
 	win.count:SetPoint("BOTTOMLEFT", left, "BOTTOMLEFT", 6, 12)
 	win.clear = W.Button(left, TEXT.clear, 80, win.shell, { onClick = ClearClick })
@@ -922,7 +922,7 @@ local function Build()
 		if MelloUI.QuestInk then
 			MelloUI.QuestInk.noInk[tab] = true
 		end
-		tab:SetText(t[2])
+		tab:SetText(W.Tr(t[2]))
 		W.FlatTab(tab, win.shell)
 		tab:SetWidth(H.TAB_W)
 		if prev then
@@ -941,6 +941,8 @@ local function Build()
 	win.board = board
 	win.boardEmpty = Font(board, 12, "text")
 	win.boardEmpty:SetPoint("TOPLEFT", board, "TOPLEFT", 6, -6)
+	win.boardEmpty:SetPoint("RIGHT", board, "RIGHT", -6, 0)
+	win.boardEmpty:SetWordWrap(true)
 	local spellPane = CreateFrame("Frame", nil, board)
 	spellPane:Hide()
 	win.spellPane = spellPane
@@ -949,7 +951,9 @@ local function Build()
 	win.spellsHead = W.Header(spellPane, -7, TEXT.spellsHead, { x = 4 })
 	win.spellsEmpty = Font(board, 12, "text")
 	win.spellsEmpty:SetPoint("TOPLEFT", spellPane, "TOPLEFT", 4, -18)
-	win.spellsEmpty:SetText(TEXT.noSpells)
+	win.spellsEmpty:SetPoint("RIGHT", spellPane, "RIGHT", -4, 0)
+	win.spellsEmpty:SetWordWrap(true)
+	win.spellsEmpty:SetText(W.Tr(TEXT.noSpells))
 	win.spellsEmpty:Hide()
 	Lay(win.shell)
 	win.shell:OnKit(Lay)
