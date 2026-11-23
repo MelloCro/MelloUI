@@ -50,7 +50,7 @@ local M = MelloUI:RegisterModule("GroupMoment", {
 	keep = { "greeted", "revealed" },   -- (this character's: the players greeted, the moment seen once; never in a profile)
 	defaults = { moment = true },
 	options = {
-		{ type = "toggle", key = "moment", play = "moment", name = "MelloUI Player Joins", new = "2.1.76",
+		{ type = "toggle", key = "moment", play = "moment", name = "MelloUI Player Joins",
 		  desc = "When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours." },
 	},
 })
