@@ -2472,6 +2472,8 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Личный дисплей: свой предпросмотр на вкладке «Личный». Перетащите полосу заклинаний, текст, значок ударов или восстановления, чтобы переместить их.", -- draft
+	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Карта: на поле боя его базы, башни и лагеря показывают, кто ими владеет, как на карте самой игры.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Конструктор индикаторов: число здоровья и процент перемещаются и меняют размер отдельно, а у имён есть размер.", -- draft
 	["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "Индикаторы: значок удара встаёт за процентом, когда тот стоит рядом с полосой.", -- draft
 	["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur: пока его свечение включено, блики сбора «Искр добычи» уступают ему место.", -- draft
@@ -2485,11 +2487,6 @@ Lang:Add("ruRU", {
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Карта: «Только отслеживаемые задания» и «Только выбранное задание» сразу меняют открытую карту.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Китайский текст: заголовки нужного размера и китайские иероглифы вместо квадратов.", -- draft
 	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Отчёт о заблокированных действиях (/mellobug): с геймпадом он также следит за навигацией геймпада в игре.", -- draft
-	["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "Только отслеживаемое задание (Список заданий > Карта): на карте и миникарте только задание, которое вы отслеживаете.", -- draft
-	["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "Клавиша «Забрать всё»: одна клавиша забирает всё из окна добычи (Окна > Окна добычи).", -- draft
-	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Личный дисплей: клики насквозь, чтобы Clique не произносил заклинания, когда вы двигаете камеру над полосами.", -- draft
-	["Edit Layout: move and size the totem and minion timers."] = "Редактор раскладки: перемещайте и меняйте размер таймеров тотемов и прислужников.", -- draft
-	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "Редактор раскладки: перемещайте цели поля боя и зоны вверху экрана.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3071,6 +3068,7 @@ Lang:Add("ruRU", {
 	["My colour"] = "Мой цвет", -- draft
 	-- MelloUI_PersonalDisplay/PersonalDisplay.lua
 	["Spell name or ID"] = "Название или ID заклинания", -- draft
+	["The Personal Display is off: switch it on to see it here."] = "Личный дисплей выключен: включите его, чтобы увидеть здесь.", -- draft
 	-- Kept: English still in the addon's code that the collector does not list (data drawn at run time, a chat line)
 	-- kept: Core/Config.lua
 	["Compatibility"] = "Совместимость", -- draft
@@ -3377,6 +3375,8 @@ Lang:Add("ruRU", {
 -- stale: ["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: элемент, который игра скрывает (подсказка, окно добычи ...), появляется одним щелчком по его глазу в списке элементов и кнопкой «Показать все»; раньше требовался двойной щелчок.", -- draft
 -- stale: ["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "Изменить раскладку: прикрепляйте элементы, как в режиме редактирования; другим персонажам снова предлагается раскладка MelloUI.", -- draft
 -- stale: ["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "Изменить раскладку: прикрепляйте элементы игры друг к другу, как в режиме редактирования.", -- draft
+-- stale: ["Edit Layout: move and size the totem and minion timers."] = "Редактор раскладки: перемещайте и меняйте размер таймеров тотемов и прислужников.", -- draft
+-- stale: ["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "Редактор раскладки: перемещайте цели поля боя и зоны вверху экрана.", -- draft
 -- stale: ["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "Изменить раскладку: размер счетчика урона виден сразу, пока вы его меняете; рамка игрока охватывает вкладку счетчика.", -- draft
 -- stale: ["Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place."] = "Редактор макета: собственные таймеры ударов игры больше не показываются там, пока их место занимает значок удара MelloUI.", -- draft
 -- stale: ["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: следующий /reload переключает на копию раскладки игры от MelloUI, и перемещённые панели, например панель тотемов, остаются на месте в бою.", -- draft
@@ -3448,6 +3448,7 @@ Lang:Add("ruRU", {
 -- stale: ["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "Исправлено: текст в полях поиска и ввода MelloUI снова начинается слева, а не по центру.", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Исправлено: при выключенных значках эффектов MelloUI панель положительных эффектов игры снова можно перемещать в редакторе расположения.", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Исправлено: с обликом «По умолчанию» окно шёпота открывается без ошибки Lua и снова выглядит как в игре.", -- draft
+-- stale: ["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "Только отслеживаемое задание (Список заданий > Карта): на карте и миникарте только задание, которое вы отслеживаете.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Для разбойника и друида в облике кошки: пять приёмов серии в ряд по верхнему краю полосы здоровья вашей цели, пустые, пока вы их не накопите. Имя немного поднимается, чтобы освободить место.", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "Принудительно обводит каждый светлый шрифт. Тёмный текст на пергаменте (задания, книга заклинаний, диалоги) сохраняет исходный вид. Собственный текст MelloUI в мире (оповещения, текст боя, строки получения) берёт контур из «Оповещения: текст с контуром»; здесь задаётся только его толщина.", -- draft
 -- stale: ["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "Предпросмотры рамок стоят слева, с местом вокруг; предпросмотр игрока показывает вас; ненастоящий рейд — от 5 до 40.", -- draft
@@ -3600,6 +3601,7 @@ Lang:Add("ruRU", {
 -- stale: ["Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it."] = "Загружает всю графику облика во время экрана загрузки, чтобы окно, впервые открытое после перезагрузки, сразу показывало оформление, а не мгновением позже. Держит около 13 МБ графики в памяти всю сессию, в том числе для окон, которые вы никогда не открываете. Выкл.: каждая часть загружается, когда она впервые нужна окну.", -- draft
 -- stale: ["Loading a profile made for another screen offers Fit to this screen."] = "Профиль, сделанный для другого экрана, при загрузке предлагает Подогнать под этот экран.", -- draft
 -- stale: ["Loading a profile made for another screen offers Fit to this screen; Gains keeps its place on a wide screen."] = "Профиль для другого экрана предлагает «Подогнать под этот экран»; «Получено» остаётся на месте на широком экране.", -- draft
+-- stale: ["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "Клавиша «Забрать всё»: одна клавиша забирает всё из окна добычи (Окна > Окна добычи).", -- draft
 -- stale: ["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "Розыгрыши добычи в отдельном окне: каждый выбор и каждое число, а предмет летит к победителю.", -- draft
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "Выдуманные участники там, где ваши рамки группы, с индикаторами этого списка, до конца предпросмотра. Только вне боя.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "Выдуманные участники там, где ваши рамки рейда, с вашими индикаторами, до конца предпросмотра. Только вне боя.", -- draft
@@ -3748,6 +3750,7 @@ Lang:Add("ruRU", {
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "Рамки группы: «Отразить по горизонтали» для группы справа; «Показывать себя в группе» исправлено для портретов; подсветка при наведении зажигает рамку под мышью.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "Платит за ремонт из банка гильдии, когда это разрешено. Если гильдия не может покрыть стоимость, платит ваше золото.", -- draft
 -- stale: ["Personal Display Border"] = "Рамка личного дисплея", -- draft
+-- stale: ["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Личный дисплей: клики насквозь, чтобы Clique не произносил заклинания, когда вы двигаете камеру над полосами.", -- draft
 -- stale: ["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "Личный дисплей: Облики друида. У друида две тонкие полосы под полосой ресурса показывают ресурсы других обликов.", -- draft
 -- stale: ["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "Личный дисплей: Пауза восстановления маны. После заклинания, потратившего ману, по полосе ресурса бежит свет те пять секунд, пока мана не восстанавливается.", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "Личная панель: «Над личной панелью» ставит значок удара по центру над панелью, а не на индикатор здоровья вашей цели.", -- draft

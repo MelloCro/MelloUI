@@ -2472,6 +2472,8 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "个人显示：在“个人”页签中有了自己的预览。拖动施法条、文字、挥击徽章或冷却图标即可移动它们。", -- draft
+	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "地图：在战场中，据点、哨塔和营地会显示由哪一方控制，与游戏自带的地图一样。", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "姓名板设计器：生命值数字和百分比可分别移动和调整大小，名字也可设置大小。", -- draft
 	["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "姓名板：当百分比位于条旁时，挥击徽章会移到百分比之后。", -- draft
 	["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur：其光效开启时，拾取闪光的采集闪烁会为它让路。", -- draft
@@ -2485,11 +2487,6 @@ Lang:Add("zhCN", {
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "地图：“仅追踪的任务”和“仅聚焦的任务”会立即改变已打开的地图。", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "中文文本：标题和小标题恢复正常大小，中文字符不再显示为方框。", -- draft
 	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "被阻止操作报告（/mellobug）：使用手柄时，也会留意游戏的手柄导航。", -- draft
-	["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "仅追踪中的任务（任务列表 > 地图）：地图和小地图上只显示你追踪的任务。", -- draft
-	["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "全部拾取键：一个键拿走拾取窗口里的全部物品（窗口 > 拾取窗口）。", -- draft
-	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "个人显示：点击穿透，在条上拖动镜头时 Clique 不再施法。", -- draft
-	["Edit Layout: move and size the totem and minion timers."] = "编辑布局：移动并缩放图腾与仆从计时。", -- draft
-	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "编辑布局：移动屏幕顶部的战场和区域目标。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3071,6 +3068,7 @@ Lang:Add("zhCN", {
 	["My colour"] = "我的颜色", -- draft
 	-- MelloUI_PersonalDisplay/PersonalDisplay.lua
 	["Spell name or ID"] = "法术名称或ID", -- draft
+	["The Personal Display is off: switch it on to see it here."] = "个人显示已关闭：开启后即可在此查看。", -- draft
 	-- Kept: English still in the addon's code that the collector does not list (data drawn at run time, a chat line)
 	-- kept: Core/Config.lua
 	["Compatibility"] = "兼容性", -- draft
@@ -3377,6 +3375,8 @@ Lang:Add("zhCN", {
 -- stale: ["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout：游戏隐藏的元素（鼠标提示、拾取窗口……）在元素列表中单击它的眼睛即可显示，“全部显示”也可以；之前需要双击。", -- draft
 -- stale: ["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "编辑布局：像编辑模式一样吸附元素；你的其他角色会再次被询问是否使用 MelloUI 的布局。", -- draft
 -- stale: ["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "编辑布局：像编辑模式一样，将游戏的元素彼此吸附。", -- draft
+-- stale: ["Edit Layout: move and size the totem and minion timers."] = "编辑布局：移动并缩放图腾与仆从计时。", -- draft
+-- stale: ["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "编辑布局：移动屏幕顶部的战场和区域目标。", -- draft
 -- stale: ["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "编辑布局：调整伤害统计的大小时立即可见；玩家框的方框包含统计标签。", -- draft
 -- stale: ["Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place."] = "编辑布局：当 MelloUI 的攻击徽章取代游戏自带的攻击计时器时，后者不再显示在那里。", -- draft
 -- stale: ["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout：下次 /reload 时会切换到 MelloUI 复制的游戏布局，图腾条等移动过的动作条在战斗中也会留在原位。", -- draft
@@ -3448,6 +3448,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "修复：MelloUI的搜索框和输入框中的文字重新从左侧开始，而不是居中。", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "修复：关闭 MelloUI 的增益图标时，又可以在布局编辑中移动游戏的增益条了。", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "修复：使用默认外观风格时，悄悄话窗口打开不再出现 Lua 错误，并恢复游戏自身的外观。", -- draft
+-- stale: ["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "仅追踪中的任务（任务列表 > 地图）：地图和小地图上只显示你追踪的任务。", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "盗贼以及猎豹形态的德鲁伊：你的五个连击点数排在目标生命条的上沿，攒起来之前是空的。名字会稍微上移让出位置。", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "强制给每种浅色字体加描边。羊皮纸上的深色文字（任务、法术书、对话）保持原样。MelloUI在世界中的文字（通知、战斗文字、收获行）的描边取自“通知：描边文字”；这里只设置粗细。", -- draft
 -- stale: ["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "框体预览位于左侧，四周留有空间；玩家预览显示的是你自己；虚拟团队可选 5 到 40 人。", -- draft
@@ -3600,6 +3601,7 @@ Lang:Add("zhCN", {
 -- stale: ["Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it."] = "在载入画面期间载入换肤的全部美术，这样重载后第一次打开的窗口会立刻显示美术，而不是稍后才出现。整个游戏过程中在内存里保留约13 MB美术，包括你从不打开的窗口。关闭：每个部分在窗口第一次需要时载入。", -- draft
 -- stale: ["Loading a profile made for another screen offers Fit to this screen."] = "载入为其他屏幕制作的配置文件时，会提供适配此屏幕。", -- draft
 -- stale: ["Loading a profile made for another screen offers Fit to this screen; Gains keeps its place on a wide screen."] = "载入为其他屏幕制作的配置文件时会提供“适配此屏幕”；收获在宽屏上保持原位。", -- draft
+-- stale: ["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "全部拾取键：一个键拿走拾取窗口里的全部物品（窗口 > 拾取窗口）。", -- draft
 -- stale: ["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "拾取掷骰有了自己的窗口：每个人的选择和点数一目了然，物品会飞向赢家。", -- draft
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "在你的小队框体位置显示虚构的成员，带上此列表的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "在你的团队框体位置显示虚构的成员，带上你的指示器，直到预览结束。仅限脱离战斗。", -- draft
@@ -3748,6 +3750,7 @@ Lang:Add("zhCN", {
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "小队框体：“水平翻转”适合右侧的小队；修复了头像样式下“显示你自己”；鼠标悬停高亮点亮鼠标下的框体。", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "允许时从公会银行支付修理费。公会无法支付时改用你自己的金币。", -- draft
 -- stale: ["Personal Display Border"] = "个人显示边框", -- draft
+-- stale: ["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "个人显示：点击穿透，在条上拖动镜头时 Clique 不再施法。", -- draft
 -- stale: ["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "个人显示：德鲁伊形态。对德鲁伊来说，能量条下方的两条细条显示其他形态的能量。", -- draft
 -- stale: ["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "个人显示：法力回复暂停。施放消耗法力的法术后，在法力不回复的五秒内，一道光会沿着能量条移动。", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft

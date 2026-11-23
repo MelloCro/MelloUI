@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.73", lines = {
+		"Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them.",
+		"Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map.",
+	} },
 	{ version = "2.1.72", lines = {
 		"Nameplate Designer: the health number and the percent move and size on their own, and the names have a size.",
 		"Nameplates: the swing badge steps past the percent when it stands beside the bar.",
@@ -197,13 +201,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.69", lines = {
 		"Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation.",
-	} },
-	{ version = "2.1.68", lines = {
-		"Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap.",
-		"Loot All Key: one key takes everything from the loot window (Windows > Loot windows).",
-		"Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars.",
-		"Edit Layout: move and size the totem and minion timers.",
-		"Edit Layout: move the battleground and zone objectives at the top of the screen.",
 	} },
 }
 local LINKS = {

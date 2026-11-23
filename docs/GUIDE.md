@@ -84,6 +84,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 - **Dungeon Info:** every dungeon and raid beside the map, its bosses in order and what each one drops, and the rare drops of its other creatures (**Trash drops**, with who drops each). Star the items you want: when one drops, its loot roll shines gold and lights Need. **Pick Up Quests** routes you to all of a dungeon's quests in the fastest order, then to its door. Open it with the door button beside the map, a click on a dungeon's door, or `/dungeoninfo`.
   - Forever's own dungeons' loot is not in the game's files: every list of it is collected from players. Dungeon Info lists their bosses' loot from [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0), which also has the drops Forever changed in the classic dungeons. It shows the drop rates players collect for [Everloot](https://everloot.app) (CC BY-SA 4.0) as they come in, and counts what falls in front of you: a boss's kills and drops, the corpses you loot and their rare drops, giving each a chance. With **DungeonJournal** installed, its loot lists show too. `/dungeoninfo export` gives you a text of what you have seen: post it in MelloUI's Discord and it goes into the next update for everyone.
   - **Dungeon maps:** inside a dungeon or raid the map (M) opens on its own map, with Dungeon Info's page beside it (its bosses and their loot). The classic dungeons and raids show Blizzard's own drawn maps, floor by floor (the game holds the drawings but never shows them); Forever's own dungeons show the fan-made maps of Santiago Reyes ("Atlas de Azeroth: Forever", used with his kind permission; the footer names him, his watermark stays on the parchment). The drawings mark their own bosses and ways in, so the map adds no pins of its own. From outside, a click on a dungeon's door on the map, or on its row in Dungeon Info, shows its map the same way. **World map** at the top left, or a right-click at the whole dungeon, goes back to the world. Your arrow shows where the game gives your place inside. A dungeon of several floors comes in **floors**, named as the game names them: pick one in the row above the map; the map opens on the floor you stand in and follows you into the next. Switch it off on the Map page (**Dungeon Maps**).
+  - **Battlegrounds:** inside a battleground the map opens on the battleground's own map, as the game's map does: you and your group, its flags (on the ground or with whoever carries them) and its vehicles, and its bases, towers, graveyards and camps in the game's own icons, which change with who holds them (Alliance, Horde, contested or nobody). Hover one for its name and state.
 
 ## 👥 Small things you'll use every day
 
@@ -808,6 +809,13 @@ default; its settings on **Animations > Frames**, its switch **Cooldown Effects*
 
 Legion's resource display under your character, back and grown (0.21.0; the MelloUI Personal Display addon; off by
 default; its settings on **Unit & Group Frames**' **Personal** frame):
+
+- **Its preview** (2.1.73): the Personal frame shows the display on top, everything at once, in the look it wears:
+  the bars, the cast bar, the shield column, the swing badge, the big cooldowns and the text. Click a part to open
+  its settings. Drag the cast bar, the text, the swing badge or the big cooldowns to a new place (or click a **+**
+  for a spot; the arrow keys nudge a picked part): your display follows. The wheel sizes the swing badge and the big
+  cooldowns (Big Cooldown Size). Right-click a part for **Default place**. The shield column keeps its place in Edit
+  Layout, beside your character.
 
 - **Health, power and your cast bar** under your character's feet, in the unit frames' gem-capped frames, with your
   health and power in percent beside them. The cast bar shows only while you cast or channel: the spell and its

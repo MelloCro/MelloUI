@@ -2472,6 +2472,8 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "개인 표시기: 개인 탭에 전용 미리보기가 생겼습니다. 시전 바, 글자, 스윙 배지 또는 재사용 대기시간을 끌어서 옮기세요.", -- draft
+	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "지도: 전장에서 거점, 탑, 야영지가 누가 차지하고 있는지 게임 기본 지도처럼 표시됩니다.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "이름표 디자이너: 생명력 숫자와 백분율을 따로 옮기고 크기를 바꿀 수 있으며, 이름 크기도 정할 수 있습니다.", -- draft
 	["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "이름표: 백분율이 막대 옆에 있을 때 스윙 배지가 그 뒤로 비켜납니다.", -- draft
 	["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur: 빛 효과가 켜져 있는 동안 전리품 반짝임의 채집 반짝임이 비켜납니다.", -- draft
@@ -2485,11 +2487,6 @@ Lang:Add("koKR", {
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "지도: 추적 중인 퀘스트만, 따라가는 퀘스트만 설정이 열린 지도에 바로 적용됩니다.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "중국어 글자: 제목과 머리글이 올바른 크기로 표시되고, 네모 대신 중국어 글자가 보입니다.", -- draft
 	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "차단된 동작 보고서(/mellobug): 컨트롤러를 쓸 때 게임의 컨트롤러 탐색도 지켜봅니다.", -- draft
-	["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "추적 중인 퀘스트만 (퀘스트 목록 > 지도): 지도와 미니맵에 따라가는 퀘스트만 표시합니다.", -- draft
-	["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "모두 줍기 키: 키 하나로 전리품 창의 모든 것을 가져옵니다 (창 > 전리품 창).", -- draft
-	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "개인 디스플레이: 클릭 통과로 바 위에서 카메라를 끌 때 Clique가 시전하지 않습니다.", -- draft
-	["Edit Layout: move and size the totem and minion timers."] = "배치 편집: 토템 및 하수인 타이머를 옮기고 크기를 조절합니다.", -- draft
-	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "배치 편집: 화면 위쪽의 전장 및 지역 목표를 옮깁니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3071,6 +3068,7 @@ Lang:Add("koKR", {
 	["My colour"] = "내 색", -- draft
 	-- MelloUI_PersonalDisplay/PersonalDisplay.lua
 	["Spell name or ID"] = "주문 이름 또는 ID", -- draft
+	["The Personal Display is off: switch it on to see it here."] = "개인 표시기가 꺼져 있습니다: 켜면 여기에서 볼 수 있습니다.", -- draft
 	-- Kept: English still in the addon's code that the collector does not list (data drawn at run time, a chat line)
 	-- kept: Core/Config.lua
 	["Compatibility"] = "호환성", -- draft
@@ -3377,6 +3375,8 @@ Lang:Add("koKR", {
 -- stale: ["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: 게임이 숨기는 요소(툴팁, 전리품 창 ...)를 요소 목록에서 눈 아이콘을 한 번 클릭하거나 모두 표시로 보이게 할 수 있습니다. 전에는 두 번 클릭해야 했습니다.", -- draft
 -- stale: ["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "레이아웃 편집: 편집 모드처럼 요소를 붙이고, 다른 캐릭터에서도 MelloUI 레이아웃 사용 여부를 다시 묻습니다.", -- draft
 -- stale: ["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "레이아웃 편집: 편집 모드처럼 게임의 요소를 서로 붙입니다.", -- draft
+-- stale: ["Edit Layout: move and size the totem and minion timers."] = "배치 편집: 토템 및 하수인 타이머를 옮기고 크기를 조절합니다.", -- draft
+-- stale: ["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "배치 편집: 화면 위쪽의 전장 및 지역 목표를 옮깁니다.", -- draft
 -- stale: ["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "레이아웃 편집: 미터기 크기를 바꾸는 동안 바로 보이고, 플레이어 상자가 미터기 탭을 포함합니다.", -- draft
 -- stale: ["Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place."] = "레이아웃 편집: MelloUI의 공격 배지가 대신하는 동안 게임 자체 공격 타이머는 더 이상 그곳에 표시되지 않습니다.", -- draft
 -- stale: ["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: 다음 /reload 때 게임 레이아웃의 MelloUI 사본으로 바뀌어, 토템 바처럼 옮긴 바가 전투 중에도 제자리에 머뭅니다.", -- draft
@@ -3448,6 +3448,7 @@ Lang:Add("koKR", {
 -- stale: ["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "수정: MelloUI의 검색창과 입력창의 글자가 가운데가 아니라 다시 왼쪽부터 시작합니다.", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "수정: MelloUI 강화 효과 아이콘을 꺼도 레이아웃 편집에서 게임의 강화 효과 바를 다시 옮길 수 있습니다.", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "수정: 기본 스킨에서 귓속말 창이 Lua 오류 없이 열리고 다시 게임 고유의 모습으로 표시됩니다.", -- draft
+-- stale: ["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "추적 중인 퀘스트만 (퀘스트 목록 > 지도): 지도와 미니맵에 따라가는 퀘스트만 표시합니다.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "도적과 표범 변신 드루이드: 대상 생명력 막대 위쪽 가장자리에 다섯 연계 점수를 한 줄로, 쌓기 전에는 비어 있습니다. 이름이 조금 올라가 자리를 만듭니다.", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "밝은 색 글꼴 모두에 외곽선을 강제로 둡니다. 양피지 위의 어두운 글자(퀘스트, 마법책, 대화)는 원래 모습을 유지합니다. 세상 속 MelloUI 글자(알림, 전투 문자, 획득 줄)는 알림: 외곽선 글자에서 외곽선을 가져오며, 여기서는 두께만 정합니다.", -- draft
 -- stale: ["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "프레임 미리보기가 왼쪽에 여유 공간과 함께 놓이고, 플레이어 미리보기는 내 캐릭터를 보여 줍니다. 가짜 공격대는 5~40명 중에서 고릅니다.", -- draft
@@ -3600,6 +3601,7 @@ Lang:Add("koKR", {
 -- stale: ["Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it."] = "불러오기 화면에서 스킨의 모든 그림을 불러와, 재시작 후 처음 여는 창이 잠시 뒤가 아니라 곧바로 그림을 보여 줍니다. 한 번도 열지 않는 창의 그림까지 포함해 약 13 MB를 세션 내내 메모리에 둡니다. 끄기: 각 조각은 창이 처음 필요로 할 때 불러옵니다.", -- draft
 -- stale: ["Loading a profile made for another screen offers Fit to this screen."] = "다른 화면용으로 만든 프로필을 불러오면 이 화면에 맞추기를 제안합니다.", -- draft
 -- stale: ["Loading a profile made for another screen offers Fit to this screen; Gains keeps its place on a wide screen."] = "다른 화면용 프로필을 불러오면 '이 화면에 맞추기'를 제안하고, 획득 알림은 와이드 화면에서도 자리를 지킵니다.", -- draft
+-- stale: ["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "모두 줍기 키: 키 하나로 전리품 창의 모든 것을 가져옵니다 (창 > 전리품 창).", -- draft
 -- stale: ["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "주사위 굴림 전용 창: 모든 선택과 숫자가 표시되고, 아이템이 승자에게 날아갑니다.", -- draft
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "미리 보기가 끝날 때까지 파티 창 자리에 지어낸 구성원과 이 목록의 표시기를. 전투 밖에서만.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "미리 보기가 끝날 때까지 공격대 창 자리에 지어낸 구성원과 내 표시기를. 전투 밖에서만.", -- draft
@@ -3748,6 +3750,7 @@ Lang:Add("koKR", {
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "파티 개체창: 오른쪽 파티를 위한 가로 뒤집기; 초상화 방식에서 '내 개체창 표시' 수정; 마우스오버 강조가 마우스 아래 개체창을 밝힙니다.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "허용되면 길드 은행에서 수리비를 냅니다. 길드가 비용을 감당할 수 없으면 내 골드를 씁니다.", -- draft
 -- stale: ["Personal Display Border"] = "개인 표시기 테두리", -- draft
+-- stale: ["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "개인 디스플레이: 클릭 통과로 바 위에서 카메라를 끌 때 Clique가 시전하지 않습니다.", -- draft
 -- stale: ["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "개인 표시기: 드루이드 변신. 드루이드에게는 자원 바 아래의 가는 바 두 개가 다른 변신의 자원을 보여 줍니다.", -- draft
 -- stale: ["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "개인 표시기: 마나 재생 멈춤. 주문에 마나를 쓰면, 마나가 재생되지 않는 5초 동안 자원 바를 따라 빛이 흐릅니다.", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "개인 표시: '개인 표시 위에'를 켜면 공격 배지가 대상의 이름표 대신 개인 표시 위 가운데에 표시됩니다.", -- draft

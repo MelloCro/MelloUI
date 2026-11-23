@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.73
+
+- Unit & Group Frames > Personal: the Personal Display has its own preview, like Player and the nameplates: the bars, the cast bar, the shield column, the swing badge, the big cooldowns and the text all at once, in the look your display wears. Click a part to open its settings, and drag the cast bar, the text, the swing badge or the big cooldowns to a new place on it: your display follows. The wheel sizes the swing badge and the big cooldowns. Right-click a part and pick Default place to put it back.
+- Map: inside a battleground, its bases, towers, graveyards and camps show on the map in the game's own icons, which change with who holds them (Alliance, Horde, contested or nobody). Hover one for its name and state.
+
 ## 2.1.72
 
 - Nameplate Designer: the health number and the percent are two parts now, Health number and Health percent: drag each one anywhere on the plate, hide either, and give the percent its own size (Percent Size, smaller than the number if you like).

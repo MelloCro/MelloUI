@@ -219,10 +219,14 @@ L.pages = {
 				{ key = "power", label = "Power bar", stage = "bar.power" },
 				{ key = "background", label = "Background", stage = "bar.background" },
 				{ key = "indicators", label = "Indicators", stage = "ind:" } } },
+			-- (2.1.73, the Personal Display Designer: docs/plans/personal-designer.md) its stage: MelloUI_PersonalDisplay's
+			-- 'personal' kind, everything at once, the cast bar, the text, the badge and the cooldowns dragged
 			{ key = "personal", label = "Personal", module = "PersonalDisplay", line = "The bars under your character",
-				parts = { { key = "shield", label = "Shield column" }, { key = "cast", label = "Cast" },
-				{ key = "swing", label = "Swing badge" }, { key = "text", label = "Text" },
-				{ key = "cooldowns", label = "Big cooldowns" } } },
+				stage = { kind = "personal", pick = "personal" },
+				parts = { { key = "shield", label = "Shield column", stage = "shield" },
+				{ key = "cast", label = "Cast", stage = "cast" },
+				{ key = "swing", label = "Swing badge", stage = "swing" }, { key = "text", label = "Text", stage = "text" },
+				{ key = "cooldowns", label = "Big cooldowns", stage = "cooldowns" } } },
 		},
 		family = { key = "all", label = "All frames", line = "Every frame: the debuff glow" } },
 	-- (one look C8) the painted reskin's own rows, kept working here until the painted look becomes its own addon

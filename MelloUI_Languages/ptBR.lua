@@ -2472,6 +2472,8 @@ Lang:Add("ptBR", {
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
 	["Addons"] = "Addons", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Os addons com que o MelloUI funciona: o que ele faz com cada um e onde ficam as configurações.", -- draft
+	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Exibição pessoal: sua própria prévia na aba Pessoal. Arraste a barra de lançamento, o texto, o emblema de golpes ou as recargas para movê-los.", -- draft
+	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Mapa: em um campo de batalha, suas bases, torres e acampamentos mostram quem os controla, como no mapa do jogo.", -- draft
 	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Designer de placas de identificação: o número de vida e a porcentagem se movem e mudam de tamanho separadamente, e os nomes têm tamanho.", -- draft
 	["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "Placas de identificação: o emblema de golpe passa para depois da porcentagem quando ela fica ao lado da barra.", -- draft
 	["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur: enquanto seu brilho está ativo, os reflexos de coleta de Brilhos de saque saem do caminho para ele.", -- draft
@@ -2485,11 +2487,6 @@ Lang:Add("ptBR", {
 	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Mapa: Apenas as missões rastreadas e Apenas a missão em foco mudam o mapa aberto na hora.", -- draft
 	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Texto chinês: títulos e cabeçalhos no tamanho certo, e caracteres chineses em vez de quadrados.", -- draft
 	["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Relatório de ações bloqueadas (/mellobug): com um controle, ele também acompanha a navegação por controle do jogo.", -- draft
-	["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "Só a missão seguida (Lista de missões > Mapa): só a missão que você segue no mapa e no minimapa.", -- draft
-	["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "Tecla Saquear tudo: uma tecla pega tudo da janela de saque (Janelas > Janelas de saque).", -- draft
-	["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Tela pessoal: Clicar através, para o Clique não lançar feitiços ao arrastar a câmera sobre as barras.", -- draft
-	["Edit Layout: move and size the totem and minion timers."] = "Editar layout: mova e redimensione os temporizadores de totens e lacaios.", -- draft
-	["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "Editar layout: mova os objetivos de campo de batalha e de zona no topo da tela.", -- draft
 	["Report a problem"] = "Relatar um problema", -- draft
 	["Voice pack"] = "Pacote de vozes", -- draft
 	["open or close this window"] = "abre ou fecha esta janela", -- draft
@@ -3071,6 +3068,7 @@ Lang:Add("ptBR", {
 	["My colour"] = "Minha cor", -- draft
 	-- MelloUI_PersonalDisplay/PersonalDisplay.lua
 	["Spell name or ID"] = "Nome ou ID do feitiço", -- draft
+	["The Personal Display is off: switch it on to see it here."] = "A exibição pessoal está desligada: ligue-a para vê-la aqui.", -- draft
 	-- Kept: English still in the addon's code that the collector does not list (data drawn at run time, a chat line)
 	-- kept: Core/Config.lua
 	["Compatibility"] = "Compatibilidade", -- draft
@@ -3377,6 +3375,8 @@ Lang:Add("ptBR", {
 -- stale: ["Edit Layout: an element the game hides (the Tooltip, the loot window ...) shows with one click on its eye in the Elements list, and with Show all; it took a double-click before."] = "Edit Layout: um elemento que o jogo esconde (a dica, a janela de saque ...) aparece com um clique no olho dele na lista de elementos, e com Mostrar tudo; antes era preciso um clique duplo.", -- draft
 -- stale: ["Edit Layout: attach elements as in Edit Mode; your other characters are asked again to use MelloUI's layout."] = "Editar layout: prenda elementos como no Modo de Edição; seus outros personagens voltam a ser perguntados se querem usar o layout do MelloUI.", -- draft
 -- stale: ["Edit Layout: attach the game's elements to each other, as in Edit Mode."] = "Editar layout: prenda os elementos do jogo uns aos outros, como no Modo de Edição.", -- draft
+-- stale: ["Edit Layout: move and size the totem and minion timers."] = "Editar layout: mova e redimensione os temporizadores de totens e lacaios.", -- draft
+-- stale: ["Edit Layout: move the battleground and zone objectives at the top of the screen."] = "Editar layout: mova os objetivos de campo de batalha e de zona no topo da tela.", -- draft
 -- stale: ["Edit Layout: the damage meter's size shows as you change it; the player box takes in the meter tab."] = "Editar layout: o tamanho do medidor de dano aparece enquanto você o muda; a caixa do jogador inclui a aba do medidor.", -- draft
 -- stale: ["Edit Layout: the game's own swing timers no longer show there while MelloUI's swing badge takes their place."] = "Editar layout: os temporizadores de golpe do próprio jogo não aparecem mais ali enquanto o emblema de golpe do MelloUI ocupa o lugar deles.", -- draft
 -- stale: ["Edit Layout: your next /reload switches to MelloUI's copy of the game's layout, so moved bars like the totem bar stay put in fights."] = "Edit Layout: seu próximo /reload muda para a cópia do MelloUI do layout do jogo, assim as barras que você moveu, como a de totens, ficam no lugar em combate.", -- draft
@@ -3448,6 +3448,7 @@ Lang:Add("ptBR", {
 -- stale: ["Fixed: the text in MelloUI's search and input boxes starts at the left again instead of the middle."] = "Corrigido: o texto das caixas de busca e de entrada do MelloUI volta a começar à esquerda em vez do meio.", -- draft
 -- stale: ["Fixed: with MelloUI's buff icons off, the game's Buffs bar can be moved in Edit Layout again."] = "Corrigido: com os ícones de bônus do MelloUI desligados, a barra de bônus do jogo volta a poder ser movida no editor de layout.", -- draft
 -- stale: ["Fixed: with the Default skin, the whisper window opens without a Lua error and has the game's look again."] = "Corrigido: com o visual Padrão, a janela de sussurro abre sem erro de Lua e volta a ter a aparência do jogo.", -- draft
+-- stale: ["Focused Quest Only (Quest List > Map): only the quest you follow on the map and the minimap."] = "Só a missão seguida (Lista de missões > Mapa): só a missão que você segue no mapa e no minimapa.", -- draft
 -- stale: ["For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room."] = "Para um ladino, e um druida em Forma de Felino: seus cinco pontos de combo em fila na borda superior da barra de vida do seu alvo, vazios até você acumulá-los. O nome sobe um pouco para abrir espaço.", -- draft
 -- stale: ["Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is."] = "Força um contorno em cada fonte de cor clara. O texto escuro sobre pergaminho (missões, grimório, diálogos) mantém o visual original. O texto do MelloUI no mundo (avisos, texto de combate, linhas de ganhos) recebe o contorno de Avisos: texto contornado; isto define só a espessura.", -- draft
 -- stale: ["Frame previews stand on the left with room around them; the Player preview shows you; pick 5 to 40 for the fake raid."] = "As prévias de quadros ficam à esquerda com espaço ao redor; a prévia do jogador mostra você; de 5 a 40 para a raide falsa.", -- draft
@@ -3600,6 +3601,7 @@ Lang:Add("ptBR", {
 -- stale: ["Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it."] = "Carrega toda a arte do visual durante a tela de carregamento, para que uma janela aberta pela primeira vez após recarregar mostre sua arte na hora, e não um instante depois. Mantém cerca de 13 MB de arte na memória durante toda a sessão, inclusive para janelas que você nunca abre. Desligado: cada peça carrega na primeira vez que uma janela precisa dela.", -- draft
 -- stale: ["Loading a profile made for another screen offers Fit to this screen."] = "Carregar um perfil feito para outra tela oferece Ajustar a esta tela.", -- draft
 -- stale: ["Loading a profile made for another screen offers Fit to this screen; Gains keeps its place on a wide screen."] = "Carregar um perfil feito para outra tela oferece Ajustar a esta tela; Ganhos mantém seu lugar em uma tela larga.", -- draft
+-- stale: ["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "Tecla Saquear tudo: uma tecla pega tudo da janela de saque (Janelas > Janelas de saque).", -- draft
 -- stale: ["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "Disputas de saque em uma janela própria: cada escolha e cada número, e o item voa até o vencedor.", -- draft
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "Membros inventados onde ficam seus quadros de grupo, com os indicadores desta lista neles, até a prévia acabar. Só fora de combate.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "Membros inventados onde ficam seus quadros de raide, com seus indicadores neles, até a prévia acabar. Só fora de combate.", -- draft
@@ -3748,6 +3750,7 @@ Lang:Add("ptBR", {
 -- stale: ["Party frames: Flip Horizontally for a party on the right; Show Yourself In Your Party fixed for Portraits; Mouseover Highlight lights the frame under your mouse."] = "Quadros de grupo: Inverter na horizontal para um grupo à direita; Mostrar você no grupo corrigido para retratos; o destaque ao passar o mouse acende o quadro sob ele.", -- draft
 -- stale: ["Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost."] = "Paga os consertos com o banco da guilda quando permitido. Usa o seu próprio ouro se a guilda não puder cobrir o custo.", -- draft
 -- stale: ["Personal Display Border"] = "Borda da Exibição pessoal", -- draft
+-- stale: ["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Tela pessoal: Clicar através, para o Clique não lançar feitiços ao arrastar a câmera sobre as barras.", -- draft
 -- stale: ["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "Exibição pessoal: Formas de druida. Para um druida, duas barras finas sob a barra de poder mostram os poderes das outras formas.", -- draft
 -- stale: ["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "Exibição pessoal: Pausa de regeneração de mana. Depois que um feitiço custa mana, uma luz percorre a barra de poder durante os cinco segundos em que sua mana não se regenera.", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "Exibição pessoal: Sobre a exibição pessoal coloca o emblema de golpe centralizado acima da exibição em vez de na placa do seu alvo.", -- draft
