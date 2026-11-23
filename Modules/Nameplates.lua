@@ -94,10 +94,10 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  desc = "When the game shows both the health number and the percent on the nameplates (its Nameplates options), the number stands in the middle of the bar and the percent beside it, right of the level." },
 		-- (2.1.72; Wolvegrimm, Discord 2026-11-22: "have the % and total value inside the bar but move them separately
 		-- ... I also like to have 100% smaller than the actual values", "if we could also select the size of the names")
-		{ type = "slider", key = "healthPctSize", name = "Percent Size", min = 0, max = 24, step = 1, new = "2.1.72",
+		{ type = "slider", key = "healthPctSize", name = "Percent Size", min = 0, max = 24, step = 1,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Number's" or string.format("%d px", v) end,
 		  desc = "The size of the health percent on the nameplates. Number's: the health number's size." },
-		{ type = "slider", key = "nameSize", name = "Name Size", min = 0, max = 24, step = 1, new = "2.1.72",
+		{ type = "slider", key = "nameSize", name = "Name Size", min = 0, max = 24, step = 1,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Game's" or string.format("%d px", v) end,
 		  desc = "The size of the names on the nameplates. Game's: the size the game gives them." },
 		{ type = "header", name = "Crowd Control" },
