@@ -108,7 +108,13 @@ end
 -- (a world without the quest source -- a test's: the places are whatever MelloUI.QuestObjectives hands out)
 function Objectives.Data()
 	local QS = MelloUI.QuestSource
-	return QS == nil or QS.Marks()
+	if QS == nil then
+		return true
+	end
+	if QS.Marks then
+		return QS.Marks()
+	end
+	return QS.Look()   -- (a quest source without Marks: the suite's 2.1.51 copy)
 end
 
 -- (2.1.68) Focused Quest Only: the one quest to mark (the Quest List's switch and its one reader, QL.Objectives.Focus:

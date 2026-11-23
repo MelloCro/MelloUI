@@ -153,7 +153,13 @@ end
 -- game's own world map keeps DataReady: without Questie the game draws its areas there itself
 local function MarksReady()
 	local QS = MelloUI.QuestSource
-	return QS == nil or QS.Marks()
+	if QS == nil then
+		return true
+	end
+	if QS.Marks then
+		return QS.Marks()
+	end
+	return QS.Look()   -- (a quest source without Marks: the suite's 2.1.51 copy)
 end
 
 -- (1.2.0) world yards to a map's 0..1: the client's own answer at three points by a place (one ask a point

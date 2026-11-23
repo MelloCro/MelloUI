@@ -727,7 +727,11 @@ SlashCmdList.MELLODUNGEONINFO = function(msg)
 end
 
 -- the key binding's name (Bindings.xml)
-MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_DUNGEONINFO_TOGGLE", "Open or close Dungeon Info")
+BINDING_NAME_MELLOUI_DUNGEONINFO_TOGGLE = "Open or close Dungeon Info"
+-- (pull request #64) in the language in use, again when it changes: Core's Lang; a world without it, the English
+if MelloUI.Lang and MelloUI.Lang.BindingLabel then
+	MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_DUNGEONINFO_TOGGLE", BINDING_NAME_MELLOUI_DUNGEONINFO_TOGGLE)
+end
 
 --------------------------------------------------------------------------------
 -- (1.2.2) The drops: the data's, DungeonJournal's while it is loaded, and the ones seen fall, counted for the account

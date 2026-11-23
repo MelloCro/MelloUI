@@ -1813,8 +1813,13 @@ end
 
 -- the key binding's names (Bindings.xml)
 BINDING_HEADER_MELLOUI = "MelloUI"
-MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_MAP_TOGGLE", "Open or close MelloUI's map")
-MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_MAP_QUESTLOG", "Open MelloUI's map with your quests")
+BINDING_NAME_MELLOUI_MAP_TOGGLE = "Open or close MelloUI's map"
+BINDING_NAME_MELLOUI_MAP_QUESTLOG = "Open MelloUI's map with your quests"
+-- (pull request #64) in the language in use, again when it changes: Core's Lang; a world without it, the English
+if MelloUI.Lang and MelloUI.Lang.BindingLabel then
+	MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_MAP_TOGGLE", BINDING_NAME_MELLOUI_MAP_TOGGLE)
+	MelloUI.Lang:BindingLabel("BINDING_NAME_MELLOUI_MAP_QUESTLOG", BINDING_NAME_MELLOUI_MAP_QUESTLOG)
+end
 
 ns.Map = M
 ns.addon = ADDON
