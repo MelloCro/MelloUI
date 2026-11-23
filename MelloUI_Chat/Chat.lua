@@ -165,7 +165,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it." },
 		-- (2.1.75; a player on Discord: no line break between the name, the channel and the message; the user's pick A
 		-- of BuildData/output/chat_oneline_sketch, "Game order") the Minimal view's messages whole on their line
-		{ type = "toggle", key = "oneLine", name = "One Line Per Message", new = "2.1.75",
+		{ type = "toggle", key = "oneLine", name = "One Line Per Message",
 		  search = "single line compact inline name channel message",
 		  desc = "The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message." },
 		-- (2.1.50; the user, 2026-11-13, of a Community invite written as an item: "Shield my users to spot such links";
@@ -174,7 +174,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		  search = "scam spam fake link invite community disguised phishing",
 		  desc = "A link whose words hide what it really is, like a Community invite written as an item, shows its words in grey with a red FAKE LINK after them, and clicking it opens nothing. Point at it to see what it is." },
 		-- (2.1.75; a player on Discord: "switching channels with Tab while typing")
-		{ type = "toggle", key = "tabSwitch", name = "Tab Switches Channel", new = "2.1.75",
+		{ type = "toggle", key = "tabSwitch", name = "Tab Switches Channel",
 		  search = "tab key cycle channel chat type party guild say switch typing",
 		  desc = "While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab." },
 		{ type = "header", name = "Whispers" },
