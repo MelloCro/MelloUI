@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.76", lines = {
+		"Easter egg added.",
+	} },
 	{ version = "2.1.75", lines = {
 		"Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again.",
 		"Nameplates: friendly plates that show only the name no longer get a plate border on mouseover.",
@@ -197,10 +200,6 @@ local CHANGELOG = {
 		"Nameplates: the swing badge steps past the percent when it stands beside the bar.",
 		"Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it.",
 		"GatherMate2: every ore and every herb has its own icon on the map and the minimap.",
-	} },
-	{ version = "2.1.71", lines = {
-		"Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too.",
-		"ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars.",
 	} },
 }
 local LINKS = {
@@ -1866,6 +1865,19 @@ do
 			end
 			if extra.when then
 				r.when = BindWhen(extra.when, p.key, t.name)
+			end
+			-- (2.1.76; the user, of the group moment: "This is a easter egg, i dont want people to know what it is until
+			-- they join a group with another melloui user") a row kept out until its module's saved value is true
+			-- (extra.reveal = "Module.key"), read as the pages are laid: once revealed it shows from the next layout
+			if extra.reveal then
+				local name, key = tostring(extra.reveal):match("^([^.]+)%.(.+)$")
+				local db = name and MelloUI.modules[name] and MelloUI:GetModuleDB(name)
+				if not (type(db) == "table" and db[key] == true) then
+					for _, b in ipairs(r.distinct or { first }) do
+						hidden[b.id] = true
+					end
+					return nil
+				end
 			end
 			-- a row that only lives while a switch of MelloUI_Oldschool's is on (its gate, its `when`): left out
 			-- while that addon is not loaded

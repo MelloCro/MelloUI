@@ -79,6 +79,9 @@
 --                      `when`)
 --          also        { [id] = text }: frames with no pick that key reaches
 --                      too (the shared hint's tail)
+--          reveal      "Module.key" (2.1.76): the row is laid only while that
+--                      module's saved value is true (read as the pages are
+--                      laid) -- an easter egg's switch, shown once it played
 -- Link(page, tab, section, target, label[, extra]): a row naming a setting
 -- whose one place is another page (its value and a button to it), at the end
 -- of its section; target an id, or { [pick] = id } on a picker page. The
@@ -162,7 +165,7 @@ L.pages = {
 	Animations = { title = "Animations", icon = "Interface\\Icons\\Spell_Holy_Renew", set = "page_animations",
 		flavour = "Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose.",
 		tabs = { "General", "Frames", "Nameplates", "Bars & Windows", "Travel" },
-		cards = { Frames = { "Heal Effects", "Cooldown Effects", "Personal Display" },
+		cards = { Frames = { "Heal Effects", "Cooldown Effects", "MelloUI Players", "Personal Display" },
 			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Quest Moments", "Role Picker",
 				"Services Bar" } } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
@@ -1572,6 +1575,10 @@ function L.Define(R, Link)
 	R("Animations", "Frames", "General", "FrameEffects.#Every Effect", { card = "Cooldown Effects" })
 	R("Animations", "Frames", "General", "FrameEffects.whose", { card = "Cooldown Effects" })
 	-- (0.25.0 / 1.2.0) the Personal Display's moments (its switch on Unit & Group Frames > Personal)
+	-- (2.1.76; the user's pick B of group_moment_sketch: a fellow MelloUI player joining your group. An easter egg --
+	-- the user: "i dont want people to know what it is until they join a group with another melloui user": its row
+	-- is laid only once the moment has played for this player, Core/GroupMoment.lua's `revealed`)
+	R("Animations", "Frames", "General", "GroupMoment.moment", { card = "MelloUI Players", reveal = "GroupMoment.revealed" })
 	R("Animations", "Frames", "General", "PersonalDisplay.castMotion", { card = "Personal Display" })
 	R("Animations", "Frames", "General", "PersonalDisplay.chunk", { card = "Personal Display" })
 	R("Animations", "Frames", "General", "PersonalDisplay.lead", { card = "Personal Display" })

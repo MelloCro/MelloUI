@@ -2476,6 +2476,17 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["MelloUI Player Joins"] = "MelloUI 玩家加入", -- draft
+	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "当使用 MelloUI 的玩家加入你的队伍时，你们的头像会在 MelloUI 印章处短暂相遇并显示其名字，随后飞入其队伍框体。每位玩家六小时内一次。", -- draft
+	["MelloUI Players"] = "MelloUI 玩家", -- draft
+	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "让队伍里的其他 MelloUI 玩家知道你也在用 MelloUI。它的动画在“动画”页面中，当其中一人加入你时显示。", -- draft
+	["Spot a fellow MelloUI player the moment they join."] = "在 MelloUI 同伴加入的那一刻认出他们。", -- draft
+	["%s uses MelloUI too"] = "%s 也在用 MelloUI", -- draft
+	["%s and %s use MelloUI too"] = "%s 和 %s 也在用 MelloUI", -- draft
+	["%s, %s and %s use MelloUI too"] = "%s、%s 和 %s 也在用 MelloUI", -- draft
+	["%d players in your group use MelloUI"] = "队伍中有 %d 名玩家在用 MelloUI", -- draft
+	["Now in your group"] = "现在在你的队伍中", -- draft
+	["Easter egg added."] = "新增了一个彩蛋。", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "伤害统计：关闭 MelloUI 的伤害统计后，游戏自带的伤害统计可以再次在 Edit Layout 中移动。", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "姓名板：只显示名字的友方姓名板在鼠标悬停时不再出现姓名板边框。", -- draft
 	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "聊天：其他插件在后台使用的频道不再以页签形式出现在极简视图中。", -- draft

@@ -2498,6 +2498,17 @@ Lang:Add("frFR", {
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
+	["MelloUI Player Joins"] = "Un joueur MelloUI rejoint", -- draft
+	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "Quand quelqu'un qui utilise MelloUI rejoint votre groupe, vos portraits se rejoignent un instant au sceau de MelloUI avec son nom, puis le tout s'envole vers son cadre de groupe. Une fois par joueur toutes les six heures.", -- draft
+	["MelloUI Players"] = "Joueurs MelloUI", -- draft
+	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "Fait savoir aux autres joueurs MelloUI de votre groupe que vous utilisez aussi MelloUI. Son moment, sur la page Animations, s'affiche quand l'un d'eux vous rejoint.", -- draft
+	["Spot a fellow MelloUI player the moment they join."] = "Repérez un autre joueur MelloUI dès qu'il rejoint.", -- draft
+	["%s uses MelloUI too"] = "%s utilise aussi MelloUI", -- draft
+	["%s and %s use MelloUI too"] = "%s et %s utilisent aussi MelloUI", -- draft
+	["%s, %s and %s use MelloUI too"] = "%s, %s et %s utilisent aussi MelloUI", -- draft
+	["%d players in your group use MelloUI"] = "%d joueurs de votre groupe utilisent MelloUI", -- draft
+	["Now in your group"] = "Maintenant dans votre groupe", -- draft
+	["Easter egg added."] = "Easter egg ajouté.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Compteur de dégâts : avec le compteur de MelloUI désactivé, celui du jeu se déplace de nouveau dans Edit Layout.", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Barres de nom : les barres alliées qui n'affichent que le nom n'ont plus de bordure de barre au survol.", -- draft
 	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "Chat : les canaux que d'autres addons utilisent en arrière-plan n'apparaissent plus comme onglets dans la vue minimale.", -- draft

@@ -2476,6 +2476,17 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["MelloUI Player Joins"] = "MelloUI 플레이어 합류", -- draft
+	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "MelloUI를 쓰는 사람이 파티에 합류하면 두 초상화가 잠시 MelloUI 문장에서 만나며 이름이 표시되고, 그 뒤 상대의 파티 프레임으로 날아갑니다. 플레이어당 6시간에 한 번.", -- draft
+	["MelloUI Players"] = "MelloUI 플레이어", -- draft
+	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "파티의 다른 MelloUI 플레이어에게 당신도 MelloUI를 쓴다는 것을 알립니다. 애니메이션 페이지의 순간 연출은 그중 한 명이 합류할 때 표시됩니다.", -- draft
+	["Spot a fellow MelloUI player the moment they join."] = "합류하는 순간 MelloUI 동료를 알아보세요.", -- draft
+	["%s uses MelloUI too"] = "%s님도 MelloUI를 씁니다", -- draft
+	["%s and %s use MelloUI too"] = "%s님과 %s님도 MelloUI를 씁니다", -- draft
+	["%s, %s and %s use MelloUI too"] = "%s님, %s님, %s님도 MelloUI를 씁니다", -- draft
+	["%d players in your group use MelloUI"] = "파티원 %d명이 MelloUI를 씁니다", -- draft
+	["Now in your group"] = "이제 같은 파티입니다", -- draft
+	["Easter egg added."] = "이스터 에그가 추가되었습니다.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "피해량 측정기: MelloUI 측정기를 끄면 게임 자체 측정기를 Edit Layout에서 다시 옮길 수 있습니다.", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "이름표: 이름만 표시하는 아군 이름표에 마우스를 올려도 더 이상 이름표 테두리가 나타나지 않습니다.", -- draft
 	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "채팅: 다른 애드온이 뒤에서 쓰는 채널이 더 이상 최소 보기에서 탭으로 나타나지 않습니다.", -- draft

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.76
+
+- Easter egg added.
+
 ## 2.1.75
 
 - Fixed: with MelloUI's Damage Meter turned off, the game's own damage meter sat in a corner of the screen with no way to move it, because Edit Layout hid its plate. While MelloUI's meter is off, the game's meter now has its plate in Edit Layout, so you can drag it anywhere.

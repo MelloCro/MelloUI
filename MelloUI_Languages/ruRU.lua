@@ -2476,6 +2476,17 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["MelloUI Player Joins"] = "Игрок MelloUI в группе", -- draft
+	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "Когда к вашей группе присоединяется игрок с MelloUI, ваши портреты на мгновение встречаются у печати MelloUI с его именем, а затем улетают в его рамку группы. Раз в шесть часов на игрока.", -- draft
+	["MelloUI Players"] = "Игроки MelloUI", -- draft
+	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "Сообщает другим игрокам MelloUI в вашей группе, что вы тоже пользуетесь MelloUI. Его момент на странице «Анимации» показывается, когда один из них присоединяется к вам.", -- draft
+	["Spot a fellow MelloUI player the moment they join."] = "Узнайте игрока MelloUI, как только он присоединится.", -- draft
+	["%s uses MelloUI too"] = "%s тоже пользуется MelloUI", -- draft
+	["%s and %s use MelloUI too"] = "%s и %s тоже пользуются MelloUI", -- draft
+	["%s, %s and %s use MelloUI too"] = "%s, %s и %s тоже пользуются MelloUI", -- draft
+	["%d players in your group use MelloUI"] = "Игроков в группе с MelloUI: %d", -- draft
+	["Now in your group"] = "Теперь в вашей группе", -- draft
+	["Easter egg added."] = "Добавлена пасхалка.", -- draft
 	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Счётчик урона: когда счётчик MelloUI выключен, счётчик самой игры снова можно двигать в Edit Layout.", -- draft
 	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Индикаторы: дружеские индикаторы, показывающие только имя, больше не получают рамку индикатора при наведении.", -- draft
 	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "Чат: каналы, которые другие аддоны используют в фоне, больше не появляются вкладками в минимальном виде.", -- draft
