@@ -66,7 +66,9 @@ local M = MelloUI:RegisterModule("Chat", {
 		copyButton = true,
 		view = "game",
 		railIcons = false,
+		oneLine = false,
 		fakeLinks = true,
+		tabSwitch = false,
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
@@ -161,11 +163,20 @@ local M = MelloUI:RegisterModule("Chat", {
 			return v
 		  end,
 		  desc = "The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it." },
+		-- (2.1.75; a player on Discord: no line break between the name, the channel and the message; the user's pick A
+		-- of BuildData/output/chat_oneline_sketch, "Game order") the Minimal view's messages whole on their line
+		{ type = "toggle", key = "oneLine", name = "One Line Per Message",
+		  search = "single line compact inline name channel message",
+		  desc = "The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message." },
 		-- (2.1.50; the user, 2026-11-13, of a Community invite written as an item: "Shield my users to spot such links";
 		-- the user's pick B of fake_link_sketch -- ChatView.lua View.Fake)
 		{ type = "toggle", key = "fakeLinks", name = "Fake Link Warning",
 		  search = "scam spam fake link invite community disguised phishing",
 		  desc = "A link whose words hide what it really is, like a Community invite written as an item, shows its words in grey with a red FAKE LINK after them, and clicking it opens nothing. Point at it to see what it is." },
+		-- (2.1.75; a player on Discord: "switching channels with Tab while typing")
+		{ type = "toggle", key = "tabSwitch", name = "Tab Switches Channel",
+		  search = "tab key cycle channel chat type party guild say switch typing",
+		  desc = "While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab." },
 		{ type = "header", name = "Whispers" },
 		{ type = "toggle", key = "whisperPopup", name = "Whisper Popup Window",
 		  desc = "Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat." },
@@ -1012,7 +1023,54 @@ local SHORT_CHANNELS = {
 	guildrecruitment = { "GR",  "40ff90" },
 	services         = { "SV",  "b0b0b0" },
 	world            = { "W",   "ffe066" },
+	-- (2.1.75) Forever's own, by their English names (the client's ChatChannels, build 71037)
+	["trade(services)"] = { "SV",  "b0b0b0" },
+	["trade(local)"]    = { "TL",  "ff9955" },
+	newcomerchat        = { "N",   "80ff80" },
+	ooc                 = { "OOC", "b0b0b0" },
+	hardcoredeaths      = { "HC",  "ff6060" },
+	bigfootworldchannel = { "BW",  "ffe066" },
+	meetingstone        = { "MS",  "c080ff" },
 }
+
+-- (2.1.75; a player on Discord, on a Chinese client: the long channel names were never shortened) A channel's short
+-- tag by its name (the zone part after " - " already taken off), one rule for both chat views:
+--   * the game's channels by their English names: this file's tag (the table above);
+--   * any other channel (one of the player's own, or every channel on a client in another language): its first whole
+--     character, capitalised where it has case. That is a letter, or one Chinese, Korean or Cyrillic character; the
+--     Game Windows view's first BYTE before drew half a Chinese character, and the Minimal view kept the whole name.
+--   * a part in brackets after the name adds its own first character (a Chinese "Trade (Services)": Trade's character
+--     and Services'), so Trade's kinds differ.
+-- Returns the tag and its colour from the table (hex), or nil for none: the game's own colour of the channel's number
+-- then (M.TagHex). A field, not a local: this file is near Lua's limit of top-level locals.
+do
+	local CHAR = "^[%z\1-\127\194-\244][\128-\191]*"
+	-- (a letter of more than one byte left as it is: string.upper goes by the C locale byte by byte, and one that reads
+	-- them as Latin-1 turns a Chinese character's first byte into another)
+	local function First(s)
+		s = s:gsub("^[%s%p]+", "")
+		local c = s:match(CHAR) or ""
+		return #c == 1 and c:upper() or c
+	end
+	function M.ChannelTag(base)
+		if type(base) ~= "string" or Secret(base) or base == "" then
+			return nil
+		end
+		local entry = SHORT_CHANNELS[(base:lower():gsub("%s+", ""))]
+		if entry then
+			return entry[1], entry[2]
+		end
+		local tag = First(base)
+		local inner = base:match("%((.-)%)") or base:match("\239\188\136(.-)\239\188\137")   -- ( ) or the wide ones
+		if inner then
+			tag = tag .. First(inner)
+		end
+		if tag == "" then
+			return nil
+		end
+		return tag, nil
+	end
+end
 
 -- (2.1.40; players, through the user, 2026-11-11: "reduce the channel name to only Green G for guild, Blue P for
 -- Party, Orange R for Raid etc, using the games colours") a tag's colour is the game's own for its chat type --
@@ -1037,10 +1095,17 @@ end
 -- a chat type's short tag and its colour (hex), a numbered channel's by its name (and its number, for its colour):
 -- the chat view's headers
 function M.ShortTag(chatType, channelName, channelIndex)
-	local entry = SHORT_TYPES[chatType]
-	if chatType == "CHANNEL" and type(channelName) == "string" then
-		entry = SHORT_CHANNELS[(channelName:gsub("%s%-%s.*", "")):lower():gsub("%s+", "")]
+	if chatType == "CHANNEL" then
+		if type(channelName) ~= "string" or Secret(channelName) then
+			return nil
+		end
+		local short, fallback = M.ChannelTag((channelName:gsub("%s%-%s.*", "")))
+		if short then
+			return short, M.TagHex(chatType, channelIndex, fallback)
+		end
+		return nil
 	end
+	local entry = SHORT_TYPES[chatType]
 	if entry then
 		return entry[1], M.TagHex(chatType, channelIndex, entry[2])
 	end
@@ -1079,8 +1144,8 @@ local function TypePatterns()
 	return typePatterns
 end
 
--- a numbered channel's short name in the game's colour of its number (`index`; 2.1.40), a channel this file has no
--- tag for by its first letter, in that colour too
+-- a numbered channel's short name in the game's colour of its number (`index`; 2.1.40): M.ChannelTag's (2.1.75: the
+-- Minimal view's too)
 local function ShortChannelName(communityChannelArg, index)
 	local _, name = communityChannelArg:match("(%d+. )(.*)")
 	name = name or communityChannelArg
@@ -1088,10 +1153,9 @@ local function ShortChannelName(communityChannelArg, index)
 		name = ChatFrameUtil.ResolveChannelName(name)
 	end
 	local base = name:gsub("%s%-%s.*", "")
-	local key = base:lower():gsub("%s+", "")
-	local entry = SHORT_CHANNELS[key]
-	local letter = entry and entry[1] or base:sub(1, 1):upper()
-	local hex = M.TagHex("CHANNEL", index, entry and entry[2] or nil)
+	local letter, fallback = M.ChannelTag(base)
+	letter = letter or base
+	local hex = M.TagHex("CHANNEL", index, fallback)
 	return hex and ("|cff" .. hex .. letter .. "|r") or letter
 end
 
@@ -4326,8 +4390,144 @@ do
 	end, "Chat backgrounds")
 end
 
+--------------------------------------------------------------------------------
+-- (2.1.75) Tab Switches Channel: a player on Discord, "switching channels with Tab while typing". Off by default
+-- (Chat > Messages > Behaviour), both chat views. Tab in the line you type in does the game's own first -- its name
+-- suggestions, a whisper's next target, a slash command's completion; only where the game does nothing (your words in
+-- Say, Party, Guild, a channel ...) the line moves to the next chat you can speak in: Say, Party, Raid, Instance,
+-- Guild, then each numbered channel a chat window shows (an addon's own channel kept out, as on the Minimal view's
+-- rail: ChatView's InAWindow); Shift-Tab the one before. Switched the game's own way: ChatFrameUtil.OpenChat with the
+-- chat's slash and your words, which the line parses as if typed (the Minimal view's S P R I G buttons' way, its secure
+-- commands proven untouched in game), your words and the cursor kept. One post-hook on each chat window's line, made
+-- the first time the switch is on (nothing at login while it is off); each press reads the switch.
+--------------------------------------------------------------------------------
+do
+	-- (one local: this file's main chunk is at Lua's limit of 200 locals; the rest are T's fields)
+	local T = { hooked = {}, list = {}, n = 0, Plain = MelloUI.Safe.Value, Num = MelloUI.Safe.Number,
+		-- the cycle's order, each with the slash the line parses
+		CYCLE = { { "SAY", "/s " }, { "PARTY", "/p " }, { "RAID", "/ra " }, { "INSTANCE_CHAT", "/i " },
+			{ "GUILD", "/g " } } }
+	M.TabSwitch = T
+
+	-- list[i] = { ct = chat type, slash = "/p ", num = a channel's number }: reused
+	function T.Add(ct, slash, num)
+		T.n = T.n + 1
+		local e = T.list[T.n] or {}
+		T.list[T.n] = e
+		e.ct, e.slash, e.num = ct, slash, num
+	end
+
+	-- whether you can speak in a chat type now
+	function T.Can(ct)
+		local home, inst = rawget(_G, "LE_PARTY_CATEGORY_HOME"), rawget(_G, "LE_PARTY_CATEGORY_INSTANCE")
+		if ct == "SAY" then
+			return true
+		elseif ct == "PARTY" then
+			return IsInGroup(home) and true or false
+		elseif ct == "RAID" then
+			return IsInRaid(home) and true or false
+		elseif ct == "INSTANCE_CHAT" then
+			return IsInGroup(inst) and true or false
+		elseif ct == "GUILD" then
+			return IsInGuild() and true or false
+		end
+		return false
+	end
+
+	-- the numbered channels (GetChannelList: number, name, disabled ...), those a chat window shows
+	function T.Channels(...)
+		local shows = M.View and M.View.InAWindow
+		for i = 1, select("#", ...), 3 do
+			local num, name, off = select(i, ...)
+			num, name, off = T.Num(num), T.Plain(name), T.Plain(off)
+			if num and type(name) == "string" and not off
+				and (not shows or shows((name:gsub("%s%-%s.*", "")))) then
+				T.Add("CHANNEL", "/" .. num .. " ", num)
+			end
+		end
+	end
+
+	-- the chats you can speak in now, in the cycle's order
+	function T.Speakable()
+		T.n = 0
+		for _, c in ipairs(T.CYCLE) do
+			if T.Can(c[1]) then
+				T.Add(c[1], c[2], nil)
+			end
+		end
+		local list = rawget(_G, "GetChannelList")
+		if type(list) == "function" then
+			T.Channels(list())
+		end
+		return T.n
+	end
+
+	function T.Read(box, method)
+		local fn = box[method]
+		if type(fn) ~= "function" then
+			return nil
+		end
+		local ok, v = pcall(fn, box)
+		return ok and T.Plain(v) or nil
+	end
+
+	-- the post-hook: the next (Shift: the one before) chat, where the game's Tab did nothing
+	T.OnTab = Perf.Shared("OnTabPressed on a chat line: the next channel", function(box)
+		if not (M.isEnabled and M.db and M.db.tabSwitch) then
+			return
+		end
+		local ac = rawget(_G, "AutoCompleteBox")
+		if ac and ac:IsShown() and rawget(ac, "parent") == box then
+			return   -- (the game's name suggestions took the Tab)
+		end
+		local ct, text = T.Read(box, "GetChatType"), T.Read(box, "GetText")
+		if type(ct) ~= "string" or ct == "WHISPER" or ct == "BN_WHISPER" or type(text) ~= "string"
+			or text:sub(1, 1) == "/" then
+			return   -- (a whisper's next target, a slash command's completion: the game's)
+		end
+		local n = T.Speakable()
+		if n < 2 then
+			return
+		end
+		local target = ct == "CHANNEL" and T.Num(T.Read(box, "GetChannelTarget")) or nil
+		local at = 0
+		for i = 1, n do
+			local e = T.list[i]
+			if e.ct == ct and (ct ~= "CHANNEL" or e.num == target) then
+				at = i
+				break
+			end
+		end
+		local i
+		if IsShiftKeyDown() then
+			i = at <= 1 and n or at - 1
+		else
+			i = at % n + 1
+		end
+		local open = ChatFrameUtil and ChatFrameUtil.OpenChat
+		if type(open) == "function" then
+			pcall(open, T.list[i].slash .. text, rawget(box, "chatFrame"), T.Num(T.Read(box, "GetCursorPosition")))
+		end
+	end, "script")
+
+	-- hooked the first time the switch is on (a chat window's line, each)
+	function T.Apply()
+		if not (M.isEnabled and M.db and M.db.tabSwitch) then
+			return
+		end
+		for i = 1, tonumber(rawget(_G, "NUM_CHAT_WINDOWS")) or 10 do
+			local box = rawget(_G, "ChatFrame" .. i .. "EditBox")
+			if type(box) == "table" and not T.hooked[box] then
+				T.hooked[box] = true
+				Perf.HookScript(box, "OnTabPressed", T.OnTab)
+			end
+		end
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
+	M.TabSwitch.Apply()   -- (2.1.75: Tab Switches Channel, only while it is on)
 	M.BackgroundChoices()   -- (the Background's choices for the view: Game only with the game's windows)
 	-- the old corner into the store now, as the Route arrow and the Voice
 	-- Over overlay do at enable, so a Reset positions before the session's
@@ -4401,6 +4601,12 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "railIcons" then
 		if M.View and M.View.SetFolded then
 			M.View.SetFolded()
+		end
+	elseif key == "tabSwitch" then
+		M.TabSwitch.Apply()   -- (2.1.75: hooked the first time it is on; each press reads the switch)
+	elseif key == "oneLine" then
+		if M.View and M.View.on and M.View.Soon then
+			M.View.Soon()   -- (2.1.75: the kept lines laid again, one line each or the name over them)
 		end
 	elseif key == "view" then
 		M.BackgroundChoices()

@@ -87,6 +87,22 @@ function QS.Questie()
 	return QS.Lib() ~= nil
 end
 
+-- (2.1.74) whether QuestieDB knows a quest at all -- its giver and its turn-in Questie draws, placed objectives or none
+-- (the user, 2026-11-23 in Booty Bay: a done quest's "?" twice, Questie's and the game's): its own "is there such a
+-- quest", or, in a release without it, whether it hands out objectives of it
+function QS.Knows(questID)
+	local L = QS.Lib()
+	if not L or type(questID) ~= "number" then
+		return false
+	end
+	local Exists = L.Quest.Exists
+	if type(Exists) == "function" then
+		local ok, exists = pcall(Exists, questID)
+		return (ok and exists) and true or false
+	end
+	return QS.Objectives(questID) ~= nil
+end
+
 -- Questie's switch on the Addons page, MelloUI's look (Core/Integrations.lua): on until switched off
 function QS.Look()
 	if not QS.Lib() then
@@ -94,6 +110,20 @@ function QS.Look()
 	end
 	local I = rawget(MelloUI, "Integrations")
 	return not (I and not I.Use("Questie"))
+end
+
+-- (2.1.77; the user, 2026-11-23: "i want people without questie to have those visible since the game itself shows them")
+-- no Questie at all: MelloUI's map and the minimap mark the game's own quest areas and points for every quest in the log
+-- (Core/QuestObjectives.lua: QO.Of hands out QO.Traced's areas, QO.Game the points). Questie there -- in MelloUI's
+-- look, or its switch off (its own icons), or a Questie whose data MelloUI cannot read (its own icons too) -- as before,
+-- so nothing shows twice
+function QS.GameOnly()
+	return type(rawget(_G, "Questie")) ~= "table"
+end
+
+-- MelloUI's map and the minimap mark the quests: Questie's places in MelloUI's look, or the game's own without Questie
+function QS.Marks()
+	return QS.Look() or QS.GameOnly()
 end
 
 function QS.State()

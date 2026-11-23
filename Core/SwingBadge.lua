@@ -310,7 +310,10 @@ function Badge.Place()
 		local container = uf.HealthBarsContainer
 		local hb = container.healthBar
 		local lf = uf.PlayerLevelDiffFrame
-		local beside = (lf and MelloUI.Safe.Call(lf, "IsShown") == true) and lf or container
+		-- (2.1.72; Wolvegrimm, Discord 2026-11-22: "The new Nameplate life % outside the bar gets hidden by the Swing
+		-- Timer") past the health percent while it stands beside the bar (Percent Beside The Bar: NP:BesideAnchor)
+		local pct = NP.BesideAnchor and NP:BesideAnchor(uf) or nil
+		local beside = pct or ((lf and MelloUI.Safe.Call(lf, "IsShown") == true) and lf or container)
 		local ok, level = pcall(hb.GetFrameLevel, hb)
 		level = ((ok and Num(level)) or 0) + 10
 		local k = SB.PlateScale()

@@ -30,8 +30,8 @@ Your other addons do the work, MelloUI gives them its look and ties them into it
 
 - **[RareScanner](https://www.curseforge.com/wow/addons/rarescanner):** rares, treasures and events on the map and minimap in MelloUI's icons, and the rares it finds on Rare Alert.
 - **[HandyNotes: NPCs (Forever)](https://www.curseforge.com/wow/addons/handynotes-npcs-forever)** (with [HandyNotes](https://www.curseforge.com/wow/addons/handynotes)): the auction house, the bank, trainers, mount sellers and more on the map and minimap, in MelloUI's icons.
-- **[GatherMate2](https://www.curseforge.com/wow/addons/gathermate2):** gathering nodes on the map. **[HandyNotes](https://www.curseforge.com/wow/addons/handynotes):** its notes on the map.
-- **[NodeSight](https://www.curseforge.com/wow/addons/node-sight), [Lueur](https://www.curseforge.com/wow/addons/lueur):** the minimap stays in place while they scan for herbs and ore.
+- **[GatherMate2](https://www.curseforge.com/wow/addons/gathermate2):** gathering nodes on the map and the minimap, each ore and herb in its own MelloUI icon. **[HandyNotes](https://www.curseforge.com/wow/addons/handynotes):** its notes on the map.
+- **[NodeSight](https://www.curseforge.com/wow/addons/node-sight), [Lueur](https://www.curseforge.com/wow/addons/lueur):** the minimap stays in place while they scan for herbs and ore. Lueur's glow on the ore or herb you walk up to takes the place of MelloUI's gathering glints.
 
 **Frames, bars and bags**
 

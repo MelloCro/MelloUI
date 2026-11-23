@@ -79,6 +79,9 @@
 --                      `when`)
 --          also        { [id] = text }: frames with no pick that key reaches
 --                      too (the shared hint's tail)
+--          reveal      "Module.key" (2.1.76): the row is laid only while that
+--                      module's saved value is true (read as the pages are
+--                      laid) -- an easter egg's switch, shown once it played
 -- Link(page, tab, section, target, label[, extra]): a row naming a setting
 -- whose one place is another page (its value and a button to it), at the end
 -- of its section; target an id, or { [pick] = id } on a picker page. The
@@ -162,7 +165,7 @@ L.pages = {
 	Animations = { title = "Animations", icon = "Interface\\Icons\\Spell_Holy_Renew", set = "page_animations",
 		flavour = "Every animation MelloUI plays, in one place. Press Play beside one to see it before you choose.",
 		tabs = { "General", "Frames", "Nameplates", "Bars & Windows", "Travel" },
-		cards = { Frames = { "Heal Effects", "Cooldown Effects", "Personal Display" },
+		cards = { Frames = { "Heal Effects", "Cooldown Effects", "MelloUI Players", "Personal Display" },
 			["Bars & Windows"] = { "Action Bars", "XP Bar", "Bag Window", "Quest Tracker", "Quest Moments", "Role Picker",
 				"Services Bar" } } },
 	-- (one look C8, the user 2026-10-15: one designer per family) the player, target, focus, pet, your buffs, the
@@ -219,10 +222,14 @@ L.pages = {
 				{ key = "power", label = "Power bar", stage = "bar.power" },
 				{ key = "background", label = "Background", stage = "bar.background" },
 				{ key = "indicators", label = "Indicators", stage = "ind:" } } },
+			-- (2.1.73, the Personal Display Designer: docs/plans/personal-designer.md) its stage: MelloUI_PersonalDisplay's
+			-- 'personal' kind, everything at once, the cast bar, the text, the badge and the cooldowns dragged
 			{ key = "personal", label = "Personal", module = "PersonalDisplay", line = "The bars under your character",
-				parts = { { key = "shield", label = "Shield column" }, { key = "cast", label = "Cast" },
-				{ key = "swing", label = "Swing badge" }, { key = "text", label = "Text" },
-				{ key = "cooldowns", label = "Big cooldowns" } } },
+				stage = { kind = "personal", pick = "personal" },
+				parts = { { key = "shield", label = "Shield column", stage = "shield" },
+				{ key = "cast", label = "Cast", stage = "cast" },
+				{ key = "swing", label = "Swing badge", stage = "swing" }, { key = "text", label = "Text", stage = "text" },
+				{ key = "cooldowns", label = "Big cooldowns", stage = "cooldowns" } } },
 		},
 		family = { key = "all", label = "All frames", line = "Every frame: the debuff glow" } },
 	-- (one look C8) the painted reskin's own rows, kept working here until the painted look becomes its own addon
@@ -248,7 +255,8 @@ L.pages = {
 			{ key = "enemies", label = "Enemies", line = "Enemies' and NPCs' plates",
 				stage = { kind = "nameplate", pick = "enemy" }, parts = {
 				{ key = "name", label = "Name", stage = "name" }, { key = "health", label = "Health bar", stage = "health" },
-				{ key = "healthtext", label = "Health text", stage = "healthtext" },   -- (2.1.70: the game's numbers)
+				{ key = "healthtext", label = "Health number", stage = "healthtext" },   -- (2.1.70: the game's numbers)
+				{ key = "healthpct", label = "Health percent", stage = "healthpct" },   -- (2.1.72: its own part)
 				{ key = "threat", label = "Threat line", stage = "threat" },
 				{ key = "combo", label = "Combo points", stage = "combo" },
 				{ key = "cc", label = "CC icon", stage = "cc" }, { key = "quest", label = "Quest icon", stage = "quest" },
@@ -919,7 +927,11 @@ function L.Define(R, Link)
 	-- (2.1.70; Wolvegrimm: smaller numbers on small plates, the number in the bar and the percent beside it -- on the
 	-- health numbers' own tab, the Designer's part the user asked for the same day)
 	R("Nameplates", "enemies:healthtext", "Text", "Nameplates.healthTextSize", { name = "Size" })
-	R("Nameplates", "enemies:healthtext", "Layout", "Nameplates.healthPercentBeside")
+	-- (2.1.72; Wolvegrimm: the percent moved on its own and smaller, the names' size) the percent's own tab: its size and
+	-- its place beside the bar; the name's tab: its size
+	R("Nameplates", "enemies:healthpct", "Text", "Nameplates.healthPctSize", { name = "Size" })
+	R("Nameplates", "enemies:healthpct", "Layout", "Nameplates.healthPercentBeside")
+	R("Nameplates", "enemies:name", "Text", "Nameplates.nameSize", { name = "Size" })
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateSize")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateWidth")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateHeight")
@@ -1167,7 +1179,11 @@ function L.Define(R, Link)
 	R("Chat", "Messages", "Text", "Chat.shortChannels")
 	R("Chat", "Messages", "Text", "Chat.hideBrackets")
 	R("Chat", "Messages", "Text", "Chat.timestamps")   -- (2.1.40: the game's own Chat Timestamps, both views')
+	-- (2.1.75: the Minimal view's messages on one line, the user's pick A of chat_oneline_sketch)
+	R("Chat", "Messages", "Text", "Chat.oneLine", { when = { key = "Chat.view", value = "minimal",
+		line = "Only with the Minimal Chat View" } })
 	R("Chat", "Messages", "Behaviour", "Chat.fakeLinks")   -- (2.1.50: Fake Link Warning)
+	R("Chat", "Messages", "Behaviour", "Chat.tabSwitch")   -- (2.1.75: Tab Switches Channel, both views)
 	-- (free: read by MelloUI:Notice with Tweaks, and UI Modifications, off)
 	-- (0.23.0: the Minimal Chat View's whisper window takes the whispers while it is on)
 	R("Chat", "Whispers", "General", "Chat.whisperPopup", { when = { key = "Chat.view", notValue = "minimal",
@@ -1559,6 +1575,10 @@ function L.Define(R, Link)
 	R("Animations", "Frames", "General", "FrameEffects.#Every Effect", { card = "Cooldown Effects" })
 	R("Animations", "Frames", "General", "FrameEffects.whose", { card = "Cooldown Effects" })
 	-- (0.25.0 / 1.2.0) the Personal Display's moments (its switch on Unit & Group Frames > Personal)
+	-- (2.1.76; the user's pick B of group_moment_sketch: a fellow MelloUI player joining your group. An easter egg --
+	-- the user: "i dont want people to know what it is until they join a group with another melloui user": its row
+	-- is laid only once the moment has played for this player, Core/GroupMoment.lua's `revealed`)
+	R("Animations", "Frames", "General", "GroupMoment.moment", { card = "MelloUI Players", reveal = "GroupMoment.revealed" })
 	R("Animations", "Frames", "General", "PersonalDisplay.castMotion", { card = "Personal Display" })
 	R("Animations", "Frames", "General", "PersonalDisplay.chunk", { card = "Personal Display" })
 	R("Animations", "Frames", "General", "PersonalDisplay.lead", { card = "Personal Display" })

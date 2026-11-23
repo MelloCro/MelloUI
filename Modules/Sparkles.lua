@@ -26,6 +26,10 @@
 -- own animation read the object's reach, a few times a second. Reduce Motion
 -- (MelloUI.Anim): the glints hold still. Game settings change out of combat
 -- only (in a fight, at its end). Nothing is made until the first glint shows.
+-- Lueur (2.1.72): while it lights the object you walk up to (its own switch on,
+-- and its Use with MelloUI switch on the Addons page), the glints and their hold
+-- on soft targeting step aside and leave both to it; the quest item sparkle
+-- stays (Core/Overlaps.lua, job gatherGlow).
 --------------------------------------------------------------------------------
 local _, ns = ...
 local MelloUI = ns.MelloUI
@@ -33,6 +37,7 @@ local Perf = MelloUI.Perf:Scope("Sparkles")
 local C_Timer = Perf.C_Timer
 local Shared = Perf.Shared
 local Secret = MelloUI.Safe.IsSecret
+local Plain = MelloUI.Safe.Value
 
 local M = MelloUI:RegisterModule("Sparkles", {
 	title = "Loot Sparkles",
@@ -93,11 +98,47 @@ local S = {
 	presetDue = false,  -- a preset's settings to look at, a second after it
 	plate = false,      -- the soft target's nameplate held on
 	units = {},         -- nameplate tokens shown now (the soft target's own token may give none for an object)
+	aside = nil,        -- (2.1.72) the addon the glints stepped aside for when last asked (Lueur), else nil
 }
+
+-- (2.1.72; the user, 2026-11-22: "full compatibility with Lueur addon") Lueur lights the object you walk up to and
+-- holds soft targeting for it: the glints and their hold on its settings step aside while it does (Core/Overlaps.lua)
+local function Aside()
+	local O = rawget(MelloUI, "Overlaps")
+	return type(O) == "table" and type(O.By) == "function" and O.By("gatherGlow") or nil
+end
 
 local function Gathering()
 	local db = M.db
-	return M.isEnabled and db ~= nil and (db.ore or db.herbs or db.questObjects) and true or false
+	return M.isEnabled and db ~= nil and (db.ore or db.herbs or db.questObjects) and not Aside() and true or false
+end
+
+-- (2.1.72) Lueur holds this setting now (it keeps the value it found, LueurDB.savedCVars, read only): what this kept
+-- is forgotten instead of written back over Lueur's own; Lueur gives the setting back itself
+local function LueurHolds(name)
+	local L = rawget(_G, "LueurDB")
+	if type(L) ~= "table" or Plain(L.cvarsReturned) == true then
+		return false
+	end
+	local saved = L.savedCVars
+	return type(saved) == "table" and saved[name] ~= nil
+end
+
+-- soft targeting's settings held while any kind sparkles, else given back (out of combat)
+local function Soft(db, gather)
+	for _, c in ipairs(SOFT) do
+		if not gather and LueurHolds(c[1]) then
+			db[c[3]] = nil
+		end
+		MelloUI:HoldCVar(db, c[1], c[3], gather, c[2])
+	end
+	if not gather then
+		S.plate = false
+		if LueurHolds(PLATE[1]) then
+			db[PLATE[3]] = nil
+		end
+		MelloUI:HoldCVar(db, PLATE[1], PLATE[3], false, PLATE[2])
+	end
 end
 
 local function Plate(on)
@@ -125,14 +166,8 @@ local function Holds()
 	for _, c in ipairs(LOOT) do
 		MelloUI:HoldCVar(db, c[1], c[3], loot, c[2])
 	end
-	local gather = Gathering()
-	for _, c in ipairs(SOFT) do
-		MelloUI:HoldCVar(db, c[1], c[3], gather, c[2])
-	end
-	if not gather then
-		S.plate = false
-		MelloUI:HoldCVar(db, PLATE[1], PLATE[3], false, PLATE[2])
-	end
+	S.aside = Aside()
+	Soft(db, Gathering())
 end
 
 -- a graphics preset set the outline back: the player's newest choice kept for when this is off, held again
@@ -409,6 +444,10 @@ end
 
 -- the soft target now: the nameplate on for an object that sparkles, the glints on it
 function Evaluate()
+	-- (2.1.72: Lueur switched on or off in its own menu: the settings handed over now, either way)
+	if Aside() ~= S.aside then
+		Holds()
+	end
 	if not Gathering() then
 		Release()
 		return
@@ -500,6 +539,14 @@ end
 -- (switched on after the login's world: its PLAYER_ENTERING_WORLD replayed, Core's startup)
 function M:OnLoginWorld(...)
 	MelloUI:ReplayWorld(events, ...)
+end
+
+-- (2.1.72) MelloUI's files loaded, before any addon's PLAYER_LOGIN: with Lueur doing the glow, soft targeting's
+-- settings this held are given back now, so Lueur keeps the player's own when it sets its own at login
+function M:OnAddonLoaded(db)
+	if type(db) == "table" and Aside() and not MelloUI.InCombat() then
+		Soft(db, false)
+	end
 end
 
 function M:OnEnable(db)

@@ -74,6 +74,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 - **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, events. Its quests are Questie's: it needs Questie installed (2.1.52).
 - **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock. The **Icons** slider in the map's title row makes every icon on it bigger or smaller (50 to 200 %), other addons' icons such as Questie's too.
 - **RareScanner:** with RareScanner installed, its rares, treasures and events show on the map in MelloUI's look (2.1.43): MelloUI's icon on a plate, its rim gold with a glow for one you just saw, red for one you haven't found yet, muted for one you found before, and faded once it's killed or opened. Hover one for its name and state, click it to put your pin there. RareScanner decides what shows (its own filters and options); its icons on the minimap wear the same look.
+- **GatherMate2:** with GatherMate2 installed, its gathering nodes show on the map and the minimap in MelloUI's icons (2.1.61): each ore in its own colour (copper, tin, iron, mithril, thorium and the rest) and each herb drawn as itself (2.1.72), one icon each for fishing pools and treasures. GatherMate2 decides what shows (its filters, size and opacity); its tracking circle on the minimap stays its own. A node with no MelloUI icon keeps GatherMate2's picture. Switch it off on the Addons page (Use with MelloUI).
 - **Quest areas that touch:** areas whose places lie within about 120 yards of each other show one gold outline instead of a stack of rings (2.1.43). Each objective keeps its marks and its white dots where it is done; hover one of its marks and its own area shows lit inside the outline, which steps back with the other marks. The same on the game's own map and on the minimap (a minimap mark lifts when you hover it, as on the map).
 - **Smart Route:** a trail of red dots along real roads to wherever you're going, plus an arrow. Cut a corner or take a shortcut? It just keeps going instead of nagging you to turn around. It learns the roads you walk.
 - **Service Finder:** need a mailbox, a repair guy, an inn, a trainer? Little icons under the minimap. Click one, the arrow takes you to the nearest.
@@ -83,6 +84,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 - **Dungeon Info:** every dungeon and raid beside the map, its bosses in order and what each one drops, and the rare drops of its other creatures (**Trash drops**, with who drops each). Star the items you want: when one drops, its loot roll shines gold and lights Need. **Pick Up Quests** routes you to all of a dungeon's quests in the fastest order, then to its door. Open it with the door button beside the map, a click on a dungeon's door, or `/dungeoninfo`.
   - Forever's own dungeons' loot is not in the game's files: every list of it is collected from players. Dungeon Info lists their bosses' loot from [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0), which also has the drops Forever changed in the classic dungeons. It shows the drop rates players collect for [Everloot](https://everloot.app) (CC BY-SA 4.0) as they come in, and counts what falls in front of you: a boss's kills and drops, the corpses you loot and their rare drops, giving each a chance. With **DungeonJournal** installed, its loot lists show too. `/dungeoninfo export` gives you a text of what you have seen: post it in MelloUI's Discord and it goes into the next update for everyone.
   - **Dungeon maps:** inside a dungeon or raid the map (M) opens on its own map, with Dungeon Info's page beside it (its bosses and their loot). The classic dungeons and raids show Blizzard's own drawn maps, floor by floor (the game holds the drawings but never shows them); Forever's own dungeons show the fan-made maps of Santiago Reyes ("Atlas de Azeroth: Forever", used with his kind permission; the footer names him, his watermark stays on the parchment). The drawings mark their own bosses and ways in, so the map adds no pins of its own. From outside, a click on a dungeon's door on the map, or on its row in Dungeon Info, shows its map the same way. **World map** at the top left, or a right-click at the whole dungeon, goes back to the world. Your arrow shows where the game gives your place inside. A dungeon of several floors comes in **floors**, named as the game names them: pick one in the row above the map; the map opens on the floor you stand in and follows you into the next. Switch it off on the Map page (**Dungeon Maps**).
+  - **Battlegrounds:** inside a battleground the map opens on the battleground's own map, as the game's map does: you and your group, its flags (on the ground or with whoever carries them) and its vehicles, and its bases, towers, graveyards and camps in the game's own icons, which change with who holds them (Alliance, Horde, contested or nobody). Hover one for its name and state.
 
 ## 👥 Small things you'll use every day
 
@@ -449,7 +451,16 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   Warning, W for whispers, and G, T, LD, WD, LFG for the numbered channels, each in the game's own
   chat colour of that chat (2.1.40: the colours you set in the game's chat settings follow). Brackets can be
   removed as well (Hide Brackets). The Minimal Chat View's headers follow them: the tag alone, or the
-  channel's name with Short Channel Tags off.
+  channel's name with Short Channel Tags off. (2.1.75) On a client in another language, and for a channel of your
+  own, a channel is shortened to its first character (综 for 综合, A for Allgemein), adding the first character of a
+  part in brackets (交服 for 交易（服务）); Forever's own channels have tags in English too (N, TL, SV, OOC, HC).
+- One Line Per Message (2.1.75; Chat > Messages > Text, off by default, only with the Minimal Chat View): each message
+  on one line, the time, the channel's tag, the name and the words, in the order the game's own chat uses, instead of
+  the name over the message; a long message wraps back to the left edge.
+- Tab Switches Channel (2.1.75; Chat > Messages > Behaviour, off by default, both chat views): while you type, Tab
+  moves the line to the next chat you can speak in (Say, Party, Raid, Instance, Guild, then the channels a chat window
+  shows) and Shift-Tab to the one before, your words and the cursor kept. The game's own Tab comes first: name
+  suggestions, a whisper's next target and a slash command's completion are as before.
 - Chat Timestamps (2.1.40; Chat > Messages > Text): the time before each chat line, None for no time,
   or one of the game's six formats. It is the game's own Chat Timestamps setting, so both chat views
   follow it; until you pick one here, the Minimal Chat View keeps its 15:27 times while the game's is
@@ -808,6 +819,13 @@ default; its settings on **Animations > Frames**, its switch **Cooldown Effects*
 Legion's resource display under your character, back and grown (0.21.0; the MelloUI Personal Display addon; off by
 default; its settings on **Unit & Group Frames**' **Personal** frame):
 
+- **Its preview** (2.1.73): the Personal frame shows the display on top, everything at once, in the look it wears:
+  the bars, the cast bar, the shield column, the swing badge, the big cooldowns and the text. Click a part to open
+  its settings. Drag the cast bar, the text, the swing badge or the big cooldowns to a new place (or click a **+**
+  for a spot; the arrow keys nudge a picked part): your display follows. The wheel sizes the swing badge and the big
+  cooldowns (Big Cooldown Size). Right-click a part for **Default place**. The shield column keeps its place in Edit
+  Layout, beside your character.
+
 - **Health, power and your cast bar** under your character's feet, in the unit frames' gem-capped frames, with your
   health and power in percent beside them. The cast bar shows only while you cast or channel: the spell and its
   seconds. **Width** and **Height** size the bars. Their frame is **Oldschool > Borders > Personal Display Border**: the gem-capped Ornate by default, the cast bar's, a thin rim, the Single rail, the Stone
@@ -1152,7 +1170,13 @@ number of levels below you, or between two levels). On MelloUI's map the Quest g
 whatever Other addons' pins is set to; on the game's map Quest Givers On Zone Maps does. MelloUI's objective marks and
 quest areas stay, fed by Questie's data, and Questie's objective icons stay out of sight wherever MelloUI draws them
 (MelloUI's map: while its objectives' layer is on; the game's map: while Objective Marks is on; the minimap: while
-Objective Marks On The Minimap is on). On the minimap, the quest givers are the game's own marks (Questie's stay out of
+Objective Marks On The Minimap is on). A quest in your log that Questie has no places for (a new zone it does not
+cover yet) gets the game's own quest area instead, traced and drawn as MelloUI's own areas are (the gold edge and
+glow, in your colours), on the map and the minimap, and Route can lead you to it (2.1.74). Until it is ready,
+MelloUI's mark stands at the game's point for it, and once a quest Questie doesn't know is done, the turn-in mark. Questie's
+places win wherever it has them, so a quest never shows both. Without Questie at all (2.1.77), every quest in your
+log gets the game's own areas and points this way on MelloUI's map and the minimap, as the game's own map shows
+them; with Questie installed but its Use with MelloUI off, Questie's own icons show instead, as before. On the minimap, the quest givers are the game's own marks (Questie's stay out of
 sight there, so nothing shows twice); the game only lets addons show or hide its grey ones as a whole.
 Hovering one of Questie's icons that still show lists only what is not drawn by MelloUI already: Questie's tooltip
 gathers the quests of every icon of its own nearby (a dungeon's quests all sit on its entrance), and leaves out the
@@ -1781,6 +1805,12 @@ is held on (it comes back as you had it when you switch it off). While another b
 ArkInventory or BetterBags (2.1.49; GitHub issue #8) -- this window and its bank by kind step aside by themselves, so B
 opens one bag window (Core/Overlaps.lua's "bags" job; each addon's card on the Addons page, its Use with MelloUI off
 brings MelloUI's back).
+
+**Loot Sparkles** (0.20.1, off; Nameplates > Objects): the game's sparkle on lootable quest items kept, and golden
+glints over the ore vein, herb or quest object you walk up to (the game's soft targeting picks it). While
+[Lueur](https://www.curseforge.com/wow/addons/lueur) is on (2.1.72), its glow does that: the glints step aside and
+leave soft targeting's settings to it (Core/Overlaps.lua's "gatherGlow" job; its Use with MelloUI off on the
+Addons page brings the glints back). The quest item sparkle stays MelloUI's.
 
 **Loot Flight** (0.21.3, on; Animations > Bars & Windows): an item you loot flies from where you picked it up
 (where the pointer was: on the corpse, or on the loot window's row) into its slot in the window, laid out

@@ -50,7 +50,8 @@
 -- added again at each zoom. A client without one: our pins from the places
 -- that read (C_Map.GetPlayerMapPosition, MapLayers' Layers.Group). The
 -- battleground's own marks as its map draws them: its flags, on the ground
--- or with the one who carries it, and its vehicles (Battlefield).
+-- or with the one who carries it, and its vehicles (Battlefield); 2.1.73: its
+-- points in the game's picture of who holds them (Points).
 --
 -- Wings (the user, 2026-11-02: "Several floors, we need to spread them into
 -- Wings"): a dungeon whose floors lie over each other comes in wings (the
@@ -72,7 +73,7 @@
 --   Dungeon.Out()                a right-click: out, then the world
 --   Dungeon.FindMe()             a middle-click: the view on you
 --   Dungeon.Tick(elapsed)        your arrow (the window's beat; 2.1.19: a
---                                battleground's people and marks)
+--                                battleground's people and marks; 2.1.73: its points)
 --   Dungeon.Listen(on)           the wing you walk into (the module on / off)
 --   Dungeon.Hint()               the footer's text while the plan shows
 --   Dungeon.SetWing(w, glide)    the wing shown (the view on the whole of it)
@@ -89,7 +90,7 @@ local Finite = MelloUI.Safe.Finite
 local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
 local Canvas, Pins, Layers = ns.Canvas, ns.Pins, ns.Layers
-local ipairs, pcall, type, max, ceil = ipairs, pcall, type, math.max, math.ceil
+local ipairs, pairs, pcall, type, max, ceil = ipairs, pairs, pcall, type, math.max, math.ceil
 
 local Dungeon = {}
 ns.Dungeon = Dungeon
@@ -100,8 +101,9 @@ local T = {
 	ARROW_ATLAS = "UI-WorldMapArrow",                 -- the game's own map arrow
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	EVERY = 0.1,             -- your place read at most this often
-	-- (the group: a battleground's own map only, 2.1.17; 2.1.19: its flags and vehicles under the people, as the game's)
-	ORDER = { pvp = 30, group = 40, player = 50 },
+	-- (the group: a battleground's own map only, 2.1.17; 2.1.19: its flags and vehicles under the people, as the game's;
+	-- 2.1.73: its points under its flags, as the game's AREA_POI level under its BATTLEFIELD_FLAG)
+	ORDER = { points = 25, pvp = 30, group = 40, player = 50 },
 	-- (2.1.19) the people on a battleground's map, the game's unit frame: px on the screen (MapLayers' member and dot
 	-- sizes; your arrow ARROW_SIZE), the game's own blips (its UnitPositionFrame's: your party, in a raid the dotted
 	-- one), the draw sublevel (you on top)
@@ -113,6 +115,11 @@ local T = {
 	PLAIN = 1,               -- a unit's picture in its own colours (no tint: the game passes white)
 	UNITS_ZOOM = 1.02,       -- their units added again when the zoom moved by this factor (their size within a hair)
 	FLAG_SIZE = 30,          -- a battleground's flag (the game's: 36 at its pins' smallest scale 0.825)
+	-- (2.1.73) a battleground's points: the game's POI sheet (SharedMapPoiTemplates.lua: a textureIndex's cell of it),
+	-- px (the game's 16 at its POI pins' scale, 1 to 1.2), read at least this often while the map shows (s)
+	POI_FILE = "Interface\\Minimap\\POIIcons",
+	POI_SIZE = 18,
+	POI_EVERY = 1,
 	BACK_AT = 8,             -- the World map button: px in from the canvas's top left
 	FIND_ZOOM = 2,           -- Find me: at least this close
 	OUT_AT = 1.02,           -- a right-click at this share of the wing's whole view or wider: the world
@@ -510,6 +517,93 @@ local function Vehicles(c, pins, map)
 	c.cars = cars
 end
 
+-- (2.1.73; a player on Discord: "When in a BG, the default map has map markers representing the state of the relevant
+-- points in the battleground ... Without the states on the map, it can be very hard to read the situation of a
+-- battleground") a battleground's points -- Arathi Basin's bases, Alterac Valley's towers, graveyards and mines,
+-- Darkspear Islands' camps: its AreaPOIs, as the game's AreaPOI provider lays them -- in the game's own picture of
+-- their state (the cell of its POI sheet the client names, else its atlas), named with their state on hover ("Stables",
+-- "Alliance Controlled"). Read when the client says they changed (AREA_POIS_UPDATED: the next beat) and every
+-- POI_EVERY s while the map shows; a spec a point and state, kept (a battleground has a few dozen)
+local poiSpecs = {}
+
+local function PoiTip(pin)
+	return pin.spec.name, pin.spec.about
+end
+
+-- the game's sheet, cut as its pin cuts it (C_Minimap.GetPOITextureCoords), at the pin's size
+local function PoiLook(tex, pin)
+	local s = pin.spec
+	MelloUI.Icons.Set(tex, T.POI_FILE, tex:GetWidth(), s.l, s.r, s.t, s.b)
+end
+
+local function PoiSpec(id, info)
+	local atlas = Text(info.atlasName)
+	local index = not atlas and Finite(info.textureIndex) or nil
+	if not (atlas or index) then
+		return nil
+	end
+	local name, about = Text(info.name), Text(info.description)
+	local key = id .. ":" .. (atlas or index) .. ":" .. (about or "")
+	local spec = poiSpecs[key]
+	if spec then
+		return spec
+	end
+	if atlas then
+		spec = { atlas = atlas, size = T.POI_SIZE, sub = 0 }
+	else
+		local mm = rawget(_G, "C_Minimap")
+		local cut = mm and mm.GetPOITextureCoords
+		local ok, l, r, t, b = false, nil, nil, nil, nil
+		if cut then
+			ok, l, r, t, b = pcall(cut, index)
+		end
+		l, r, t, b = ok and Finite(l), ok and Finite(r), ok and Finite(t), ok and Finite(b)
+		if not (l and r and t and b) then
+			return nil
+		end
+		spec = { size = T.POI_SIZE, sub = 0, look = PoiLook, l = l, r = r, t = t, b = b }
+	end
+	spec.name, spec.about = name, about ~= "" and about or nil
+	spec.tip = name and PoiTip or nil
+	poiSpecs[key] = spec
+	return spec
+end
+
+local function Points(c, pins, map)
+	local api = rawget(_G, "C_AreaPoiInfo")
+	local list, get = api and api.GetAreaPOIForMap, api and api.GetAreaPOIInfo
+	local ok, ids = false, nil
+	if list and get then
+		ok, ids = pcall(list, map)
+	end
+	local seen = c.points
+	local gen = (c.pointGen or 0) + 1
+	c.pointGen = gen
+	if ok and type(ids) == "table" then
+		for _, raw in ipairs(ids) do
+			local id = Finite(raw)
+			local okI, info = false, nil
+			if id then
+				okI, info = pcall(get, map, id)
+			end
+			info = okI and type(info) == "table" and info or nil
+			local at = info and info.position
+			local x = type(at) == "table" and Finite(at.x)
+			local y = type(at) == "table" and Finite(at.y)
+			local spec = x and y and PoiSpec(id, info)
+			if spec and pins:SetAt("points", id, map, x, y, spec) then
+				seen[id] = gen
+			end
+		end
+	end
+	for id, g in pairs(seen) do
+		if g ~= gen then
+			pins:Remove("points", id)
+			seen[id] = nil
+		end
+	end
+end
+
 -- the unit frame's units again when the group changed or the zoom moved (a view of its canvas, or the beat)
 local function Resize(c)
 	local k, was = c.units and c.k1 and c.z and c.k1 * c.z, c.unitsK
@@ -526,6 +620,11 @@ local function Battlefield()
 	Resize(c)
 	Flags(c, S.pins, d.uiMap)
 	Vehicles(c, S.pins, d.uiMap)
+	S.poiWait = (S.poiWait or 0) - T.EVERY
+	if S.poiWait <= 0 and c.points then
+		S.poiWait = T.POI_EVERY
+		Points(c, S.pins, d.uiMap)
+	end
 end
 
 function Dungeon.Tick(elapsed)
@@ -584,7 +683,9 @@ local function Make(mapID)
 	if d.uiMap then
 		-- (a battleground's own map: its flags and vehicles; you and your group the game's unit frame draws -- 2.1.19 --
 		-- else, as 2.1.17, our pins: the group as the world's)
+		pins:Layer("points", T.ORDER.points)
 		pins:Layer("pvp", T.ORDER.pvp)
+		c.points = {}   -- (2.1.73: [point id] = the read it was last drawn by)
 		c.units = Units(c, d)
 		if not c.units then
 			pins:Layer("group", T.ORDER.group)
@@ -711,7 +812,7 @@ function Dungeon.Show(mapID)
 	if not (PLAYER.atlas or PLAYER.icon) then
 		ArrowLook()
 	end
-	S.wait = 0
+	S.wait, S.poiWait = 0, 0
 	Back():Show()
 	Chips(mapID)
 	return true
@@ -768,6 +869,10 @@ local function Listen_OnEvent(_, event)
 		S.roster = S.roster + 1   -- (2.1.19: a battleground's unit frame adds its units again on its next beat)
 		return
 	end
+	if event == "AREA_POIS_UPDATED" then
+		S.poiWait = 0   -- (2.1.73: a battleground's points read again on its next beat)
+		return
+	end
 	if S.shown then
 		-- (ZONE_CHANGED_INDOORS, ZONE_CHANGED: the minimap's area name changed -- into another wing, its rooms shown)
 		local here = Dungeon.Where(S.shown)
@@ -792,6 +897,7 @@ function Dungeon.Listen(on)
 		f:RegisterEvent("ZONE_CHANGED_INDOORS")
 		f:RegisterEvent("ZONE_CHANGED")
 		f:RegisterEvent("GROUP_ROSTER_UPDATE")
+		f:RegisterEvent("AREA_POIS_UPDATED")
 	else
 		f:UnregisterAllEvents()
 	end

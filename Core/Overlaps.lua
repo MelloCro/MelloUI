@@ -31,6 +31,11 @@
 -- "bags" job -- Baganator, Bagnon, ArkInventory or BetterBags loaded (and its Use with MelloUI switch on, the Addons
 -- page): MelloUI's bag window and its bank by kind step aside (Modules/BagWindow.lua), as if switched off.
 --
+-- Lueur (2.1.72; the user, 2026-11-22: "full compatibility with Lueur addon"): the "gatherGlow" job -- Lueur loaded,
+-- its Use with MelloUI switch on and its own switch on (LueurDB.enabled, read live): it lights the object the game's
+-- soft targeting picks and holds soft targeting's settings for that, so Loot Sparkles' gathering glints and their hold
+-- on the same settings step aside (Modules/Sparkles.lua). The quest item sparkle stays MelloUI's (Lueur leaves it).
+--
 -- Polestar 0.2.6 (its settings by path, Polestar.Get; Shift held at the
 -- window skips its merchant, quest and reward automation, as its own code
 -- does; its quest data's features only while Polestar_QuestDB runs).
@@ -224,9 +229,25 @@ local function ByBags()
 	return nil
 end
 
+-- (2.1.72) Lueur lighting the object you walk up to: its card's switch on and its own on (nil before it ever saved)
+local function ByLueur()
+	local I = rawget(MelloUI, "Integrations")
+	local e = type(I) == "table" and type(I.ByKey) == "table" and I.ByKey.Lueur
+	if not (e and I.Installed(e) and I.Use("Lueur")) then
+		return nil
+	end
+	local db = rawget(_G, "LueurDB")
+	if type(db) == "table" and Plain(db.enabled) == false then
+		return nil
+	end
+	return e.name
+end
+
 function O.By(job)
 	if job == "bags" then
 		return ByBags()
+	elseif job == "gatherGlow" then
+		return ByLueur()
 	end
 	local spec, P = JOBS[job], Polestar()
 	if not (spec and P) or (spec.shift and Shift()) or (spec.data and not DataRuns(P)) then
@@ -266,6 +287,11 @@ end
 -- the rows' notes: the option's hint, unless it has one of its own
 local QUESTIE_NOTES = { { "QuestList", "tipQuestItems", "Questie does this while its tooltips are on." } }
 O.QUESTIE_NOTES = QUESTIE_NOTES
+-- (2.1.72) Loot Sparkles' gathering kinds while Lueur is used (its card's switch on)
+local LUEUR_DOES = "Lueur does this while it is on."
+local LUEUR_NOTES = { { "Sparkles", "ore", LUEUR_DOES }, { "Sparkles", "herbs", LUEUR_DOES },
+	{ "Sparkles", "questObjects", LUEUR_DOES } }
+O.LUEUR_NOTES = LUEUR_NOTES
 local function Notes(list)
 	for _, n in ipairs(list or NOTES) do
 		local m = MelloUI.modules and MelloUI.modules[n[1]]
@@ -302,6 +328,12 @@ Perf.SetScript(login, "OnEvent", function(self)
 	-- (2.1.58) Questie's own note on the row it does, where Polestar's is not there
 	if type(rawget(_G, QUESTIE)) == "table" then
 		Notes(QUESTIE_NOTES)
+	end
+	-- (2.1.72) Lueur's, its own switch read whenever the job is asked about
+	local I = rawget(MelloUI, "Integrations")
+	local lueur = type(I) == "table" and type(I.ByKey) == "table" and I.ByKey.Lueur
+	if lueur and I.Installed(lueur) and I.Use("Lueur") then
+		Notes(LUEUR_NOTES)
 	end
 	if not P then
 		return
