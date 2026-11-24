@@ -15,6 +15,13 @@
 - Quality of Life: four tabs in place of twelve: Automation, On screen, Reminders and widgets, and Tooltip. Each is one scroll with every helper under its own switch, and Jump to takes you to one. Role Picker is a helper of its own under Automation.
 - Profiles: the page is four cards: This character, Profiles, Share and Import. Import reads a pasted string first and says what it holds and the screen it was made for before you take it. Copy the string shares this character's profile as it is now.
 - Configurator: on Unit & Group Frames, Nameplates, Bars and Minimap a frame's and a part's own line is the strong one now (gold, larger, one rule under it), and the sections under it are small labels. Before, every section had its own gold title and rule.
+- Mail Recipients: the list beside Send Mail is redone. Every name has its class picture and its level, a friend who is playing has a green dot, and the list scrolls with a bar.
+- Mail Recipients: groups of your own. Pinned is the first; the group button on a name puts it in a group or makes a new one, and any name goes in: your own character, a friend's, someone you wrote to. The cog on a group renames, moves or deletes it.
+- Mail Recipients: your characters show their two professions, and the Professions view lists who has which, best skill first. A character's professions are noted when it logs in or stands at a mailbox.
+- Mail Recipients: what you type in To narrows the list, and looks through your guild and friends list too (Guild And Friends While Typing). Typing a profession finds its characters.
+- Mail Recipients: Recent, the last five names you sent a letter to (Recent Names, on by default).
+- Fixed in Mail Recipients: characters you had deleted stayed in the list. They move to Hidden at the list's foot by themselves, the bin on a name takes any name off, and Hidden brings one back.
+- Fixed in Mail Recipients: a character whose class MelloUI did not know was white, like a Priest. It has a ? now and a dimmer name; click the ? to pick the class. The class is also learned when that character logs in, or from your guild.
 
 ## 2.1.83
 

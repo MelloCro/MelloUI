@@ -187,6 +187,8 @@ local CHANGELOG = {
 		"Quality of Life: four tabs in place of twelve, each helper under its own switch. Jump to takes you to one.",
 		"Profiles: four cards. Import says what a string holds and the screen it was made for before you take it.",
 		"Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it.",
+		"Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To.",
+		"Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name.",
 	} },
 	{ version = "2.1.83", lines = {
 		"Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates.",
@@ -214,7 +216,7 @@ local CHANGELOG = {
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
 	["2.1.84"] = { "=unit frames", "=nameplates", "UnitFrames.hidePvPBadge", "UIModifications.qol_Tooltip", false, false,
-		"=qol", "=profiles", "=unit frames" },
+		"=qol", "=profiles", "=unit frames", "MailRecipients.recent", "MailRecipients.bnet" },
 	["2.1.83"] = { "Nameplates.npcPlateSize", "Nameplates.npcHideFull" },
 	["2.1.82"] = { "QuestTracker.nearestTurnIn" },
 	["2.1.80"] = { "QuestList.objectiveMarks", "QuestList.objectiveMarks" },
@@ -6688,6 +6690,15 @@ function BuildElementPage(key, width)
 		if not (page.dui and page.dui.HomeOf(pl, t)) then
 			local sec = NewSection(page, t.name)
 			sec.hasNew = t.new
+			-- (2.1.84: a part's block stands on its frame's tab -- a New row in one of them tags that tab, as its own would)
+			if page.dui and not sec.hasNew then
+				for _, pt in ipairs(pl.tabs) do
+					if pt.new and page.dui.HomeOf(pl, pt) == t then
+						sec.hasNew = true
+						break
+					end
+				end
+			end
 			-- (1.2.4: its rows two to a line, CONFIG.Half; layout C: a tab beside its stage one to a line in the
 			-- column right of it, made at that width)
 			sec.beside = page.beside and page.dui.Beside(t) or nil

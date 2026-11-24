@@ -4730,6 +4730,7 @@ do
 		{ key = "SHAMAN", label = "Shaman" }, { key = "DRUID", label = "Druid" }, { key = "ROGUE", label = "Rogue" },
 		{ key = "MAGE", label = "Mage" }, { key = "WARLOCK", label = "Warlock" }, { key = "HUNTER", label = "Hunter" },
 	}
+	Colours.CLASSES = CLASSES   -- (2.1.84: the game's classes for whoever lists them -- Mail Recipients' class pick)
 	local POWERS = {
 		{ key = "MANA", label = "Mana" }, { key = "RAGE", label = "Rage" }, { key = "ENERGY", label = "Energy" },
 		{ key = "FOCUS", label = "Focus" },
