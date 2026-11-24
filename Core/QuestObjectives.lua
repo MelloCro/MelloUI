@@ -44,6 +44,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Plain = MelloUI.Safe.Value
+local function Tr(text)
+	local Lang = MelloUI.Lang
+	return Lang and Lang.T(text) or text
+end
 
 local QO = {}
 MelloUI.QuestObjectives = QO
@@ -928,11 +932,11 @@ function QO.Dump()
 	local marks = (QS and QS.Marks()) and true or false
 	local ids = LogIDs()
 	MelloUI:Print("The game's quest places: MelloUI's marks %s, Questie %s, %d quests in your log, %d zones. Reading ...",
-		marks and "on" or "off", (QS and QS.GameOnly()) and "not there" or "there", #ids, #Zones())
+		Tr(marks and "on" or "off"), Tr((QS and QS.GameOnly()) and "not there" or "there"), #ids, #Zones())
 	-- (the game hands out fewer places with its switch off: its Preset option Show Quest POIs & Blobs)
 	local switch = MelloUI.CVarText and MelloUI:CVarText(QO.SWITCH)
 	MelloUI:Print("  The game's own switch (Options > Preset > Show Quest POIs & Blobs): %s, held on by MelloUI: %s.",
-		switch == "1" and "on" or (switch == "0" and "OFF" or "unknown"), next(QO.hold.dbs) and "yes" or "no")
+		Tr(switch == "1" and "on" or (switch == "0" and "OFF" or "unknown")), Tr(next(QO.hold.dbs) and "yes" or "no"))
 	if type(api) ~= "table" or not marks then
 		return
 	end
@@ -954,7 +958,7 @@ function QO.Dump()
 			MelloUI:Print("  The reader stopped on an error: %s", T.failed)
 		elseif busy then
 			MelloUI:Print("  The reader is not through after %d seconds (zones %s, areas %s).", beats / 4,
-				(S.job or S.dirty) and "still read" or "read", (T.job or next(T.queue)) and "still traced" or "traced")
+				Tr((S.job or S.dirty) and "still read" or "read"), Tr((T.job or next(T.queue)) and "still traced" or "traced"))
 		end
 		local mapOf = rawget(_G, "GetQuestUiMapID")
 		local placed, bare = 0, 0
@@ -991,9 +995,9 @@ function QO.Dump()
 				bare = bare + 1
 			end
 			MelloUI:Print("  %s (%d)%s: the game's map %d, on that map's list: %s, found on zone: %s, areas: %s",
-				tostring(okT and Plain(title) or "?"), id, (okC and Plain(complete) == true) and ", complete" or "", map,
-				listed and "yes" or "no", zone and tostring(zone) or (p and "none" or "not read"),
-				t and (areas > 0 and (areas .. " on map " .. tostring(t.map)) or "none") or "not traced")
+				tostring(okT and Plain(title) or "?"), id, Tr((okC and Plain(complete) == true) and ", complete" or ""), map,
+				Tr(listed and "yes" or "no"), zone and tostring(zone) or Tr(p and "none" or "not read"),
+				t and (areas > 0 and Tr("%d on map %s"):format(areas, tostring(t.map)) or Tr("none")) or Tr("not traced"))
 		end
 		MelloUI:Print("  %d quests with a place from the game, %d without any.", placed, bare)
 	end
