@@ -5155,7 +5155,7 @@ Lang:Add("frFR", {
 	["The client's list of your buffs now: %s."] = "Liste actuelle de vos améliorations selon le client : %s.",
 	["The shield's events, oldest first (the time, since the one before, the event, what it held -> your shields known / not known yet after it):"] = "Événements du bouclier, du plus ancien au plus récent (heure, délai depuis le précédent, événement, données de l’événement → vos boucliers connus ou encore inconnus après celui-ci) :",
 	["  (none yet: put a shield up, then type this again)"] = "  (Aucun pour l’instant : activez un bouclier, puis relancez la commande.)",
-    << french-audit-translation
+	["The column's last notes, oldest first:"] = "Dernières notes de la colonne, les plus anciennes en premier :",
 	["%s painter: %s, used=%d, frame shown=%s alpha=%s"] = "Rendu de %s : %s, utilisés=%d, cadre visible=%s, opacité=%s",
 	["  dot %d: tex=%s piece=%s uv=%s..%s,%s size=%.1f alpha=%.2f rgb=%.2f %.2f %.2f shown=%s layer=%s"] = "  Point %d : tex=%s, élément=%s, uv=%s..%s,%s, taille=%.1f, opacité=%.2f, RVB=%.2f %.2f %.2f, visible=%s, couche=%s",
 	["kit: %s"] = "Kit : %s",
