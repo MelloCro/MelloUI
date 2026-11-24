@@ -412,29 +412,37 @@ do
 	local S = { W = 220, H = 96, NAME_Y = 16, MAX = 58, DIM = 0.4, CLASS = "PRIEST", ROLE = "HEALER",
 		NAME = "Lina Brightwater" }
 
+	-- (2.1.83; the user: "we need a preview window for ... friendly player nameplates") the sample medallion made and
+	-- painted by two calls of its own: this corner sample's, and the one on the Nameplates designer's friendly player
+	-- plate (Modules/Nameplates.lua's stage). SamplePaint lays it over `anchor` (a name) at Marker Size, at most `max`,
+	-- and answers how high it stands over the anchor's top
+	function M.SampleMake(parent)
+		local marker = CreateFrame("Frame", nil, parent)
+		marker.icon = marker:CreateTexture(nil, "ARTWORK")
+		marker.icon:SetAllPoints()
+		marker.ring = marker:CreateTexture(nil, "BORDER")
+		marker.ring:SetColorTexture(1, 1, 1, 1)
+		marker.ringMask = marker:CreateMaskTexture()
+		marker.ringMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		marker.ringMask:SetAllPoints(marker.ring)
+		marker.ring:AddMaskTexture(marker.ringMask)
+		return marker
+	end
+
 	local function Corner(p)
 		p.name = W.Text(p, "GameFontNormal", S.NAME, "text")
 		p.name:SetPoint("BOTTOM", p, "BOTTOM", 0, S.NAME_Y)
-		p.marker = CreateFrame("Frame", nil, p)
-		p.marker.icon = p.marker:CreateTexture(nil, "ARTWORK")
-		p.marker.icon:SetAllPoints()
-		p.marker.ring = p.marker:CreateTexture(nil, "BORDER")
-		p.marker.ring:SetColorTexture(1, 1, 1, 1)
-		p.marker.ringMask = p.marker:CreateMaskTexture()
-		p.marker.ringMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-		p.marker.ringMask:SetAllPoints(p.marker.ring)
-		p.marker.ring:AddMaskTexture(p.marker.ringMask)
+		p.marker = M.SampleMake(p)
 	end
 
-	local function Paint(p)
+	function M.SamplePaint(marker, anchor, max)
 		-- (the saved table the rows write, bound or not: a module never switched on has no M.db)
 		local db = MelloUI:GetModuleDB("PartyMarkers") or defaults
-		local size = math.min(tonumber(db.size) or defaults.size, S.MAX)
+		local size = math.min(tonumber(db.size) or defaults.size, tonumber(max) or S.MAX)
 		local gap = tonumber(db.offset) or defaults.offset
-		local marker = p.marker
 		marker:SetSize(size, size)
 		marker:ClearAllPoints()
-		marker:SetPoint("BOTTOM", p.name, "TOP", 0, gap)
+		marker:SetPoint("BOTTOM", anchor, "TOP", 0, gap)
 		local path = MelloUI.ClassIconPath and MelloUI:ClassIconPath(S.CLASS)
 		MelloUI.Icons.Set(marker.icon, path, size)
 		local ringPad = math.max(2, math.floor(size * 0.08 + 0.5))
@@ -448,6 +456,11 @@ do
 		marker.ring:SetShown(color and true or false)
 		-- (the module off: the sample dimmed, as a sleeping row)
 		marker:SetAlpha(M.isEnabled and 1 or S.DIM)
+		return gap + size + ringPad
+	end
+
+	local function Paint(p)
+		M.SamplePaint(p.marker, p.name)
 	end
 
 	if CP and CP.Register then

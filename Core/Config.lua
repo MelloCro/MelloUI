@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.83", lines = {
+		"Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates.",
+		"Friendly nameplates: Hide At Full Health shows only the name until they are hurt.",
+	} },
 	{ version = "2.1.82", lines = {
 		"Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse.",
 	} },
@@ -190,13 +194,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.79", lines = {
 		"Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over.",
-	} },
-	{ version = "2.1.78", lines = {
-		"Minimap without Questie: the game's blue quest circles give way to MelloUI's marks.",
-		"Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too.",
-		"Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight.",
-		"Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View.",
-		"French: many more settings and messages are translated (thanks to woofix).",
 	} },
 }
 local LINKS = {

@@ -320,7 +320,7 @@ function Badge.Place()
 		SB.Attach(big, uf, level, k)
 		SB.Attach(small, uf, level, k)
 		-- (2.1.24) the place the Nameplate Designer gave it (its offsets in the plate's units: the badge is scaled)
-		local place = NP.PartPlace and NP.PartPlace("swing")
+		local place = NP.PartPlace and NP.PartPlace("swing", "enemy")   -- (2.1.83: your target's, an enemy's place)
 		if place then
 			NP.LayPart(big, container, place, k)
 		else

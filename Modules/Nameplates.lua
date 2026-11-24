@@ -255,7 +255,8 @@ end
 -- own anchors. true while that look holds it.
 function M:PlaceName(uf)
 	-- (2.1.24) the place the Nameplate Designer gave it: there, over any look's own (the combo points' lift aside)
-	local place = M.PartPlace("name")
+	-- (2.1.83: its kind's)
+	local place = M.PartPlace("name", M.For(uf))
 	if place and uf and uf.name and uf.HealthBarsContainer then
 		M.LayPart(uf.name, uf.HealthBarsContainer, place)
 		local point = type(place.point) == "string" and place.point or "CENTER"
@@ -300,9 +301,135 @@ M.PART_SIZE = { cc = "ccSize", quest = "questIconSize", cast = "castHeight",   -
 M.PART_SHOW = { cc = "bigCC", quest = "questIcon", threat = "threatLine", combo = "comboPoints" }
 M.nameHidden = setmetatable({}, { __mode = "k" })   -- [a plate's name] = true while its place hides it
 
-function M.PartPlace(key)
+-- (2.1.83; a player on Discord, 2026-11-24: "when setting up nameplates and i click enemies tab. and then click the
+-- name to edit or move, the name is also effecting friendly names. i would think if im under enemy tab should only
+-- effect enemies. also i dont see a setting for general npc nameplates or only friendly nameplates?"; the user: "we
+-- need a preview window for friendly npc and friendly player nameplates", then "Start at default") Three kinds of
+-- plate, each with its own places and sizes:
+--   "enemy"  everything that is no friend (a neutral too): the places and options there were before this
+--   "npc"    a friendly NPC's: its places in npcParts, its sizes the enemy's option names with the prefix
+--            (nameSize -> npcNameSize)
+--   "ally"   a friendly player's: allyParts, allyNameSize ...
+-- The friendly kinds start with nothing set: the game's own plate (the user's pick), so the Enemies' places and
+-- sizes are no longer laid on them. A plate's kind is the game's own answer for it (its unit frame's IsFriend and
+-- IsPlayer: Blizzard_NamePlateUnitFrame.lua UpdateIsFriend / UpdateIsPlayer), asked as the plate is laid and kept for
+-- the plate while an answer reads secret or is refused (a plate never read: an enemy's, as before); forgotten when
+-- the plate leaves (the game hands the frame to another unit).
+--   M.kind                   the kind whose places and sizes are read now: set for the plate being laid (M.For) and
+--                            by the designer's stage for its sample; every reader takes a kind of its own too
+--   M.KindOf(uf), M.For(uf)  -> kind
+--   M.KindKey(key, kind)     -> a kind's saved name for an option or "parts"
+--   M.Opt(key[, kind, db])   -> a kind's size option
+M.KINDS = { "enemy", "npc", "ally" }
+M.KIND_PREFIX = { npc = "npc", ally = "ally" }
+M.KIND_OPTS = { "plateSize", "plateWidth", "plateHeight", "castHeight", "healthTextSize", "healthPercentBeside",
+	"healthPctSize", "nameSize" }
+M.kind = "enemy"
+M.kindOf = setmetatable({}, { __mode = "k" })   -- [unit frame] = its kind as last read plain
+
+-- (each name made once and kept: it is asked for with every plate that comes, and a name put together anew is
+-- garbage a plate -- the suite's v140/nameplates N3)
+local kindKeys = { npc = {}, ally = {} }
+function M.KindKey(key, kind)
+	kind = kind or M.kind
+	local p = M.KIND_PREFIX[kind]
+	if not p then
+		return key
+	end
+	local made = kindKeys[kind]
+	local name = made[key]
+	if not name then
+		name = p .. key:sub(1, 1):upper() .. key:sub(2)
+		made[key] = name
+	end
+	return name
+end
+
+M.BASE_KEY = {}   -- [a kind's saved name] = { the enemy's name, the kind }
+for _, kind in ipairs(M.KINDS) do
+	for _, key in ipairs(M.KIND_OPTS) do
+		M.BASE_KEY[M.KindKey(key, kind)] = { key, kind }
+	end
+	M.BASE_KEY[M.KindKey("parts", kind)] = { "parts", kind }
+end
+
+function M.Opt(key, kind, db)
+	db = db or M.db or MelloUI:GetModuleDB("Nameplates")
+	return db and db[M.KindKey(key, kind)]
+end
+
+function M.KindOf(uf)
+	if type(uf) ~= "table" then
+		return "enemy"
+	end
+	local friend, player = uf.IsFriend, uf.IsPlayer
+	if type(friend) ~= "function" or type(player) ~= "function" then
+		return M.kindOf[uf] or "enemy"
+	end
+	local okF, isFriend = pcall(friend, uf)
+	if not okF or Secret(isFriend) then
+		return M.kindOf[uf] or "enemy"
+	end
+	local kind = "enemy"
+	if isFriend == true then
+		local okP, isPlayer = pcall(player, uf)
+		if not okP or Secret(isPlayer) then
+			return M.kindOf[uf] or "enemy"
+		end
+		kind = isPlayer == true and "ally" or "npc"
+	end
+	M.kindOf[uf] = kind
+	return kind
+end
+
+function M.For(uf)
+	M.kind = M.KindOf(uf)
+	return M.kind
+end
+
+-- the friendly kinds' options: the enemy's eight, each under its kind's name (made here, after the module's own:
+-- one schema for the three), new with 2.1.83. Their rows: Core/ConfigLayout.lua, the designer's Friendly NPCs and
+-- Friendly players
+do
+	local LABEL = { npc = "Friendly NPCs", ally = "Friendly Players" }
+	local DESC = {
+		plateSize = "These plates take the width and height set here instead of the game's.",
+		castHeight = "The height of the cast bar on these nameplates. Game's: the height the game gives it.",
+	}
+	local base = {}
+	for _, o in ipairs(M.options) do
+		if o.key then
+			base[o.key] = o
+		end
+	end
+	for _, kind in ipairs({ "npc", "ally" }) do
+		for _, key in ipairs(M.KIND_OPTS) do
+			local o, copy = base[key], {}
+			for k, v in pairs(o or {}) do
+				copy[k] = v
+			end
+			copy.key = M.KindKey(key, kind)
+			copy.parent = o and o.parent and M.KindKey(o.parent, kind) or nil
+			copy.name = LABEL[kind] .. ": " .. tostring(o and o.name or key)
+			copy.desc = DESC[key] or (o and o.desc)
+			copy.new = "2.1.83"
+			M.options[#M.options + 1] = copy
+			M.defaults[copy.key] = M.defaults[key]
+		end
+		-- (2.1.83; the user: "some option for the health bar 'Hide when full HP'") Hide At Full Health, a friendly
+		-- kind's own (M.LayFull, below)
+		local full = M.KindKey("hideFull", kind)
+		M.options[#M.options + 1] = { type = "toggle", key = full, name = LABEL[kind] .. ": Hide At Full Health",
+			desc = "At full health only the name shows. The health bar shows as soon as they are hurt, and goes again once they are back at full health.",
+			new = "2.1.83" }
+		M.defaults[full] = false
+		M.BASE_KEY[full] = { "hideFull", kind }
+	end
+end
+
+function M.PartPlace(key, kind)
 	local db = M.db or MelloUI:GetModuleDB("Nameplates")
-	local all = db and db.parts
+	local all = db and db[M.KindKey("parts", kind)]
 	local t = type(all) == "table" and all[key]
 	return type(t) == "table" and t or nil
 end
@@ -311,7 +438,7 @@ end
 -- M.PART_SHOW hidden by its place's `show` is hidden by its switch from then on, its place kept without the flag
 function M.FoldShow()
 	local db = M.db or MelloUI:GetModuleDB("Nameplates")
-	local all = db and db.parts
+	local all = db and db.parts   -- (the enemy's: the only store that ever held the old form)
 	if type(all) ~= "table" then
 		return
 	end
@@ -341,7 +468,7 @@ function M.FoldShow()
 		end
 		fresh.cast = copy
 		local size = math.floor(castSize + 0.5)
-		if (Num(db.castHeight) or 0) <= 0 and size ~= math.floor(M.CastHeight() + 0.5) then
+		if (Num(db.castHeight) or 0) <= 0 and size ~= math.floor(M.CastHeight("enemy") + 0.5) then
 			MelloUI:NotifySettingChanged("Nameplates", "castHeight", size)
 		end
 	end
@@ -364,17 +491,20 @@ function M.FoldShow()
 end
 
 -- (a fresh table each write: the saved one is never changed in place; a size goes to the part's own option)
-function M.SetPartPlace(key, t)
+function M.SetPartPlace(key, t, kind)
 	local db = M.db or MelloUI:GetModuleDB("Nameplates")
 	if not db then
 		return
 	end
-	local sizeKey = M.PART_SIZE[key]
+	kind = kind or M.kind
+	-- (2.1.83) a kind's own size option and its own places
+	local sizeKey = M.PART_SIZE[key] and M.KindKey(M.PART_SIZE[key], kind)
+	local partsKey = M.KindKey("parts", kind)
 	if type(t) == "table" and sizeKey and Num(t.size) then
 		-- (2.1.53) only a size that changed: a drag carries the part's size along, and the cast bar's height left at
 		-- the game's (Cast Bar Height 0) stays the game's
 		local size = math.floor(Num(t.size) + 0.5)
-		local now = key == "cast" and M.CastHeight() or Num(db[sizeKey])
+		local now = key == "cast" and M.CastHeight(kind) or Num(db[sizeKey])
 		if size ~= (now and math.floor(now + 0.5)) then
 			MelloUI:NotifySettingChanged("Nameplates", sizeKey, size)
 		end
@@ -385,7 +515,7 @@ function M.SetPartPlace(key, t)
 		M.ShowHealthText()
 	end
 	local all = {}
-	for k, v in pairs(type(db.parts) == "table" and db.parts or {}) do
+	for k, v in pairs(type(db[partsKey]) == "table" and db[partsKey] or {}) do
 		all[k] = v
 	end
 	if type(t) == "table" then
@@ -399,7 +529,7 @@ function M.SetPartPlace(key, t)
 	else
 		all[key] = nil
 	end
-	MelloUI:NotifySettingChanged("Nameplates", "parts", next(all) and all or nil)
+	MelloUI:NotifySettingChanged("Nameplates", partsKey, next(all) and all or nil)
 end
 
 -- a place laid on a region: its point on the box's same point; `scale` the region's own (its offsets given unscaled)
@@ -413,24 +543,34 @@ end
 -- (2.1.24, stage 2) the plates' layout is MelloUI's to keep after the game's: a part placed, or Own Plate Size on
 function M.HasLayout()
 	local db = M.db
-	return db ~= nil and ((type(db.parts) == "table" and next(db.parts) ~= nil) or db.plateSize == true
-		or (Num(db.castHeight) or 0) > 0 or (Num(db.healthTextSize) or 0) > 0 or db.healthPercentBeside == true
-		or (Num(db.healthPctSize) or 0) > 0 or (Num(db.nameSize) or 0) > 0)
+	if db == nil then
+		return false
+	end
+	for _, kind in ipairs(M.KINDS) do   -- (2.1.83: any kind's)
+		local parts = db[M.KindKey("parts", kind)]
+		if (type(parts) == "table" and next(parts) ~= nil) or M.Opt("plateSize", kind, db) == true
+			or (Num(M.Opt("castHeight", kind, db)) or 0) > 0 or (Num(M.Opt("healthTextSize", kind, db)) or 0) > 0
+			or M.Opt("healthPercentBeside", kind, db) == true or (Num(M.Opt("healthPctSize", kind, db)) or 0) > 0
+			or (Num(M.Opt("nameSize", kind, db)) or 0) > 0 or (kind ~= "enemy" and M.Opt("hideFull", kind, db) == true) then
+			return true
+		end
+	end
+	return false
 end
 
 -- (2.1.53; the user, 2026-11-15: "the CastBar shown in the Preview does not match in actual Combat, the castbar is
 -- hidden behind the Nameplate, that should not be the case ever, how it looks in the preview should reflect how it
 -- looks in game") the cast bar is MelloUI's to lay while Own Plate Size is on, the cast bar has a place or its own
 -- height (`db`: the stage's, else the module's); else the game lays it, and the preview draws the game's layout
-function M.OwnCast(db)
+function M.OwnCast(db, kind)
 	db = db or M.db
-	return type(db) == "table" and (db.plateSize == true or (Num(db.castHeight) or 0) > 0 or M.PartPlace("cast") ~= nil)
+	return type(db) == "table" and (M.Opt("plateSize", kind, db) == true
+		or (Num(M.Opt("castHeight", kind, db)) or 0) > 0 or M.PartPlace("cast", kind) ~= nil)
 end
 
 -- the cast bar's height: Cast Bar Height, at least 3; 0 the game's (NamePlateSetupOptions.castBarHeight)
-function M.CastHeight()
-	local db = M.db or MelloUI:GetModuleDB("Nameplates")
-	local v = db and Num(db.castHeight)
+function M.CastHeight(kind)
+	local v = Num(M.Opt("castHeight", kind))
 	if v and v > 0 then
 		return math.max(3, v)
 	end
@@ -576,10 +716,12 @@ end
 -- (2.1.58) the health bar's height as the plates lay it -- Own Plate Size's Plate Height while it is on, else the
 -- game's own (NamePlateSetupOptions.healthBarHeight): plain numbers, never a plate's size read back (those read
 -- secret). Oldschool's frame set sizes its nameplate painting by it (MelloUI_Oldschool/Modules/NameplatePanel.lua)
-function M.BarHeight()
-	local db = M.db or MelloUI:GetModuleDB("Nameplates")
-	if db and db.plateSize == true and Num(db.plateHeight) then
-		return db.plateHeight
+-- (2.1.83: a kind's -- one named, a plate's (its unit frame handed in), else the enemy's)
+function M.BarHeight(kind)
+	kind = type(kind) == "table" and M.KindOf(kind) or (type(kind) == "string" and kind) or "enemy"
+	local h = M.Opt("plateSize", kind) == true and Num(M.Opt("plateHeight", kind))
+	if h then
+		return h
 	end
 	return SetupOption("healthBarHeight", 20)
 end
@@ -596,11 +738,12 @@ function M.LayBars(uf, hb)
 	end
 	local cb = container.castBar
 	local db = M.db
-	local own = db.plateSize == true
+	local kind = M.For(uf)   -- (2.1.83: this plate's kind, for every reader under here)
+	local own = M.Opt("plateSize") == true
 	local place = M.PartPlace("cast")
 	local inset = SetupOption("insetWidth", 12)
 	local gap = SetupOption("castBarToHealthBarSpacing", 2)
-	if not M.OwnCast(db) then
+	if not M.OwnCast(db, kind) then
 		if M.barsLaid[uf] then
 			M.barsLaid[uf] = nil
 			container:ClearAllPoints()
@@ -619,8 +762,8 @@ function M.LayBars(uf, hb)
 	end
 	M.barsLaid[uf] = true
 	local ok, ufW = pcall(uf.GetWidth, uf)
-	local w = (own and Num(db.plateWidth)) or ((ok and Num(ufW)) and (ufW - 2 * inset)) or 166
-	local h = (own and Num(db.plateHeight)) or SetupOption("healthBarHeight", 20)
+	local w = (own and Num(M.Opt("plateWidth"))) or ((ok and Num(ufW)) and (ufW - 2 * inset)) or 166
+	local h = (own and Num(M.Opt("plateHeight"))) or SetupOption("healthBarHeight", 20)
 	local barW = math.max(10, w - LevelRoom(uf))
 	hb:ClearAllPoints()
 	hb:SetPoint("BOTTOMLEFT", uf, "BOTTOM", -w / 2, SetupOption("castBarHeight", 16) + gap)
@@ -747,10 +890,10 @@ function M.LayHealthText(uf)
 	if not (single and value and pct) then
 		return
 	end
-	local db = M.db
-	local size = math.floor((Num(db and db.healthTextSize) or 0) + 0.5)
-	local psize = math.floor((Num(db and db.healthPctSize) or 0) + 0.5)
-	local beside = db ~= nil and db.healthPercentBeside == true
+	M.For(uf)   -- (2.1.83: this plate's kind)
+	local size = math.floor((Num(M.Opt("healthTextSize")) or 0) + 0.5)
+	local psize = math.floor((Num(M.Opt("healthPctSize")) or 0) + 0.5)
+	local beside = M.Opt("healthPercentBeside") == true
 	local place, pplace = M.PartPlace("healthtext"), M.PartPlace("healthpct")
 	local was = M.textLaid[uf]
 	local game = SetupOption("healthBarFontHeight", 16)
@@ -820,8 +963,8 @@ end
 function M:BesideAnchor(uf)
 	local bar = uf and uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar
 	local pct = bar and bar.LeftText
-	local db = M.db
-	if pct and db and db.healthPercentBeside == true and not M.PartPlace("healthpct") and M.textLaid[uf] == "moved" then
+	M.For(uf)   -- (2.1.83: this plate's kind)
+	if pct and M.Opt("healthPercentBeside") == true and not M.PartPlace("healthpct") and M.textLaid[uf] == "moved" then
 		return pct
 	end
 	return nil
@@ -836,7 +979,8 @@ function M.LayNameSize(uf)
 	if not name then
 		return
 	end
-	local size = math.floor((Num(M.db and M.db.nameSize) or 0) + 0.5)
+	M.For(uf)   -- (2.1.83: this plate's kind)
+	local size = math.floor((Num(M.Opt("nameSize")) or 0) + 0.5)
 	if size <= 0 and not M.nameLaid[uf] then
 		return
 	end
@@ -849,6 +993,143 @@ function M.LayNameSize(uf)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Hide At Full Health (2.1.83; the user, 2026-11-24, of what players ask for a lot: "the option if the friendly is on
+-- full hp only its name shows, but when he takes damage dynamically his hp bar shows, some option for the health bar
+-- 'Hide when full HP'"). A friendly kind's own switch (npcHideFull, allyHideFull): the plate's health bar -- its
+-- container: the bar, its frame and its numbers -- and the level badge beside it are unseen while the unit is at full
+-- health. A unit's health reads secret on this client, so nothing is compared: the game's own UnitHealthPercent hands
+-- the health through a step curve of ours (1 under full health, 0 at it) and its answer, secret or not, is given to
+-- the regions as their alpha (Region:SetAlpha takes one). Asked as the plate is laid and at the unit's UNIT_HEALTH /
+-- UNIT_MAXHEALTH -- nothing per frame, the two events heard only while a switch is on. The switch off, the plate
+-- another kind's or gone to another unit: alpha 1 again. A client without the curve or the reader: the bar stays.
+--------------------------------------------------------------------------------
+M.FULL = { curve = nil, laid = setmetatable({}, { __mode = "k" }), units = {}, listening = false }
+
+function M.FullCurve()
+	local F = M.FULL
+	if F.curve == nil then
+		F.curve = false
+		local CU, E = rawget(_G, "C_CurveUtil"), rawget(_G, "Enum")
+		local step = type(E) == "table" and type(E.LuaCurveType) == "table" and E.LuaCurveType.Step
+		if type(CU) == "table" and type(CU.CreateCurve) == "function" and step ~= nil
+			and type(rawget(_G, "UnitHealthPercent")) == "function" then
+			local ok, curve = pcall(CU.CreateCurve)
+			if ok and curve and pcall(curve.SetType, curve, step) and pcall(curve.AddPoint, curve, 0, 1)
+				and pcall(curve.AddPoint, curve, 1, 0) then
+				F.curve = curve
+			end
+		end
+	end
+	return F.curve or nil
+end
+
+function M.FullWanted(kind)
+	return M.KIND_PREFIX[kind] ~= nil and M.Opt("hideFull", kind) == true
+end
+
+-- any friendly kind's switch on: the health events are wanted
+function M.FullOn()
+	local db = M.db
+	if not (db and M.isEnabled) then
+		return false
+	end
+	for kind in pairs(M.KIND_PREFIX) do
+		if M.Opt("hideFull", kind, db) == true then
+			return true
+		end
+	end
+	return false
+end
+
+-- the level badge fades with the bar unless its own place hides it
+local function FullBadge(uf, kind)
+	local lf = uf.PlayerLevelDiffFrame
+	local place = M.PartPlace("level", kind)
+	return (lf and not (place and place.show == false)) and lf or nil
+end
+
+-- the alpha now: the unit's health through the curve (never read here). true when it was given
+function M.FullAlpha(uf, unit, kind)
+	local curve = M.FullCurve()
+	local hb = uf.HealthBarsContainer
+	if not (curve and hb) then
+		return false
+	end
+	local ok, a = pcall(UnitHealthPercent, unit, true, curve)
+	if not ok or not pcall(hb.SetAlpha, hb, a) then
+		return false
+	end
+	local lf = FullBadge(uf, kind)
+	if lf then
+		pcall(lf.SetAlpha, lf, a)
+	end
+	return true
+end
+
+function M.FullOff(uf)
+	local F = M.FULL
+	local unit = F.laid[uf]
+	if not unit then
+		return
+	end
+	F.laid[uf] = nil
+	if F.units[unit] == uf then
+		F.units[unit] = nil
+	end
+	local hb = uf.HealthBarsContainer
+	if hb then
+		hb:SetAlpha(1)
+	end
+	local lf = FullBadge(uf, M.kindOf[uf])
+	if lf then
+		lf:SetAlpha(1)
+	end
+end
+
+function M.LayFull(uf)
+	local F = M.FULL
+	if not (uf and uf.HealthBarsContainer) then
+		return
+	end
+	local kind = M.For(uf)
+	local unit = uf.unit
+	if Secret(unit) or type(unit) ~= "string" then
+		unit = nil
+	end
+	if unit and M.FullWanted(kind) and M.FullAlpha(uf, unit, kind) then
+		local was = F.laid[uf]
+		if was and was ~= unit and F.units[was] == uf then
+			F.units[was] = nil
+		end
+		F.laid[uf], F.units[unit] = unit, uf
+		return
+	end
+	M.FullOff(uf)
+end
+
+-- the two health events heard while a switch is on (`on` false: the module going off -- every bar seen again)
+function M.FullListen(on)
+	local F = M.FULL
+	local frame = Plate.frame
+	local want = on ~= false and M.FullOn()
+	if frame and want ~= F.listening then
+		F.listening = want
+		if want then
+			frame:RegisterEvent("UNIT_HEALTH")
+			frame:RegisterEvent("UNIT_MAXHEALTH")
+		else
+			frame:UnregisterEvent("UNIT_HEALTH")
+			frame:UnregisterEvent("UNIT_MAXHEALTH")
+		end
+	end
+	if not want then
+		for uf in pairs(F.laid) do
+			M.FullOff(uf)
+		end
+	end
+end
+
 function M.LayGameParts(uf)
 	local hb = uf and uf.HealthBarsContainer
 	if not hb then
@@ -857,6 +1138,7 @@ function M.LayGameParts(uf)
 	M.LayBars(uf, hb)
 	M.LayHealthText(uf)
 	M.LayNameSize(uf)   -- (2.1.72)
+	M.For(uf)   -- (2.1.83: this plate's kind, for the places under here)
 	local auras = uf.AurasFrame
 	for key, def in pairs(M.GAME_PARTS) do
 		local region = def[3] and (auras and auras[def[1]]) or uf[def[1]]
@@ -885,6 +1167,7 @@ function M.LayGameParts(uf)
 			GameHome(key, region, uf, hb)
 		end
 	end
+	M.LayFull(uf)   -- (2.1.83: Hide At Full Health, after the parts' own alpha)
 end
 
 --------------------------------------------------------------------------------
@@ -946,7 +1229,7 @@ local function AnchorCC(unitFrame)
 	end
 	local offset = ComputeOffset(unitFrame)
 	-- (2.1.24) the place the Nameplate Designer gave it, else above the name and the debuff row
-	local place = M.PartPlace("cc")
+	local place = M.PartPlace("cc", M.For(unitFrame))   -- (2.1.83: the enemies' place on enemies' plates alone)
 	local cc = auras.CrowdControlListFrame
 	if cc then
 		-- the list is scaled (ResizeCCList): an offset on it is in its own,
@@ -1069,11 +1352,12 @@ function M.Relay(uf, again)
 	-- (the game laid the name again: lifted again over the combo points, then the plate names' parts on it -- after
 	-- the lift, so a cover's justify is read back after the name's last layout)
 	Combo.Relaid(uf)
-	if again or M.PartPlace("name") then
+	local kind = M.For(uf)   -- (2.1.83: this plate's kind)
+	if again or M.PartPlace("name", kind) then
 		M:PlaceName(uf)   -- (2.1.24: the place the Nameplate Designer gave it, before the names' parts)
 	end
 	Plate.Relaid(uf)
-	if Active() or M.PartPlace("cc") then
+	if Active() or M.PartPlace("cc", kind) then
 		AnchorCC(uf)
 	end
 	if again or M.HasLayout() then
@@ -2158,7 +2442,7 @@ local function GetQuestIcon(unitFrame)
 	local size = M.db.questIconSize or 22
 	icon:SetSize(size, size)
 	-- (2.1.24) the place the Nameplate Designer gave it
-	local place = M.PartPlace("quest")
+	local place = M.PartPlace("quest", "enemy")
 	icon:SetAlpha((place and place.show == false) and 0 or 1)
 	if place and unitFrame.HealthBarsContainer then
 		M.LayPart(icon, unitFrame.HealthBarsContainer, place)
@@ -2327,7 +2611,7 @@ local function HangThreat(uf, line)
 	local hb = line.hb or uf
 	local rail = BracketLeft(uf) ~= nil
 	-- (2.1.24) the place the Nameplate Designer gave it, as wide as the bar
-	local place = M.PartPlace("threat")
+	local place = M.PartPlace("threat", "enemy")
 	if line.hbAt == hb and line.rail == rail and line.placeAt == place then
 		return
 	end
@@ -2796,7 +3080,7 @@ function Combo.Attach(uf)
 	end
 	local s = Combo.Socket()
 	-- (2.1.24) the place the Nameplate Designer gave it: there, the name not lifted (the player placed them both)
-	local place = M.PartPlace("combo")
+	local place = M.PartPlace("combo", "enemy")
 	if place then
 		M.LayPart(row, uf.HealthBarsContainer, place)
 		Combo.Lay(row, s)
@@ -3371,6 +3655,14 @@ local eventFrame = CreateFrame("Frame")
 -- (the plate names' UNIT_NAME_UPDATE is registered on it while wanted: Plate.Listen)
 Plate.frame = eventFrame
 Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
+	-- (2.1.83) Hide At Full Health: the unit's bar seen or unseen as its health is now (heard only while a switch is on)
+	if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
+		local uf = not Secret(unit) and type(unit) == "string" and M.FULL.units[unit] or nil
+		if uf then
+			M.FullAlpha(uf, unit, M.kindOf[uf])
+		end
+		return
+	end
 	if event == "NAME_PLATE_UNIT_ADDED" then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if Active() then
@@ -3378,10 +3670,11 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 		elseif M.HasLayout() and plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame then
 			-- (2.1.24) the parts' places kept after the game's own layout, Big CC off too
 			HookUnitFrame(plate.UnitFrame)
-			if M.PartPlace("name") then
+			local kind = M.For(plate.UnitFrame)   -- (2.1.83: this plate's kind)
+			if M.PartPlace("name", kind) then
 				M:PlaceName(plate.UnitFrame)
 			end
-			if M.PartPlace("cc") then
+			if M.PartPlace("cc", kind) then
 				AnchorCC(plate.UnitFrame)
 			end
 		end
@@ -3415,6 +3708,8 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 			questIcons[plate.UnitFrame]:Hide()
 		end
 		if plate and plate.UnitFrame then
+			M.FullOff(plate.UnitFrame)   -- (2.1.83: its bar seen again before the frame goes to another unit)
+			M.kindOf[plate.UnitFrame] = nil   -- (2.1.83: the frame goes to another unit)
 			HideThreat(plate.UnitFrame)
 			if plate.UnitFrame == Combo.at then
 				Combo.Detach()
@@ -3567,6 +3862,7 @@ function M:OnEnable(db)
 	M.QuestieIconsOff()
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+	M.FullListen()   -- (2.1.83: Hide At Full Health's two events while a switch is on)
 	-- (retail's Forever look: the plates' level badges, M.ForeverArt)
 	if M.ForeverArt.Can() then
 		eventFrame:RegisterEvent("UNIT_LEVEL")
@@ -3602,6 +3898,7 @@ end
 function M:OnDisable()
 	-- (the names first: an error below must never leave a name hidden)
 	Plate.Stop()
+	M.FullListen(false)   -- (2.1.83: every bar Hide At Full Health holds seen again)
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
 	eventFrame:UnregisterEvent("UNIT_LEVEL")
@@ -3648,7 +3945,15 @@ function M:OnSettingChanged(key, value, db)
 		Combo.Update()
 		return
 	end
-	if key == "healthTextSize" or key == "healthPercentBeside" or key == "healthPctSize" or key == "nameSize" then
+	-- (2.1.83) a friendly kind's option or places: handled as the enemy's of the same name
+	local base = M.BASE_KEY[key]
+	local bkey = base and base[1] or key
+	if bkey == "hideFull" then
+		M.FullListen()
+		M.LayShown(true)   -- (every shown plate's bar as its kind's switch says now)
+		return
+	end
+	if bkey == "healthTextSize" or bkey == "healthPercentBeside" or bkey == "healthPctSize" or bkey == "nameSize" then
 		M.LayShown(true)   -- (2.1.70: every shown plate's numbers, a setting taken back the game's again)
 		-- (2.1.72) the swing badge beside the percent, or back beside the level badge
 		local sb = MelloUI.SwingBadge
@@ -3665,7 +3970,7 @@ function M:OnSettingChanged(key, value, db)
 		end
 		return
 	end
-	if key == "parts" or key == "plateSize" or key == "plateWidth" or key == "plateHeight" or key == "castHeight" then
+	if bkey == "parts" or bkey == "plateSize" or bkey == "plateWidth" or bkey == "plateHeight" or bkey == "castHeight" then
 		-- (2.1.52: places written whole -- a profile's -- may hold a `show` of a part its own switch shows: folded
 		-- into that switch; it writes the places again without it, and this pass runs once more for them)
 		if key == "parts" then
@@ -3750,6 +4055,17 @@ do
 		FILL = 0.72, THREAT_FILL = 0.55, LIT = 3, SPACING = 2, PAD = 6, QUEST_GAP = 2,
 		HOSTILE = { reaction = 2, fraction = 0.72, area = "nameplates" },   -- (Bar Textures' sample: plain values)
 		STATES = { { key = "normal", label = "Normal" }, { key = "target", label = "Your target" } },
+		-- (2.1.83; the user: "we need a preview window for friendly npc and friendly player nameplates") the friendly
+		-- kinds' samples: a guard and a made-up player, their bars in the friendly reaction's colour. The parts of the
+		-- enemy's sample that no friendly plate has (the threat line, the combo points, the CC icon, the quest icon,
+		-- your debuffs, its buffs, the elite icon, the swing badge) stay hidden on them
+		KIND = {
+			npc = { name = "Stormwind Guard", level = "30", sample = { reaction = 5, fraction = 0.72, area = "nameplates" },
+				castName = "Holy Light", castIcon = "Interface\\Icons\\Spell_Holy_HolyBolt" },
+			ally = { name = "Lina Brightwater", level = "17", sample = { reaction = 5, fraction = 0.72, area = "nameplates" },
+				castName = "Flash Heal", castIcon = "Interface\\Icons\\Spell_Holy_FlashHeal" },
+		},
+		MEDAL_MAX = 44,   -- the Party Markers medallion on the friendly player's sample, at most this large
 		TEXT = { off = "The Nameplates switch is off: the game's own plate, none of MelloUI's parts on it.",
 			pick = "Click a part to pick it; its settings open beside it." },
 		parts = nil,   -- (the part list, made once)
@@ -3787,11 +4103,13 @@ do
 		return t
 	end
 
-	function Stage.Main(stage)
+	function Stage.Main(stage, pick)
 		local f = CreateFrame("Frame", nil, stage.holder)
 		f:SetSize(240, 120)
 		f:EnableMouse(false)
 		f.stage = stage   -- (2.1.24: Stage.Again repaints it while a home is unread)
+		f.kind = Stage.KIND[pick] and pick or "enemy"   -- (2.1.83: the kind of plate this sample is)
+		local who = Stage.KIND[f.kind]
 		f.bar = CreateFrame("Frame", nil, f)
 		f.bar:SetFrameLevel(f:GetFrameLevel() + 2)
 		f.bg = f.bar:CreateTexture(nil, "BACKGROUND")
@@ -3818,7 +4136,7 @@ do
 		f.level:SetAtlas("ui-hud-nameplates-levelindicator")
 		f.levelText = Stage.Text(f.bar, "SystemFont_NamePlateLevel")
 		f.levelText:SetPoint("CENTER", f.level, "CENTER")
-		f.levelText:SetText(Stage.LEVEL)
+		f.levelText:SetText(who and who.level or Stage.LEVEL)
 		-- (the threat line: its look as ThreatLine makes it, gold while safe)
 		f.threat = CreateFrame("StatusBar", nil, f.bar)
 		f.threat:SetFrameLevel(f.bar:GetFrameLevel() + 5)
@@ -3859,14 +4177,14 @@ do
 		MelloUI.Widgets.Icon(f.quest, QUEST_ICON.kill)   -- (the stage's enemy: a mob to slay)
 		f.quest:SetPoint("RIGHT", f.bar, "LEFT", -Stage.QUEST_GAP, 0)
 		f.name = Stage.Text(f.top, "SystemFont_NamePlate")
-		f.name:SetText(Stage.NAME)
+		f.name:SetText(who and who.name or Stage.NAME)
 		Plate.LOOK.alpha = MelloUI.Shade.TEXT.alpha
 		f.band = MelloUI.Shade:Band(f.top, Plate.LOOK)
 		if f.band then
 			-- (2.1.19) on a measure of the text, as the live plates' band (Plate.Make): the name's box spans the bar now
 			f.measure = MelloUI.Shade:Measure(f.top, f.name, Plate.POINT, Plate.MEASURE)
 			if f.measure then
-				MelloUI.Shade:MeasureText(f.measure, Stage.NAME)
+				MelloUI.Shade:MeasureText(f.measure, who and who.name or Stage.NAME)
 			end
 			f.band:Anchor(f.measure or f.name, Plate.PAD_X, Plate.PAD_Y)
 		end
@@ -3880,6 +4198,14 @@ do
 			f.debuffs.times[i] = t
 		end
 		f.cc = Stage.Icon(f.top, Stage.CC)
+		-- (2.1.83) the friendly player's sample: Party Markers' class medallion over the name, as its own sample draws it
+		if f.kind == "ally" then
+			local pm = MelloUI:GetModule("PartyMarkers")
+			if pm and pm.SampleMake then
+				f.medallion = pm.SampleMake(f.top)
+				f.medalRing = f.medallion.ring
+			end
+		end
 		-- (2.1.24, the Nameplate Designer's stage 2) the game's own parts: the raid marker left of the bar, its buffs
 		-- left of that, the cast bar under the bar (an icon, its fill, the spell's name)
 		f.raid = f.top:CreateTexture(nil, "OVERLAY")
@@ -3904,9 +4230,9 @@ do
 		cbg:SetTexture(WHITE)
 		W.Paint(cbg, "innerPanel", "vertex", 0.9)
 		f.castIcon = f.cast:CreateTexture(nil, "ARTWORK", nil, 1)
-		f.castIcon:SetTexture(Stage.CAST_ICON)
+		f.castIcon:SetTexture(who and who.castIcon or Stage.CAST_ICON)
 		f.castText = Stage.Text(f.cast, "SystemFont_NamePlateCastBar")
-		f.castText:SetText(Stage.CAST_NAME)
+		f.castText:SetText(who and who.castName or Stage.CAST_NAME)
 		-- (2.1.53) the game's cast bar container, for the game's own layout (M.GameCast); laid each paint
 		f.castBox = CreateFrame("Frame", nil, f.bar)
 		f.castBox:EnableMouse(false)
@@ -3942,8 +4268,8 @@ do
 	-- laid by Stage.Places, then Stage.HealthRelate)
 	function Stage.LayHealth(f, db, ours)
 		local num, pct = M.HealthBits()
-		local size = ours and math.floor((Num(db.healthTextSize) or 0) + 0.5) or 0
-		local psize = ours and math.floor((Num(db.healthPctSize) or 0) + 0.5) or 0
+		local size = ours and math.floor((Num(M.Opt("healthTextSize", f.kind, db)) or 0) + 0.5) or 0
+		local psize = ours and math.floor((Num(M.Opt("healthPctSize", f.kind, db)) or 0) + 0.5) or 0
 		local h = size > 0 and size or SetupOption("healthBarFontHeight", Stage.HP_H)
 		f.hpNum:SetText(num and Stage.HP_NUM or Stage.HP_PCT)
 		local both = num and pct and true or false
@@ -3954,7 +4280,7 @@ do
 				t:SetTextHeight((t == f.hpPct and psize > 0) and psize or h)
 			end
 		end
-		local beside = ours and db.healthPercentBeside == true
+		local beside = ours and M.Opt("healthPercentBeside", f.kind, db) == true
 		f.hp.beside = beside
 		GameTextHome(f.bar, f.hpOne, f.hpNum, f.hpPct)
 		if beside then
@@ -4020,17 +4346,33 @@ do
 		return m ~= nil and m.isEnabled and true or false
 	end
 
-	function Stage.Paint(f, _, _, ctx)
+	-- (2.1.83) a sample painted as its kind: M.kind is the sample's for the pass (the places' and sizes' readers follow
+	-- it) and what it was after it, also when the paint raises
+	function Stage.Paint(f, pick, values, ctx)
+		local was = M.kind
+		M.kind = f.kind or "enemy"
+		local ok, err = pcall(Stage.PaintKind, f, pick, values, ctx)
+		M.kind = was
+		if not ok then
+			error(err, 0)
+		end
+	end
+
+	function Stage.PaintKind(f)
 		local db = Stage.DB("Nameplates")
 		local ours = Stage.Running("Nameplates")
+		local kind = f.kind or "enemy"
+		local enemy = kind == "enemy"
+		local who = Stage.KIND[kind]
 		-- (2.1.24, the user's pick A: the preview shows everything at once -- your target's parts too, no chips)
 		local target = true
 		local barW = Stage.Const("NAME_PLATE_WIDTH", Stage.PLATE_W) - 2 * Stage.Const("HORIZONTAL_INSET", Stage.INSET)
 		local barH = SetupOption("healthBarHeight", Stage.BAR_H)
 		-- (2.1.24, stage 2) Own Plate Size: the whole plate's width (the bar and the level badge's room), its height
-		if ours and db.plateSize == true then
-			barW = math.max(10, (Num(db.plateWidth) or barW) - (M.PartPlace("level") and 0 or Stage.LEVEL_GAP + Stage.LEVEL_W))
-			barH = Num(db.plateHeight) or barH
+		if ours and M.Opt("plateSize", kind, db) == true then
+			barW = math.max(10, (Num(M.Opt("plateWidth", kind, db)) or barW)
+				- (M.PartPlace("level") and 0 or Stage.LEVEL_GAP + Stage.LEVEL_W))
+			barH = Num(M.Opt("plateHeight", kind, db)) or barH
 		end
 		-- the health bar as Bar Textures answers for the plates (its fill and colour while it works on them; the
 		-- game's own atlas otherwise), a hostile NPC's reaction colour
@@ -4045,11 +4387,12 @@ do
 			f.fill:SetAtlas("UI-HUD-CoolDownManager-Bar")
 		end
 		local r, g, b
+		local sample = who and who.sample or Stage.HOSTILE   -- (2.1.83: a friendly kind's bar in the friendly colour)
 		if active and bt.PreviewHealthColor then
-			r, g, b = bt.PreviewHealthColor(nil, Stage.HOSTILE)
+			r, g, b = bt.PreviewHealthColor(nil, sample)
 		end
 		if not r then
-			r, g, b = MelloUI.Colours.Reaction(Stage.HOSTILE.reaction)
+			r, g, b = MelloUI.Colours.Reaction(sample.reaction)
 		end
 		if r then
 			f.fill:SetVertexColor(r, g, b)
@@ -4062,7 +4405,7 @@ do
 		f.level:SetPoint("LEFT", f.bar, "RIGHT", Stage.LEVEL_GAP, 0)
 		-- the combo points (your target, the option on) at their offsets: the name lifted over them
 		local s = barH * (Num(db.comboSize) or 90) / 100
-		local combo = ours and target and db.comboPoints ~= false
+		local combo = enemy and ours and target and db.comboPoints ~= false
 		local cx, cy = Num(db.comboX) or 0, Num(db.comboY) or 0
 		if combo then
 			f.combo:ClearAllPoints()
@@ -4076,7 +4419,7 @@ do
 		-- (scaled whole, as the plate's badge is: SB.Attach's SetScale -- sized instead, its rim and weapon stayed at the
 		-- made size inside a bigger box; the user's shot, 2026-11-08)
 		local sb = MelloUI.SwingBadge
-		local swing = ours and target and sb and sb.Active and sb.Active() ~= nil and true or false
+		local swing = enemy and ours and target and sb and sb.Active and sb.Active() ~= nil and true or false
 		local k = (sb and sb.PlateScale and sb.PlateScale()) or 1
 		local gap = (sb and sb.T and sb.T.badgeGap) or 4
 		local badge = ((sb and sb.T and sb.T.badge) or 24) * k
@@ -4090,11 +4433,11 @@ do
 			f.swing:ClearAllPoints()
 			-- (in its own units: the plate's gap, scaled with it; 2.1.72: past the percent while it stands beside the
 			-- bar, as on your target's plate -- Core/SwingBadge.lua, NP:BesideAnchor)
-			local pctBeside = ours and db.healthPercentBeside == true and not M.PartPlace("healthpct")
+			local pctBeside = ours and M.Opt("healthPercentBeside", kind, db) == true and not M.PartPlace("healthpct")
 			f.swing:SetPoint("LEFT", pctBeside and f.hpPct or f.level, "RIGHT", gap, 0)
 		end
 		local swingW = swing and (gap * k + badge) or 0
-		f.threat:SetShown(ours and target and db.threatLine ~= false)
+		f.threat:SetShown(enemy and ours and target and db.threatLine ~= false)
 		f.threat:ClearAllPoints()   -- (2.1.24: its own place each paint -- a designer place lays it after)
 		f.threat:SetPoint("BOTTOMLEFT", f.bar, "BOTTOMLEFT")
 		f.threat:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT")
@@ -4124,7 +4467,7 @@ do
 			f.band:SetShown(ours and Plate.Shade())
 		end
 		-- (2.1.72) Name Size on the sample's name and its measure (the band behind it), as M.LayNameSize on a plate's
-		local nsize = ours and math.floor((Num(db.nameSize) or 0) + 0.5) or 0
+		local nsize = ours and math.floor((Num(M.Opt("nameSize", kind, db)) or 0) + 0.5) or 0
 		local nh = nsize > 0 and nsize or f.nameH
 		if nh and f.name.SetTextHeight then
 			f.name:SetTextHeight(nh)
@@ -4140,6 +4483,7 @@ do
 		local size = mine and (Num(auras.nameplateSize) or 20) or Stage.AURA
 		local timers = mine or (Stage.Running("CooldownText") and Stage.DB("CooldownText").nameplates ~= false)
 		local row = f.debuffs
+		row:SetShown(enemy)   -- (2.1.83: your debuffs stand on enemies)
 		row:ClearAllPoints()
 		row:SetPoint("BOTTOMLEFT", f.bar, "TOPLEFT", 0, y + nameH + Stage.SPACING)
 		row:SetSize(#row.icons * (size + Stage.SPACING), size)
@@ -4158,9 +4502,10 @@ do
 			end
 		end
 		-- the CC icon: above the name and the debuff row (ComputeOffset's sum), else small at the game's place
-		local big = ours and db.bigCC ~= false
+		local big = enemy and ours and db.bigCC ~= false
 		local cc = big and (Num(db.ccSize) or 45) or Stage.AURA
 		f.cc:SetSize(cc, cc)
+		f.cc:SetShown(enemy)   -- (2.1.83: the CC icon is the enemies')
 		f.cc:ClearAllPoints()
 		local above
 		if big then
@@ -4169,7 +4514,14 @@ do
 			above = above + cc
 		else
 			f.cc:SetPoint("LEFT", f.bar, "RIGHT", Stage.LEVEL_GAP + Stage.LEVEL_W + swingW + Stage.CC_GAP, 0)
-			above = y + nameH + Stage.SPACING + size
+			above = y + nameH + Stage.SPACING + (enemy and size or 0)
+		end
+		-- (2.1.83) the friendly player's medallion over the name, by Party Markers' own settings
+		if f.medallion then
+			local pm = MelloUI:GetModule("PartyMarkers")
+			if pm and pm.SamplePaint then
+				above = math.max(above, y + nameH + pm.SamplePaint(f.medallion, f.name, Stage.MEDAL_MAX))
+			end
 		end
 		-- (2.1.24, stage 2) the raid marker left of the bar, its buffs left of that, the cast bar under the bar, as the
 		-- game lays them
@@ -4186,6 +4538,8 @@ do
 		-- (2.1.29) the elite icon where the game's chain lays it with the raid marker at home (left of the marker's
 		-- room on the bar), the buffs left of it -- the live plates' rule while the marker is moved (BarHome)
 		f.elite:SetSize(Stage.ELITE, Stage.ELITE)
+		f.elite:SetShown(enemy)   -- (2.1.83: the elite icon and its buffs on the enemy's sample)
+		f.buffs:SetShown(enemy)
 		f.elite:ClearAllPoints()
 		f.elite:SetPoint("RIGHT", f.bar, "LEFT", -Stage.RAID, 0)
 		f.buffs:ClearAllPoints()
@@ -4193,8 +4547,8 @@ do
 		-- (2.1.53; the user: "how it looks in the preview should reflect how it looks in game") the cast bar by the live
 		-- plates' own two paths: MelloUI's layout while it is MelloUI's to lay (M.LayCast; its place laid in
 		-- Stage.Places), else the game's on its container under the bar -- the bar's width and the level badge's room
-		if ours and M.OwnCast(db) then
-			M.LayCast(f.cast, f.castIcon, f.castText, f.bar, nil, M.CastHeight(), barW)
+		if ours and M.OwnCast(db, kind) then
+			M.LayCast(f.cast, f.castIcon, f.castText, f.bar, nil, M.CastHeight(kind), barW)
 		else
 			local castGap = SetupOption("castBarToHealthBarSpacing", 2)
 			local room = M.PartPlace("level") and 0 or Stage.LEVEL_GAP + Stage.LEVEL_W
@@ -4205,7 +4559,7 @@ do
 			M.GameCast(f.cast, f.castIcon, f.castText, f.castBox, nil)
 		end
 		-- the quest icon (the option on), left of the bar (of the raid marker's room, as the live plates')
-		local quest = ours and db.questIcon ~= false
+		local quest = enemy and ours and db.questIcon ~= false
 		local qs = Num(db.questIconSize) or 22
 		f.quest:SetSize(qs, qs)
 		f.quest:SetShown(quest)
@@ -4214,7 +4568,7 @@ do
 		Stage.LayHealth(f, db, ours)   -- (2.1.70: the game's health numbers)
 		-- the sample's own size round what shows (the stage fits it), the bar placed in it
 		local left = Stage.PAD + (quest and qs + Stage.QUEST_GAP or 0) + 2
-		local right = Stage.PAD + Stage.LEVEL_GAP + Stage.LEVEL_W + swingW + (big and 0 or Stage.CC_GAP + cc)
+		local right = Stage.PAD + Stage.LEVEL_GAP + Stage.LEVEL_W + swingW + ((big or not enemy) and 0 or Stage.CC_GAP + cc)
 		local bottom = Stage.PAD - Stage.BG[4] - Stage.BORDER[4]
 		local top = Stage.PAD + math.max(above, (barH / 2) + (combo and (s / 2 + cy) or 0), (big or not quest) and 0 or qs / 2,
 			swing and badge / 2 or 0)
@@ -4244,16 +4598,17 @@ do
 	-- grown round wherever they stand. true while a home could not be read yet (the sample not laid out)
 	function Stage.Places(f, k, left, right, top, bottom, barW, barH)
 		local unread = false
+		local homes = Stage.HomesOf(f.kind)   -- (2.1.83: each kind's sample its own homes)
 		for key, field in pairs(Stage.MOVES) do
 			local r = f[field]
 			if r and r:IsShown() then
 				local x, y, w, h = Stage.Rect(f, r)
 				if x then
-					local home = Stage.homes[key] or {}
+					local home = homes[key] or {}
 					home.point, home.x, home.y = "CENTER", math.floor(x + 0.5), math.floor(y + 0.5)
 					local side = Stage.SIZE_OF[key]
 					home.size = side and math.floor((side == "h" and h or w) + 0.5) or nil
-					Stage.homes[key] = home
+					homes[key] = home
 				else
 					unread = true
 				end
@@ -4271,7 +4626,7 @@ do
 					r:SetSize(size, size)
 				elseif key == "cast" then
 					-- (2.1.53: the live plates' one path; its height Cast Bar Height's)
-					M.LayCast(r, f.castIcon, f.castText, f.bar, place, M.CastHeight(), barW)
+					M.LayCast(r, f.castIcon, f.castText, f.bar, place, M.CastHeight(f.kind), barW)
 				elseif key == "threat" then
 					r:SetWidth(barW)
 				end
@@ -4330,7 +4685,7 @@ do
 	-- what the sample grows round: the parts, the cast bar's icon (beside its bar, or under it in the game's layout),
 	-- (2.1.70) the health numbers' percent (beside the number or the bar) and (2.1.71) a look's dress round the bar
 	-- (the Nameplate Kit's painting: its place, `dressBox`, while laid)
-	Stage.BOUNDS = { "castIcon", "hpPct", "dressBox" }
+	Stage.BOUNDS = { "castIcon", "hpPct", "dressBox", "medallion" }   -- (2.1.83: the friendly player's medallion)
 	for _, field in pairs(Stage.MOVES) do
 		Stage.BOUNDS[#Stage.BOUNDS + 1] = field
 	end
@@ -4341,8 +4696,20 @@ do
 	-- which side of a part its size is (its home's): the width of the icons, the cast bar's and the numbers' height
 	Stage.SIZE_OF = { cc = "w", quest = "w", level = "w", raid = "w", cast = "h", elite = "w", healthtext = "h",
 		healthpct = "h", name = "h" }   -- (2.1.72: the percent's and the name's height)
-	Stage.homes = {}
-	function Stage.Part(key, label, field, text)
+	Stage.homes = {}   -- [kind] = { [part] = its home on that kind's sample }
+	function Stage.HomesOf(kind)
+		kind = kind or "enemy"
+		local homes = Stage.homes[kind]
+		if not homes then
+			homes = {}
+			Stage.homes[kind] = homes
+		end
+		return homes
+	end
+
+	-- (2.1.83: `kind`, the sample's -- its places, its sizes and its homes)
+	function Stage.Part(key, label, field, text, kind)
+		kind = kind or "enemy"
 		local part = { key = key, label = label, drag = false, text = text,
 			region = function(f)
 				local r = f[field]
@@ -4359,7 +4726,7 @@ do
 				return f.bar
 			end
 			part.store = { get = function()
-				local place = M.PartPlace(key)
+				local place = M.PartPlace(key, kind)
 				if not place then
 					return nil
 				end
@@ -4370,23 +4737,48 @@ do
 				local sizeKey = M.PART_SIZE[key]
 				if sizeKey then
 					local db = Stage.DB("Nameplates")
+					local homes = Stage.HomesOf(kind)
 					-- (2.1.53: Cast Bar Height's 0 is the game's height: its home's)
-					local v = Num(db[sizeKey])
-					t.size = (v and v > 0) and v or (Stage.homes[key] and Stage.homes[key].size)
+					local v = Num(db[M.KindKey(sizeKey, kind)])
+					t.size = (v and v > 0) and v or (homes[key] and homes[key].size)
 				end
 				return t
 			end, set = function(_, t)
-				M.SetPartPlace(key, t)
+				M.SetPartPlace(key, t, kind)
 			end }
 			part.home = function()
-				return Stage.homes[key]
+				return Stage.HomesOf(kind)[key]
 			end
 			part.homeLabel = "Its own place"
 		end
 		return part
 	end
 
-	function Stage.Parts()
+	-- (2.1.83) a friendly kind's parts: what the game's friendly plate has, each the kind's own; the friendly player's
+	-- with Party Markers' medallion and its role ring (picked, never dragged: their own Size and Gap)
+	Stage.kindParts = {}
+	function Stage.Parts(pick)
+		local kind = Stage.KIND[pick] and pick or nil
+		if kind then
+			local list = Stage.kindParts[kind]
+			if not list then
+				list = {
+					Stage.Part("name", "Name", "name", true, kind),
+					Stage.Part("health", "Health bar", "bg", nil, kind),
+					Stage.Part("healthtext", "Health number", "hp", nil, kind),
+					Stage.Part("healthpct", "Health percent", "hpP", nil, kind),
+					Stage.Part("cast", "Cast bar", "cast", nil, kind),
+					Stage.Part("raid", "Raid marker", "raid", nil, kind),
+					Stage.Part("level", "Level badge", "level", nil, kind),
+				}
+				if kind == "ally" then
+					list[#list + 1] = Stage.Part("role", "Role ring", "medalRing", nil, kind)
+					list[#list + 1] = Stage.Part("medallion", "Medallion", "medallion", nil, kind)
+				end
+				Stage.kindParts[kind] = list
+			end
+			return list
+		end
 		if not Stage.parts then
 			Stage.parts = {
 				Stage.Part("name", "Name", "name", true),
@@ -4431,9 +4823,10 @@ do
 			return
 		end
 		local list = {}
-		for _, part in ipairs(Stage.Parts()) do
-			local r = (part.key ~= "health" and part.key ~= "threat" and part.key ~= "combo") and part.region(f) or nil
-			local place = Stage.MOVES[part.key] and M.PartPlace(part.key)
+		for _, part in ipairs(Stage.Parts(f.kind)) do
+			local r = (part.key ~= "health" and part.key ~= "threat" and part.key ~= "combo" and part.key ~= "role")
+				and part.region(f) or nil
+			local place = Stage.MOVES[part.key] and M.PartPlace(part.key, f.kind)
 			if r and not (place and place.show == false) then
 				local x, y, w, h = Stage.Rect(f, r)
 				if x then
@@ -4487,8 +4880,10 @@ do
 	if CP and CP.Register then
 		CP.Register("nameplate", {
 			place = "wide", height = 230, maxScale = 1.5,
-			picks = { enemy = true }, first = "enemy",
+			-- (2.1.83: a sample a kind of plate -- the enemy's, a friendly NPC's, a friendly player's)
+			picks = { enemy = true, npc = true, ally = true }, first = "enemy",
 			watch = { Nameplates = true, Auras = true, CooldownText = true, BarTextures = true, UIModifications = true,
+				PartyMarkers = true,   -- (2.1.83: the friendly player's medallion)
 				Tweaks = true,   -- (Tweaks: Text Shade, the band behind the name -- 2026-10-16)
 				SwingTimers = true, PersonalDisplay = true,   -- (2.1.19: the swing badge's hosts)
 				DarkMode = true },   -- (2.1.71: its shade on the bar's backing)

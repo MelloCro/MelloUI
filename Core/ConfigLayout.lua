@@ -252,7 +252,10 @@ L.pages = {
 			-- (`stage`: the enemy plate's sample, Modules/Nameplates.lua's 'nameplate' kind; 2.1.24, the Nameplate
 			-- Designer, the user's picks C A A B: everything shown at once -- your target's parts too, no states --
 			-- the name, the CC icon, the quest icon and the swing badge dragged to a place, the rest picked)
-			{ key = "enemies", label = "Enemies", line = "Enemies' and NPCs' plates",
+			-- (2.1.83; a player on Discord: "under enemy tab should only effect enemies ... i dont see a setting for
+			-- general npc nameplates or only friendly nameplates"; the user: "we need a preview window for friendly npc
+			-- and friendly player nameplates") three kinds of plate, each its own preview, places and sizes
+			{ key = "enemies", label = "Enemies", line = "The plates of everything you can attack",
 				stage = { kind = "nameplate", pick = "enemy" }, parts = {
 				{ key = "name", label = "Name", stage = "name" }, { key = "health", label = "Health bar", stage = "health" },
 				{ key = "healthtext", label = "Health number", stage = "healthtext" },   -- (2.1.70: the game's numbers)
@@ -265,10 +268,22 @@ L.pages = {
 				-- (2.1.53; the user: "i have no options to resize the height of the Cast bar") its own tab: its height,
 				-- its Show and its Place
 				{ key = "cast", label = "Cast bar", stage = "cast" } } },
-			-- (`sample`: Party Markers' own medallion sample in the slot -- Modules/PartyMarkers.lua's corner kind)
-			{ key = "friendly", label = "Friendly players", line = "A class medallion over friendly players' names, in the open world",
-				sample = { kind = "partymarker", pick = "marker" },
-				parts = { { key = "medallion", label = "Medallion" }, { key = "role", label = "Role ring" } } },
+			-- (2.1.83) a friendly NPC's plate: the parts the game's friendly plate has, each this kind's own
+			{ key = "npcs", label = "Friendly NPCs", line = "Friendly NPCs' plates",
+				stage = { kind = "nameplate", pick = "npc" }, parts = {
+				{ key = "name", label = "Name", stage = "name" }, { key = "health", label = "Health bar", stage = "health" },
+				{ key = "healthtext", label = "Health number", stage = "healthtext" },
+				{ key = "healthpct", label = "Health percent", stage = "healthpct" },
+				{ key = "cast", label = "Cast bar", stage = "cast" } } },
+			-- (2.1.83: a friendly player's plate on the stage, Party Markers' medallion over its name -- before, the
+			-- medallion alone in the slot, Modules/PartyMarkers.lua's corner kind)
+			{ key = "friendly", label = "Friendly players", line = "Friendly players' plates, and the class medallion over their names in the open world",
+				stage = { kind = "nameplate", pick = "ally" }, parts = {
+				{ key = "name", label = "Name", stage = "name" }, { key = "health", label = "Health bar", stage = "health" },
+				{ key = "healthtext", label = "Health number", stage = "healthtext" },
+				{ key = "healthpct", label = "Health percent", stage = "healthpct" },
+				{ key = "cast", label = "Cast bar", stage = "cast" },
+				{ key = "medallion", label = "Medallion", stage = "medallion" }, { key = "role", label = "Role ring", stage = "role" } } },
 			{ key = "objects", label = "Objects", line = "The sparkle on quest items and the glints over veins, herbs and quest objects" },
 		} },
 	-- (one look stage G, the user's yes of 2026-10-16 to docs/plans/onelook-designer/bars-audit.md: one designer
@@ -910,9 +925,11 @@ function L.Define(R, Link)
 	-- Enemies: Nameplate Tweaks (the Nameplates module's switch) first, Dark Mode; each part's own rows
 	-- (2.1.6: the Nameplates area's switch -- MelloUI.Area: everything MelloUI puts on a plate, friends' too)
 	R("Nameplates", "enemies:element", "General", "UIModifications.qol_Nameplates",
-		{ shared = "also Friendly players", sharedWith = { "Friendly players" } })
+		{ shared = "also Friendly NPCs and Friendly players", sharedWith = { "Friendly NPCs", "Friendly players" } })
+	R("Nameplates", "npcs:element", "General", "UIModifications.qol_Nameplates",   -- (2.1.83)
+		{ shared = "also Enemies and Friendly players", sharedWith = { "Enemies", "Friendly players" } })
 	R("Nameplates", "friendly:element", "General", "UIModifications.qol_Nameplates",
-		{ shared = "also Enemies", sharedWith = { "Enemies" } })
+		{ shared = "also Enemies and Friendly NPCs", sharedWith = { "Enemies", "Friendly NPCs" } })
 	R("Look", "Textures", "Look", "BarTextures.nameplatesTexture", { name = "Nameplates", card = "Bars", gate = NP_AREA })
 	Link("Nameplates", "enemies:health", "Look", "BarTextures.nameplatesTexture", "Bar Texture")
 	R("Nameplates", "enemies:element", "Behaviour", "Nameplates.hover")   -- (1.2.4: every plate's, the user)
@@ -964,6 +981,21 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:swing", "Layout", "Nameplates.swingSize")   -- (2.1.19: the user, 50 - 200 %)
 	R("Nameplates", "enemies:cast", "Layout", "Nameplates.castHeight", { name = "Height" })   -- (2.1.53: the user)
 	R("Nameplates", "enemies:auras", "General", "CooldownText.nameplates", { gate = NP_AREA })   -- (the Bars audit: Cooldown Timers' switch here)
+	-- (2.1.83) Friendly NPCs and Friendly players: each kind's own sizes (Modules/Nameplates.lua's M.KIND_OPTS under
+	-- the kind's name), on the tabs the enemy's stand on
+	for _, k in ipairs({ { "npcs", "npc" }, { "friendly", "ally" } }) do
+		local el, p = k[1], "Nameplates." .. k[2]
+		R("Nameplates", el .. ":name", "Text", p .. "NameSize", { name = "Size" })
+		R("Nameplates", el .. ":health", "Layout", p .. "PlateSize", { name = "Own Plate Size" })
+		R("Nameplates", el .. ":health", "Layout", p .. "PlateWidth", { name = "Plate Width" })
+		R("Nameplates", el .. ":health", "Layout", p .. "PlateHeight", { name = "Plate Height" })
+		-- (2.1.83; the user: "some option for the health bar 'Hide when full HP'")
+		R("Nameplates", el .. ":health", "Behaviour", p .. "HideFull", { name = "Hide At Full Health" })
+		R("Nameplates", el .. ":healthtext", "Text", p .. "HealthTextSize", { name = "Size" })
+		R("Nameplates", el .. ":healthpct", "Text", p .. "HealthPctSize", { name = "Size" })
+		R("Nameplates", el .. ":healthpct", "Layout", p .. "HealthPercentBeside", { name = "Percent Beside The Bar" })
+		R("Nameplates", el .. ":cast", "Layout", p .. "CastHeight", { name = "Height" })
+	end
 	-- Friendly players: Party Markers' switch first
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers", gate = NP_AREA })
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.who")

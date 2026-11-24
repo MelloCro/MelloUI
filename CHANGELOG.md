@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.83
+
+- Nameplates: the designer has three kinds of plate now, each with its own preview, places and sizes: Enemies, Friendly NPCs and Friendly players. Before, what you set under Enemies (a moved name, its size, the plate's size, the health numbers, the cast bar) was laid on friendly plates too. Friendly plates start at the game's own layout: if you had moved or resized parts, your friendly plates go back to it with this update, and you set them in their own tab.
+- Nameplates: the Friendly players preview shows a friendly player's plate with the Party Markers medallion over its name.
+- New: Hide At Full Health for friendly nameplates (Nameplates > Friendly NPCs or Friendly players > Health bar). At full health only the name shows; the health bar and its level badge show as soon as they are hurt, and go again once they are back at full health.
+
 ## 2.1.82
 
 - Fixed: with Nearest Turn In on (the check mark in the quest tracker's header), the navigation jumped back to a quest ready to hand in within a second, whatever you had just chosen: a step of a guide such as RestedXP, your own map pin (it vanished), or the way to your corpse. Nearest Turn In now waits while you are on one of those, and follows the nearest quest to hand in again once it is gone.

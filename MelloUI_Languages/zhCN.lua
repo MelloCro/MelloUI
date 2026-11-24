@@ -2491,6 +2491,8 @@ Lang:Add("zhCN", {
 	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "手柄：MelloUI 聊天中的链接和名字不再打开游戏自带的窗口，此前这会导致手柄按键被阻止。", -- draft
 	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "手柄：MelloUI 在游戏拾取、拆分堆叠和邮件窗口中的按钮不再被手柄光标选中。", -- draft
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "“最近的可交任务”不再从你自己的地图标记、指南的步骤或跑尸路线上抢走导航。", -- draft
+	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "姓名板：友方 NPC 和友方玩家有了各自的预览、位置和大小。在“敌人”下的设置不再改变友方姓名板。", -- draft
+	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "友方姓名板：“满血时隐藏”在其受伤之前只显示名字。", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "专业冷却：共享冷却的配方（如转化）在冷却结束时只提示一次。", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "地图：关闭 MelloUI 的地图时，没有 Questie 的情况下游戏自带的世界地图也会显示 MelloUI 的任务区域。", -- draft

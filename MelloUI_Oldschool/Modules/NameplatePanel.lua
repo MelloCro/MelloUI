@@ -308,7 +308,8 @@ local function CentreName(uf, hb, rep)
 	end
 	-- (2.1.24) a name the Nameplate Designer placed: its place, never centred here (the core lays it)
 	local plates = MelloUI:GetModule("Nameplates")
-	if plates and plates.PartPlace and plates.PartPlace("name") then
+	-- (2.1.83: the plate's own kind's -- an enemy's, a friendly NPC's, a friendly player's)
+	if plates and plates.PartPlace and plates.PartPlace("name", plates.KindOf and plates.KindOf(uf) or nil) then
 		centredStyle[name] = nil
 		plates:PlaceName(uf)
 		return
@@ -1412,7 +1413,8 @@ local function SkinUnitFrame(uf)
 	if cb and cb.Background then
 		-- (2.1.53: the Nameplates module's own height while it lays the bar)
 		local np = CastFit.Theirs() and MelloUI:GetModule("Nameplates")
-		local fit = np and type(np.CastHeight) == "function" and np.CastHeight() or Option("castBarHeight", 16)
+		local fit = np and type(np.CastHeight) == "function" and np.CastHeight(np.KindOf and np.KindOf(uf) or nil)
+			or Option("castBarHeight", 16)
 		Replace(cb.Background, { as = "NamePlateCastBarBackground", rect = cb, alsoFade = { cb.Border }, fitHeight = fit })
 	end
 	local lf = uf.PlayerLevelDiffFrame
