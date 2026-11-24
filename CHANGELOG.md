@@ -24,6 +24,7 @@
 - Fixed in Mail Recipients: a character whose class MelloUI did not know was white, like a Priest. It has a ? now and a dimmer name; click the ? to pick the class. The class is also learned when that character logs in, or from your guild.
 - Fixed in Mail Recipients: a character was never noted (no class, level or professions) when the game gave no realm name during its sessions and it had not been noted before.
 - Fixed in Mail Recipients: two of your characters with the same first name shared one entry, so each login wrote over the other's class, level and professions. Each has its own now; log in once on each.
+- Fixed: with Hide At Full Health on, a friendly nameplate at full health still showed the mouseover highlight round its hidden bar. The highlight is hidden with the bar now.
 - Blocked actions report (/mellobug): with a controller, it also says when the game's controller code ran from inside MelloUI's own code, with the way there, and which control the pad's cursor stood on when the game's controller values first changed.
 
 ## 2.1.83

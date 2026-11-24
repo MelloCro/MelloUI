@@ -225,7 +225,12 @@ local function PlateOutline(uf)
 	if not bg then
 		return nil
 	end
-	o = CreateFrame("Frame", nil, uf)
+	-- (2.1.84; a player on Discord, of Hide At Full Health: "the mousover highlight still persists", and the user:
+	-- "let the mouseover highlight also set its alpha to 0 if the nameplate is hidden when the HP is full") the outline
+	-- is the health bar container's child, not the plate's: what it outlines. Whatever fades that container (Nameplates'
+	-- M.FullAlpha hands it the unit's health through a curve, a secret alpha never read) fades the outline with it --
+	-- the engine multiplies a child's alpha by its parent's, nothing is compared or worked out here
+	o = CreateFrame("Frame", nil, bars)
 	o.uf = uf   -- (our own frame's field: the plate it outlines, for Lit's name-only test)
 	o:SetAllPoints(uf)
 	o:EnableMouse(false)
