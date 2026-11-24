@@ -2498,6 +2498,10 @@ Lang:Add("koKR", {
 	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "유닛 프레임: PvP 휘장, 상태 광채, 전투 광채는 부분 목록의 표시 스위치로 보이거나 숨깁니다.", -- draft
 	["Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does."] = "설정 창: 각 기능의 스위치가 이제 탭 맨 위의 막대에 있으며, 이름과 하는 일이 함께 표시됩니다.", -- draft
 	["Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it."] = "설정 창: 옆 목록에 모든 페이지가 한 번에 보이며, 점으로 켜짐, 일부 켜짐, 꺼짐을 표시합니다. 처음, 레이아웃 편집, 프로필, 애드온, 후원자는 그 위의 아이콘 버튼입니다.", -- draft
+	["Home: a What's new line with an arrow opens the setting it is about. Back to Home brings you back."] = "처음: 화살표가 있는 새 소식 줄을 누르면 해당 설정이 열립니다. 처음으로 돌아가기로 돌아옵니다.", -- draft
+	["Quality of Life: four tabs in place of twelve, each helper under its own switch. Jump to takes you to one."] = "편의 기능: 탭이 열두 개에서 네 개로 줄었고, 각 도우미는 자기 스위치 아래에 있습니다. 바로 가기로 이동할 수 있습니다.", -- draft
+	["Profiles: four cards. Import says what a string holds and the screen it was made for before you take it."] = "프로필: 카드 네 장. 가져오기는 문자열을 받기 전에 그 안에 무엇이 있고 어떤 화면용인지 알려 줍니다.", -- draft
+	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "설정 창: 프레임과 부분의 제목 줄이 이제 강조되고, 그 아래 구역은 작은 이름표로 표시됩니다.", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "전문 기술 재사용 대기시간: 변환처럼 재사용 대기시간을 공유하는 제조법은 끝났을 때 알림이 하나만 나옵니다.", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Questie 없는 미니맵: 게임의 파란 퀘스트 원 대신 MelloUI의 표시가 나옵니다.", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "지도: MelloUI 지도를 끄면 Questie 없이도 게임의 세계 지도에 MelloUI의 퀘스트 지역이 표시됩니다.", -- draft

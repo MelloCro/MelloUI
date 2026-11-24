@@ -803,16 +803,10 @@ end
 -- configurator's Your setup and the installer's Screen step. Returns width,
 -- height, label (nil when none is close); nothing while the client does not
 -- say. Makes no table.
-function MelloUI:ScreenInfo()
-	if not GetPhysicalScreenSize then
-		return nil
-	end
-	local ok, w, h = pcall(GetPhysicalScreenSize)
-	if not ok then
-		return nil
-	end
-	w, h = Safe.Number(w), Safe.Number(h)
-	if not (w and h and w > 0 and h > 0) then
+-- (2.1.84) a size's shape by its name -- the nearest of the ratios above, nil when none is within 4 % -- for this
+-- screen (ScreenInfo) and for the screen a profile's places were made for (the configurator's Profiles page)
+function MelloUI:ShapeName(w, h)
+	if not (type(w) == "number" and type(h) == "number" and w > 0 and h > 0) then
 		return nil
 	end
 	-- (the nearest ratio: each bound is half way between two neighbours;
@@ -839,7 +833,22 @@ function MelloUI:ScreenInfo()
 	if off > 0.04 or off < -0.04 then
 		label = nil   -- (nothing close: no label rather than a wrong one)
 	end
-	return w, h, label
+	return label
+end
+
+function MelloUI:ScreenInfo()
+	if not GetPhysicalScreenSize then
+		return nil
+	end
+	local ok, w, h = pcall(GetPhysicalScreenSize)
+	if not ok then
+		return nil
+	end
+	w, h = Safe.Number(w), Safe.Number(h)
+	if not (w and h and w > 0 and h > 0) then
+		return nil
+	end
+	return w, h, self:ShapeName(w, h)
 end
 
 -- The screen as the texts show it: "3440 × 1440 (21:9)" (no label: the size

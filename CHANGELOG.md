@@ -9,6 +9,12 @@
 - Configurator: a feature's switch is in one place now, a bar on top of its tab with its name and what it does. Before it sat in the page's header, in a tab's first row or inside a frame's own settings. With the switch off the tab says what off means.
 - Configurator: the side list shows every page without scrolling. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above the search box (their names are in their tooltips), and Look is the first entry under The look. Buffs & Debuffs and Chat are entries of Frames and bars, and Quality of Life of Quests and travel.
 - Configurator: a dot beside each page in the side list shows whether its features are on, partly on or off.
+- Home: a What's new line that is about a setting opens it with a click. An arrow marks those lines, and Back to Home beside the tabs brings you back.
+- Configurator: parts with nothing to set are no longer listed: the cast bar's Icon, Spell text and Timer, and the action bars' Keybind text.
+- Oldschool: the line under a designer's preview is in dark ink. It was hard to read on the parchment.
+- Quality of Life: four tabs in place of twelve: Automation, On screen, Reminders and widgets, and Tooltip. Each is one scroll with every helper under its own switch, and Jump to takes you to one. Role Picker is a helper of its own under Automation.
+- Profiles: the page is four cards: This character, Profiles, Share and Import. Import reads a pasted string first and says what it holds and the screen it was made for before you take it. Copy the string shares this character's profile as it is now.
+- Configurator: on Unit & Group Frames, Nameplates, Bars and Minimap a frame's and a part's own line is the strong one now (gold, larger, one rule under it), and the sections under it are small labels. Before, every section had its own gold title and rule.
 
 ## 2.1.83
 

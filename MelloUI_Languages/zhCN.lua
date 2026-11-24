@@ -2498,6 +2498,10 @@ Lang:Add("zhCN", {
 	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "单位框体：PvP 徽章、状态光效和战斗光效通过部件列表中的“显示”开关来显示或隐藏。", -- draft
 	["Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does."] = "设置窗口：每项功能的开关现在是其标签页顶部的一条栏，带有名称和作用说明。", -- draft
 	["Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it."] = "设置窗口：侧边列表一次显示所有页面，并用圆点表示开启、部分开启或关闭。主页、编辑布局、配置、插件和支持者是列表上方的图标按钮。", -- draft
+	["Home: a What's new line with an arrow opens the setting it is about. Back to Home brings you back."] = "主页：带箭头的“更新内容”条目会打开它所说的设置。“返回主页”可以回来。", -- draft
+	["Quality of Life: four tabs in place of twelve, each helper under its own switch. Jump to takes you to one."] = "便利功能：十二个标签页合为四个，每个助手都在自己的开关下面。“跳转到”可以直达某个助手。", -- draft
+	["Profiles: four cards. Import says what a string holds and the screen it was made for before you take it."] = "配置：四张卡片。导入会在你接受之前说明字符串包含什么，以及它是为哪种屏幕制作的。", -- draft
+	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "设置窗口：框体和部件自己的标题行现在更醒目，其下的分区用小标签标出。", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "专业冷却：共享冷却的配方（如转化）在冷却结束时只提示一次。", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "地图：关闭 MelloUI 的地图时，没有 Questie 的情况下游戏自带的世界地图也会显示 MelloUI 的任务区域。", -- draft

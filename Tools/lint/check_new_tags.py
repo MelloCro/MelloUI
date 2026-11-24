@@ -174,6 +174,11 @@ NOT_OPTIONS = {
     "Core/Config.lua:W.Switch(bar)": "the feature bar's switch (2.1.84): the tab's own switch -- the setting its row "
                                      "set, or the page's module switch that stood in the header -- in its one place, "
                                      "no option of its own",
+    "Core/Config.lua:EditBox(sec.importName)": "the Profiles page's Import card (2.1.84): the name the Import as "
+                                               "button beside it stores the pasted string under -- that button's "
+                                               "field, no option of its own",
+    "Core/Config.lua:Button(link)": "a What's new line's link on Home (2.1.84): it opens the setting the line is about, "
+                                    "no option of its own",
     "Core/Config.lua:Button(cog)": "a switch's cog (1.2.4, pick B): opens the panel of its sub-settings, sets nothing",
     "Core/Config.lua:Button(catcher)": "the click outside the cog's panel that closes it (1.2.4), sets nothing",
 }

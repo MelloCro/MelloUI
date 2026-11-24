@@ -995,16 +995,25 @@ do
 		end
 	end
 
+	-- (2.1.84; the user's pick A of the look cleanup sketch, 2026-11-24) opts.quiet: a section inside a block that has
+	-- a head of its own (a designer's frame or part): a small gold label W.QUIET_HEIGHT high, no rule -- the block's
+	-- head carries the one line (header.quiet; no `line`, no `lineParts`)
+	W.QUIET_HEIGHT = 20
 	function W.Header(parent, y, text, opts)
 		opts = opts or NO_OPTS
 		local inset = opts.inset or 0
 		local h = CreateFrame("Frame", nil, parent)
-		h:SetHeight(W.HEADER_HEIGHT)
+		h:SetHeight(opts.quiet and W.QUIET_HEIGHT or W.HEADER_HEIGHT)
 		h:SetPoint("TOPLEFT", inset, -(y or 0))
 		h:SetPoint("RIGHT", parent, "RIGHT", -inset, 0)
 		h:EnableMouse(false)
-		h.label = W.Text(h, "GameFontNormal", W.Tr(text), "selectedTrim")
+		h.label = W.Text(h, opts.quiet and "GameFontHighlightSmall" or "GameFontNormal", W.Tr(text), "selectedTrim")
 		h.label:SetWordWrap(false)
+		if opts.quiet then
+			h.label:SetPoint("BOTTOMLEFT", h, "BOTTOMLEFT", opts.x or HEADER_X, 3)
+			h.quiet = true
+			return h
+		end
 		h.label:SetPoint("LEFT", h, "LEFT", opts.x or HEADER_X, 0)
 		-- the line's span (an empty region), the diamond on its middle, a half each side of it
 		h.line = h:CreateTexture(nil, "ARTWORK")

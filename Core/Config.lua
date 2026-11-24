@@ -183,6 +183,10 @@ local CHANGELOG = {
 		"Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list.",
 		"Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does.",
 		"Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it.",
+		"Home: a What's new line with an arrow opens the setting it is about. Back to Home brings you back.",
+		"Quality of Life: four tabs in place of twelve, each helper under its own switch. Jump to takes you to one.",
+		"Profiles: four cards. Import says what a string holds and the screen it was made for before you take it.",
+		"Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it.",
 	} },
 	{ version = "2.1.83", lines = {
 		"Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates.",
@@ -199,6 +203,21 @@ local CHANGELOG = {
 		"Without Questie: quests that had no mark or area on the map and the minimap show now.",
 		"MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it.",
 	} },
+}
+
+-- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
+-- new line leads, by its version and its place among that version's lines (false: nowhere): a setting's id
+-- ("Module.key": its row, its tab's bar or its part's Show lit -- JumpTo) or a page or tab by its /mello word
+-- ("=nameplates"). A line with one is a link on Home: its dot an arrow, a wash under the pointer, its tooltip saying
+-- where it goes, a click opening the place -- the way back beside that page's tabs (CONFIG.JumpFrom). A target this
+-- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
+-- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
+local NEWS_GO = {
+	["2.1.84"] = { "=unit frames", "=nameplates", "UnitFrames.hidePvPBadge", "UIModifications.qol_Tooltip", false, false,
+		"=qol", "=profiles", "=unit frames" },
+	["2.1.83"] = { "Nameplates.npcPlateSize", "Nameplates.npcHideFull" },
+	["2.1.82"] = { "QuestTracker.nearestTurnIn" },
+	["2.1.80"] = { "QuestList.objectiveMarks", "QuestList.objectiveMarks" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },
@@ -827,8 +846,9 @@ function CONFIG.InkOn(fs, role)
 	return QI
 end
 function CONFIG.Paper(row)
-	local heading = row.lineParts ~= nil
-	if heading and row.label and KIT and KIT.TitleFont then
+	-- (2.1.84: a quiet heading -- W.Header's opts.quiet -- is a heading too: its small label in ink, no title face)
+	local heading = row.lineParts ~= nil or row.quiet == true
+	if heading and not row.quiet and row.label and KIT and KIT.TitleFont then
 		KIT:TitleFont(row.label, true)
 	end
 	local QI
@@ -1669,6 +1689,13 @@ do
 						s.rows[1] = { page = key, tab = t, section = s, note = feature, name = feature.title }
 					end
 					p.tabs[i], p.tabOf[name] = t, t
+					-- (2.1.84, Quality of Life's groups: a part with a tab name of its own -- `tab`, what its R lines,
+					-- the layout's bars and the /mello words call it -- answers to that name too)
+					local part = designer and designer.tabs[name].part
+					if part and part.tab then
+						t.alias = part.tab
+						p.tabOf[part.tab] = t
+					end
 				end
 				if designer then
 					Lay.DesignerLink(p)
@@ -1866,7 +1893,7 @@ do
 			-- (2.1.84, the feature bar: the layout's `bars`) the tab's own switch: the bar on top of the tab is its
 			-- place, CONFIG.Bar -- no row
 			local bars = L.bars and L.bars[p.key]
-			if bars and bars[t.name] == first.id then
+			if bars and (bars[t.name] or (t.alias and bars[t.alias])) == first.id then
 				r.bar = true
 				t.barRow = r
 			end
@@ -4021,14 +4048,26 @@ function CONFIG.BackRoom(page, up)
 	return (Num(button:GetWidth()) or 0) + CONFIG.BACK_GAP
 end
 
+-- a heading's height: a designer's section stands inside a frame's or a part's block (its head the strong line):
+-- a quiet label; any other section is its tab's top level
+function CONFIG.HeadingH(s)
+	return s.headParts and W.QUIET_HEIGHT or W.HEADER_HEIGHT
+end
+CONFIG.QUIET = { inset = SEC_INSET, quiet = true }
+CONFIG.LOUD = { inset = SEC_INSET }
+
 -- a section's heading (8 px under the section before it)
+-- (2.1.84, the look cleanup -- the user's pick A, 2026-11-24: "Your recomendation") a designer's section -- "<Part> ·
+-- <Section>" in the layout (`headParts`) -- shows its own name alone, small and with no rule: the part's or the
+-- frame's head over it says whose it is and carries the block's one rule (DUI.Head). Before: every section a gold
+-- title with its own rule, the head over them a plain white line
 local function MakeHeading(sec, s)
 	local gap = s.gap
-	-- (the languages: a designer's "<Part> · <Section>" in the language in use, each half looked up)
+	-- (the languages: the section's word looked up in the language in use)
 	local parts = s.headParts
 	local T = MelloUI.Lang.T
-	local h = W.Header(sec, sec.y + gap, parts and (T(parts[1]) .. " · " .. T(parts[2])) or s.heading or s.name, { inset = SEC_INSET })
-	Placed(sec, h, gap + W.HEADER_HEIGHT)
+	local h = W.Header(sec, sec.y + gap, parts and T(parts[2]) or s.heading or s.name, parts and CONFIG.QUIET or CONFIG.LOUD)
+	Placed(sec, h, gap + CONFIG.HeadingH(s))
 end
 
 -- a job of a tab's section: a heading, a row or a link
@@ -4217,6 +4256,10 @@ function CONFIG.Reflow(sec)
 			-- configurator walk of 2026-11-04 added for Bars > Cast Bar's parts went with their tabs)
 			if on and not job.dhead then
 				headLive, any = true, true
+			elseif on and job.barHead then
+				-- (2.1.84, Quality of Life's groups: a helper's own head -- its switch -- is what the tab has to show;
+				-- it is no row under the section before it, whose heading goes with its own rows)
+				any = true
 			end
 		end
 	end
@@ -4738,25 +4781,21 @@ function CONFIG.BarOffText(page, sec)
 		.. MelloUI.Lang.T(TEXT.barWake)
 end
 
-function CONFIG.MakeBar(page)
-	local bar = CreateFrame("Frame", nil, page)
-	bar:SetHeight(CONFIG.BAR_H)
-	bar:SetFrameLevel(page:GetFrameLevel() + 2)
-	if not KIT then
-		W.Panel(bar, PANEL_ON)
+-- a bar's parts on `bar` (the page's bar, a block's head): the switch (none without `get`), the name, the tabs it
+-- also switches, one line
+function CONFIG.BarParts(bar, get, set)
+	local switch, title
+	if get then
+		switch = W.Switch(bar, get, set, SwitchOpts())
+		switch:SetPoint("LEFT", bar, "LEFT", 14, 0)
+		PageTip(switch, "", "")
 	end
-	local switch = W.Switch(bar, function()
-		local b = page.barB
-		return b and ValueOf(b) and true or false
-	end, function(value)
-		local b = page.barB
-		if b then
-			Write(b, value and true or false)
-		end
-	end, SwitchOpts())
-	switch:SetPoint("LEFT", bar, "LEFT", 14, 0)
-	local title = Text(bar, "GameFontNormalLarge", "", C.accent)
-	title:SetPoint("TOPLEFT", switch, "TOPRIGHT", 12, 5)
+	title = Text(bar, "GameFontNormalLarge", "", C.accent)
+	if switch then
+		title:SetPoint("TOPLEFT", switch, "TOPRIGHT", 12, 5)
+	else
+		title:SetPoint("TOPLEFT", bar, "TOPLEFT", 14, -5)
+	end
 	local also = Text(bar, "GameFontHighlightSmall", "", C.sub)
 	also:SetPoint("LEFT", title, "RIGHT", 12, -1)
 	local line = Text(bar, "GameFontHighlight", "", C.text)
@@ -4768,11 +4807,64 @@ function CONFIG.MakeBar(page)
 		CONFIG.InkOn(also, "title")
 		CONFIG.InkOn(line, "title")
 	end
-	PageTip(switch, "", "")
 	bar.switch, bar.title, bar.also, bar.line = switch, title, also, line
+end
+
+-- a bar's texts and its switch's state from the setting `b` (its row `r`; nil: a page's own switch) or, with no
+-- setting, from a part's own label and line -> true on, false off (asleep behind its own gate too), nil: no switch
+function CONFIG.FillBar(bar, page, b, r, part)
+	local T = MelloUI.Lang.T
+	local name, desc, short
+	if b then
+		name, desc, short = CONFIG.BarTexts(page, b, r)
+	else
+		name, desc, short = T(part and part.label or ""), "", part and part.line and T(part.line) or ""
+	end
+	local live, gateLine = true, nil
+	if b and r then
+		local l, _, line = Gate(page, r)
+		live, gateLine = l and true or false, line
+	end
+	bar.title:SetText(name)
+	bar.line:SetText(live and short or W.Tr(gateLine or ""))
+	local also = ""
+	if r and r.sharedWith then
+		local names = {}
+		for i, other in ipairs(r.sharedWith) do
+			names[i] = T(other)
+		end
+		also = MelloUI.Lang.F("also %s", table.concat(names, ", "))
+	end
+	bar.also:SetText(also)
+	if not (b and bar.switch) then
+		return nil
+	end
+	bar.switch:SetEnabled(live)
+	bar.switch:SetAlpha(live and 1 or 0.5)
+	bar.switch.melloTipTitle, bar.switch.melloTipBody = name, desc
+	bar.switch:Refresh()
+	return live and ValueOf(b) and true or false
+end
+
+function CONFIG.MakeBar(page)
+	local bar = CreateFrame("Frame", nil, page)
+	bar:SetHeight(CONFIG.BAR_H)
+	bar:SetFrameLevel(page:GetFrameLevel() + 2)
+	if not KIT then
+		W.Panel(bar, PANEL_ON)
+	end
+	CONFIG.BarParts(bar, function()
+		local b = page.barB
+		return b and ValueOf(b) and true or false
+	end, function(value)
+		local b = page.barB
+		if b then
+			Write(b, value and true or false)
+		end
+	end)
 	bar:Hide()
 	page.bar = bar
-	page.switch = switch   -- (a jump to the page's own switch lights it: JumpTo's "!page:<key>")
+	page.switch = bar.switch   -- (a jump to the page's own switch lights it: JumpTo's "!page:<key>")
 	page.refreshers[#page.refreshers + 1] = function()
 		CONFIG.LayBar(page, page.current)
 	end
@@ -4790,28 +4882,7 @@ function CONFIG.LayBar(page, sec)
 	local shown = b ~= nil
 	local state
 	if shown then
-		local name, desc, short = CONFIG.BarTexts(page, b, r)
-		local live, gateLine = true, nil
-		if r then
-			local l, _, line = Gate(page, r)
-			live, gateLine = l and true or false, line
-		end
-		bar.title:SetText(name)
-		bar.line:SetText(live and short or W.Tr(gateLine or ""))
-		local also = ""
-		if r and r.sharedWith then
-			local names = {}
-			for i, other in ipairs(r.sharedWith) do
-				names[i] = MelloUI.Lang.T(other)
-			end
-			also = MelloUI.Lang.F("also %s", table.concat(names, ", "))
-		end
-		bar.also:SetText(also)
-		bar.switch:SetEnabled(live)
-		bar.switch:SetAlpha(live and 1 or 0.5)
-		bar.switch.melloTipTitle, bar.switch.melloTipBody = name, desc
-		bar.switch:Refresh()
-		state = live and ValueOf(b) and true or false
+		state = CONFIG.FillBar(bar, page, b, r)
 	end
 	local was = page.barState
 	page.barState = state
@@ -4848,6 +4919,20 @@ function CONFIG.RevealBar(page, r, onShow)
 	local here = cur and cur.barRow
 	if t and not (here and here.b and r.b and here.b.id == r.b.id) then
 		CONFIG.OpenTab(page, t.name, onShow)
+	end
+	-- (2.1.84, Quality of Life's groups: the switch of a block's own head -- the tab's opening brought the block up,
+	-- DUI.PickPart -- made if the page has not come to it, and lit)
+	local sec = page.current
+	local blk = t and t.part and sec and sec.blockOf and sec.blockOf[t.part.key]
+	if blk then
+		local head = sec.allJobs and sec.allJobs[blk.first]
+		local y = sec.jobY0 and sec.jobY0[blk.first]
+		if head and not head.barSwitch and sec.jobs and y then
+			MakeRows(sec, y + 1, nil, y)
+			CONFIG.Reflow(sec)
+		end
+		W.Flash(head and head.barSwitch)
+		return
 	end
 	page.pager:ScrollTo(0, not onShow)
 	if page.bar then
@@ -5149,6 +5234,11 @@ do
 				stage:Hide()
 				page.stages[kind] = stage
 				page.stage = page.stage or stage
+				-- (2.1.84, the look cleanup: a caption under its stage lies on the page -- Oldschool's parchment -- so
+				-- in ink there, as every text on it; it was the stage's light text, nearly unreadable on the paper)
+				if KIT and beside and stage.caption then
+					CONFIG.InkOn(stage.caption, "title")
+				end
 			end
 		end
 	end
@@ -5331,8 +5421,10 @@ do
 		if kind then
 			-- (2.1.84, one scroll: a part's block under its frame's, or under the part's before it -- a wider gap)
 			local gap = sec.jobs and ((kind == "part" and sec.blocks and DUI.BLOCK_GAP) or SECTION_GAP) or 0
-			local job = { dhead = kind, t = t, gap = gap }
-			Queue(sec, job, ElementJob, job.gap + ROW_HEIGHT)
+			-- (2.1.84, Quality of Life's groups -- the page def's `blockBars`: a part's head is its feature's bar)
+			local bars = kind == "part" and sec.page.lay.def.blockBars and true or nil
+			local job = { dhead = kind, t = t, gap = gap, barHead = bars }
+			Queue(sec, job, ElementJob, job.gap + (bars and DUI.BAR_HEAD_H or ROW_HEIGHT))
 		end
 	end
 
@@ -5818,13 +5910,84 @@ do
 		b:SetWidth(math.max(DUI.RESET_MIN, math.ceil(w) + DUI.RESET_PAD))
 	end
 
+	-- (2.1.84, the look cleanup -- the user's pick A, 2026-11-24) a head is the strong line of its block: its title in
+	-- gold at the large size, the block's one rule along its foot (the ink's on Oldschool's parchment, where the
+	-- title is inked as every label: CONFIG.Paper); the sections under it are quiet labels (MakeHeading)
+	DUI.RULE_ALPHA, DUI.RULE_INK = 0.8, 0.7
+	function DUI.Strong(sec, row)
+		local label = row.label
+		if label then
+			label:SetFontObject(W.FontObject("GameFontNormalLarge"))
+			W.Paint(label, C.accent, "text")
+		end
+		DUI.Rule(sec, row)
+	end
+	function DUI.Rule(sec, row)
+		local QI = KIT and not sec.cogFor and rawget(MelloUI, "QuestInk")
+		local rule
+		if QI and QI.INK then
+			local ink = QI.INK.title
+			rule = row:CreateTexture(nil, "ARTWORK")
+			rule:SetColorTexture(ink[1], ink[2], ink[3], DUI.RULE_INK)
+		else
+			rule = Solid(row, "ARTWORK", C.accent, DUI.RULE_ALPHA)
+		end
+		rule:SetHeight(1)
+		rule:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", SEC_INSET, 1)
+		rule:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -SEC_INSET, 1)
+		row.headRule = rule
+	end
+
+	-- (2.1.84; the user's pick A of the Quality of Life sketch, 2026-11-24) a block's head on a page of helpers (the
+	-- page def's `blockBars`): the feature bar's own parts -- the helper's switch (its layout tab's `barRow`; none for
+	-- a helper without one), its name and one line -- on the tab's panel, the block's rule along its foot. Off, the
+	-- helper's rows follow their own gates and the head stays; asleep behind another switch, its line says which
+	DUI.BAR_HEAD_H = 50
+	function DUI.BarHead(sec, job)
+		local page, t = sec.page, job.t
+		local r = t.barRow
+		local bar = CreateFrame("Frame", nil, sec)
+		bar:SetHeight(DUI.BAR_HEAD_H)
+		bar:SetPoint("TOPLEFT", sec, "TOPLEFT", SEC_INSET, -(sec.y + job.gap))
+		bar:SetPoint("RIGHT", sec, "RIGHT", -SEC_INSET, 0)
+		local function Bound()
+			return r and (Current(page, r) or r.b) or nil
+		end
+		if r then
+			CONFIG.BarParts(bar, function()
+				local b = Bound()
+				return b and ValueOf(b) and true or false
+			end, function(value)
+				local b = Bound()
+				if b then
+					Write(b, value and true or false)
+				end
+			end)
+		else
+			CONFIG.BarParts(bar)
+		end
+		local function Fill()
+			CONFIG.FillBar(bar, page, Bound(), r, t.part)
+		end
+		Fill()
+		sec.refreshers[#sec.refreshers + 1] = Fill
+		DUI.Rule(sec, bar)
+		job.row, job.barSwitch = bar, bar.switch
+		Placed(sec, bar, job.gap + DUI.BAR_HEAD_H)
+	end
+
 	-- the head: a row's height, its title (and its line), the reset on the
 	-- right and, on an element, Copy from… left of it
 	function DUI.Head(sec, job)
+		if job.barHead then
+			DUI.BarHead(sec, job)
+			return
+		end
 		local page, t, kind = sec.page, job.t, job.dhead
 		local own = (kind == "family" and t.family) or t.el
 		local T = MelloUI.Lang.T
-		local title = kind == "part" and (T(t.part.label) .. " · " .. T(t.el.label)) or own.label
+		-- (2.1.84, the look cleanup: a part's head names the part alone -- its frame is the tab it stands on)
+		local title = kind == "part" and T(t.part.label) or own.label
 		-- (Q11: a locked part -- nothing to set yet -- says why under its name, and has no Reset part)
 		local locked = kind == "part" and t.part.locked
 		local line = (kind ~= "part" and own.line) or (type(locked) == "string" and locked) or nil
@@ -5833,6 +5996,7 @@ do
 		-- beside the stage an element's head has no room for it -- "Player  Yo..." -- so there only the tooltip has it)
 		local shown = not (sec.beside and kind == "element") and line or nil
 		local row = W.Row(sec, sec.y + job.gap, ROW_HEIGHT, title, shown, line, RowOpts(sec))
+		DUI.Strong(sec, row)
 		local reset
 		if locked then
 			job.row = row
@@ -6042,7 +6206,10 @@ do
 		page.partsOver = CreateFrame("Frame", nil, page)
 		page.partsOver:SetAllPoints(page)
 		page.partsOver:SetFrameLevel(page:GetFrameLevel() + DUI.BOX_LEVEL + 2)
-		page.partsLabel = Text(page.partsOver, "GameFontHighlight", TEXT.parts)
+		-- (2.1.84: a page's own word for the line -- Quality of Life's "Jump to:" -- and the room it takes)
+		page.partsLabel = Text(page.partsOver, "GameFontHighlight", pl.def.partsLabel or TEXT.parts)
+		page.partsW = pl.def.partsLabel and math.max(PARTS_W, math.ceil(Num(page.partsLabel:GetStringWidth()) or 0) + 12)
+			or PARTS_W
 		page.showLabel = Text(page.partsOver, "GameFontHighlight", TEXT.listShow)
 		page.showLabel:Hide()
 		page.partSwitches, page.dShowKey = {}, {}
@@ -6057,7 +6224,7 @@ do
 		-- (1.2.4, Oldschool: the row's cut edges banded with the painting's own parchment -- the user's "b: parchment
 		-- band", "The parchment itself")
 		-- (one row over the page's width; a tab beside its stage wraps them in the left column, DUI.Lay's SetFlow)
-		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - PARTS_W,
+		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - page.partsW,
 			ink = KIT and "box" or nil, row = true,
 			paper = KIT and shell.ground or nil, onPick = function(_, key)
 			-- (2.1.84, one scroll: its block on the frame's tab, brought under the view's top -- the one picked
@@ -6095,7 +6262,7 @@ do
 		page.dLaid, page.dStrip = true, nil
 		local cols = beside and (page.partChips.count > DUI.LIST_ROWS and 2 or 1) or nil
 		page.partChips:SetFlow(beside and (DUI.LEFT_W - DUI.LIST_PAD * 2)
-			or (page.width - PAD * 2 - PARTS_W - (top and DUI.LIST_PAD * 2 or 0)), beside, cols)
+			or (page.width - PAD * 2 - page.partsW - (top and DUI.LIST_PAD * 2 or 0)), beside, cols)
 		page.partsLabel:ClearAllPoints()
 		page.partChips:ClearAllPoints()
 		page.partsHint:ClearAllPoints()
@@ -6126,16 +6293,20 @@ do
 			box:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, 0)
 			box:SetSize(page.width - PAD * 2, h)
 			page.partsLabel:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD, -(DUI.STRIP_PAD + 4))
-			page.partChips:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD + PARTS_W, -DUI.STRIP_PAD)
-			page.partsHint:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD + PARTS_W + 2, -(DUI.STRIP_PAD + 4))
+			page.partChips:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD + page.partsW, -DUI.STRIP_PAD)
+			page.partsHint:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD + page.partsW + 2, -(DUI.STRIP_PAD + 4))
 			page.dStrip = h
 			DUI.LaySwitches(page)
 			return y - DUI.HEAD_GAP + page.dStrip + 8
 		end
 		page.partsLabel:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + 2, -(y + 4))
-		page.partChips:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + PARTS_W, -y)
-		page.partsHint:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + PARTS_W + 2, -(y + 4))
+		page.partChips:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + page.partsW, -y)
+		page.partsHint:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + page.partsW + 2, -(y + 4))
 		DUI.LaySwitches(page)
+		-- (2.1.84: a group of one helper has no "Jump to" line -- DUI.Follow's page.dNoParts -- and no room for one)
+		if page.dNoParts then
+			return y
+		end
 		return y + math.max(page.partChips:Height(), 22) + 12
 	end
 
@@ -6317,8 +6488,13 @@ do
 		if el ~= page.dEl then
 			page.dEl = el
 			local items = {}
+			-- (2.1.84; the user, 2026-11-24, of the list's dimmed "Nothing to set yet" lines -- the cast bar's Icon, Spell
+			-- text and Timer, the bars' Keybind text: "continue with 3, 4, 5, 6, 7") a part with nothing to set -- the
+			-- layout's `locked` -- is left out of the list until it has settings; one whose line says where its
+			-- settings are (`listed`: the minimap's Route trail and Objective marks) keeps its dimmed line. On the
+			-- preview such a part still says its line when pointed at
 			for _, part in ipairs(t.el and t.el.parts or EMPTY) do
-				if not part.state or part.state == state then
+				if (not part.state or part.state == state) and (not part.locked or part.listed) then
 					items[#items + 1] = { key = part.key, label = part.label, tip = part.locked, part = part }
 				end
 			end
@@ -6332,10 +6508,13 @@ do
 			end
 			page.partChips:SetItems(items)
 			relay = true
+			-- (2.1.84, a page with its own word for the line -- Quality of Life's "Jump to:": no line for a group of
+			-- one helper, nothing to jump between)
+			page.dNoParts = page.lay.def.partsLabel ~= nil and #items < 2 or nil
 		end
 		page.partChips:Select(tt.part and tt.part.key or nil)
 		-- (2.1.84, the feature bar: the frame's feature off -- its parts sleep, no list of them)
-		local parts = el ~= nil and page.partChips.count > 0 and CONFIG.BarState(page, sec) ~= false
+		local parts = el ~= nil and page.partChips.count > 0 and CONFIG.BarState(page, sec) ~= false and not page.dNoParts
 		page.partsLabel:SetShown(parts)
 		page.partChips:SetShown(parts)
 		page.partsHint:SetShown(el ~= nil and page.partChips.count == 0)
@@ -6475,7 +6654,7 @@ function BuildElementPage(key, width)
 				end
 				if made > 0 or #s.links > 0 or spec then
 					s.gap = (s == t.firstSection or (own and s == t.sections[1])) and 0 or SECTION_GAP
-					Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)
+					Queue(sec, s, ElementJob, s.gap + CONFIG.HeadingH(s))
 					if spec then
 						page.dui.QueueSpecs(sec, spec.before, specs.part, specs.kind, specs.bound)
 					end
@@ -7129,6 +7308,63 @@ local function CardHeading(card, text)
 	card.heading = head
 	return head
 end
+-- (2.1.84: the Profiles page is cards too -- Home's own, handed on: its block is another)
+CONFIG.CARD = { PAD = CARD_PAD, HEAD = CARD_HEAD, GAP = HOME_GAP, Make = HomeCard, Heading = CardHeading }
+
+-- (2.1.84) a What's new line's target as words: where it leads ("Nameplates > Friendly NPCs > Health bar"); nil: no
+-- such place in this setup
+function CONFIG.NewsWhere(go)
+	if type(go) ~= "string" then
+		return nil
+	end
+	local T = MelloUI.Lang.T
+	local key, t
+	if go:sub(1, 1) == "=" then
+		local tab
+		key, tab = Lay.Word(go:sub(2))
+		local p = key and Lay.Get().pages[key]
+		t = p and tab and p.tabOf[tab] or nil
+	else
+		local place = Lay.Get().place[go]
+		key, t = place and place.r.page, place and place.r.tab
+	end
+	if not key then
+		return nil
+	end
+	local p = Lay.Get().pages[key]
+	local title = T(PageTitle(key))
+	if t and p and #p.tabs > 1 then
+		return title .. " > " .. T(t.label or t.name)
+	end
+	return title
+end
+CONFIG.NewsClick = Shared("OnClick on a What's new line", function(b)
+	local go = b.melloGo
+	if not go then
+		return
+	end
+	MelloUI:PlayUISound("page")
+	if go:sub(1, 1) == "=" then
+		local from = CONFIG.Leaving(b.melloPage)
+		MelloUI:OpenConfig(go:sub(2))
+		CONFIG.Came(from)
+	else
+		CONFIG.JumpFrom(b.melloPage, go)
+	end
+end, "script")
+CONFIG.NEWS_ARROW = 10   -- a linked line's arrow, in the dot's place
+CONFIG.NEWS_TIP = "Click to open it."
+-- the link over a line: a button as large as its text (the rows' hover wash), its tooltip where it leads
+function CONFIG.NewsLink(card, fs, go, where)
+	local link = CreateFrame("Button", nil, card)
+	link:SetPoint("TOPLEFT", fs, "TOPLEFT", -4, 2)
+	link:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", 4, -2)
+	W.RowPlate(link, { look = "palette", strength = 0.5, edge = false })
+	link.melloGo, link.melloPage = go, card.melloPage
+	HomeTip(link, where, CONFIG.NEWS_TIP)
+	Perf.SetScript(link, "OnClick", CONFIG.NewsClick)
+	return link
+end
 
 -- one version's changes in the What's new card from `y` down, at the card's
 -- own width: its number, then a line per change; the y under it. Each text
@@ -7136,6 +7372,7 @@ end
 -- New tags' line with its tag, `melloTag`), so a font change can place them
 -- again (NewsLay). `card.lead`: a first line after the tag (W.Tag), the
 -- running update's while its options show New tags (taken once).
+-- (2.1.84) a line that leads somewhere (NEWS_GO): an arrow for its dot (`melloArrow`), a link over its text.
 local function AddVersion(card, entry, y)
 	local lead = card.lead
 	card.lead = nil
@@ -7157,15 +7394,35 @@ local function AddVersion(card, entry, y)
 		y = y + WrappedHeight(fs, 14) + 6
 	end
 	local textWidth = card.w - CARD_PAD * 2 - 16
-	for _, line in ipairs(entry.lines) do
-		local dot = Solid(card, "ARTWORK", C.accent2, 1)
-		dot:SetSize(5, 5)
-		dot:SetPoint("TOPLEFT", CARD_PAD + 4, -(y + 5))
+	local goes = NEWS_GO[entry.version]
+	for i, line in ipairs(entry.lines) do
+		local go = goes and goes[i] or nil
+		local where = go and CONFIG.NewsWhere(go)
+		local dot
+		if where then
+			-- (the icon set's triangle, turned to point at the text, in the palette's gold)
+			local A = CONFIG.NEWS_ARROW
+			dot = card:CreateTexture(nil, "ARTWORK")
+			dot:SetSize(A, A)
+			MelloUI.Icons.Set(dot, "pad_arrow", A)
+			dot:SetRotation(-math.pi / 2)
+			-- (on Oldschool's parchment the dots' own darker gold: the bright one is lost on the paper)
+			W.Paint(dot, KIT and C.accent2 or C.accent, "vertex", 1)
+			dot.melloArrow = true
+			dot:SetPoint("TOPLEFT", CARD_PAD + 2, -(y + 2))
+		else
+			dot = Solid(card, "ARTWORK", C.accent2, 1)
+			dot:SetSize(5, 5)
+			dot:SetPoint("TOPLEFT", CARD_PAD + 4, -(y + 5))
+		end
 		local fs = Text(card, "GameFontHighlight", line, C.text)
 		fs:SetPoint("TOPLEFT", CARD_PAD + 16, -y)
 		fs:SetWidth(textWidth)
 		fs:SetWordWrap(true)
 		fs.melloDot = dot
+		if where then
+			fs.melloLink = CONFIG.NewsLink(card, fs, go, where)
+		end
 		items[#items + 1] = fs
 		y = y + WrappedHeight(fs, 14) + 6
 	end
@@ -7196,7 +7453,11 @@ local function NewsLay(card)
 		local fs = items[i]
 		local dot = fs.melloDot
 		if dot then
-			dot:SetPoint("TOPLEFT", CARD_PAD + 4, -(y + 5))
+			if dot.melloArrow then
+				dot:SetPoint("TOPLEFT", CARD_PAD + 2, -(y + 2))
+			else
+				dot:SetPoint("TOPLEFT", CARD_PAD + 4, -(y + 5))
+			end
 			fs:SetPoint("TOPLEFT", CARD_PAD + 16, -y)
 			y = y + WrappedHeight(fs, 14) + 6
 		elseif fs.melloTag then
@@ -7377,6 +7638,7 @@ local function BuildNews(page, sec, width)
 	card:SetPoint("TOPLEFT", sec, "TOPLEFT", 0, 0)
 	CardHeading(card, "What's new")
 	card.items = {}
+	card.melloPage = page   -- (a line's link leaves from it: CONFIG.NewsClick)
 	-- (the line about the New tags: while this version's options show them)
 	local latest = CHANGELOG[1]
 	card.lead = window.anyNew and MelloUI:IsNew(latest.version) and NEW_LINE or nil
@@ -7696,25 +7958,108 @@ local ProfileDeleteClick = Shared("OnClick on the configurator's profile Delete"
 		end,
 	})
 end, "script")
-local ProfileShareClick = Shared("OnClick on the configurator's profile Share", function(self)
-	local name = RowProfile(self)
-	if not name then
-		return
-	end
+local function ShareProfile(name)
 	local str, err = MelloUI:ExportProfile(name)
 	if str then
 		MelloUI:ShowText(MelloUI.Lang.F("share string of '%s' (%d characters)", name, #str), str)
 	else
 		MelloUI:Print("Could not share '%s': %s.", name, err)
 	end
+end
+local ProfileShareClick = Shared("OnClick on the configurator's profile Share", function(self)
+	local name = RowProfile(self)
+	if name then
+		ShareProfile(name)
+	end
 end, "script")
 
--- a profile's row: a frame, four game buttons in the flat look (W.FlatButton,
--- 0.15.0), two texts (made once, kept)
+--------------------------------------------------------------------------------
+-- The page as cards (2.1.84; the user's pick A of the Profiles sketch, 2026-11-24: "Your recomendation" -- docs/plans/
+-- configurator-points-3-7.md; before: six lines of text over one panel): four of Home's cards (HomeCard, CardHeading)
+--   This character   the profile it uses and the default on a fresh install (sec.status), one line on how it is kept,
+--                    a name and Save current as
+--   Profiles         the list: a profile's name, what it is (built in, MelloUI's, yours; "made for another screen"
+--                    when its places are another screen's), Load, Set default, Share, Delete
+--   Share            this character's profile as a string (its settings as they are now: saved into it first)
+--   Import           a pasted string read before it is taken: what it holds (the pages its settings are on, its
+--                    places on screen) and the screen those were made for; a name, Import as. It becomes a profile
+--                    of its own: nothing changes until it is loaded (the load offers Fit to this screen,
+--                    CONFIG.OfferProfileFit)
+-- Share by part is a step of its own (the same plan).
+--------------------------------------------------------------------------------
+local PROF = { ROW = 32, NAME_W = 190, BTN = 76, WIDE = 104, GAP = 4, HOLDS = 6 }
+local CARD_PAD, CARD_HEAD, HOME_GAP = CONFIG.CARD.PAD, CONFIG.CARD.HEAD, CONFIG.CARD.GAP
+local HomeCard, CardHeading = CONFIG.CARD.Make, CONFIG.CARD.Heading
+
+-- the screen a profile's places were made for: nil when its text does not say (or this screen cannot be read), false
+-- when it is this screen, else its width and height and this screen's (UI units, as the stamp is written: said to
+-- the player by their shape, CONFIG.ShapeWords -- a UI unit is no pixel of theirs)
+function CONFIG.ProfileScreen(text)
+	if type(text) ~= "string" then
+		return nil
+	end
+	local at = text:find("UIModifications.placesFor=s", 1, true)
+	if not at then
+		return nil
+	end
+	local mw, mh = text:match("^UIModifications%.placesFor=s(%d+%.?%d*)x(%d+%.?%d*)", at)
+	mw, mh = tonumber(mw), tonumber(mh)
+	local LF = rawget(MelloUI, "LayoutFit")
+	local w, h
+	if type(LF) == "table" and LF.ScreenSize then
+		w, h = LF:ScreenSize()
+	end
+	if not (mw and mh and w and h) then
+		return nil
+	end
+	if math.abs(mw - w) < 0.1 and math.abs(mh - h) < 0.1 then
+		return false
+	end
+	return mw, mh, w, h
+end
+
+-- a size's shape as words: its name ("21:9"), else its ratio ("2.39:1")
+function CONFIG.ShapeWords(w, h)
+	return MelloUI:ShapeName(w, h) or string.format("%.2f:1", w / h)
+end
+
+-- what a profile's text holds, as words: the pages its settings stand on, in the side list's order (PROF.HOLDS of
+-- them, then how many more), and whether it carries places on screen
+function CONFIG.ProfileHolds(text)
+	local lay = Lay.Get()
+	local seen, places = {}, false
+	for entry in text:gmatch("[^;]+") do
+		local key = entry:match("^([^=]+)=")
+		if key == "UIModifications.positions" or key == "QuestTracker.pos" then
+			places = true
+		elseif key then
+			-- (a module's own switch is written "!<Module>")
+			local id = key:sub(1, 1) == "!" and (key:sub(2) .. ".!enabled") or key
+			local place = lay.place[id]
+			if place then
+				seen[place.r.page] = true
+			end
+		end
+	end
+	local names, more = {}, 0
+	for _, key in ipairs(lay.order) do
+		if seen[key] then
+			if #names < PROF.HOLDS then
+				names[#names + 1] = MelloUI.Lang.T(PageTitle(key))
+			else
+				more = more + 1
+			end
+		end
+	end
+	return names, more, places
+end
+
+-- a profile's row: a frame, its name, what it is, four game buttons in the flat look at its right (W.FlatButton,
+-- 0.15.0) -- made once, kept
 local function ProfileRowFrame(sec, i)
-	local row = CreateFrame("Frame", nil, sec)
-	row:SetHeight(30)
-	row:SetPoint("TOPLEFT", sec.list, "TOPLEFT", 0, -(i - 1) * 32)
+	local row = CreateFrame("Frame", nil, sec.list)
+	row:SetHeight(PROF.ROW - 2)
+	row:SetPoint("TOPLEFT", sec.list, "TOPLEFT", 0, -(i - 1) * PROF.ROW)
 	row:SetPoint("RIGHT", sec.list, "RIGHT")
 	local line = Solid(row, "BORDER", C.line, 0.6)
 	line:SetHeight(1)
@@ -7723,41 +8068,41 @@ local function ProfileRowFrame(sec, i)
 	row:EnableMouse(true)
 	row.hoverGlow = W.RowPlate(row, ROW_HOVER)
 	row.name = Text(row, "GameFontHighlight", nil, C.text)
-	row.name:SetPoint("LEFT", 14, 0)
-	row.name:SetWidth(200)
+	row.name:SetPoint("LEFT", CARD_PAD, 0)
+	row.name:SetWidth(PROF.NAME_W)
 	row.name:SetWordWrap(false)
-	row.load = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-	row.load:SetSize(60, 22)
-	row.load:SetPoint("LEFT", row.name, "RIGHT", 6, 0)
-	row.load:SetText(W.Tr("Load"))
-	W.FlatButton(row.load)
-	row.default = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-	row.default:SetSize(100, 22)
-	row.default:SetPoint("LEFT", row.load, "RIGHT", 4, 0)
-	W.FlatButton(row.default)
 	row.delete = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-	row.delete:SetSize(60, 22)
-	row.delete:SetPoint("LEFT", row.default, "RIGHT", 4, 0)
+	row.delete:SetSize(PROF.BTN, 22)
+	row.delete:SetPoint("RIGHT", row, "RIGHT", -CARD_PAD, 0)
 	row.delete:SetText(W.Tr("Delete"))
 	W.FlatButton(row.delete)
 	row.share = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-	row.share:SetSize(60, 22)
-	row.share:SetPoint("LEFT", row.delete, "RIGHT", 4, 0)
+	row.share:SetSize(PROF.BTN, 22)
+	row.share:SetPoint("RIGHT", row.delete, "LEFT", -PROF.GAP, 0)
 	row.share:SetText(W.Tr("Share"))
 	W.FlatButton(row.share)
-	row.baked = Text(row, "GameFontHighlightSmall", nil, C.sub)
-	row.baked:SetPoint("LEFT", row.share, "RIGHT", 10, 0)
-	row.baked:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-	row.baked:SetWordWrap(false)
-	Perf.SetScript(row.load, "OnClick", ProfileLoadClick)
-	Perf.SetScript(row.default, "OnClick", ProfileDefaultClick)
-	Perf.SetScript(row.delete, "OnClick", ProfileDeleteClick)
-	Perf.SetScript(row.share, "OnClick", ProfileShareClick)
+	row.default = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+	row.default:SetSize(PROF.WIDE, 22)
+	row.default:SetPoint("RIGHT", row.share, "LEFT", -PROF.GAP, 0)
+	W.FlatButton(row.default)
+	row.load = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+	row.load:SetSize(PROF.BTN, 22)
+	row.load:SetPoint("RIGHT", row.default, "LEFT", -PROF.GAP, 0)
+	row.load:SetText(W.Tr("Load"))
+	W.FlatButton(row.load)
 	-- (the wash stays lit while the pointer is on the row's buttons)
 	W.RowPlateChild(row, row.load)
 	W.RowPlateChild(row, row.default)
 	W.RowPlateChild(row, row.delete)
 	W.RowPlateChild(row, row.share)
+	row.baked = Text(row, "GameFontHighlightSmall", nil, C.sub)
+	row.baked:SetPoint("LEFT", row.name, "RIGHT", 8, 0)
+	row.baked:SetPoint("RIGHT", row.load, "LEFT", -10, 0)
+	row.baked:SetWordWrap(false)
+	Perf.SetScript(row.load, "OnClick", ProfileLoadClick)
+	Perf.SetScript(row.default, "OnClick", ProfileDefaultClick)
+	Perf.SetScript(row.delete, "OnClick", ProfileDeleteClick)
+	Perf.SetScript(row.share, "OnClick", ProfileShareClick)
 	CONFIG.PaperCard(row)   -- (1.2.4, stage 5: its name and note in ink on the kit look's parchment)
 	sec.rowFrames[i] = row
 	return row
@@ -7790,13 +8135,14 @@ function RefreshProfilesPage()
 	local mine = MelloUI.CharacterProfile and MelloUI:CharacterProfile() or db.activeProfile
 	local active = mine and (gold .. mine .. "|r") or (muted .. "none|r")
 	local default = db.defaultProfile and (gold .. db.defaultProfile .. "|r") or (muted .. "none|r")
-	sec.status:SetText(MelloUI.Lang.F("This character: %s      Default on a fresh install: %s", active, default))
+	sec.status:SetText(MelloUI.Lang.F("Uses the profile %s.      Default on a fresh install: %s.", active, default))
 	-- new row frames within the frame's one budget of rows (the one row
 	-- under way finished), the rest on the next frame: a long list's first
-	-- show never makes them all in one frame. Their room is kept (sec.y).
+	-- show never makes them all in one frame. Their room is kept (the card's height).
 	local Kit = MelloUI.Kit
 	local later = Kit and Kit.NextFrame and true or false
 	local deadline, begun, laid = nil, false, 0
+	local stored = MelloUI:Profiles()
 	for i, name in ipairs(names) do
 		local row = sec.rowFrames[i]
 		if not row then
@@ -7819,8 +8165,16 @@ function RefreshProfilesPage()
 		local isDefault = db.defaultProfile == name
 		row.default:SetText(isDefault and (W.Tr("Default") .. "  " .. MelloUI:PaletteCode("selectedTrim") .. "*|r") or W.Tr("Set default"))
 		local builtIn = name == MelloUI.FRESH_PROFILE
-		-- one shipped in the addon's files, or one of the player's own
-		row.baked:SetText(W.Tr(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "comes with MelloUI" or "yours")))
+		-- one shipped in the addon's files, or one of the player's own; this character's; made for another screen
+		local what = W.Tr(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "comes with MelloUI" or "yours"))
+		if name == mine then
+			what = what .. ", " .. W.Tr("this character's")
+		end
+		-- (one of the player's own: a profile that comes with MelloUI is laid out for this screen by the installer)
+		if not builtIn and not MelloUI:IsProfileBaked(name) and CONFIG.ProfileScreen(stored[name]) then
+			what = what .. ", " .. W.Tr("made for another screen")
+		end
+		row.baked:SetText(what)
 		row.delete:SetEnabled(not builtIn)
 		row:Show()
 	end
@@ -7835,7 +8189,10 @@ function RefreshProfilesPage()
 		sec.rowFrames[i]:Hide()
 	end
 	sec.empty:SetShown(#names == 0)
-	sec.y = sec.listTop + math.max(#names, 1) * 32 + 10
+	-- the list's card as tall as its rows, the cards under it following (anchored to its foot)
+	local h = CARD_HEAD + math.max(#names, 1) * PROF.ROW + CARD_PAD
+	sec.listCard:SetHeight(h)
+	sec.y = sec.listTop + h + HOME_GAP + sec.lowHeight
 	sec:Finish()
 	if page.current == sec then
 		PageHeight(page, sec)
@@ -7846,29 +8203,42 @@ function BuildProfilesPage(width)
 	local page = NewPage("Profiles", width)
 	BuildPageHeader(page, PROFILES_META.title, PROFILES_META.flavour, nil)
 	local sec = NewSection(page, "Profiles")
-	SectionPanel(sec)
+	sec.needsPanel = nil   -- (each card is a panel of its own)
 	page.section = sec
 	sec.rowFrames = {}
+	local full = width - PAD * 2
+	local half = (full - HOME_GAP) / 2
+	local function Line(card, y, text, wide)
+		local fs = Text(card, "GameFontHighlight", text, C.text)
+		fs:SetPoint("TOPLEFT", CARD_PAD, -y)
+		fs:SetWidth((wide or card.w) - CARD_PAD * 2)
+		fs:SetWordWrap(true)
+		return fs, y + WrappedHeight(fs, 16) + 8
+	end
+	-- a name's field dressed (flat in both looks, 0.15.0, as the search box)
+	local function Field(box, x, y, wide)
+		box:SetSize(wide, 22)
+		box:SetPoint("TOPLEFT", x, -y)
+		box:SetAutoFocus(false)
+		box:SetMaxLetters(40)
+		W.Paint(box, C.text, "text")
+		W.FlatField(box)
+		Perf.SetScript(box, "OnEscapePressed", function(self) self:ClearFocus() end)
+	end
 
-	-- (full-size text: a paragraph on the page, the no-eye-strain rule)
-	local desc = Text(sec, "GameFontHighlight", nil, C.sub)
-	desc:SetPoint("TOPLEFT", 4, -4)
-	desc:SetWidth(width - PAD * 2 - 8)
-	desc:SetWordWrap(true)
-	-- what is true for a player: profiles are kept with the settings; the
-	-- ones shipped in the addon's files are always there; (2.1.46) each
-	-- character its own, the changes saved into it
-	desc:SetText(W.Tr("A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."))
-	local y = 4 + WrappedHeight(desc, 16) + 16
-
-	sec.nameBox = CreateFrame("EditBox", nil, sec, "InputBoxTemplate")
-	sec.nameBox:SetSize(220, 22)
-	sec.nameBox:SetPoint("TOPLEFT", 12, -y)
-	sec.nameBox:SetAutoFocus(false)
-	sec.nameBox:SetMaxLetters(40)
-	W.Paint(sec.nameBox, C.text, "text")
-	W.FlatField(sec.nameBox)   -- (flat in both looks, 0.15.0, as the search box)
-	sec.save = CreateFrame("Button", nil, sec, "UIPanelButtonTemplate")
+	-- This character
+	local me = HomeCard(sec, full)
+	me:SetPoint("TOPLEFT", sec, "TOPLEFT", 0, 0)
+	CardHeading(me, "This character")
+	local y = CARD_HEAD
+	sec.status = Text(me, "GameFontHighlight", nil, C.text)
+	sec.status:SetPoint("TOPLEFT", CARD_PAD, -y)
+	y = y + 16 + 8
+	local _
+	_, y = Line(me, y, "Your changes are saved into it as you play, at every logout and /reload. Each character keeps its own; a new character starts with a copy of the one last used.")
+	sec.nameBox = CreateFrame("EditBox", nil, me, "InputBoxTemplate")
+	Field(sec.nameBox, CARD_PAD + 4, y + 2, 220)
+	sec.save = CreateFrame("Button", nil, me, "UIPanelButtonTemplate")
 	sec.save:SetSize(150, 22)
 	sec.save:SetPoint("LEFT", sec.nameBox, "RIGHT", 8, 0)
 	sec.save:SetText(W.Tr("Save current as"))
@@ -7886,53 +8256,168 @@ function BuildProfilesPage(width)
 		RefreshProfilesPage()
 	end
 	Perf.SetScript(sec.save, "OnClick", Save)
+	Perf.SetScript(sec.nameBox, "OnEnterPressed", Save)
 	page.saveButton = sec.save
-	-- a share string from someone else, stored under the name typed
-	sec.import = CreateFrame("Button", nil, sec, "UIPanelButtonTemplate")
-	sec.import:SetSize(150, 22)
-	sec.import:SetPoint("LEFT", sec.save, "RIGHT", 6, 0)
-	sec.import:SetText(W.Tr("Import as"))
-	W.FlatButton(sec.import)
-	Perf.SetScript(sec.import, "OnClick", function()
-		local name = sec.nameBox:GetText():gsub("^%s+", ""):gsub("%s+$", "")
-		if name == "" then
-			MelloUI:Print("Type a name for the imported profile first, then click Import as.")
-			sec.nameBox:SetFocus()
+	y = y + 26 + CARD_PAD
+	me:SetHeight(y)
+	me.h = y
+
+	-- Profiles: the list (its card's height follows its rows, RefreshProfilesPage)
+	local listTop = y + HOME_GAP
+	local list = HomeCard(sec, full)
+	list:SetPoint("TOPLEFT", sec, "TOPLEFT", 0, -listTop)
+	CardHeading(list, "Profiles")
+	sec.listCard, sec.listTop = list, listTop
+	sec.list = CreateFrame("Frame", nil, list)
+	sec.list:SetPoint("TOPLEFT", 0, -CARD_HEAD)
+	sec.list:SetPoint("RIGHT", list, "RIGHT", 0, 0)
+	sec.list:SetHeight(1)
+	sec.empty = Text(list, "GameFontDisable", "No profiles yet. Type a name above and save the current settings.")
+	sec.empty:SetPoint("TOPLEFT", sec.list, "TOPLEFT", CARD_PAD, -8)
+
+	-- Share: this character's profile, as it is now
+	local share = HomeCard(sec, half)
+	share:SetPoint("TOPLEFT", list, "BOTTOMLEFT", 0, -HOME_GAP)
+	CardHeading(share, "Share")
+	local sy
+	_, sy = Line(share, CARD_HEAD, "A string of this character's profile, to paste for someone else. Your Dark Mode and what belongs to your characters stay out of it. Share in the list gives any other profile's.")
+	sec.shareMine = CreateFrame("Button", nil, share, "UIPanelButtonTemplate")
+	sec.shareMine:SetSize(170, 22)
+	sec.shareMine:SetPoint("TOPLEFT", CARD_PAD, -(sy + 2))
+	sec.shareMine:SetText(W.Tr("Copy the string"))
+	W.FlatButton(sec.shareMine)
+	W.ButtonTag(sec.shareMine, "2.1.84")
+	Perf.SetScript(sec.shareMine, "OnClick", function()
+		-- (its settings as they are now: saved into it first, as a logout does)
+		if MelloUI.SaveCharacterProfile then
+			MelloUI:SaveCharacterProfile(true)
+		end
+		local mine = MelloUI.CharacterProfile and MelloUI:CharacterProfile() or MelloUI.db.activeProfile
+		if not mine then
+			MelloUI:Print("Save your settings as a profile first, then share it.")
 			return
 		end
-		MelloUI:ShowPaste(MelloUI.Lang.F("paste a MelloUI profile string for '%s'", name), function(text)
-			local ok, known, total = MelloUI:ImportProfile(name, text)
-			if not ok then
-				MelloUI:Print("Not imported: %s.", known)
+		RefreshProfilesPage()
+		ShareProfile(mine)
+	end)
+	sy = sy + 26 + CARD_PAD
+
+	-- Import: a pasted string read first, then stored under a name
+	local import = HomeCard(sec, half)
+	import:SetPoint("TOPLEFT", share, "TOPRIGHT", HOME_GAP, 0)
+	CardHeading(import, "Import")
+	local iy
+	_, iy = Line(import, CARD_HEAD, "Paste a string someone shared. It becomes a profile of its own: nothing changes until you load it.")
+	sec.paste = CreateFrame("Button", nil, import, "UIPanelButtonTemplate")
+	sec.paste:SetSize(150, 22)
+	sec.paste:SetPoint("TOPLEFT", CARD_PAD, -(iy + 2))
+	sec.paste:SetText(W.Tr("Paste a string…"))
+	W.FlatButton(sec.paste)
+	W.ButtonTag(sec.paste, "2.1.84")
+	iy = iy + 26 + 6
+	sec.holds = Text(import, "GameFontHighlight", nil, C.accent)
+	sec.holds:SetPoint("TOPLEFT", CARD_PAD, -iy)
+	sec.holds:SetWidth(half - CARD_PAD * 2)
+	sec.holds:SetWordWrap(true)
+	sec.madeFor = Text(import, "GameFontHighlight", nil, C.text)
+	sec.madeFor:SetPoint("TOPLEFT", sec.holds, "BOTTOMLEFT", 0, -4)
+	sec.madeFor:SetWidth(half - CARD_PAD * 2)
+	sec.madeFor:SetWordWrap(true)
+	iy = iy + 16 * 4 + 8   -- (room for the two texts, two lines each)
+	sec.importName = CreateFrame("EditBox", nil, import, "InputBoxTemplate")
+	Field(sec.importName, CARD_PAD + 4, iy + 2, 170)
+	sec.import = CreateFrame("Button", nil, import, "UIPanelButtonTemplate")
+	sec.import:SetSize(110, 22)
+	sec.import:SetPoint("LEFT", sec.importName, "RIGHT", 8, 0)
+	sec.import:SetText(W.Tr("Import as"))
+	W.FlatButton(sec.import)
+	iy = iy + 26 + CARD_PAD
+	-- what the string in hand holds, said before it is taken (nil: none in hand)
+	local function Pending(str, text, total)
+		sec.pending = str
+		if not str then
+			sec.holds:SetText("")
+			sec.madeFor:SetText("")
+			sec.import:SetEnabled(false)
+			return
+		end
+		local names, more, places = CONFIG.ProfileHolds(text)
+		local T, F = MelloUI.Lang.T, MelloUI.Lang.F
+		local what = table.concat(names, ", ")
+		if more > 0 then
+			what = what .. " " .. F("and %d more", more)
+		end
+		if places then
+			what = what .. (what ~= "" and ", " or "") .. T("places on screen")
+		end
+		sec.holds:SetText(F("It holds %d settings: %s.", total, what))
+		local mw, mh, w, h = CONFIG.ProfileScreen(text)
+		if mw then
+			-- (by shape where the two differ in it; the same shape at another size or UI scale: said so)
+			local theirs, ours = CONFIG.ShapeWords(mw, mh), CONFIG.ShapeWords(w, h)
+			if theirs ~= ours then
+				sec.madeFor:SetText(F("Made for a %s screen, yours is %s: loading it offers Fit to this screen.", theirs, ours))
+			else
+				sec.madeFor:SetText(T("Made for a screen of your shape at another size: loading it offers Fit to this screen."))
+			end
+		elseif mw == false then
+			sec.madeFor:SetText(T("Made for a screen like yours."))
+		else
+			sec.madeFor:SetText("")
+		end
+		sec.import:SetEnabled(true)
+	end
+	sec.SetPending = Pending
+	Perf.SetScript(sec.paste, "OnClick", function()
+		MelloUI:ShowPaste("paste a MelloUI profile string", function(str)
+			local text, known, total = MelloUI:DecodeProfileString(str)
+			if not text then
+				MelloUI:Print("Not a profile: %s.", known)
 				return false
 			end
-			MelloUI:Print("Profile '%s' imported (%d settings). Load it from the list to use it.", name, total)
-			sec.nameBox:SetText("")
-			sec.nameBox:ClearFocus()
-			RefreshProfilesPage()
+			Pending(str, text, total)
+			sec.importName:SetFocus()
 			return true
 		end)
 	end)
-	Perf.SetScript(sec.nameBox, "OnEnterPressed", Save)
-	Perf.SetScript(sec.nameBox, "OnEscapePressed", function(self) self:ClearFocus() end)
-	y = y + 22 + 14
+	local function Import()
+		local name = sec.importName:GetText():gsub("^%s+", ""):gsub("%s+$", "")
+		if not sec.pending then
+			MelloUI:Print("Paste a string first.")
+			return
+		end
+		if name == "" then
+			MelloUI:Print("Type a name for the imported profile, then click Import as.")
+			sec.importName:SetFocus()
+			return
+		end
+		local ok, known, total = MelloUI:ImportProfile(name, sec.pending)
+		if not ok then
+			MelloUI:Print("Not imported: %s.", known)
+			return
+		end
+		MelloUI:Print("Profile '%s' imported (%d settings). Load it from the list to use it.", name, total)
+		sec.importName:SetText("")
+		sec.importName:ClearFocus()
+		Pending(nil)
+		RefreshProfilesPage()
+	end
+	Perf.SetScript(sec.import, "OnClick", Import)
+	Perf.SetScript(sec.importName, "OnEnterPressed", Import)
+	Pending(nil)
 
-	sec.status = Text(sec, "GameFontHighlight", nil, C.text)
-	sec.status:SetPoint("TOPLEFT", 4, -y)
-	y = y + 16 + 12
-
-	sec.list = CreateFrame("Frame", nil, sec)
-	sec.list:SetPoint("TOPLEFT", 0, -y)
-	sec.list:SetPoint("RIGHT", sec, "RIGHT", 0, 0)
-	sec.list:SetHeight(1)
-	sec.listTop = y
-
-	sec.empty = Text(sec, "GameFontDisable", "No profiles yet. Type a name above and save the current settings.")
-	sec.empty:SetPoint("TOPLEFT", sec.list, "TOPLEFT", 14, -8)
-	CONFIG.PaperCard(sec)   -- (1.2.4, stage 5: the page's texts in ink on the kit look's parchment)
+	-- the two cards as tall as the taller one
+	sec.lowHeight = math.max(sy, iy)
+	share:SetHeight(sec.lowHeight)
+	import:SetHeight(sec.lowHeight)
+	-- (1.2.4, stage 5: the cards' texts in ink on the kit look's parchment)
+	CONFIG.PaperCard(me)
+	CONFIG.PaperCard(list)
+	CONFIG.PaperCard(share)
+	CONFIG.PaperCard(import)
 
 	sec.refreshers[#sec.refreshers + 1] = RefreshProfilesPage
-	sec.y = y + 42
+	sec.y = listTop + CARD_HEAD + PROF.ROW + CARD_PAD + HOME_GAP + sec.lowHeight
 	page:Finish()
 	return page
 end

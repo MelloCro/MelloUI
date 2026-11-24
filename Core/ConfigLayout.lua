@@ -147,7 +147,7 @@ do
 		QualityOfLife = { Vendor = "UIModifications.qol_Vendor", Restock = "Restock.!enabled",
 			["Combat Text"] = "CombatText.!enabled", Gains = "Gains.!enabled",
 			["Error Messages"] = "UIModifications.qol_ErrorFilter", Reminders = "Reminders.!enabled",
-			Widgets = "Widgets.!enabled", Mail = "MailRecipients.!enabled",
+			Widgets = "Widgets.!enabled", Mail = "MailRecipients.!enabled", ["Role Picker"] = "RolePicker.!enabled",
 			["FPS / Latency"] = "UIModifications.qol_Stats", Tooltip = "UIModifications.qol_Tooltip" },
 	}
 	-- the bar's one line where the setting's own first sentence is too long for it (the whole text stays the
@@ -333,7 +333,8 @@ L.pages = {
 	-- (one look stage G, the user's yes of 2026-10-16 to docs/plans/onelook-designer/bars-audit.md: one designer
 	-- for the bars -- RECOMMENDED.md section 3) the action bars, the micro menu and the bag bar, your cast bar, the
 	-- swing timers, the XP and reputation bars and the game's Cooldown Manager; the painted action bar skin's rows
-	-- are Oldschool's. `locked`: a part with nothing to set yet (listed, not opened: Q11)
+	-- are Oldschool's. `locked`: a part with nothing to set yet (2.1.84: left out of the Parts list; with `listed`
+	-- kept there, dimmed -- its line says where its settings are)
 	ActionBars = { title = "Bars", icon = "module:ActionBarPanel", set = "page_bars", designer = true,
 		flavour = "Your bars: pick one, click a part of it, change it.",
 		-- (0.19.9) MelloUI's own Keybind Mode in the header (its button: Core/Config.lua KEYBIND_MODE)
@@ -378,8 +379,8 @@ L.pages = {
 		elements = {
 			{ key = "minimap", label = "Minimap", line = "The map, its size and its border",
 				parts = { { key = "coords", label = "Coordinates" }, { key = "border", label = "Border" },
-				{ key = "route", label = "Route trail", locked = "Its settings: Route (Quests and travel)" },
-				{ key = "marks", label = "Objective marks", locked = "Its settings: Quest List, its Map tab" } } },
+				{ key = "route", label = "Route trail", locked = "Its settings: Route (Quests and travel)", listed = true },
+				{ key = "marks", label = "Objective marks", locked = "Its settings: Quest List, its Map tab", listed = true } } },
 			{ key = "services", label = "Services", module = "Services", line = "The Services bar under the map",
 				parts = { { key = "button", label = "Services button" }, { key = "tray", label = "Tray" } } },
 		} },
@@ -416,14 +417,35 @@ L.pages = {
 	Map = { title = "Map", icon = "Interface\\Icons\\INV_Misc_Map_01", set = "page_map", module = "Map",
 		tabs = { "Map", "Dungeon Info" } },
 	-- (1.2.4, the configurator shell; the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page") the
-	-- small helpers one page, in the sketch's order: Automation's tabs (one look stage H: the vendor's repairs and
-	-- sales, the restock list, the quests' automatic accept and hand-in), Screen Text's (the notices, the floating
-	-- combat numbers, Gains, the red error messages), Reminders & Widgets' and the tooltip's. No header switch: the
-	-- page holds many modules, each tab's first row its module's switch
-	QualityOfLife = { title = "Quality of Life", icon = "module:Vendor", set = "page_automation",
-		flavour = "The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip.",
-		tabs = { "Vendor", "Restock", "Quests", "Notices", "Combat Text", "Gains", "Error Messages", "Reminders", "Widgets",
-			"Role Picker", "Mail", "FPS / Latency", "Tooltip" } },
+	-- small helpers one page: Automation's (one look stage H: the vendor's repairs and sales, the restock list, the
+	-- quests' automatic accept and hand-in), Screen Text's (the notices, the floating combat numbers, Gains, the red
+	-- error messages), Reminders & Widgets' and the tooltip's.
+	-- (2.1.84; the user's pick A of the Quality of Life sketch, 2026-11-24: "Your recomendation" -- docs/plans/
+	-- configurator-points-3-7.md) four tabs for the twelve it had: a group each, one scroll with a block per helper
+	-- under the helper's own head -- its switch (the layout's `bars`), its name and one line (`blockBars`) -- the way
+	-- a frame's tab holds its parts: a designer of groups. "Jump to" lists a group's helpers (`partsLabel`; none for
+	-- a group of one). A helper's `tab` is the name its R lines, the bars and the /mello words know it by; `line`
+	-- what a helper without a switch of its own says of itself
+	QualityOfLife = { title = "Quality of Life", icon = "module:Vendor", set = "page_automation", designer = true,
+		partsLabel = "Jump to:", blockBars = true,
+		flavour = "The small helpers, in four groups: what MelloUI does for you, what it puts on screen, your reminders and widgets, and the tooltip.",
+		elements = {
+			{ key = "automation", label = "Automation", parts = {
+				{ key = "vendor", label = "Vendor", tab = "Vendor" }, { key = "restock", label = "Restock", tab = "Restock" },
+				{ key = "quests", label = "Quests", tab = "Quests", line = "Accepts and hands in quests for you." },
+				{ key = "rolepicker", label = "Role Picker", tab = "Role Picker" },
+				{ key = "mail", label = "Mail", tab = "Mail" } } },
+			{ key = "screen", label = "On screen", parts = {
+				{ key = "notices", label = "Notices", tab = "Notices",
+					line = "MelloUI's own notices: on screen, in chat, and their sound." },
+				{ key = "combattext", label = "Combat Text", tab = "Combat Text" },
+				{ key = "gains", label = "Gains", tab = "Gains" },
+				{ key = "errors", label = "Error Messages", tab = "Error Messages" } } },
+			{ key = "reminders", label = "Reminders and widgets", parts = {
+				{ key = "reminders", label = "Reminders", tab = "Reminders" },
+				{ key = "widgets", label = "Widgets", tab = "Widgets" },
+				{ key = "stats", label = "FPS / Latency", tab = "FPS / Latency" } } },
+			{ key = "tooltip", label = "Tooltip", parts = { { key = "tooltip", label = "Tooltip", tab = "Tooltip" } } } } },
 	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", set = "page_voice", module = "VoiceOver",
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
 	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", set = "page_sounds", module = "CustomSounds",
@@ -443,10 +465,10 @@ L.words = {
 	qualityoflife = { "QualityOfLife" },
 	qol = { "QualityOfLife" },
 	dungeoninfo = { "Map", "Dungeon Info" },   -- (Suggestion 1 point 9: a tab of Map)
-	automation = { "QualityOfLife", "Vendor" },
-	screentext = { "QualityOfLife", "Notices" },
+	automation = { "QualityOfLife", "automation:element" },   -- (2.1.84: Quality of Life's four group tabs)
+	screentext = { "QualityOfLife", "screen:element" },
 	reminders = { "QualityOfLife", "Reminders" },
-	remindersandwidgets = { "QualityOfLife", "Reminders" },
+	remindersandwidgets = { "QualityOfLife", "reminders:element" },
 	tooltip = { "QualityOfLife", "Tooltip" },
 	fade = { "Fader", "General" },
 	animation = { "Animations" },   -- (2.1.20)

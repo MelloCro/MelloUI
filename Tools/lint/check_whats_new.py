@@ -53,12 +53,35 @@ def whats_new():
     return out
 
 
+def news_go():
+    """{version: number of targets} from Config.lua's NEWS_GO table (the place a What's new line leads to); None: no table"""
+    with open(os.path.join(ROOT, "Core", "Config.lua"), encoding="utf-8") as fh:
+        src = fh.read().replace("\r\n", "\n")
+    start = src.find("\nlocal NEWS_GO = {\n")
+    if start < 0:
+        return None
+    block = src[start:src.find("\n}\n", start)]
+    out = {}
+    for m in re.finditer(r'^\t\["([^"]+)"\] = \{ (.*) \},$', block, re.M):
+        out[m.group(1)] = len(re.findall(r'"[^"]*"|\bfalse\b', m.group(2)))
+    return out
+
+
 def problems(version=None):
     found = []
     md = changelog_versions()
     news = whats_new()
     if news is None:
         return ["Core/Config.lua has no 'local CHANGELOG = {' table"]
+    # (2.1.84) the lines' targets, kept by version and place: none for a version What's new no longer holds, none past
+    # a version's last line
+    go = news_go() or {}
+    lines_of = dict(news)
+    for v, n in sorted(go.items()):
+        if v not in lines_of:
+            found.append("NEWS_GO (Core/Config.lua) has targets for %s, which What's new no longer holds: take them out" % v)
+        elif n > len(lines_of[v]):
+            found.append("NEWS_GO (Core/Config.lua) has %d targets for %s, What's new %d lines" % (n, v, len(lines_of[v])))
     if not md:
         return ["CHANGELOG.md has no '## <version>' sections"]
     have = [v for v, _ in news]
