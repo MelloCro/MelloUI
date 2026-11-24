@@ -2486,6 +2486,7 @@ Lang:Add("koKR", {
 	["%s, %s and %s use MelloUI too"] = "%s님, %s님, %s님도 MelloUI를 씁니다", -- draft
 	["%d players in your group use MelloUI"] = "파티원 %d명이 MelloUI를 씁니다", -- draft
 	["Now in your group"] = "이제 같은 파티입니다", -- draft
+	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Questie 없이: 지도와 미니맵에 표시나 구역이 없던 퀘스트가 이제 표시됩니다.", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "전문 기술 재사용 대기시간: 변환처럼 재사용 대기시간을 공유하는 제조법은 끝났을 때 알림이 하나만 나옵니다.", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Questie 없는 미니맵: 게임의 파란 퀘스트 원 대신 MelloUI의 표시가 나옵니다.", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "지도: MelloUI 지도를 끄면 Questie 없이도 게임의 세계 지도에 MelloUI의 퀘스트 지역이 표시됩니다.", -- draft

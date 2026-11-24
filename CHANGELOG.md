@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.80
+
+- Fixed: without Questie, some quests in your log got no mark or area on MelloUI's map and the minimap. MelloUI reads the game's quest places from every zone now, as the game's own map shows them, and again when they arrive after a login or a quest taken. With Questie, the same fills in the quests Questie has no places for. /qlmap game lists what the game gives for each quest in your log.
+
 ## 2.1.79
 
 - Fixed: Profession Cooldowns showed a notice for every transmute when the transmute cooldown was over, though they all share one cooldown. Recipes of one profession whose cooldowns end together now give one notice ("Transmute ready"), and one click clears it.

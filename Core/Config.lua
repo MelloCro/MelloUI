@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.80", lines = {
+		"Without Questie: quests that had no mark or area on the map and the minimap show now.",
+	} },
 	{ version = "2.1.79", lines = {
 		"Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over.",
 	} },
@@ -192,14 +195,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.76", lines = {
 		"Easter egg added.",
-	} },
-	{ version = "2.1.75", lines = {
-		"Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again.",
-		"Nameplates: friendly plates that show only the name no longer get a plate border on mouseover.",
-		"Chat: channels other addons use in the background no longer show up as tabs in the Minimal view.",
-		"Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view.",
-		"Chat: Tab Switches Channel moves to the next chat you can speak in while you type.",
-		"Chat: Short Channel Tags shorten channel names in every game language, in both chat views.",
 	} },
 }
 local LINKS = {

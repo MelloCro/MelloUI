@@ -2515,6 +2515,15 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 		end
 		return
 	end
+	-- (2.1.80; the user, 2026-11-24, without Questie: "some Quests are shown some are not") /qlmap game: each quest of
+	-- the log as the game places it now and as MelloUI holds it (Core/QuestObjectives.lua's dump)
+	if (msg or ""):lower():match("^%s*game%s*$") then
+		local QO = MelloUI.QuestObjectives
+		if QO and QO.Dump then
+			QO.Dump()
+		end
+		return
+	end
 	-- (2.1.70; the user, 2026-11-22: "these options dont do anything on the map") /qlmap focus: the quest Focused Quest
 	-- Only marks alone, and why (the switch, the game's followed quest, Route's pin, the quest in the log)
 	if (msg or ""):lower():match("^%s*focus%s*$") then
