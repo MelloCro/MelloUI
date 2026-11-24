@@ -4233,7 +4233,7 @@ do
 		f.castIcon = f.cast:CreateTexture(nil, "ARTWORK", nil, 1)
 		f.castIcon:SetTexture(who and who.castIcon or Stage.CAST_ICON)
 		f.castText = Stage.Text(f.cast, "SystemFont_NamePlateCastBar")
-		f.castText:SetText(who and who.castName or Stage.CAST_NAME)
+		f.castText:SetText(W.Tr(who and who.castName or Stage.CAST_NAME))
 		-- (2.1.53) the game's cast bar container, for the game's own layout (M.GameCast); laid each paint
 		f.castBox = CreateFrame("Frame", nil, f.bar)
 		f.castBox:EnableMouse(false)
