@@ -642,10 +642,10 @@ function L.Define(R, Link)
 	R("Oldschool", "Borders", "Look", "UIModifications.barBorder", { picture = true })
 	-- (0.19.1, the user 2026-10-04: "all border customization into Borders tab": the borders each element's page
 	-- had, here with the kit's; each of those pages links its own)
-	R("Oldschool", "Borders", "Look", "UIModifications.nameplateBorder", { picture = true })
+	-- (2.1.85; the user, 2026-11-24, of this tab: "what is safe to remove?") Nameplate Border and Level Orb have no
+	-- row any more: a Frame Set's painting covers both (the kinds `fixed`, MelloUI_Oldschool's KitPainted.lua and
+	-- KitBordersPainted.lua); the link to the Minimap's Square Border is gone too (its row is on the Minimap page)
 	R("Oldschool", "Borders", "Look", "UIModifications.roundBorder", { picture = true })
-	-- (0.20.1: the level orb's look, the RPG pack's stone badge a choice -- Modules/KitBorders.lua)
-	R("Oldschool", "Borders", "Look", "UIModifications.levelOrb", { picture = true })
 	R("Oldschool", "Borders", "Look", "UIModifications.auraBorder", { picture = true })
 	-- (0.19.8, the border library's first own row: Modules/KitBorders.lua; worn under the raid frames' skin)
 	R("Oldschool", "Borders", "Look", "UIModifications.raidFrameBorder", { picture = true,
@@ -1943,8 +1943,7 @@ function L.Define(R, Link)
 	Link("QuestTracker", "Objective Tracker", "Look", "UIModifications.shade_tracker", "UI Shade")
 	Link("QuestList", "List", "Look", "UIModifications.QuestLogPanel", "Painted Skin (Quest Log)")
 	-- (0.19.1, the user 2026-10-04: the borders on Oldschool > Borders, the text sizes and fonts on Look > Fonts, named
-	-- where they were)
-	Link("Oldschool", "Borders", "Look", "MinimapPanel.squareBorder", "Minimap Square Border")
+	-- where they were; 2.1.85: Oldschool > Borders' link to the Minimap's Square Border gone, the user's word)
 	Link("Chat", "Chat Frame", "Text", "Fonts.fontChatText", "Chat Font")
 	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChatParchment", "Chat On Parchment Size")
 	-- (the Bars audit's point 2: the timers' style on Look > Icons, linked from both of its places)

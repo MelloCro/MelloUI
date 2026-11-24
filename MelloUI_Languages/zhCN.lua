@@ -110,19 +110,12 @@ Lang:Add("zhCN", {
 	["Gilded Stone"] = "镀金石", -- draft
 	["Forged Iron"] = "锻铁", -- draft
 	["Carved Wood"] = "雕木", -- draft
-	["Nameplate Border"] = "姓名板边框", -- draft
-	["The frame around the nameplates' health bars."] = "姓名板生命条的边框。", -- draft
-	["Ornate"] = "华丽", -- draft
 	["Round Border"] = "圆形边框", -- draft
 	["The rim around round icons: passive spells, window rings and the Services bar's buttons."] = "圆形图标的边框：被动法术、窗口圆环和服务栏的按钮。", -- draft
 	["Gem ring"] = "宝石环", -- draft
 	["Four diamond studs"] = "四颗菱形钉", -- draft
 	["Plain heavy ring"] = "朴素粗环", -- draft
 	["Stone ring"] = "石环", -- draft
-	["Level Orb"] = "等级宝珠", -- draft
-	["The badge around the level on unit frames and nameplates. Frames already shown change after a /reload."] = "单位框体和姓名板上等级的徽章。已显示的框体在 /reload 后改变。", -- draft
-	["Kit orb"] = "套件宝珠", -- draft
-	["Stone badge"] = "石徽章", -- draft
 	["Aura Border"] = "光环边框", -- draft
 	["The rim around MelloUI's buff and debuff icons. Debuff colours stay."] = "MelloUI 增益和减益图标的边框。减益颜色保留。", -- draft
 	["Plain black edge"] = "朴素黑边", -- draft
@@ -2463,7 +2456,6 @@ Lang:Add("zhCN", {
 	["Only with the Whisper Popup Window"] = "仅在使用悄悄话弹窗时", -- draft
 	["Map Width"] = "地图宽度", -- draft
 	["Painted Skin (Quest Log)"] = "手绘皮肤（任务日志）", -- draft
-	["Minimap Square Border"] = "小地图方形边框", -- draft
 	["Chat Font"] = "聊天字体", -- draft
 	["Chat On Parchment Size"] = "羊皮纸上的聊天大小", -- draft
 	["Header Size"] = "标题大小", -- draft
@@ -2479,6 +2471,7 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool：边框标签页更短了。姓名板边框和等级宝珠已移除：两者都由你的框架套装绘制。", -- draft
 	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "设置窗口：框体的标签页现在在一个滚动列表中显示其所有部件的设置。点击某个部件即可跳到它的设置。", -- draft
 	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "设置窗口：部件在预览旁排成列表，可以隐藏的部件带有“显示”开关。", -- draft
 	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "单位框体：PvP 徽章、状态光效和战斗光效通过部件列表中的“显示”开关来显示或隐藏。", -- draft
@@ -2495,8 +2488,6 @@ Lang:Add("zhCN", {
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "“最近的可交任务”不再从你自己的地图标记、指南的步骤或跑尸路线上抢走导航。", -- draft
 	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "手柄：MelloUI 聊天中的链接和名字不再打开游戏自带的窗口，此前这会导致手柄按键被阻止。", -- draft
 	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "手柄：MelloUI 在游戏拾取、拆分堆叠和邮件窗口中的按钮不再被手柄光标选中。", -- draft
-	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "未安装 Questie 时：之前在地图和小地图上没有标记和区域的任务现在会显示。", -- draft
-	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI 的任务标记开启时，会保持游戏选项 Show Quest POIs & Blobs 开启：只有开启它，游戏才会给出所有任务地点。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3107,8 +3098,16 @@ Lang:Add("zhCN", {
 	["Forward a step"] = "前进一步", -- draft
 	["Skip this step"] = "跳过此步骤", -- draft
 	["No earlier step to show here."] = "这里没有可显示的上一步。", -- draft
+	-- kept: MelloUI_Oldschool/Modules/KitPainted.lua
+	["Ornate"] = "华丽", -- draft
+	["Nameplate Border"] = "姓名板边框", -- draft
+	["The frame around the nameplates' health bars."] = "姓名板生命条的边框。", -- draft
 	-- kept: MelloUI_Oldschool/Modules/KitBordersPainted.lua
 	["Winged border"] = "翼状边框", -- draft
+	["Kit orb"] = "套件宝珠", -- draft
+	["Stone badge"] = "石徽章", -- draft
+	["Level Orb"] = "等级宝珠", -- draft
+	["The badge around the level on unit frames and nameplates. Frames already shown change after a /reload."] = "单位框体和姓名板上等级的徽章。已显示的框体在 /reload 后改变。", -- draft
 	["Portrait Ring"] = "头像圆环", -- draft
 	-- kept: MelloUI_Oldschool/Modules/WidgetPanel.lua
 	["Setup"] = "方案", -- draft
@@ -3675,6 +3674,7 @@ Lang:Add("zhCN", {
 -- stale: ["Mello's modules and their settings"] = "Mello的模块及其设置", -- draft
 -- stale: ["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI 对所有人免费，并且永远免费。这些是帮助它持续发展的人们。谢谢你们每一位！", -- draft
 -- stale: ["MelloUI is set up."] = "MelloUI已设置完成。", -- draft
+-- stale: ["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI 的任务标记开启时，会保持游戏选项 Show Quest POIs & Blobs 开启：只有开启它，游戏才会给出所有任务地点。", -- draft
 -- stale: ["MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off."] = "MelloUI的任务追踪器铺在羊皮纸上，文字为深色墨水。换肤开启或关闭都可用。", -- draft
 -- stale: ["MelloUI's Quest Tracker. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "MelloUI的任务追踪器。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
 -- stale: ["MelloUI's additions to the game's nameplates: the large CC icon, quest markers, the threat line, combo points and name shading."] = "MelloUI 对游戏姓名板的增强：大控制图标、任务标记、仇恨线、连击点和名字阴影。", -- draft
@@ -3690,6 +3690,7 @@ Lang:Add("zhCN", {
 -- stale: ["MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label."] = "MelloUI的窗口用游戏的字形显示西里尔文、中文和韩文名字，而不是方块；按钮会变宽以容纳更长的标签。", -- draft
 -- stale: ["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "微型菜单：移到自己的位置后不再跳回原处（乘坐载具后，或动作条重新显示时），编辑布局中的大小现在也作用于按钮。", -- draft
 -- stale: ["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "精神控制及其他控制效果：带有被控制生物技能的宠物动作条会一直显示。", -- draft
+-- stale: ["Minimap Square Border"] = "小地图方形边框", -- draft
 -- stale: ["Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons."] = "小地图圆环、区域名称标题、昼夜指示框、追踪、日历、缩放和插件按钮。", -- draft
 -- stale: ["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
 -- stale: ["Minimap: RareScanner's icons on the minimap wear the same look."] = "小地图：小地图上的 RareScanner 图标也换成同样的外观。", -- draft
@@ -4253,6 +4254,7 @@ Lang:Add("zhCN", {
 -- stale: ["Windows framed in gold, snapped ones sharing one rim; the widget column's rows on gold cards, in motion; new class portraits; the Personal Display in gold and in motion."] = "窗口加上金框，吸附的窗口共用一个边框；小部件栏的行置于金色卡片上并有动效；新的职业头像；个人显示采用金色并有动效。", -- draft
 -- stale: ["With Heal Effects on (Frame Effects > Heals): the light of a heal you cast gathers at your character's middle instead of on the cast bar, and flies from there to the party or raid frame of the one you heal. It follows the display's place and the camera's zoom."] = "开启治疗效果时（框体效果 > 治疗）：你施放的治疗之光在角色身体中间汇聚，而不是在施法条上，然后从那里飞向你治疗对象的小队或团队框体。它跟随显示的位置和镜头缩放。", -- draft
 -- stale: ["With a choice of rewards: take the one with the highest item level over what you wear in its slot, among those you can use; when none is better, the one that sells for the most."] = "有奖励可选时：在你能用的奖励中，选物品等级比你该栏位所穿装备高出最多的；都不更好时，选卖价最高的。", -- draft
+-- stale: ["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "未安装 Questie 时：之前在地图和小地图上没有标记和区域的任务现在会显示。", -- draft
 -- stale: ["World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does."] = "世界标记：目标在屏幕外时，箭头会沿着屏幕中央周围的椭圆移动，与游戏自己的焦点标记相同。", -- draft
 -- stale: ["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "世界标记：任务的标记会立在游戏自己的点上，处于真实高度，即使你从山丘上往下看也是如此。", -- draft
 -- stale: ["Write these lines in the chat instead of showing them on the screen. They show there even while Chat Notices is off."] = "把这些行写进聊天，而不是显示在屏幕上。即使“聊天通知”关闭，它们也会显示在那里。", -- draft

@@ -5390,7 +5390,9 @@ function Kit:BorderValue(kind)
 		return nil
 	end
 	local um = MelloUI:GetModule("UIModifications")
-	local v = um and um.db and um.db[k.key]
+	-- (2.1.85; the user, 2026-11-24, of Oldschool > Borders: "what is safe to remove?") a kind with no row of its own
+	-- any more (`fixed`: its elements wear a Frame Set's painting over it) has its one look, whatever was kept before
+	local v = (not k.fixed) and um and um.db and um.db[k.key] or nil
 	v = v or k.default
 	if Kit.borderApplied[kind] == nil then
 		Kit.borderApplied[kind] = v

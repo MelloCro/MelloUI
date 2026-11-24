@@ -110,19 +110,12 @@ Lang:Add("ruRU", {
 	["Gilded Stone"] = "Позолоченный камень", -- draft
 	["Forged Iron"] = "Кованое железо", -- draft
 	["Carved Wood"] = "Резное дерево", -- draft
-	["Nameplate Border"] = "Рамка индикаторов здоровья", -- draft
-	["The frame around the nameplates' health bars."] = "Рамка полос здоровья индикаторов здоровья.", -- draft
-	["Ornate"] = "Узорная", -- draft
 	["Round Border"] = "Круглая рамка", -- draft
 	["The rim around round icons: passive spells, window rings and the Services bar's buttons."] = "Окантовка круглых значков: пассивные заклинания, кольца окон и кнопки панели Услуг.", -- draft
 	["Gem ring"] = "Кольцо с самоцветами", -- draft
 	["Four diamond studs"] = "Четыре ромбовидные заклёпки", -- draft
 	["Plain heavy ring"] = "Простое толстое кольцо", -- draft
 	["Stone ring"] = "Каменное кольцо", -- draft
-	["Level Orb"] = "Сфера уровня", -- draft
-	["The badge around the level on unit frames and nameplates. Frames already shown change after a /reload."] = "Значок уровня на рамках юнитов и индикаторах здоровья. Уже показанные рамки меняются после /reload.", -- draft
-	["Kit orb"] = "Сфера набора", -- draft
-	["Stone badge"] = "Каменный значок", -- draft
 	["Aura Border"] = "Рамка эффектов", -- draft
 	["The rim around MelloUI's buff and debuff icons. Debuff colours stay."] = "Окантовка значков положительных и отрицательных эффектов MelloUI. Цвета отрицательных эффектов сохраняются.", -- draft
 	["Plain black edge"] = "Простой чёрный край", -- draft
@@ -2463,7 +2456,6 @@ Lang:Add("ruRU", {
 	["Only with the Whisper Popup Window"] = "Только со «Всплывающим окном шёпота»", -- draft
 	["Map Width"] = "Ширина карты", -- draft
 	["Painted Skin (Quest Log)"] = "Рисованный облик (журнал заданий)", -- draft
-	["Minimap Square Border"] = "Квадратная рамка мини-карты", -- draft
 	["Chat Font"] = "Шрифт чата", -- draft
 	["Chat On Parchment Size"] = "Размер чата на пергаменте", -- draft
 	["Header Size"] = "Размер заголовков", -- draft
@@ -2479,6 +2471,7 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool: вкладка «Рамки» стала короче. «Рамка индикаторов здоровья» и «Сфера уровня» убраны: и то, и другое рисует ваш Набор рамок.", -- draft
 	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "Настройки: вкладка рамки теперь показывает параметры всех её частей в одном списке с прокруткой. Щёлкните по части, чтобы перейти к её параметрам.", -- draft
 	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "Настройки: части показаны списком рядом с предпросмотром, с переключателем «Показывать» у тех частей, которые можно скрыть.", -- draft
 	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "Рамки юнитов: значок PvP, свечение состояния и свечение боя показываются и скрываются переключателем «Показывать» в списке частей.", -- draft
@@ -2495,8 +2488,6 @@ Lang:Add("ruRU", {
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "«Ближайшая сдача» больше не перехватывает навигацию у вашей метки на карте, шага гайда и пути к вашему телу.", -- draft
 	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "Контроллер: ссылки и имена в чате MelloUI больше не открывают окна игры, из-за чего блокировались кнопки контроллера.", -- draft
 	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "Контроллер: кнопки MelloUI в окнах добычи, разделения стопки и почты игры не попадают под курсор контроллера.", -- draft
-	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Без Questie: задания, у которых не было метки и области на карте и миникарте, теперь отображаются.", -- draft
-	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI держит игровую настройку Show Quest POIs & Blobs включённой, пока включены её метки заданий: только с ней игра сообщает все места заданий.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3107,8 +3098,16 @@ Lang:Add("ruRU", {
 	["Forward a step"] = "На шаг вперёд", -- draft
 	["Skip this step"] = "Пропустить этот шаг", -- draft
 	["No earlier step to show here."] = "Здесь нет предыдущего шага для показа.", -- draft
+	-- kept: MelloUI_Oldschool/Modules/KitPainted.lua
+	["Ornate"] = "Узорная", -- draft
+	["Nameplate Border"] = "Рамка индикаторов здоровья", -- draft
+	["The frame around the nameplates' health bars."] = "Рамка полос здоровья индикаторов здоровья.", -- draft
 	-- kept: MelloUI_Oldschool/Modules/KitBordersPainted.lua
 	["Winged border"] = "Крылатая рамка", -- draft
+	["Kit orb"] = "Сфера набора", -- draft
+	["Stone badge"] = "Каменный значок", -- draft
+	["Level Orb"] = "Сфера уровня", -- draft
+	["The badge around the level on unit frames and nameplates. Frames already shown change after a /reload."] = "Значок уровня на рамках юнитов и индикаторах здоровья. Уже показанные рамки меняются после /reload.", -- draft
 	["Portrait Ring"] = "Кольцо портрета", -- draft
 	-- kept: MelloUI_Oldschool/Modules/WidgetPanel.lua
 	["Setup"] = "Настройка", -- draft
@@ -3675,6 +3674,7 @@ Lang:Add("ruRU", {
 -- stale: ["Mello's modules and their settings"] = "Модули Mello и их настройки", -- draft
 -- stale: ["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI бесплатен для всех и всегда будет бесплатным. Это люди, которые помогают ему развиваться. Спасибо вам всем!", -- draft
 -- stale: ["MelloUI is set up."] = "MelloUI настроен.", -- draft
+-- stale: ["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI держит игровую настройку Show Quest POIs & Blobs включённой, пока включены её метки заданий: только с ней игра сообщает все места заданий.", -- draft
 -- stale: ["MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off."] = "Отслеживание заданий MelloUI на листе пергамента, текст тёмными чернилами. Работает с включённым или выключенным обликом.", -- draft
 -- stale: ["MelloUI's Quest Tracker. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Отслеживание заданий MelloUI. «Всегда»: никогда не гаснет. «В бою»: гаснет вне боя, возвращается в бою. «При наведении»: погашена всё время, видна, пока вы на неё указываете.", -- draft
 -- stale: ["MelloUI's additions to the game's nameplates: the large CC icon, quest markers, the threat line, combo points and name shading."] = "Дополнения MelloUI к индикаторам здоровья: большой значок контроля, метки заданий, линия угрозы, приёмы серии и тень имён.", -- draft
@@ -3690,6 +3690,7 @@ Lang:Add("ruRU", {
 -- stale: ["MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label."] = "Окна MelloUI показывают кириллические, китайские и корейские имена буквами игры, а не квадратиками; кнопки растут под более длинную подпись.", -- draft
 -- stale: ["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "Микроменю: перенесённое на своё место, оно больше не прыгает обратно (после транспорта или когда снова появляется панель действий), а его размер из редактора макета теперь применяется к кнопкам.", -- draft
 -- stale: ["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "Контроль над разумом и другие виды одержимости: панель питомца со способностями подчинённого существа остаётся на экране.", -- draft
+-- stale: ["Minimap Square Border"] = "Квадратная рамка мини-карты", -- draft
 -- stale: ["Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons."] = "Кольцо мини-карты, заголовок названия зоны, рамка индикатора дня/ночи, отслеживание, календарь, масштаб и кнопки модификаций.", -- draft
 -- stale: ["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Миникарта без Questie: синие круги заданий игры уступают место меткам MelloUI.", -- draft
 -- stale: ["Minimap: RareScanner's icons on the minimap wear the same look."] = "Мини-карта: значки RareScanner на мини-карте выглядят так же.", -- draft
@@ -4253,6 +4254,7 @@ Lang:Add("ruRU", {
 -- stale: ["Windows framed in gold, snapped ones sharing one rim; the widget column's rows on gold cards, in motion; new class portraits; the Personal Display in gold and in motion."] = "Окна в золотых рамках, пристыкованные делят одну; строки колонки виджетов на золотых карточках, в движении; новые портреты классов; Личная панель в золоте и в движении.", -- draft
 -- stale: ["With Heal Effects on (Frame Effects > Heals): the light of a heal you cast gathers at your character's middle instead of on the cast bar, and flies from there to the party or raid frame of the one you heal. It follows the display's place and the camera's zoom."] = "При включённых «Эффектах исцеления» (Эффекты рамок > Исцеление): свет произносимого вами исцеления собирается в середине персонажа, а не на индикаторе заклинаний, и летит оттуда к рамке группы или рейда того, кого вы лечите. Он следует месту дисплея и зуму камеры.", -- draft
 -- stale: ["With a choice of rewards: take the one with the highest item level over what you wear in its slot, among those you can use; when none is better, the one that sells for the most."] = "При выборе награды: берёт ту, у которой уровень предмета выше всего над тем, что у вас в этой ячейке, среди тех, что вы можете использовать; если лучше нет — самую дорогую при продаже.", -- draft
+-- stale: ["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Без Questie: задания, у которых не было метки и области на карте и миникарте, теперь отображаются.", -- draft
 -- stale: ["World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does."] = "Мировой маркер: за пределами экрана его стрелка движется по овалу вокруг центра экрана, как собственный маркер фокуса игры.", -- draft
 -- stale: ["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "Мировой маркер: у задания он стоит на собственной точке игры, на её настоящей высоте, даже когда вы смотрите с холма.", -- draft
 -- stale: ["Write these lines in the chat instead of showing them on the screen. They show there even while Chat Notices is off."] = "Пишет эти строки в чат вместо показа на экране. Там они видны, даже если «Оповещения в чате» выключены.", -- draft

@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.85", lines = {
+		"Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both.",
+	} },
 	{ version = "2.1.84", lines = {
 		"Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings.",
 		"Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide.",
@@ -201,10 +204,6 @@ local CHANGELOG = {
 		"Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons.",
 		"Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor.",
 	} },
-	{ version = "2.1.80", lines = {
-		"Without Questie: quests that had no mark or area on the map and the minimap show now.",
-		"MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -215,11 +214,11 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.85"] = { "UIModifications.frameSet" },
 	["2.1.84"] = { "=unit frames", "=nameplates", "UnitFrames.hidePvPBadge", "UIModifications.qol_Tooltip", false, false,
 		"=qol", "=profiles", "=unit frames", "MailRecipients.recent", "MailRecipients.bnet" },
 	["2.1.83"] = { "Nameplates.npcPlateSize", "Nameplates.npcHideFull" },
 	["2.1.82"] = { "QuestTracker.nearestTurnIn" },
-	["2.1.80"] = { "QuestList.objectiveMarks", "QuestList.objectiveMarks" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },

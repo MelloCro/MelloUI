@@ -110,19 +110,12 @@ Lang:Add("koKR", {
 	["Gilded Stone"] = "금박 석재", -- draft
 	["Forged Iron"] = "단조 철", -- draft
 	["Carved Wood"] = "조각 목재", -- draft
-	["Nameplate Border"] = "이름표 테두리", -- draft
-	["The frame around the nameplates' health bars."] = "이름표 생명력 바의 테두리.", -- draft
-	["Ornate"] = "화려한", -- draft
 	["Round Border"] = "원형 테두리", -- draft
 	["The rim around round icons: passive spells, window rings and the Services bar's buttons."] = "둥근 아이콘의 테두리: 지속 효과 주문, 창 고리, 서비스 바 버튼.", -- draft
 	["Gem ring"] = "보석 고리", -- draft
 	["Four diamond studs"] = "다이아몬드 징 네 개", -- draft
 	["Plain heavy ring"] = "단순한 두꺼운 고리", -- draft
 	["Stone ring"] = "돌 고리", -- draft
-	["Level Orb"] = "레벨 구슬", -- draft
-	["The badge around the level on unit frames and nameplates. Frames already shown change after a /reload."] = "개체창과 이름표의 레벨 배지. 이미 표시된 개체창은 /reload 후 바뀝니다.", -- draft
-	["Kit orb"] = "키트 구슬", -- draft
-	["Stone badge"] = "돌 휘장", -- draft
 	["Aura Border"] = "효과 테두리", -- draft
 	["The rim around MelloUI's buff and debuff icons. Debuff colours stay."] = "MelloUI 강화·약화 효과 아이콘의 테두리. 약화 효과 색은 유지됩니다.", -- draft
 	["Plain black edge"] = "단순한 검은 가장자리", -- draft
@@ -2463,7 +2456,6 @@ Lang:Add("koKR", {
 	["Only with the Whisper Popup Window"] = "귓속말 팝업 창에서만", -- draft
 	["Map Width"] = "지도 폭", -- draft
 	["Painted Skin (Quest Log)"] = "페인팅 스킨(퀘스트 목록)", -- draft
-	["Minimap Square Border"] = "미니맵 사각 테두리", -- draft
 	["Chat Font"] = "대화 글꼴", -- draft
 	["Chat On Parchment Size"] = "양피지 위 대화 크기", -- draft
 	["Header Size"] = "머리글 크기", -- draft
@@ -2479,6 +2471,7 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool: 테두리 탭이 짧아졌습니다. 이름표 테두리와 레벨 구슬은 없어졌습니다. 프레임 세트가 둘 다 그립니다.", -- draft
 	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "설정 창: 프레임의 탭에서 이제 모든 부분의 설정을 한 번에 스크롤해 볼 수 있습니다. 부분을 클릭하면 해당 설정으로 이동합니다.", -- draft
 	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "설정 창: 미리보기 옆에 부분 목록이 있으며, 숨길 수 있는 부분에는 표시 스위치가 있습니다.", -- draft
 	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "유닛 프레임: PvP 휘장, 상태 광채, 전투 광채는 부분 목록의 표시 스위치로 보이거나 숨깁니다.", -- draft
@@ -2495,8 +2488,6 @@ Lang:Add("koKR", {
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "가장 가까운 완료 퀘스트 따라가기가 더 이상 직접 찍은 지도 핀, 가이드의 단계, 시체로 가는 길에서 길 안내를 빼앗지 않습니다.", -- draft
 	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "컨트롤러: MelloUI 대화창의 링크와 이름이 더 이상 게임의 창을 열지 않습니다. 이 때문에 컨트롤러 버튼이 차단되곤 했습니다.", -- draft
 	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "컨트롤러: 게임의 전리품, 묶음 나누기, 우편 창에 있는 MelloUI 버튼은 컨트롤러 커서가 선택하지 않습니다.", -- draft
-	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Questie 없이: 지도와 미니맵에 표시나 구역이 없던 퀘스트가 이제 표시됩니다.", -- draft
-	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI의 퀘스트 표시가 켜져 있는 동안 게임 옵션 Show Quest POIs & Blobs를 켜 둡니다. 이 옵션이 켜져 있어야 게임이 모든 퀘스트 위치를 알려 줍니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3107,8 +3098,16 @@ Lang:Add("koKR", {
 	["Forward a step"] = "한 단계 앞으로", -- draft
 	["Skip this step"] = "이 단계 건너뛰기", -- draft
 	["No earlier step to show here."] = "여기에 보여 줄 이전 단계가 없습니다.", -- draft
+	-- kept: MelloUI_Oldschool/Modules/KitPainted.lua
+	["Ornate"] = "화려한", -- draft
+	["Nameplate Border"] = "이름표 테두리", -- draft
+	["The frame around the nameplates' health bars."] = "이름표 생명력 바의 테두리.", -- draft
 	-- kept: MelloUI_Oldschool/Modules/KitBordersPainted.lua
 	["Winged border"] = "날개 테두리", -- draft
+	["Kit orb"] = "키트 구슬", -- draft
+	["Stone badge"] = "돌 휘장", -- draft
+	["Level Orb"] = "레벨 구슬", -- draft
+	["The badge around the level on unit frames and nameplates. Frames already shown change after a /reload."] = "개체창과 이름표의 레벨 배지. 이미 표시된 개체창은 /reload 후 바뀝니다.", -- draft
 	["Portrait Ring"] = "초상화 고리", -- draft
 	-- kept: MelloUI_Oldschool/Modules/WidgetPanel.lua
 	["Setup"] = "구성", -- draft
@@ -3675,6 +3674,7 @@ Lang:Add("koKR", {
 -- stale: ["Mello's modules and their settings"] = "Mello의 모듈과 그 설정", -- draft
 -- stale: ["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI는 모두에게 무료이며 앞으로도 그렇습니다. 이분들이 MelloUI가 계속 나아가도록 도와주고 있습니다. 모두 감사합니다!", -- draft
 -- stale: ["MelloUI is set up."] = "MelloUI 설정을 마쳤습니다.", -- draft
+-- stale: ["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI의 퀘스트 표시가 켜져 있는 동안 게임 옵션 Show Quest POIs & Blobs를 켜 둡니다. 이 옵션이 켜져 있어야 게임이 모든 퀘스트 위치를 알려 줍니다.", -- draft
 -- stale: ["MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off."] = "MelloUI의 퀘스트 추적기를 양피지 위에, 글자는 짙은 잉크로. 스킨을 켜든 끄든 작동합니다.", -- draft
 -- stale: ["MelloUI's Quest Tracker. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "MelloUI의 퀘스트 추적기. 항상: 흐려지지 않음. 전투 중: 전투 밖에서 흐려지고 전투 때 돌아옴. 마우스를 올리면: 늘 흐리고 가리키는 동안 보임.", -- draft
 -- stale: ["MelloUI's additions to the game's nameplates: the large CC icon, quest markers, the threat line, combo points and name shading."] = "게임 이름표에 대한 MelloUI 추가 기능: 큰 군중 제어 아이콘, 퀘스트 표시, 위협 선, 연계 점수, 이름 그림자.", -- draft
@@ -3690,6 +3690,7 @@ Lang:Add("koKR", {
 -- stale: ["MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label."] = "MelloUI 창이 키릴 문자, 중국어, 한국어 이름을 네모 대신 게임의 글자로 보여 주며, 버튼은 더 긴 이름에 맞춰 넓어집니다.", -- draft
 -- stale: ["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "마이크로 메뉴: 자기 자리로 옮긴 뒤에 더 이상 원래 자리로 돌아가지 않으며(탈것 이용 후나 행동 단축바가 다시 나타날 때), 레이아웃 편집의 크기가 이제 버튼에도 적용됩니다.", -- draft
 -- stale: ["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "정신 지배와 그 밖의 빙의: 조종하는 대상의 기술이 있는 소환수 바가 화면에 그대로 남습니다.", -- draft
+-- stale: ["Minimap Square Border"] = "미니맵 사각 테두리", -- draft
 -- stale: ["Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons."] = "미니맵 고리, 지역 이름 머리글, 낮/밤 표시 테두리, 추적, 달력, 확대/축소, 애드온 버튼.", -- draft
 -- stale: ["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Questie 없는 미니맵: 게임의 파란 퀘스트 원 대신 MelloUI의 표시가 나옵니다.", -- draft
 -- stale: ["Minimap: RareScanner's icons on the minimap wear the same look."] = "미니맵: 미니맵의 RareScanner 아이콘도 같은 모습으로 바뀝니다.", -- draft
@@ -4253,6 +4254,7 @@ Lang:Add("koKR", {
 -- stale: ["Windows framed in gold, snapped ones sharing one rim; the widget column's rows on gold cards, in motion; new class portraits; the Personal Display in gold and in motion."] = "금테 창, 붙은 창은 테두리 하나를 공유; 위젯 열 줄이 금빛 카드 위에서 움직임; 새 직업 초상화; 개인 화면도 금빛과 움직임.", -- draft
 -- stale: ["With Heal Effects on (Frame Effects > Heals): the light of a heal you cast gathers at your character's middle instead of on the cast bar, and flies from there to the party or raid frame of the one you heal. It follows the display's place and the camera's zoom."] = "치유 효과가 켜져 있으면(창 효과 > 치유): 내가 시전하는 치유의 빛이 시전바 대신 캐릭터 가운데에 모여, 거기서 치유 대상의 파티 또는 공격대 창으로 날아갑니다. 표시기의 위치와 카메라 확대를 따릅니다.", -- draft
 -- stale: ["With a choice of rewards: take the one with the highest item level over what you wear in its slot, among those you can use; when none is better, the one that sells for the most."] = "보상을 고를 때: 쓸 수 있는 것 중 그 부위에 착용한 것보다 아이템 레벨이 가장 높은 것을 고르고, 더 좋은 것이 없으면 가장 비싸게 팔리는 것을 고릅니다.", -- draft
+-- stale: ["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Questie 없이: 지도와 미니맵에 표시나 구역이 없던 퀘스트가 이제 표시됩니다.", -- draft
 -- stale: ["World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does."] = "월드 마커: 화면 밖에 있을 때 화살표가 게임 자체 집중 마커처럼 화면 가운데를 둘러싼 타원을 따라 움직입니다.", -- draft
 -- stale: ["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "월드 마커: 퀘스트에서는 언덕 위에서 내려다볼 때도 게임 자체 지점의 실제 높이에 표시됩니다.", -- draft
 -- stale: ["Write these lines in the chat instead of showing them on the screen. They show there even while Chat Notices is off."] = "이 줄을 화면에 띄우는 대신 대화에 씁니다. 대화 알림이 꺼져 있어도 그곳에 표시됩니다.", -- draft

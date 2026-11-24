@@ -122,19 +122,12 @@ Lang:Add("frFR", {
 	["Gilded Stone"] = "Pierre dorée",
 	["Forged Iron"] = "Fer forgé",
 	["Carved Wood"] = "Bois sculpté",
-	["Nameplate Border"] = "Bordure des barres d'info",
-	["The frame around the nameplates' health bars."] = "Le cadre autour des barres de vie des barres d’info.",
-	["Ornate"] = "Orné",
 	["Round Border"] = "Bordure ronde",
 	["The rim around round icons: passive spells, window rings and the Services bar's buttons."] = "Le contour des icônes rondes : sorts passifs, anneaux de fenêtres et boutons de la barre Services.",
 	["Gem ring"] = "Anneau de gemmes",
 	["Four diamond studs"] = "Quatre rivets en losange",
 	["Plain heavy ring"] = "Anneau épais simple",
 	["Stone ring"] = "Anneau de pierre",
-	["Level Orb"] = "Orbe de niveau",
-	["The badge around the level on unit frames and nameplates. Frames already shown change after a /reload."] = "Le badge autour du niveau sur les cadres d'unité et les barres d'info. Les cadres déjà affichés changent après un /reload.",
-	["Kit orb"] = "Orbe de l’interface MelloUI",
-	["Stone badge"] = "Insigne de pierre",
 	["Aura Border"] = "Bordure des auras",
 	["The rim around MelloUI's buff and debuff icons. Debuff colours stay."] = "Le contour des icônes d'améliorations et d'affaiblissements de MelloUI. Les couleurs des affaiblissements restent.",
 	["Plain black edge"] = "Bord noir simple",
@@ -2538,7 +2531,6 @@ Lang:Add("frFR", {
 	["Only with the Whisper Popup Window"] = "Seulement avec la Fenêtre de chuchotement",
 	["Map Width"] = "Largeur de la carte",
 	["Painted Skin (Quest Log)"] = "Habillage peint (journal des quêtes)",
-	["Minimap Square Border"] = "Bordure carrée de la minicarte",
 	["Chat Font"] = "Police de la discussion",
 	["Chat On Parchment Size"] = "Taille de la discussion sur parchemin",
 	["Header Size"] = "Taille des en-têtes",
@@ -2554,6 +2546,7 @@ Lang:Add("frFR", {
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
+	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool : l'onglet Bordures est plus court. Bordure des barres d'info et Orbe de niveau ont disparu : votre Style des cadres dessine les deux.", -- draft
 	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "Configurateur : l’onglet d’un cadre affiche désormais les réglages de tous ses éléments dans une seule liste déroulante. Cliquez sur un élément pour aller à ses réglages.", -- draft
 	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "Configurateur : les éléments forment une liste à côté de l’aperçu, avec un interrupteur Afficher pour ceux que vous pouvez masquer.", -- draft
 	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "Cadres d’unité : l’insigne JcJ, la lueur d’état et la lueur de combat s’affichent et se masquent avec leur interrupteur Afficher dans la liste des éléments.", -- draft
@@ -2570,8 +2563,6 @@ Lang:Add("frFR", {
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "« Quête à rendre la plus proche » ne reprend plus la navigation à votre propre repère de carte, à l’étape d’un guide ni au chemin vers votre cadavre.", -- draft
 	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "Manette : les liens et les noms du chat de MelloUI n’ouvrent plus les fenêtres du jeu, ce qui bloquait les boutons de la manette.", -- draft
 	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "Manette : les boutons de MelloUI dans les fenêtres de butin, de division de pile et de courrier du jeu restent hors du curseur de la manette.", -- draft
-	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Sans Questie : les quêtes qui n’avaient ni marque ni zone sur la carte et la minicarte s’affichent maintenant.", -- draft
-	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI garde l’option du jeu Show Quest POIs & Blobs activée tant que ses marques de quête sont actives : le jeu ne donne tous les lieux de quête qu’avec elle.", -- draft
 	["Report a problem"] = "Signaler un problème",
 	["Voice pack"] = "Pack de voix",
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre",
@@ -4874,8 +4865,16 @@ Lang:Add("frFR", {
 	["Caves (zoomed in close)"] = "Grottes (zoom rapproché)",
 	["Open or close MelloUI's map"] = "Ouvrir ou fermer la carte de MelloUI",
 	["Open MelloUI's map with your quests"] = "Ouvrir la carte de MelloUI avec vos quêtes",
+	-- kept: MelloUI_Oldschool/Modules/KitPainted.lua
+	["Ornate"] = "Orné",
+	["Nameplate Border"] = "Bordure des barres d'info",
+	["The frame around the nameplates' health bars."] = "Le cadre autour des barres de vie des barres d’info.",
 	-- kept: MelloUI_Oldschool/Modules/KitBordersPainted.lua
 	["Winged border"] = "Bordure ailée",
+	["Kit orb"] = "Orbe de l’interface MelloUI",
+	["Stone badge"] = "Insigne de pierre",
+	["Level Orb"] = "Orbe de niveau",
+	["The badge around the level on unit frames and nameplates. Frames already shown change after a /reload."] = "Le badge autour du niveau sur les cadres d'unité et les barres d'info. Les cadres déjà affichés changent après un /reload.",
 	["Portrait Ring"] = "Anneau des portraits",
 	-- kept: MelloUI_Oldschool/Modules/ChatPanel.lua
 	["%s: none"] = "%s : aucun",
@@ -5652,6 +5651,7 @@ Lang:Add("frFR", {
 -- stale: ["Mello's modules and their settings"] = "Les modules de Mello et leurs réglages", -- draft
 -- stale: ["MelloUI is free for everyone and always will be. These are the people who help keep it going. Thank you, all of you!"] = "MelloUI est gratuit pour tout le monde et le restera toujours. Voici les personnes qui le font vivre. Merci à vous tous !", -- draft
 -- stale: ["MelloUI is set up."] = "MelloUI est configuré.", -- draft
+-- stale: ["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI garde l’option du jeu Show Quest POIs & Blobs activée tant que ses marques de quête sont actives : le jeu ne donne tous les lieux de quête qu’avec elle.", -- draft
 -- stale: ["MelloUI's Quest Tracker on a parchment sheet, its text in dark ink. Works with the reskin on or off."] = "Le suivi des quêtes de MelloUI sur une feuille de parchemin, son texte à l'encre sombre. Fonctionne avec l'habillage activé ou non.", -- draft
 -- stale: ["MelloUI's Quest Tracker. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Le suivi des quêtes de MelloUI. Toujours : jamais estompé. En combat : estompé hors combat, de retour en combat. Au survol : estompé en permanence, affiché quand vous le survolez.", -- draft
 -- stale: ["MelloUI's additions to the game's nameplates: the large CC icon, quest markers, the threat line, combo points and name shading."] = "Les ajouts de MelloUI aux barres d'info : grande icône de contrôle, marqueurs de quête, ligne de menace, points de combo et ombre des noms.", -- draft
@@ -5667,6 +5667,7 @@ Lang:Add("frFR", {
 -- stale: ["MelloUI's windows show Cyrillic, Chinese and Korean names in the game's letters instead of boxes; buttons grow to fit a longer label."] = "Les fenêtres de MelloUI affichent les noms cyrilliques, chinois et coréens avec les lettres du jeu au lieu de carrés ; les boutons s'agrandissent pour un libellé plus long.", -- draft
 -- stale: ["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "Micro-menu : déplacé à sa propre place, il ne revient plus en arrière (après un véhicule, ou quand la barre d'action réapparaît), et sa taille de l'édition de disposition s'applique maintenant aux boutons.", -- draft
 -- stale: ["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "Contrôle mental et autres prises de contrôle : la barre du familier et les techniques de la créature contrôlée restent affichées.",
+-- stale: ["Minimap Square Border"] = "Bordure carrée de la minicarte",
 -- stale: ["Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons."] = "Anneau de la minicarte, en-tête du nom de zone, cadre de l'indicateur jour/nuit, pistage, calendrier, zoom et boutons d'add-ons.", -- draft
 -- stale: ["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Minicarte sans Questie : les cercles bleus de quête du jeu laissent place aux marqueurs de MelloUI.", -- draft
 -- stale: ["Minimap: RareScanner's icons on the minimap wear the same look."] = "Minicarte : les icônes de RareScanner sur la minicarte prennent le même style.",
@@ -6254,6 +6255,7 @@ Lang:Add("frFR", {
 -- stale: ["Windows framed in gold, snapped ones sharing one rim; the widget column's rows on gold cards, in motion; new class portraits; the Personal Display in gold and in motion."] = "Fenêtres encadrées d'or, celles accolées partageant un même cadre ; les lignes de la colonne de widgets sur des cartes dorées, en mouvement ; de nouveaux portraits de classe ; l'Affichage personnel en or et en mouvement.", -- draft
 -- stale: ["With Heal Effects on (Frame Effects > Heals): the light of a heal you cast gathers at your character's middle instead of on the cast bar, and flies from there to the party or raid frame of the one you heal. It follows the display's place and the camera's zoom."] = "Avec Effets de soin actif (Effets de cadre > Soins) : la lumière d'un soin que vous incantez se rassemble au milieu de votre personnage au lieu de la barre d'incantation, et vole de là jusqu'au cadre de groupe ou de raid de celui que vous soignez. Elle suit la place de l'affichage et le zoom de la caméra.", -- draft
 -- stale: ["With a choice of rewards: take the one with the highest item level over what you wear in its slot, among those you can use; when none is better, the one that sells for the most."] = "Avec un choix de récompenses : prend celle dont le niveau d'objet dépasse le plus ce que vous portez à cet emplacement, parmi celles que vous pouvez utiliser ; si aucune n'est meilleure, celle qui se vend le plus cher.", -- draft
+-- stale: ["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Sans Questie : les quêtes qui n’avaient ni marque ni zone sur la carte et la minicarte s’affichent maintenant.", -- draft
 -- stale: ["World Marker: off screen, its arrow rides an oval round the middle of the screen, as the game's own focus marker does."] = "Marqueur du monde : hors de l'écran, sa flèche suit un ovale autour du centre de l'écran, comme le marqueur de focus du jeu lui-même.",
 -- stale: ["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "Marqueur du monde : sur une quête, il se place sur le point du jeu lui-même, à sa vraie hauteur, même quand vous regardez depuis une colline.",
 -- stale: ["Write these lines in the chat instead of showing them on the screen. They show there even while Chat Notices is off."] = "Écrit ces lignes dans la discussion au lieu de les afficher à l'écran. Elles s'y affichent même si Avis dans la discussion est désactivé.", -- draft

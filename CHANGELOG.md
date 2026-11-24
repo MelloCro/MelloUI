@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.85
+
+- Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws the nameplates' frame and the level badge, so those two rows no longer changed what you see. The shortcut to the Minimap's Square Border is gone from that tab too; the setting itself is on the Minimap page.
+
 ## 2.1.84
 
 - Configurator: on Unit & Group Frames, Nameplates, Bars and Minimap a frame's tab now shows everything it has in one scroll: the frame's own settings first, then each part's under its own heading. Before, only one part's settings showed at a time.
