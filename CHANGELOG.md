@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.1.84
+
+- Configurator: on Unit & Group Frames, Nameplates, Bars and Minimap a frame's tab now shows everything it has in one scroll: the frame's own settings first, then each part's under its own heading. Before, only one part's settings showed at a time.
+- Configurator: click a part on the preview or in the Parts list and the page jumps to that part's settings and outlines them. A click on the frame's tab goes back to the top.
+- Configurator: beside a preview the Parts are a list, with a Show switch on the parts you can hide. That switch is now the one place for a part's Show; the Show row inside each part's settings is gone. On Bars the Parts line stays under the preview while you scroll.
+- Unit frames: Hide PvP Badge, Hide Status Glow and Hide Combat Flash are now the Show switches of PvP badge, Status glow and Combat glow in that list. They work the other way round: on means shown. Your settings are kept.
+- Configurator: a feature's switch is in one place now, a bar on top of its tab with its name and what it does. Before it sat in the page's header, in a tab's first row or inside a frame's own settings. With the switch off the tab says what off means.
+- Configurator: the side list shows every page without scrolling. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above the search box (their names are in their tooltips), and Look is the first entry under The look. Buffs & Debuffs and Chat are entries of Frames and bars, and Quality of Life of Quests and travel.
+- Configurator: a dot beside each page in the side list shows whether its features are on, partly on or off.
+- Home: a What's new line that is about a setting opens it with a click. An arrow marks those lines, and Back to Home beside the tabs brings you back.
+- Configurator: parts with nothing to set are no longer listed: the cast bar's Icon, Spell text and Timer, and the action bars' Keybind text.
+- Oldschool: the line under a designer's preview is in dark ink. It was hard to read on the parchment.
+- Quality of Life: four tabs in place of twelve: Automation, On screen, Reminders and widgets, and Tooltip. Each is one scroll with every helper under its own switch, and Jump to takes you to one. Role Picker is a helper of its own under Automation.
+- Profiles: the page is four cards: This character, Profiles, Share and Import. Import reads a pasted string first and says what it holds and the screen it was made for before you take it. Copy the string shares this character's profile as it is now.
+- Configurator: on Unit & Group Frames, Nameplates, Bars and Minimap a frame's and a part's own line is the strong one now (gold, larger, one rule under it), and the sections under it are small labels. Before, every section had its own gold title and rule.
+- Mail Recipients: the list beside Send Mail is redone. Every name has its class picture and its level, a friend who is playing has a green dot, and the list scrolls with a bar.
+- Mail Recipients: groups of your own. Pinned is the first; the group button on a name puts it in a group or makes a new one, and any name goes in: your own character, a friend's, someone you wrote to. The cog on a group renames, moves or deletes it.
+- Mail Recipients: your characters show their two professions, and the Professions view lists who has which, best skill first. A character's professions are noted when it logs in or stands at a mailbox, and the one you are on is in that view too. Point at a profession icon to see its name and skill.
+- Mail Recipients: what you type in To narrows the list, and looks through your guild and friends list too (Guild And Friends While Typing). Typing a profession finds its characters.
+- Mail Recipients: Recent, the last five names you sent a letter to (Recent Names, on by default).
+- Fixed in Mail Recipients: characters you had deleted stayed in the list. They move to Hidden at the list's foot by themselves, the bin on a name takes any name off, and Hidden brings one back.
+- Fixed in Mail Recipients: a character whose class MelloUI did not know was white, like a Priest. It has a ? now and a dimmer name; click the ? to pick the class. The class is also learned when that character logs in, or from your guild.
+- Fixed in Mail Recipients: a character was never noted (no class, level or professions) when the game gave no realm name during its sessions and it had not been noted before.
+- Fixed in Mail Recipients: two of your characters with the same first name shared one entry, so each login wrote over the other's class, level and professions. Each has its own now; log in once on each.
+- Fixed: with Hide At Full Health on, a friendly nameplate at full health still showed the mouseover highlight round its hidden bar. The highlight is hidden with the bar now.
+- Blocked actions report (/mellobug): with a controller, it also says when the game's controller code ran from inside MelloUI's own code, with the way there, and which control the pad's cursor stood on when the game's controller values first changed.
+
 ## 2.1.83
 
 - Nameplates: the designer has three kinds of plate now, each with its own preview, places and sizes: Enemies, Friendly NPCs and Friendly players. Before, what you set under Enemies (a moved name, its size, the plate's size, the health numbers, the cast bar) was laid on friendly plates too. Friendly plates start at the game's own layout: if you had moved or resized parts, your friendly plates go back to it with this update, and you set them in their own tab.

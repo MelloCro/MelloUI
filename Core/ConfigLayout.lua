@@ -106,18 +106,62 @@ L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Text-
 L.groups = {
 	{ entries = { "Home" } },
 	{ title = "The look", icon = "cat_look", entries = { "Look", "Windows", "Fader", "Animations", "Oldschool" } },
-	{ title = "Frames and bars", icon = "cat_frames", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
-		"BarsMeters" } },
 	-- (2.1.30; the user, 2026-11-09: "navigating those settings to switch them from Default to Custom ones is a
-	-- nightmare, i want 1 dedicated category, on the Left side of the Configurator, Buffs & Debuffs")
-	{ title = "Buffs & Debuffs", icon = "cat_frames", entries = { "Buffs" } },
-	{ title = "Chat", icon = "cat_chat", entries = { "Chat" } },
-	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map" } },
+	-- nightmare, i want 1 dedicated category, on the Left side of the Configurator, Buffs & Debuffs" -- a page of its
+	-- own in the side list)
+	-- (2.1.84; the user, 2026-11-24, of Buffs & Debuffs, Chat and Quality of Life each standing as a category of one
+	-- page -- 2.1.52's pick "B: as categories": "Make them plain rows inside") plain entries of their neighbouring
+	-- groups: Buffs & Debuffs and Chat of Frames and bars, Quality of Life of Quests and travel. (A group of one page
+	-- would still be drawn as a category: RailGroups, W.NavRail's `category` -- none stands here now)
+	{ title = "Frames and bars", icon = "cat_frames", entries = { "UnitGroupFrames", "Nameplates", "ActionBars", "Minimap",
+		"BarsMeters", "Buffs", "Chat" } },
 	-- (1.2.4, the configurator shell -- the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page")
-	{ title = "Quality of life", icon = "cat_look", entries = { "QualityOfLife" } },
+	{ title = "Quests and travel", icon = "cat_quests", entries = { "QuestTracker", "QuestList", "Route", "Map",
+		"QualityOfLife" } },
 	{ title = "Sound", icon = "cat_sound", entries = { "VoiceOver", "CustomSounds" } },
 	{ entries = { "Profiles" } },
 }
+
+-- (2.1.84, the feature bar -- the user's pick A of the switches sketch, 2026-11-24, docs/plans/
+-- config-switches-sidelist.md: "one bar on top of every tab that is a feature", in place of the three places a
+-- feature's switch stood in: the page's header, a tab's first row, a row inside a frame's own settings) a tab's own
+-- switch: [page][tab] = the setting -- its R line stays (a search finds it, a reset reaches it), its row is not made:
+-- the bar on top of the tab is its place (Core/Config.lua's CONFIG.Bar). A tab not named here shows its page's own
+-- switch there (the page's `module`), or no bar at all.
+do
+	local UF, NP, AB = "UIModifications.qol_UnitFrames", "UIModifications.qol_Nameplates", "ActionBars.!enabled"
+	local GF = "GroupFrames.!enabled"
+	L.bars = {
+		UnitGroupFrames = { ["player:element"] = UF, ["target:element"] = UF, ["focus:element"] = UF,
+			["pet:element"] = UF, ["party:element"] = GF, ["raid:element"] = GF,
+			["personal:element"] = "PersonalDisplay.!enabled" },
+		Nameplates = { ["enemies:element"] = NP, ["npcs:element"] = NP, ["friendly:element"] = NP,
+			["objects:element"] = "Sparkles.!enabled" },
+		ActionBars = { ["actionbars:element"] = AB, ["menubags:element"] = AB, ["xprep:element"] = AB,
+			["swing:element"] = "SwingTimers.!enabled" },
+		Minimap = { ["services:element"] = "Services.!enabled" },
+		BarsMeters = { ["Damage Meter"] = "Meter.!enabled" },
+		Buffs = { ["Your Buffs"] = "Auras.player" },
+		Chat = { ["Chat Frame"] = "UIModifications.qol_Chat" },
+		Map = { ["Dungeon Info"] = "DungeonInfo.!enabled" },
+		QualityOfLife = { Vendor = "UIModifications.qol_Vendor", Restock = "Restock.!enabled",
+			["Combat Text"] = "CombatText.!enabled", Gains = "Gains.!enabled",
+			["Error Messages"] = "UIModifications.qol_ErrorFilter", Reminders = "Reminders.!enabled",
+			Widgets = "Widgets.!enabled", Mail = "MailRecipients.!enabled", ["Role Picker"] = "RolePicker.!enabled",
+			["FPS / Latency"] = "UIModifications.qol_Stats", Tooltip = "UIModifications.qol_Tooltip" },
+	}
+	-- the bar's one line where the setting's own first sentence is too long for it (the whole text stays the
+	-- switch's tooltip): [the setting] = the line; a page's own switch by "<Module>.!enabled"
+	L.barLines = {
+		["UIModifications.!enabled"] = "MelloUI's interface features: Unit Frames, Nameplates, Chat, Tooltip, Fonts, "
+			.. "Dark Mode, Bar Textures and more.",
+		[UF] = "MelloUI on the unit frames: yours, your target's, focus's and pet's, with everything on them.",
+		[NP] = "Everything MelloUI puts on the game's nameplates: sizes, texts, your debuffs, the cast bar.",
+		[AB] = "MelloUI on the bars: its own action, stance and pet bars, micro menu, bag bar and experience bars.",
+		["MailRecipients.!enabled"] = "A button beside the mailbox's To field lists your characters and your friends' "
+			.. "to pick from.",
+	}
+end
 
 L.pages = {
 	Home = { title = "Home", own = true },
@@ -289,7 +333,8 @@ L.pages = {
 	-- (one look stage G, the user's yes of 2026-10-16 to docs/plans/onelook-designer/bars-audit.md: one designer
 	-- for the bars -- RECOMMENDED.md section 3) the action bars, the micro menu and the bag bar, your cast bar, the
 	-- swing timers, the XP and reputation bars and the game's Cooldown Manager; the painted action bar skin's rows
-	-- are Oldschool's. `locked`: a part with nothing to set yet (listed, not opened: Q11)
+	-- are Oldschool's. `locked`: a part with nothing to set yet (2.1.84: left out of the Parts list; with `listed`
+	-- kept there, dimmed -- its line says where its settings are)
 	ActionBars = { title = "Bars", icon = "module:ActionBarPanel", set = "page_bars", designer = true,
 		flavour = "Your bars: pick one, click a part of it, change it.",
 		-- (0.19.9) MelloUI's own Keybind Mode in the header (its button: Core/Config.lua KEYBIND_MODE)
@@ -334,8 +379,8 @@ L.pages = {
 		elements = {
 			{ key = "minimap", label = "Minimap", line = "The map, its size and its border",
 				parts = { { key = "coords", label = "Coordinates" }, { key = "border", label = "Border" },
-				{ key = "route", label = "Route trail", locked = "Its settings: Route (Quests and travel)" },
-				{ key = "marks", label = "Objective marks", locked = "Its settings: Quest List, its Map tab" } } },
+				{ key = "route", label = "Route trail", locked = "Its settings: Route (Quests and travel)", listed = true },
+				{ key = "marks", label = "Objective marks", locked = "Its settings: Quest List, its Map tab", listed = true } } },
 			{ key = "services", label = "Services", module = "Services", line = "The Services bar under the map",
 				parts = { { key = "button", label = "Services button" }, { key = "tray", label = "Tray" } } },
 		} },
@@ -372,14 +417,35 @@ L.pages = {
 	Map = { title = "Map", icon = "Interface\\Icons\\INV_Misc_Map_01", set = "page_map", module = "Map",
 		tabs = { "Map", "Dungeon Info" } },
 	-- (1.2.4, the configurator shell; the user, 2026-10-27: "11 tabs is fine, build the Quality of Life page") the
-	-- small helpers one page, in the sketch's order: Automation's tabs (one look stage H: the vendor's repairs and
-	-- sales, the restock list, the quests' automatic accept and hand-in), Screen Text's (the notices, the floating
-	-- combat numbers, Gains, the red error messages), Reminders & Widgets' and the tooltip's. No header switch: the
-	-- page holds many modules, each tab's first row its module's switch
-	QualityOfLife = { title = "Quality of Life", icon = "module:Vendor", set = "page_automation",
-		flavour = "The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip.",
-		tabs = { "Vendor", "Restock", "Quests", "Notices", "Combat Text", "Gains", "Error Messages", "Reminders", "Widgets",
-			"Role Picker", "Mail", "FPS / Latency", "Tooltip" } },
+	-- small helpers one page: Automation's (one look stage H: the vendor's repairs and sales, the restock list, the
+	-- quests' automatic accept and hand-in), Screen Text's (the notices, the floating combat numbers, Gains, the red
+	-- error messages), Reminders & Widgets' and the tooltip's.
+	-- (2.1.84; the user's pick A of the Quality of Life sketch, 2026-11-24: "Your recomendation" -- docs/plans/
+	-- configurator-points-3-7.md) four tabs for the twelve it had: a group each, one scroll with a block per helper
+	-- under the helper's own head -- its switch (the layout's `bars`), its name and one line (`blockBars`) -- the way
+	-- a frame's tab holds its parts: a designer of groups. "Jump to" lists a group's helpers (`partsLabel`; none for
+	-- a group of one). A helper's `tab` is the name its R lines, the bars and the /mello words know it by; `line`
+	-- what a helper without a switch of its own says of itself
+	QualityOfLife = { title = "Quality of Life", icon = "module:Vendor", set = "page_automation", designer = true,
+		partsLabel = "Jump to:", blockBars = true,
+		flavour = "The small helpers, in four groups: what MelloUI does for you, what it puts on screen, your reminders and widgets, and the tooltip.",
+		elements = {
+			{ key = "automation", label = "Automation", parts = {
+				{ key = "vendor", label = "Vendor", tab = "Vendor" }, { key = "restock", label = "Restock", tab = "Restock" },
+				{ key = "quests", label = "Quests", tab = "Quests", line = "Accepts and hands in quests for you." },
+				{ key = "rolepicker", label = "Role Picker", tab = "Role Picker" },
+				{ key = "mail", label = "Mail", tab = "Mail" } } },
+			{ key = "screen", label = "On screen", parts = {
+				{ key = "notices", label = "Notices", tab = "Notices",
+					line = "MelloUI's own notices: on screen, in chat, and their sound." },
+				{ key = "combattext", label = "Combat Text", tab = "Combat Text" },
+				{ key = "gains", label = "Gains", tab = "Gains" },
+				{ key = "errors", label = "Error Messages", tab = "Error Messages" } } },
+			{ key = "reminders", label = "Reminders and widgets", parts = {
+				{ key = "reminders", label = "Reminders", tab = "Reminders" },
+				{ key = "widgets", label = "Widgets", tab = "Widgets" },
+				{ key = "stats", label = "FPS / Latency", tab = "FPS / Latency" } } },
+			{ key = "tooltip", label = "Tooltip", parts = { { key = "tooltip", label = "Tooltip", tab = "Tooltip" } } } } },
 	VoiceOver = { title = "Voice Over", icon = "module:VoiceOver", set = "page_voice", module = "VoiceOver",
 		tabs = { "Reading", "Voices", "Sound Packs", "Widget" } },
 	CustomSounds = { title = "Custom Sounds", icon = "module:CustomSounds", set = "page_sounds", module = "CustomSounds",
@@ -399,10 +465,10 @@ L.words = {
 	qualityoflife = { "QualityOfLife" },
 	qol = { "QualityOfLife" },
 	dungeoninfo = { "Map", "Dungeon Info" },   -- (Suggestion 1 point 9: a tab of Map)
-	automation = { "QualityOfLife", "Vendor" },
-	screentext = { "QualityOfLife", "Notices" },
+	automation = { "QualityOfLife", "automation:element" },   -- (2.1.84: Quality of Life's four group tabs)
+	screentext = { "QualityOfLife", "screen:element" },
 	reminders = { "QualityOfLife", "Reminders" },
-	remindersandwidgets = { "QualityOfLife", "Reminders" },
+	remindersandwidgets = { "QualityOfLife", "reminders:element" },
 	tooltip = { "QualityOfLife", "Tooltip" },
 	fade = { "Fader", "General" },
 	animation = { "Animations" },   -- (2.1.20)
@@ -800,9 +866,11 @@ function L.Define(R, Link)
 	-- (1.2.4: the portraits' alone -- asleep while the party wears the raid frames)
 	R("UnitGroupFrames", "party:element", "Layout", "UnitFrames.partyFlip", { when = { all = { UF,
 		{ key = "GroupFrames.partyStyle", value = "party" } }, line = "Only with Party Frames (Portraits), not the painted unit frames" } })
-	UGF({ "player:combat", "target:combat", "focus:combat", "pet:combat" }, "Look", "UnitFrames.hideCombatGlow", { when = UF, plus = "Party portraits" })
-	UGF({ "player:status", "pet:status" }, "Look", "UnitFrames.hideStatusGlow", { when = UF })
-	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF })
+	-- (2.1.84; the user, 2026-11-24, of the designers' Parts list: "Yes show them") `asShow`: the toggle hides its
+	-- part -- beside a stage the part's Show in the Parts list is this setting, mirrored, and it has no row there
+	UGF({ "player:combat", "target:combat", "focus:combat", "pet:combat" }, "Look", "UnitFrames.hideCombatGlow", { when = UF, plus = "Party portraits", asShow = true })
+	UGF({ "player:status", "pet:status" }, "Look", "UnitFrames.hideStatusGlow", { when = UF, asShow = true })
+	UGF({ "player:pvp", "target:pvp", "focus:pvp" }, "Look", "UnitFrames.hidePvPBadge", { when = UF, asShow = true })
 	-- (1.2.4, fr-05; the user, 2026-10-28: "the option to hide the incoming heals numbers on my own Player Unitframe")
 	UGF({ "player:portrait" }, "Look", "UnitFrames.hideHealNumbers", { when = UF })
 	-- (2.1.61: Druid Forms on the player frame -- in every look, the painted unit frames too. In General, not beside
@@ -1533,6 +1601,9 @@ function L.Define(R, Link)
 	-- Battle.net friends") its own tab
 	R("QualityOfLife", "Mail", "General", "MailRecipients.!enabled", { name = "Mail Recipients" })
 	R("QualityOfLife", "Mail", "General", "MailRecipients.bnet")
+	-- (2.1.84, the list redone: the last names written to; the game's own names for a letter while one is typed)
+	R("QualityOfLife", "Mail", "General", "MailRecipients.recent")
+	R("QualityOfLife", "Mail", "General", "MailRecipients.found")
 	R("QualityOfLife", "Mail", "General", "MailRecipients.subject")
 	R("QualityOfLife", "Reminders", "General", "Reminders.!enabled", { name = "Reminders" })
 	R("QualityOfLife", "Reminders", "General", "Reminders.remind_mail")

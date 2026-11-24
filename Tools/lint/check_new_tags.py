@@ -168,6 +168,17 @@ NOT_OPTIONS = {
                                         "New tag, the language's, since 2026-10-20)",
     "Core/Config.lua:W.Switch(head)": "a page's module switch, moved from the page's header to the window's painted "
                                       "header in 1.2.4 (its New tag the page's own)",
+    "Core/Config.lua:W.Switch(page.partsOver)": "a line's Show in the designers' Parts list (2.1.84, one scroll): the "
+                                                "part's own Show on the stage, the setting its block's Show row sets "
+                                                "-- a second control for it, no option of its own",
+    "Core/Config.lua:W.Switch(bar)": "the feature bar's switch (2.1.84): the tab's own switch -- the setting its row "
+                                     "set, or the page's module switch that stood in the header -- in its one place, "
+                                     "no option of its own",
+    "Core/Config.lua:EditBox(sec.importName)": "the Profiles page's Import card (2.1.84): the name the Import as "
+                                               "button beside it stores the pasted string under -- that button's "
+                                               "field, no option of its own",
+    "Core/Config.lua:Button(link)": "a What's new line's link on Home (2.1.84): it opens the setting the line is about, "
+                                    "no option of its own",
     "Core/Config.lua:Button(cog)": "a switch's cog (1.2.4, pick B): opens the panel of its sub-settings, sets nothing",
     "Core/Config.lua:Button(catcher)": "the click outside the cog's panel that closes it (1.2.4), sets nothing",
 }

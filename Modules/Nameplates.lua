@@ -412,7 +412,6 @@ do
 			copy.parent = o and o.parent and M.KindKey(o.parent, kind) or nil
 			copy.name = LABEL[kind] .. ": " .. tostring(o and o.name or key)
 			copy.desc = DESC[key] or (o and o.desc)
-			copy.new = "2.1.83"
 			M.options[#M.options + 1] = copy
 			M.defaults[copy.key] = M.defaults[key]
 		end
@@ -420,8 +419,7 @@ do
 		-- kind's own (M.LayFull, below)
 		local full = M.KindKey("hideFull", kind)
 		M.options[#M.options + 1] = { type = "toggle", key = full, name = LABEL[kind] .. ": Hide At Full Health",
-			desc = "At full health only the name shows. The health bar shows as soon as they are hurt, and goes again once they are back at full health.",
-			new = "2.1.83" }
+			desc = "At full health only the name shows. The health bar shows as soon as they are hurt, and goes again once they are back at full health." }
 		M.defaults[full] = false
 		M.BASE_KEY[full] = { "hideFull", kind }
 	end

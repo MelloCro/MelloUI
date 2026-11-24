@@ -35,6 +35,12 @@ Lang:Add("zhCN", {
 	["Poison"] = "中毒", -- draft
 	-- QuestMoments
 	["Item Picked Up"] = "拿起物品", -- draft
+	-- GroupMoment
+	["MelloUI Players"] = "MelloUI 玩家", -- draft
+	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "让队伍里的其他 MelloUI 玩家知道你也在用 MelloUI。它的动画在“动画”页面中，当其中一人加入你时显示。", -- draft
+	["Spot a fellow MelloUI player the moment they join."] = "在 MelloUI 同伴加入的那一刻认出他们。", -- draft
+	["MelloUI Player Joins"] = "MelloUI 玩家加入", -- draft
+	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "当使用 MelloUI 的玩家加入你的队伍时，你们的头像会在 MelloUI 印章处短暂相遇并显示其名字，随后飞入其队伍框体。每位玩家六小时内一次。", -- draft
 	-- UIModifications
 	["UI Modifications"] = "界面修改", -- draft
 	["The painted reskin and most of MelloUI's interface changes: fonts, Dark Mode, chat, tooltips, buffs, bar textures and more."] = "手绘皮肤以及 MelloUI 对界面的大部分改动：字体、暗色模式、聊天、说明条、增益、条材质等。", -- draft
@@ -1823,10 +1829,6 @@ Lang:Add("zhCN", {
 	["Minimal"] = "极简", -- draft
 	["Channel List As Icons"] = "频道列表仅显示图标", -- draft
 	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "极简聊天视图的频道列表只显示图标，为消息留出更多空间。将鼠标指向图标可查看名称。列表边缘的小把手也能实现同样效果。", -- draft
-	["One Line Per Message"] = "每条消息一行", -- draft
-	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "极简聊天视图将每条消息显示在一行：时间、频道、名字和内容，顺序与游戏自带聊天相同。关闭：名字显示在消息上方。", -- draft
-	["Tab Switches Channel"] = "Tab 切换频道", -- draft
-	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "输入时按 Tab 会切换到下一个可以发言的聊天：说、小队、团队、副本、公会，然后是你的频道。Shift-Tab 返回上一个，已输入的文字保留。名字提示、密语对象和斜杠命令仍使用它们自己的 Tab。", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "聊天框背景：暗色、游戏自带、无，或由 SharedMedia 插件共享的背景。", -- draft
 	["Set The Background Opacity"] = "统一背景不透明度", -- draft
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "所有聊天窗口使用相同的背景不透明度。关闭：各自保留自己的。", -- draft
@@ -1856,6 +1858,10 @@ Lang:Add("zhCN", {
 	["Removes the brackets around the short tags."] = "去掉简短标签周围的括号。", -- draft
 	["Chat Timestamps"] = "聊天时间戳", -- draft
 	["The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it."] = "每行聊天前的时间，或选“无”不显示时间。这是游戏自己的“聊天时间戳”设置，两种聊天视图都随之变化。", -- draft
+	["One Line Per Message"] = "每条消息一行", -- draft
+	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "极简聊天视图将每条消息显示在一行：时间、频道、名字和内容，顺序与游戏自带聊天相同。关闭：名字显示在消息上方。", -- draft
+	["Tab Switches Channel"] = "Tab 切换频道", -- draft
+	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "输入时按 Tab 会切换到下一个可以发言的聊天：说、小队、团队、副本、公会，然后是你的频道。Shift-Tab 返回上一个，已输入的文字保留。名字提示、密语对象和斜杠命令仍使用它们自己的 Tab。", -- draft
 	["Whisper Popup Window"] = "悄悄话弹窗", -- draft
 	["Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat."] = "每条悄悄话为对方打开一个小窗口，带回复框。悄悄话仍会显示在聊天中。", -- draft
 	-- CombatText
@@ -2208,7 +2214,6 @@ Lang:Add("zhCN", {
 	["The look"] = "外观", -- draft
 	["Frames and bars"] = "框体和条", -- draft
 	["Quests and travel"] = "任务和旅行", -- draft
-	["Quality of life"] = "便捷功能", -- draft
 	["Bars 1-8, stance, pet, possess, totem"] = "动作条1-8、姿态、宠物、附身、图腾", -- draft
 	["Backdrops And Shadows"] = "底板与阴影", -- draft
 	["Button"] = "按钮", -- draft
@@ -2261,7 +2266,6 @@ Lang:Add("zhCN", {
 	["Tray"] = "托盘", -- draft
 	["MelloUI Minimap"] = "MelloUI小地图", -- draft
 	["The game's nameplates: pick a kind, click a part of it, change it."] = "游戏的姓名板：选一种，点击它的某个部分，修改它。", -- draft
-	["Enemies' and NPCs' plates"] = "敌人和NPC的姓名板", -- draft
 	["Enemies"] = "敌人", -- draft
 	["Health bar"] = "生命条", -- draft
 	["Health number"] = "生命值数字", -- draft
@@ -2273,7 +2277,6 @@ Lang:Add("zhCN", {
 	["Your debuffs"] = "你的减益效果", -- draft
 	["The game's auras"] = "游戏的光环", -- draft
 	["Swing badge"] = "挥击徽章", -- draft
-	["A class medallion over friendly players' names, in the open world"] = "野外友方玩家名字上方的职业徽章", -- draft
 	["Friendly players"] = "友方玩家", -- draft
 	["Medallion"] = "徽章", -- draft
 	["Role ring"] = "职责圆环", -- draft
@@ -2282,8 +2285,8 @@ Lang:Add("zhCN", {
 	["Oldschool"] = "怀旧", -- draft
 	["The painted reskin's own settings, kept here until the painted look becomes its own addon."] = "手绘换肤自己的设置，在手绘外观成为独立插件之前保留在这里。", -- draft
 	["Profiles"] = "配置", -- draft
+	["Automation"] = "自动化", -- draft
 	["Quality of Life"] = "便捷功能", -- draft
-	["The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip."] = "各种小帮手，各占一个标签：商人、你的补货清单和自动任务、屏幕中央的文字、提醒和小部件、帧数 / 延迟和说明条。", -- draft
 	["Every frame: the debuff glow"] = "所有框体：减益效果光晕", -- draft
 	["All frames"] = "所有框体", -- draft
 	["Unit & Group Frames"] = "单位和小队框体", -- draft
@@ -2476,52 +2479,24 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
-	["MelloUI Player Joins"] = "MelloUI 玩家加入", -- draft
-	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "当使用 MelloUI 的玩家加入你的队伍时，你们的头像会在 MelloUI 印章处短暂相遇并显示其名字，随后飞入其队伍框体。每位玩家六小时内一次。", -- draft
-	["MelloUI Players"] = "MelloUI 玩家", -- draft
-	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "让队伍里的其他 MelloUI 玩家知道你也在用 MelloUI。它的动画在“动画”页面中，当其中一人加入你时显示。", -- draft
-	["Spot a fellow MelloUI player the moment they join."] = "在 MelloUI 同伴加入的那一刻认出他们。", -- draft
-	["%s uses MelloUI too"] = "%s 也在用 MelloUI", -- draft
-	["%s and %s use MelloUI too"] = "%s 和 %s 也在用 MelloUI", -- draft
-	["%s, %s and %s use MelloUI too"] = "%s、%s 和 %s 也在用 MelloUI", -- draft
-	["%d players in your group use MelloUI"] = "队伍中有 %d 名玩家在用 MelloUI", -- draft
-	["Now in your group"] = "现在在你的队伍中", -- draft
-	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "未安装 Questie 时：之前在地图和小地图上没有标记和区域的任务现在会显示。", -- draft
-	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI 的任务标记开启时，会保持游戏选项 Show Quest POIs & Blobs 开启：只有开启它，游戏才会给出所有任务地点。", -- draft
-	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "手柄：MelloUI 聊天中的链接和名字不再打开游戏自带的窗口，此前这会导致手柄按键被阻止。", -- draft
-	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "手柄：MelloUI 在游戏拾取、拆分堆叠和邮件窗口中的按钮不再被手柄光标选中。", -- draft
-	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "“最近的可交任务”不再从你自己的地图标记、指南的步骤或跑尸路线上抢走导航。", -- draft
+	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "设置窗口：框体的标签页现在在一个滚动列表中显示其所有部件的设置。点击某个部件即可跳到它的设置。", -- draft
+	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "设置窗口：部件在预览旁排成列表，可以隐藏的部件带有“显示”开关。", -- draft
+	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "单位框体：PvP 徽章、状态光效和战斗光效通过部件列表中的“显示”开关来显示或隐藏。", -- draft
+	["Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does."] = "设置窗口：每项功能的开关现在是其标签页顶部的一条栏，带有名称和作用说明。", -- draft
+	["Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it."] = "设置窗口：侧边列表一次显示所有页面，并用圆点表示开启、部分开启或关闭。主页、编辑布局、配置、插件和支持者是列表上方的图标按钮。", -- draft
+	["Home: a What's new line with an arrow opens the setting it is about. Back to Home brings you back."] = "主页：带箭头的“更新内容”条目会打开它所说的设置。“返回主页”可以回来。", -- draft
+	["Quality of Life: four tabs in place of twelve, each helper under its own switch. Jump to takes you to one."] = "便利功能：十二个标签页合为四个，每个助手都在自己的开关下面。“跳转到”可以直达某个助手。", -- draft
+	["Profiles: four cards. Import says what a string holds and the screen it was made for before you take it."] = "配置：四张卡片。导入会在你接受之前说明字符串包含什么，以及它是为哪种屏幕制作的。", -- draft
+	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "设置窗口：框体和部件自己的标题行现在更醒目，其下的分区用小标签标出。", -- draft
+	["Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To."] = "Mail Recipients：已重做。自定义分组、你的角色的专业、最近收件人，以及在收件人栏输入时即时搜索。", -- draft
+	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients：已删除的角色会自动从列表中移除；未知职业显示为可点击的 ?，不再是白色名字。", -- draft
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "姓名板：友方 NPC 和友方玩家有了各自的预览、位置和大小。在“敌人”下的设置不再改变友方姓名板。", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "友方姓名板：“满血时隐藏”在其受伤之前只显示名字。", -- draft
-	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "专业冷却：共享冷却的配方（如转化）在冷却结束时只提示一次。", -- draft
-	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
-	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "地图：关闭 MelloUI 的地图时，没有 Questie 的情况下游戏自带的世界地图也会显示 MelloUI 的任务区域。", -- draft
-	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "服务栏和小地图边框：战斗中插件的小地图按钮变化时不再出现被阻止的操作。", -- draft
-	["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "手柄：使用简洁聊天视图时，背景不透明度不再改动游戏隐藏的聊天窗口。", -- draft
-	["French: many more settings and messages are translated (thanks to woofix)."] = "法语：更多设置和消息已翻译（感谢 woofix）。", -- draft
-	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "没有 Questie 时的地图和小地图：你的任务会以 MelloUI 的样式显示游戏自带的任务区域和地点。", -- draft
-	["Easter egg added."] = "新增了一个彩蛋。", -- draft
-	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "伤害统计：关闭 MelloUI 的伤害统计后，游戏自带的伤害统计可以再次在 Edit Layout 中移动。", -- draft
-	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "姓名板：只显示名字的友方姓名板在鼠标悬停时不再出现姓名板边框。", -- draft
-	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "聊天：其他插件在后台使用的频道不再以页签形式出现在极简视图中。", -- draft
-	["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "聊天：“每条消息一行”让极简视图把时间、频道、名字和内容放在同一行。", -- draft
-	["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "聊天：“Tab 切换频道”让你在输入时切换到下一个可以发言的聊天。", -- draft
-	["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "聊天：频道简称现在适用于所有游戏语言，两种聊天视图都会缩短频道名称。", -- draft
-	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "地图：Questie 没有位置数据的任务会以 MelloUI 的样式显示游戏自带的任务区域和标记。", -- draft
-	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "个人显示：在“个人”页签中有了自己的预览。拖动施法条、文字、挥击徽章或冷却图标即可移动它们。", -- draft
-	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "地图：在战场中，据点、哨塔和营地会显示由哪一方控制，与游戏自带的地图一样。", -- draft
-	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "姓名板设计器：生命值数字和百分比可分别移动和调整大小，名字也可设置大小。", -- draft
-	["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "姓名板：当百分比位于条旁时，挥击徽章会移到百分比之后。", -- draft
-	["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur：其光效开启时，拾取闪光的采集闪烁会为它让路。", -- draft
-	["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2：每种矿石和每种草药在地图和小地图上都有自己的图标。", -- draft
-	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "姓名板设计器：预览与实际姓名板外观一致，包括怀旧框架套装和暗色模式。", -- draft
-	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise：其法力、怒气和能量填充现在会显示在 MelloUI 的动作条上。", -- draft
-	["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "姓名板：生命值文字大小可让生命值数字变小，百分比在条旁让数字留在条内。", -- draft
-	["Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them."] = "姓名板设计器：将生命值数字拖到姓名板上的任意位置、调整大小或隐藏。", -- draft
-	["Personal Display: Number On The Bars, Percent Beside shows your health and power amounts in the middle of the bars."] = "个人显示：数字在条上，百分比在旁，会在条中间显示你的生命值和能量数值。", -- draft
-	["Personal Display: Text Size and Text Colour for all of its text."] = "个人显示：所有文字的大小和颜色。", -- draft
-	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "地图：“仅追踪的任务”和“仅聚焦的任务”会立即改变已打开的地图。", -- draft
-	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "中文文本：标题和小标题恢复正常大小，中文字符不再显示为方框。", -- draft
+	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "“最近的可交任务”不再从你自己的地图标记、指南的步骤或跑尸路线上抢走导航。", -- draft
+	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "手柄：MelloUI 聊天中的链接和名字不再打开游戏自带的窗口，此前这会导致手柄按键被阻止。", -- draft
+	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "手柄：MelloUI 在游戏拾取、拆分堆叠和邮件窗口中的按钮不再被手柄光标选中。", -- draft
+	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "未安装 Questie 时：之前在地图和小地图上没有标记和区域的任务现在会显示。", -- draft
+	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI 的任务标记开启时，会保持游戏选项 Show Quest POIs & Blobs 开启：只有开启它，游戏才会给出所有任务地点。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -2660,13 +2635,11 @@ Lang:Add("zhCN", {
 	["Delete"] = "删除", -- draft
 	["share string of '%s' (%d characters)"] = "“%s”的分享字符串（%d个字符）", -- draft
 	["Could not share '%s': %s."] = "无法分享“%s”：%s。", -- draft
-	["This character: %s      Default on a fresh install: %s"] = "此角色：%s      全新安装时的默认值：%s", -- draft
 	["Profile '%s' saved."] = "配置“%s”已保存。", -- draft
-	["Type a name for the imported profile first, then click Import as."] = "先为导入的配置输入一个名字，然后点击“导入为”。", -- draft
-	["paste a MelloUI profile string for '%s'"] = "粘贴“%s”的MelloUI配置字符串", -- draft
+	["No profiles yet. Type a name above and save the current settings."] = "还没有配置。在上方输入名字并保存当前设置。", -- draft
+	["Share"] = "分享", -- draft
 	["Not imported: %s."] = "未导入：%s。", -- draft
 	["Profile '%s' imported (%d settings). Load it from the list to use it."] = "配置“%s”已导入（%d项设置）。从列表中载入即可使用。", -- draft
-	["No profiles yet. Type a name above and save the current settings."] = "还没有配置。在上方输入名字并保存当前设置。", -- draft
 	["Search options"] = "搜索选项", -- draft
 	["Nothing found. Try another word."] = "什么都没找到。换个词试试。", -- draft
 	["%d more. Type more letters to narrow it down."] = "还有%d项。多输入几个字缩小范围。", -- draft
@@ -2877,10 +2850,10 @@ Lang:Add("zhCN", {
 	["Your target"] = "你的目标", -- draft
 	["The Nameplates switch is off: the game's own plate, none of MelloUI's parts on it."] = "姓名板开关已关闭：游戏自己的姓名板，上面没有 MelloUI 的部分。", -- draft
 	["Click a part to pick it; its settings open beside it."] = "点击一个部分选中它；它的设置在旁边打开。", -- draft
-	["Its buffs"] = "其增益", -- draft
 	["Raid marker"] = "团队标记", -- draft
-	["Elite icon"] = "精英图标", -- draft
 	["Level badge"] = "等级徽章", -- draft
+	["Its buffs"] = "其增益", -- draft
+	["Elite icon"] = "精英图标", -- draft
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "光环自己的图标，时间以扫动显示。", -- draft
 	["Draining Icon"] = "消耗图标", -- draft
@@ -3015,12 +2988,16 @@ Lang:Add("zhCN", {
 	["In a fight"] = "战斗中", -- draft
 	-- Core/LevelCard.lua
 	["Route after the fight"] = "战斗结束后设置路线", -- draft
+	-- Core/GroupMoment.lua
+	["%s uses MelloUI too"] = "%s 也在用 MelloUI", -- draft
+	["%s and %s use MelloUI too"] = "%s 和 %s 也在用 MelloUI", -- draft
+	["%s, %s and %s use MelloUI too"] = "%s、%s 和 %s 也在用 MelloUI", -- draft
+	["%d players in your group use MelloUI"] = "队伍中有 %d 名玩家在用 MelloUI", -- draft
+	["Now in your group"] = "现在在你的队伍中", -- draft
 	-- Core/Config.lua
 	["Loading…"] = "载入中…", -- draft
-	["Share"] = "分享", -- draft
 	["Set default"] = "设为默认", -- draft
 	["built in"] = "内置", -- draft
-	["A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."] = "配置是每个模块的每项设置。每个角色使用自己的配置：新角色以最后使用的配置的副本开始，你的更改会在游戏过程中保存进去，每次登出和 /reload 时都会保存。载入会给此角色换上另一个配置（再次载入它自己的配置会回到上次保存的状态）；将当前保存为会为它新建一个。配置不包括你的暗色模式以及属于角色的内容：他们知道的飞行点、MelloUI 借用的游戏设置以及只做一次的步骤。标为默认的配置会在 MelloUI 完全没有设置时应用，例如全新安装。分享会给出一段可传给他人的文本，导入为可导入一段。MelloUI 自带的配置始终在这里。", -- draft
 	["Save current as"] = "将当前保存为", -- draft
 	["Import as"] = "导入为", -- draft
 	["Plays the sound you picked."] = "播放你选择的音效。", -- draft
@@ -3109,6 +3086,7 @@ Lang:Add("zhCN", {
 	["Compatibility"] = "兼容性", -- draft
 	["This profile's action bars, experience bar, bags and micro menu follow MelloUI's Edit Mode layout, which this character does not use yet. Use it on this character too?"] = "此配置的动作条、经验条、背包和微型菜单遵循 MelloUI 的编辑模式布局，而此角色尚未使用它。也在此角色上使用吗？", -- draft
 	["credits thanks github curseforge bug report problem issue links voice pack slash commands"] = "致谢 感谢 链接 错误 报告 问题 语音包 命令 credits thanks github curseforge bug report issue voice pack slash commands", -- draft
+	["paste a MelloUI profile string for '%s'"] = "粘贴“%s”的MelloUI配置字符串", -- draft
 	-- kept: Core/SupportersHall.lua
 	["code"] = "代码", -- draft
 	["translations"] = "翻译", -- draft
@@ -3119,8 +3097,6 @@ Lang:Add("zhCN", {
 	["Back to the game's place"] = "恢复到游戏的位置", -- draft
 	["The game's scores, timers and objectives at the top of the screen (battlegrounds, world events)."] = "屏幕顶部游戏的比分、计时和目标（战场、世界事件）。", -- draft
 	["Totem & minion timers"] = "图腾与仆从计时", -- draft
-	-- kept: Modules/MailRecipients.lua
-	["online"] = "在线", -- draft
 	-- kept: Modules/Sparkles.lua
 	["Mine"] = "我的", -- draft
 	-- kept: Modules/CustomSounds.lua
@@ -3173,6 +3149,7 @@ Lang:Add("zhCN", {
 -- stale: ["A batch you craft: which one of how many, a ring for each item, and Stop on hover."] = "你正在批量制造：第几个、共几个，每件物品一个圆环，悬停时显示停止。", -- draft
 -- stale: ["A button on the bag window that frees a slot: it throws away the grey or white junk item worth least (at a vendor it sells it). Never food, drink, potions, scrolls, conjured items, crafting materials, quest items, reagents, ammunition, keys, white gear or anything on your Restock list. A white item asks first."] = "背包窗口上腾出栏位的按钮：丢掉价值最低的灰色或白色垃圾物品（在商人处则出售）。绝不丢食物、饮料、药水、卷轴、魔法制造的物品、制造材料、任务物品、施法材料、弹药、钥匙、白色装备或你补货列表上的任何东西。白色物品会先询问。", -- draft
 -- stale: ["A class medallion above every party member's friendly nameplate, with a ring in their role's colour. In the open world; inside instances the game keeps friendly nameplates to itself."] = "每个队友友方姓名板上方一个职业徽章，带职责颜色的圆环。仅限野外；在副本中游戏不让插件使用友方姓名板。", -- draft
+-- stale: ["A class medallion over friendly players' names, in the open world"] = "野外友方玩家名字上方的职业徽章", -- draft
 -- stale: ["A coloured ring around the medallion for the member's assigned role: green healer, blue tank, red damage. Only when the group has roles set (the group finder sets them; a party can set them by hand)."] = "徽章周围按成员指定职责着色的圆环：绿色治疗、蓝色坦克、红色伤害。仅当队伍设置了职责时（队伍查找器会设置；小队可以手动设置）。", -- draft
 -- stale: ["A cooldown's icon lights up while you press the action button with its spell, as the button does (Action Buttons)."] = "按下放有该法术的动作按钮时，冷却图标像按钮一样亮起（动作按钮）。", -- draft
 -- stale: ["A count going up rolls over to its new number as a soft light runs along its line; a finished objective gets a tick drawn in its dash's place; a finished quest's last count rolls first, then a light runs over its title, its mark turns over to the hand-in ? and its turn-in line comes in. Off: the lines change at once, with their dashes. Not with Reduce Motion."] = "计数增加时翻到新数字，同时一道柔光沿该行划过；完成的目标在短横线处画上对勾；完成的任务先翻动最后一个计数，然后一道光扫过标题，标记翻转为交任务的?，交任务行随之出现。关闭：各行立即改变，保留短横线。“减少动态效果”开启时不会。", -- draft
@@ -3206,6 +3183,7 @@ Lang:Add("zhCN", {
 -- stale: ["A preview of the bar's layout. Changes show after a /reload."] = "条布局的预览。改动在 /reload 后显示。", -- draft
 -- stale: ["A profession cooldown ready again (a transmute, mooncloth, the salt shaker). MelloUI learns it when you open that profession."] = "某个专业冷却再次就绪（转化、月布、盐瓶）。打开该专业时MelloUI会记下它。", -- draft
 -- stale: ["A profile is a copy of every setting of every module. It leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once; loading a profile never touches those. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Load asks before it replaces your settings. Profiles you save here are kept with your settings; Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."] = "配置是所有模块所有设置的副本。它不包括你的暗色模式以及属于你角色的内容：他们知道的飞行点、MelloUI借用的游戏设置以及只做一次的步骤；载入配置从不触碰这些。标为默认的那个会在MelloUI完全没有设置启动时套用，例如新安装时。载入会在替换你的设置前询问。你在这里保存的配置与设置一起保留；“分享”生成一段字符串用于转交，“导入为”则导入一个。MelloUI自带的配置始终在这里。", -- draft
+-- stale: ["A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."] = "配置是每个模块的每项设置。每个角色使用自己的配置：新角色以最后使用的配置的副本开始，你的更改会在游戏过程中保存进去，每次登出和 /reload 时都会保存。载入会给此角色换上另一个配置（再次载入它自己的配置会回到上次保存的状态）；将当前保存为会为它新建一个。配置不包括你的暗色模式以及属于角色的内容：他们知道的飞行点、MelloUI 借用的游戏设置以及只做一次的步骤。标为默认的配置会在 MelloUI 完全没有设置时应用，例如全新安装。分享会给出一段可传给他人的文本，导入为可导入一段。MelloUI 自带的配置始终在这里。", -- draft
 -- stale: ["A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill."] = "可以交的任务会说明谁接收以及在哪里，例如：交任务：格里安·斯托曼，哨兵岭。", -- draft
 -- stale: ["A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached."] = "在游戏追踪器的位置上放一个可用鼠标滚轮滚动的任务追踪器，让每个追踪的任务都能看到。", -- draft
 -- stale: ["A quest with a time limit: a ring for its whole time and the time left."] = "有时间限制的任务：一个表示总时长的圆环和剩余时间。", -- draft
@@ -3284,7 +3262,6 @@ Lang:Add("zhCN", {
 -- stale: ["Attach To The Player Frame"] = "贴附玩家框体", -- draft
 -- stale: ["Attacks that miss you: misses, dodges, parries, blocks, absorbs, resists and immunes."] = "没打中你的攻击：未命中、躲闪、招架、格挡、吸收、抵抗和免疫。", -- draft
 -- stale: ["Attunements"] = "副本准入", -- draft
--- stale: ["Automation"] = "自动化", -- draft
 -- stale: ["BUFFS by spell (yours and your group's)"] = "按法术的增益（你的和你队伍的）", -- draft
 -- stale: ["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "背包窗口：把身上穿着的装备放到 + 格上，会进入一个空格。以前它会重新穿回去。", -- draft
 -- stale: ["Bags by Kind"] = "背包分类", -- draft
@@ -3323,10 +3300,14 @@ Lang:Add("zhCN", {
 -- stale: ["Chat tweaks"] = "聊天调整", -- draft
 -- stale: ["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "手柄聊天：在游戏的环形菜单中选择“聊天”，然后用 LB / RB 切换标签页，用方向键或右摇杆滚动。", -- draft
 -- stale: ["Chat: Chat View (Minimal) -- one dark panel, round tabs on a rail, each line under its sender, channel and time; a row of round buttons below."] = "聊天：聊天视图（极简）——一个深色面板，轨道上的圆形标签，每行在发送者、频道和时间下方；下面一排圆形按钮。", -- draft
+-- stale: ["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "聊天：“每条消息一行”让极简视图把时间、频道、名字和内容放在同一行。", -- draft
 -- stale: ["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "聊天：羊皮纸现在也适用于“游戏窗口”聊天视图，三种皮肤均可：聊天窗口铺上羊皮纸，文字为深色墨水。", -- draft
+-- stale: ["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "聊天：频道简称现在适用于所有游戏语言，两种聊天视图都会缩短频道名称。", -- draft
+-- stale: ["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "聊天：“Tab 切换频道”让你在输入时切换到下一个可以发言的聊天。", -- draft
 -- stale: ["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "聊天：聊天页面上的“聊天时间戳”选项设置游戏自己的聊天时间戳，选“无”即隐藏；极简聊天视图随之变化。", -- draft
 -- stale: ["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "聊天：鼠标停在聊天框上时，右上角会出现复制聊天按钮；它会把该标签的消息打开在可复制的窗口中，每行带有时间。", -- draft
 -- stale: ["Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included."] = "聊天：密语窗口上的“复制”按钮会把整段对话放进一个可复制的窗口，包括链接和长消息。", -- draft
+-- stale: ["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "聊天：其他插件在后台使用的频道不再以页签形式出现在极简视图中。", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles."] = "聊天：消息空间更大：文字更小，聊天和悄悄话窗口更高，行和气泡周围空间更多。", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload."] = "聊天：为你的消息留出更多空间：更小的文字，更高的聊天和密语窗口，行与气泡周围更宽松；/reload 后文字大小保持不变。", -- draft
 -- stale: ["Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too."] = "聊天：在密语窗口中右键点击一个人，可移除该对话或全部对话；它们也会从保存的记录中删除。", -- draft
@@ -3338,6 +3319,7 @@ Lang:Add("zhCN", {
 -- stale: ["Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again."] = "聊天：密语窗口现在也会在登出后保留你与 Battle.net 好友的对话，再次登录后回复仍能发给他们。", -- draft
 -- stale: ["Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open."] = "聊天：密语窗口打开时现在会保持在其他窗口（例如地图和背包）之上。", -- draft
 -- stale: ["Chat: with the Minimal Chat View, the Combat Log tab now shows your fights as they happen, and closing the game's combat log filters no longer dumps old fight lines into it."] = "聊天：使用极简聊天视图时，战斗记录标签页现在会实时显示你的战斗，关闭游戏的战斗记录过滤器也不会再把旧的战斗行倒进来。", -- draft
+-- stale: ["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "中文文本：标题和小标题恢复正常大小，中文字符不再显示为方框。", -- draft
 -- stale: ["Choose how MelloUI starts. Nothing changes until you install, and you can go back right after."] = "选择MelloUI如何开始。安装前什么都不会改变，安装后也可以马上返回。", -- draft
 -- stale: ["Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off."] = "职业和阵营关系颜色、生命条和鼠标提示的位置。深色背景仅在鼠标提示换肤关闭时生效。", -- draft
 -- stale: ["Class icons in portraits"] = "头像中的职业图标", -- draft
@@ -3353,6 +3335,7 @@ Lang:Add("zhCN", {
 -- stale: ["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "配置器：动画、增益和减益效果、地图和支持者在每种外观中都有自己的图标。", -- draft
 -- stale: ["Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page."] = "配置器：单位和小队框体、姓名板、动作条和小地图都变成设计器：选一个框体，再选一个部分，拖动名字和数值；新增自动化页面。", -- draft
 -- stale: ["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "设置窗口：新的“插件”页面列出与 MelloUI 配合的插件：MelloUI 对每个插件做什么、它们的链接、哪项工作由谁负责，以及一个让 MelloUI 不再使用某个插件的开关。", -- draft
+-- stale: ["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "手柄：使用简洁聊天视图时，背景不透明度不再改动游戏隐藏的聊天窗口。", -- draft
 -- stale: ["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "手柄：方向键会跳过窗口的关闭按钮和标签页（B 关闭，LB / RB 切换标签页），用鼠标点击游戏菜单下方的 MelloUI 按钮会关闭菜单。", -- draft
 -- stale: ["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "手柄：游戏的黄色指针不再显示在 MelloUI 窗口之上，按键提示已居中且更易辨认。", -- draft
 -- stale: ["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "冷却计时：战斗中显示数字可在战斗中隐藏游戏的倒计时，扫过暗度可让扫过更暗。", -- draft
@@ -3362,6 +3345,7 @@ Lang:Add("zhCN", {
 -- stale: ["Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too."] = "自定义音效：新的“我的音效”标签页可把任何音效（包括升级和稀有警报）换成 MelloUI 的其他音效、游戏原声、无，或 SharedMedia 音效，也包括你自己的文件。", -- draft
 -- stale: ["Cut the speech off when you change target."] = "更换目标时切断语音。", -- draft
 -- stale: ["Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away."] = "关闭对话时切断语音。默认关闭，这样你走开时NPC还会继续说。", -- draft
+-- stale: ["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "伤害统计：关闭 MelloUI 的伤害统计后，游戏自带的伤害统计可以再次在 Edit Layout 中移动。", -- draft
 -- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "单位框体上的暗色模式：玩家、目标、焦点、宠物、小队、首领和目标的目标。", -- draft
 -- stale: ["Dark Mode: an action button's gold frame for an active stance or a queued spell stays bright, as do its pressed, hover and out-of-range frames; only the plain frames darken."] = "暗色模式：动作按钮在姿态激活或法术排队时的金色边框保持明亮，按下、鼠标悬停和超出距离时的边框也是如此；只有普通边框会变暗。", -- draft
 -- stale: ["Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken."] = "暗色模式：金色文字不再随之变暗，例如游戏菜单中的 MelloUI 按钮、聊天的标题和地图上的任务计数；只有框架和背景会变暗。", -- draft
@@ -3401,6 +3385,7 @@ Lang:Add("zhCN", {
 -- stale: ["Dungeon Info: with DungeonJournal installed, its loot lists show too."] = "地下城信息：安装 DungeonJournal 后也显示其掉落列表。", -- draft
 -- stale: ["Each frame's height (the game's raid frame: 36)."] = "每个框体的高度（游戏的团队框体：36）。", -- draft
 -- stale: ["Each frame's width (the game's raid frame: 72)."] = "每个框体的宽度（游戏的团队框体：72）。", -- draft
+-- stale: ["Easter egg added."] = "新增了一个彩蛋。", -- draft
 -- stale: ["Edit Layout opened from the configurator brings you back to your page when you leave it."] = "从配置器打开的 Edit Layout，退出时会回到你原来的页面。", -- draft
 -- stale: ["Edit Layout, bags and groups: more windows move without the reskin; quality gems and junk on every slot; party and raid frames keep their own places and indicators."] = "编辑布局、背包和队伍：不换肤也能移动更多窗口；每个栏位都有品质宝石和垃圾标记；小队和团队框体保留各自的位置和指示器。", -- draft
 -- stale: ["Edit Layout, the map, Dungeon Info and the installer bring you back to your settings page; Dark Mode leaves it alone."] = "编辑布局、地图、地下城信息和安装向导会带你回到设置页面；暗色模式不再影响它。", -- draft
@@ -3419,6 +3404,7 @@ Lang:Add("zhCN", {
 -- stale: ["Edit Mode already keeps %d account layouts, the most it can. Delete one in Edit Mode, or switch the layout off on the Screen step."] = "编辑模式已保存%d个账号布局，已达上限。在编辑模式中删除一个，或在“屏幕”步骤关闭布局。", -- draft
 -- stale: ["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "效果：治疗和冷却更醒目，覆盖整个框体；增益落下按法术派系着色；威胁光环（取消勾选“隐藏战斗闪光”）。", -- draft
 -- stale: ["Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look."] = "精英、稀有、稀有精英和首领一眼可见：名字上方一条带纹章的金属线。精英为带王冠和翅膀的金色，稀有为带星的银色，稀有精英为带金星和翅膀的银色，首领为带骷髅、两端有翼的红铜卷纹。牌子本身保持原样。", -- draft
+-- stale: ["Enemies' and NPCs' plates"] = "敌人和NPC的姓名板", -- draft
 -- stale: ["Escape goes one step at a time; Settings Window Scale on Look sizes this window; helper texts are full size."] = "Esc 一次一步；外观中的“设置窗口缩放”调整此窗口大小；说明文字为正常字号。", -- draft
 -- stale: ["Escape in the configurator goes one step at a time: an open list or panel, a picked part, the search, then the window."] = "配置器中的 Esc 一次一步：先关打开的列表或面板，再取消选中的部件，再清空搜索，最后关窗口。", -- draft
 -- stale: ["Escape in the configurator goes one step at a time; its side list starts with Home and has a thin scroll bar."] = "配置器中的 Esc 一次一步；侧边列表从主页开始，并有细滚动条。", -- draft
@@ -3494,9 +3480,11 @@ Lang:Add("zhCN", {
 -- stale: ["Frames: Hide Heal Numbers on your portrait; party: Flip Horizontally, Mouseover Highlight, raid frames wear Raid's look and stay in place when you switch."] = "框体：在头像上隐藏治疗数字；小队：水平翻转、鼠标悬停高亮，团队框体使用“团队”的外观，切换时保持原位。", -- draft
 -- stale: ["Frames: Hide Heal Numbers on your portrait; party: Flip Horizontally, Mouseover Highlight, the meter's numbers in a tab on each frame, Raid's look in raid frames."] = "框体：在头像上隐藏治疗数字；小队：水平翻转、鼠标悬停高亮，统计数字显示在每个框体旁的小标签里，团队框体使用“团队”的外观。", -- draft
 -- stale: ["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "框体：在头像上隐藏治疗数字；统计数字显示在你的框体和每个小队框体旁的小标签里；小队：翻转、鼠标悬停高亮，团队框体使用“团队”的外观。", -- draft
+-- stale: ["French: many more settings and messages are translated (thanks to woofix)."] = "法语：更多设置和消息已翻译（感谢 woofix）。", -- draft
 -- stale: ["Fresh start"] = "从零开始", -- draft
 -- stale: ["Full experience"] = "完整体验", -- draft
 -- stale: ["Game menu"] = "游戏菜单", -- draft
+-- stale: ["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2：每种矿石和每种草药在地图和小地图上都有自己的图标。", -- draft
 -- stale: ["GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap."] = "GatherMate2：它的草药、矿脉、鱼群和宝藏在地图和小地图上使用 MelloUI 自己的图标。", -- draft
 -- stale: ["Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu."] = "让每个聊天窗口使用相同的背景不透明度，保存在你的配置中。关闭时每个窗口保留其标签菜单中设置的不透明度。", -- draft
 -- stale: ["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars现在会在所有外观中点亮MelloUI自己的动作条和姿态条，而不是下方隐藏的游戏动作条。", -- draft
@@ -3639,6 +3627,7 @@ Lang:Add("zhCN", {
 -- stale: ["Loading a profile made for another screen offers Fit to this screen; Gains keeps its place on a wide screen."] = "载入为其他屏幕制作的配置文件时会提供“适配此屏幕”；收获在宽屏上保持原位。", -- draft
 -- stale: ["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "全部拾取键：一个键拿走拾取窗口里的全部物品（窗口 > 拾取窗口）。", -- draft
 -- stale: ["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "拾取掷骰有了自己的窗口：每个人的选择和点数一目了然，物品会飞向赢家。", -- draft
+-- stale: ["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur：其光效开启时，拾取闪光的采集闪烁会为它让路。", -- draft
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "在你的小队框体位置显示虚构的成员，带上此列表的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "在你的团队框体位置显示虚构的成员，带上你的指示器，直到预览结束。仅限脱离战斗。", -- draft
 -- stale: ["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name."] = "邮件收件人：邮箱“收件人”栏旁的按钮会列出你的角色和战网好友的角色，点击即可填入名字。", -- draft
@@ -3646,20 +3635,26 @@ Lang:Add("zhCN", {
 -- stale: ["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "邮件收件人：收件人栏旁的按钮会在发送邮件窗口旁打开一个列表。好友的角色就地展开，列表会保持你上次的打开或关闭状态。", -- draft
 -- stale: ["Mail: an empty subject takes the name of the first item you attach."] = "邮件：主题为空时，会填入你附加的第一个物品的名称。", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "你获得的法力、怒气、能量和集中值（+12怒气）。", -- draft
+-- stale: ["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise：其法力、怒气和能量填充现在会显示在 MelloUI 的动作条上。", -- draft
+-- stale: ["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "没有 Questie 时的地图和小地图：你的任务会以 MelloUI 的样式显示游戏自带的任务区域和地点。", -- draft
 -- stale: ["Map with Questie: Shift over a quest icon opens its full tooltip at once, and letting go folds it again."] = "地图配合 Questie：在任务图标上按住 Shift 会立即展开完整提示，松开则再次收起。", -- draft
 -- stale: ["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "手柄地图：方向键可到达任务列表旁的按钮，在你的标记上按“标记”会移除它，准星移动更快，用鼠标关闭地图时也会关闭游戏自带的地图。", -- draft
 -- stale: ["Map's quest log: Show on a quest with no place on the map, such as a crafting writ, says so instead of doing nothing."] = "地图的任务日志：对没有地图位置的任务（如制作委托）点击“显示”，现在会提示，而不是毫无反应。", -- draft
 -- stale: ["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "地图的任务日志：每个区域的追踪框和“所有任务”框可一次将许多任务放入任务追踪器。", -- draft
 -- stale: ["Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there."] = "地图：克罗多克要塞的入口（等级40-45）显示在河林，位于要塞西边的洞穴处，Route会带你前往。", -- draft
+-- stale: ["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "地图：“仅追踪的任务”和“仅聚焦的任务”会立即改变已打开的地图。", -- draft
 -- stale: ["Map: Questie's flight master icons stay hidden while the map's Flight masters layer shows MelloUI's own."] = "地图：当地图的“飞行管理员”图层显示 MelloUI 自己的图标时，Questie 的飞行管理员图标会保持隐藏。", -- draft
 -- stale: ["Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there."] = "地图：新增“战争迷雾”选项，你尚未探索的地方会在地图上保持隐藏，就像游戏自带的世界地图一样，直到你走到那里。", -- draft
 -- stale: ["Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map."] = "地图：新增“地图坐标”选项，在地图下方的一行显示你的坐标，鼠标在地图上时还显示鼠标所在位置的坐标。", -- draft
 -- stale: ["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "地图：拖动右下角的手柄即可调整地图大小（旁边的任务日志保持原大小），拖动标题栏即可移动地图，无需编辑布局。", -- draft
+-- stale: ["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "地图：在战场中，据点、哨塔和营地会显示由哪一方控制，与游戏自带的地图一样。", -- draft
 -- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "地图：在战场中，地图会显示你、你的队伍和战场的旗帜。", -- draft
 -- stale: ["Map: quest areas that touch now show one outline instead of a stack of rings; each objective keeps its marks where it is done, and hovering a mark shows its own area inside."] = "地图：相互接触的任务区域现在只显示一个轮廓，不再叠成一圈圈的环；每个目标的标记仍留在完成它的地方，鼠标悬停在标记上时会在里面显示它自己的区域。", -- draft
+-- stale: ["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "地图：Questie 没有位置数据的任务会以 MelloUI 的样式显示游戏自带的任务区域和标记。", -- draft
 -- stale: ["Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world."] = "地图：登录后第一次打开地图时，会显示你当前所在的区域（在城市里显示城市自己的地图），而不是整个世界。", -- draft
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "地图：区域之间的土地已补绘，包括安其拉和丹莫罗以西；沿海区域延伸到海岸。", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "地图：放大时保留手绘地图；只有很近时才在其上淡入微缩地图地面。滚轮平滑缩放，拖动会继续滑行。", -- draft
+-- stale: ["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "地图：关闭 MelloUI 的地图时，没有 Questie 的情况下游戏自带的世界地图也会显示 MelloUI 的任务区域。", -- draft
 -- stale: ["Map: with Questie installed, its objective icons (swords, sacks ...) no longer show over MelloUI's quest areas and marks; MelloUI now knows Questie's icons by their kind, not their picture."] = "地图：安装 Questie 后，它的目标图标（剑、袋子等）不再显示在 MelloUI 自己的任务区域和标记上方；MelloUI 现在按类型而非图片识别 Questie 的图标。", -- draft
 -- stale: ["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "地图：使用 Questie 时，MelloUI 地图上的任务 ! 和 ? 更大，并随“图标大小”滑块变化，点击其附近即可开始前往该处的路线。", -- draft
 -- stale: ["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "地图：同时使用 RareScanner 和也会标记稀有怪的 HandyNotes 插件时，稀有怪不再被标记两次。MelloUI 地图和小地图上只保留 RareScanner 的标记。", -- draft
@@ -3696,6 +3691,7 @@ Lang:Add("zhCN", {
 -- stale: ["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "微型菜单：移到自己的位置后不再跳回原处（乘坐载具后，或动作条重新显示时），编辑布局中的大小现在也作用于按钮。", -- draft
 -- stale: ["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "精神控制及其他控制效果：带有被控制生物技能的宠物动作条会一直显示。", -- draft
 -- stale: ["Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons."] = "小地图圆环、区域名称标题、昼夜指示框、追踪、日历、缩放和插件按钮。", -- draft
+-- stale: ["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
 -- stale: ["Minimap: RareScanner's icons on the minimap wear the same look."] = "小地图：小地图上的 RareScanner 图标也换成同样的外观。", -- draft
 -- stale: ["Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates."] = "小地图：新增“小地图坐标”选项，在小地图下方显示你的坐标，鼠标在小地图上时以金色显示鼠标所在位置的坐标。它取代了“隐藏小地图坐标”。", -- draft
 -- stale: ["Minimap: quest areas that touch show one outline there too, and hovering a quest mark lifts it and shows its own area, as on the map."] = "小地图：相互接触的任务区域在小地图上也只显示一个轮廓，鼠标悬停在任务标记上时，它会像在地图上一样浮起并显示自己的区域。", -- draft
@@ -3711,6 +3707,9 @@ Lang:Add("zhCN", {
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "把聊天输入框移到聊天窗口及其标签的上方，而不是下方。", -- draft
 -- stale: ["Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on."] = "把控制图标从姓名板右侧移到名字上方并放大。需要开启暴雪的姓名板控制光环选项。", -- draft
 -- stale: ["Name and glow tweaks on the unit frames, the party's levels and the names' soft bands (they step aside where the reskin covers them)."] = "单位框体上的名字和发光调整、小队的等级和名字的柔和横带（换肤覆盖它们的地方会让开）。", -- draft
+-- stale: ["Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them."] = "姓名板设计器：将生命值数字拖到姓名板上的任意位置、调整大小或隐藏。", -- draft
+-- stale: ["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "姓名板设计器：生命值数字和百分比可分别移动和调整大小，名字也可设置大小。", -- draft
+-- stale: ["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "姓名板设计器：预览与实际姓名板外观一致，包括怀旧框架套装和暗色模式。", -- draft
 -- stale: ["Nameplate Tweaks"] = "姓名板调整", -- draft
 -- stale: ["Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it."] = "姓名板调整已关闭：游戏自己的姓名板，上面没有MelloUI的部分。", -- draft
 -- stale: ["Nameplate health and cast bars in the kit."] = "姓名板的生命条和施法条使用套件外观。", -- draft
@@ -3720,10 +3719,13 @@ Lang:Add("zhCN", {
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "姓名板设计器：可将名字、控制图标、任务图标和挥击徽章拖到姓名板的任意位置；重叠在同一处的部件会以红框标出。", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "姓名板设计器：精英图标成为可单独拖动、缩放或隐藏的部件；移动团队标记不再连带移动精英图标和敌人的增益效果。", -- draft
 -- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "姓名板设计器：你的姓名板尺寸和摆放的部件在 /reload 后会保留，已在屏幕上的姓名板也一样。", -- draft
+-- stale: ["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "姓名板：生命值文字大小可让生命值数字变小，百分比在条旁让数字留在条内。", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
+-- stale: ["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "姓名板：只显示名字的友方姓名板在鼠标悬停时不再出现姓名板边框。", -- draft
 -- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "姓名板：连击点可以通过水平和垂直偏移移动。", -- draft
 -- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "姓名板：姓名板预览中敌人的名字与实际姓名板一样居中显示在血条上方。", -- draft
 -- stale: ["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "姓名板：攻击徽章会显示在姓名板预览中，并可在50%到200%之间调整大小。", -- draft
+-- stale: ["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "姓名板：当百分比位于条旁时，挥击徽章会移到百分比之后。", -- draft
 -- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "姓名板：敌方姓名板上你的减益效果不再显示时钟转圈，数字按剩余时间着色，少于5秒时变为红色。", -- draft
 -- stale: ["Names in chat"] = "聊天中的名字", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "新动效：重要冷却、任务进度、升级、暴击、连击点、提醒、区域名、声望获得；冲击效果也作用于目标框体。", -- draft
@@ -3789,11 +3791,14 @@ Lang:Add("zhCN", {
 -- stale: ["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "个人显示：点击穿透，在条上拖动镜头时 Clique 不再施法。", -- draft
 -- stale: ["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "个人显示：德鲁伊形态。对德鲁伊来说，能量条下方的两条细条显示其他形态的能量。", -- draft
 -- stale: ["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "个人显示：法力回复暂停。施放消耗法力的法术后，在法力不回复的五秒内，一道光会沿着能量条移动。", -- draft
+-- stale: ["Personal Display: Number On The Bars, Percent Beside shows your health and power amounts in the middle of the bars."] = "个人显示：数字在条上，百分比在旁，会在条中间显示你的生命值和能量数值。", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "个人显示：“显示在个人显示上方”会把攻击徽章居中放在个人显示上方，而不是目标的姓名板上。", -- draft
 -- stale: ["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "个人显示：百分比位置可将生命值和能量百分比显示在条上，就像德鲁伊形态的数字。", -- draft
+-- stale: ["Personal Display: Text Size and Text Colour for all of its text."] = "个人显示：所有文字的大小和颜色。", -- draft
 -- stale: ["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "个人显示：按名称追踪（大型冷却页）：输入任意增益或减益效果，例如寒冰指，在它作用于你期间显示在追踪法术一行中。", -- draft
 -- stale: ["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "个人显示：追踪法术（大型冷却标签）——勾选你职业的法术，例如 Weakened Soul 或 Renew，在它们作用于你时显示在血条下方。", -- draft
 -- stale: ["Personal Display: Tracked Spells, on Big Cooldowns' tab: tick your class's spells (Weakened Soul, Power Word: Shield, Renew, Forbearance...) to see them in a row under the bars while they last on you, with their seconds."] = "个人显示：大型冷却标签中的追踪法术——勾选你职业的法术（Weakened Soul、Power Word: Shield、Renew、Forbearance……），在它们作用于你时显示在血条下方的一行中，并带有剩余秒数。", -- draft
+-- stale: ["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "个人显示：在“个人”页签中有了自己的预览。拖动施法条、文字、挥击徽章或冷却图标即可移动它们。", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，秒数的字体与颜色与姓名板上你的减益效果相同（即使关闭“百分比和法术文字”也会显示）。", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a gold line draining under each icon, with the seconds (shown even with Percent And Spell Text off)."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，剩余时间是每个图标下方逐渐缩短的金色线条，并显示秒数（即使关闭“百分比和法术文字”也会显示）。", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a thin line draining inside each icon, with the seconds."] = "个人显示：重要冷却显示为个人显示金色边框中的方形图标，剩余时间是图标内部逐渐缩短的细线，并显示秒数。", -- draft
@@ -3824,11 +3829,13 @@ Lang:Add("zhCN", {
 -- stale: ["Previews: a dragged part stays inside; indicators: right-click to remove, spell groups to drag onto your frame (heals over time, defensives ...)."] = "预览：拖动的部分留在框内；指示器：右键移除，可把法术分组拖到框体上（持续治疗、防御……）。", -- draft
 -- stale: ["Print the repair cost, the gold gained from selling junk and what Restock bought for you."] = "显示修理费用、出售垃圾获得的金币以及“补货”为你买了什么。", -- draft
 -- stale: ["Procs and auras in the title font, as the window titles. Off: in the text font, as the numbers."] = "触发和光环使用标题字体，与窗口标题相同。关闭：使用文字字体，与数字相同。", -- draft
+-- stale: ["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "专业冷却：共享冷却的配方（如转化）在冷却结束时只提示一次。", -- draft
 -- stale: ["Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked."] = "配置：/reload 或登录不再把你的编辑模式布局切回“现代”；你的角色会保留你选择的布局。", -- draft
 -- stale: ["Profiles: a profile now carries your Edit Mode layout too, so the action bars, bags and every frame you moved stand in the same place on every character that uses it."] = "配置：配置现在也包含你的编辑模式布局，因此动作条、背包和你移动过的每个框体在使用它的每个角色上都位于同一位置。", -- draft
 -- stale: ["Profiles: each character now keeps its own profile and gets it back at login, so setting up an alt no longer changes your main. A new character starts with a copy of the one last used."] = "配置：现在每个角色都保留自己的配置并在登录时恢复，设置小号不会再改动你的主角色。新角色以最后使用的配置的副本开始。", -- draft
 -- stale: ["Profiles: your changes are saved into your character's profile as you play, at every logout and /reload, so loading it later never brings back an older copy."] = "配置：你的更改会在游戏过程中保存到角色的配置里，每次登出和 /reload 时都会保存，因此以后载入它绝不会恢复旧的副本。", -- draft
 -- stale: ["Pulse, then steady"] = "先脉动，后常亮", -- draft
+-- stale: ["Quality of life"] = "便捷功能", -- draft
 -- stale: ["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "任务瞬间：拾取物品的动画停留更久。图标和计数会停留两秒，再飞向你的任务追踪。", -- draft
 -- stale: ["Quest Tracker: Header Text Size"] = "任务追踪器：标题文字大小", -- draft
 -- stale: ["Quest Tracker: Text Size"] = "任务追踪器：文字大小", -- draft
@@ -3895,6 +3902,7 @@ Lang:Add("zhCN", {
 -- stale: ["Separate Debuffs"] = "分离减益效果", -- draft
 -- stale: ["Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the square minimap and \"Merge With Services\" on (the Minimap page, Services), the buttons sit inside the minimap's frame."] = "小地图下方的服务按钮；在编辑模式中随小地图移动。分组：一排与地图同宽的分组按钮；点击一个打开它的服务及距离，再点击一个服务按道路规划去最近那个的路线。全部按钮：两排，每个服务一个图标；点击一个即规划路线。右键停止路线。灰色按钮表示在这块大陆上还不知道任何一处。使用方形小地图并开启“与服务合并”（小地图页，服务）时，按钮位于小地图的边框内。", -- draft
 -- stale: ["Service icons under the minimap that route you to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier."] = "小地图下方的服务图标，带你前往最近的修理、邮箱、旅店老板、飞行管理员、拍卖行、银行、训练师、理发师或幻化师。", -- draft
+-- stale: ["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "服务栏和小地图边框：战斗中插件的小地图按钮变化时不再出现被阻止的操作。", -- draft
 -- stale: ["Services: Trays Slide Out -- a group's list slides out from the minimap column like a drawer, and back in."] = "服务：托盘滑出——分组的列表像抽屉一样从小地图栏滑出，再滑回去。", -- draft
 -- stale: ["Services: the AddOns group finds every addon's minimap button, not only LibDBIcon's."] = "服务：“插件”分组会找到每个插件的微缩地图按钮，不只是 LibDBIcon 的。", -- draft
 -- stale: ["Services: the AddOns group finds every addon's minimap button, not only LibDBIcon's; map pins and the game's own buttons stay on the map."] = "服务：“插件”分组会找到每个插件的微缩地图按钮，不只是 LibDBIcon 的；地图标记和游戏自带的按钮留在地图上。", -- draft
@@ -4150,6 +4158,7 @@ Lang:Add("zhCN", {
 -- stale: ["The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row."] = "目标框体下方目标减益和增益图标的大小（像素）。行宽保持不变，所以尺寸越小一行放得越多。", -- draft
 -- stale: ["The skill's new value and its cap after its name, such as 57 / 80."] = "技能名后显示新数值和上限，例如57 / 80。", -- draft
 -- stale: ["The small buttons for the game's windows. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "游戏窗口的小按钮。总是：从不淡出。战斗中：脱离战斗时淡出，战斗时回来。鼠标悬停：一直淡出，指向时显示。", -- draft
+-- stale: ["The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip."] = "各种小帮手，各占一个标签：商人、你的补货清单和自动任务、屏幕中央的文字、提醒和小部件、帧数 / 延迟和说明条。", -- draft
 -- stale: ["The soft glow around the button: a gentle pulse for a few seconds, then steady; always steady; or none. It brightens when you are close to where the reminder sends you."] = "按钮周围的柔和光晕：先轻柔脉动几秒再保持常亮；始终常亮；或无。靠近提醒指引的地点时会变亮。", -- draft
 -- stale: ["The speaker's animated 3D face in the widget. Off: the book."] = "小部件中说话者的3D动态脸部。关闭：显示书本。", -- draft
 -- stale: ["The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail."] = "方形地图、区域标题和服务栏在同一个边框中：区域名在边框上沿石条上，地图下方一条名为“服务”的分隔石条在服务栏上方（含一排分组按钮，时钟在区域名旁）。用于配窗口边框或单石条的方形。", -- draft
@@ -4171,11 +4180,13 @@ Lang:Add("zhCN", {
 -- stale: ["The whisper popup on a parchment sheet, its text in dark ink."] = "悄悄话弹窗铺在羊皮纸上，文字为深色墨水。", -- draft
 -- stale: ["The whole map in the window frame."] = "窗口边框中的整张地图。", -- draft
 -- stale: ["The workbench when an item is crafted."] = "制造出物品时的工作台声。", -- draft
+-- stale: ["This character: %s      Default on a fresh install: %s"] = "此角色：%s      全新安装时的默认值：%s", -- draft
 -- stale: ["Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)."] = "你框体上方三个数字：剑是本场战斗的每秒伤害，沙漏是本次副本的，十字是你的每秒治疗。战斗中实时显示，战斗后显示上一场的。可在“编辑布局”（你的数值）中移动。", -- draft
 -- stale: ["Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own."] = "标题、题头、对话名字、邮件和书籍文字，以及手绘牌匾上套件的标题字体；字体风格会把它恢复到100%（它的字体自带校正）。不包括任务追踪器的标题和分区题头，也不包括战斗文字的通知：它们有自己的大小。", -- draft
 -- stale: ["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "鼠标提示：暗色背景新增边框选项：暗色、游戏自带、无，或 SharedMedia 边框。SharedMedia 背景可用于鼠标提示、聊天框以及小队和团队框体。", -- draft
 -- stale: ["Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings."] = "鼠标提示为公会、阵营、等级和任务目标着色。宏备份已移除：游戏会保存你的设置。", -- draft
 -- stale: ["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "鼠标提示：同时使用 Questie 和 Polestar 时，生物的任务目标不再显示两遍。以 Questie 的文字为准，MelloUI 自己的物品行也会让给 Questie。", -- draft
+-- stale: ["Type a name for the imported profile first, then click Import as."] = "先为导入的配置输入一个名字，然后点击“导入为”。", -- draft
 -- stale: ["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "界面阴影现在覆盖个人显示，有自己的开关和阴影强度滑块。", -- draft
 -- stale: ["Under 35% health the health bar turns ember."] = "生命值低于35%时生命条变成余烬色。", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "单位框体条：字体大小", -- draft
@@ -4296,6 +4307,7 @@ Lang:Add("zhCN", {
 -- stale: ["Your whole setup under one name. Save it, load it, or make it the default for a fresh install."] = "你的整套设置归在一个名字下。保存、载入，或设为新安装的默认设置。", -- draft
 -- stale: ["Zephras Isle on the map, with its airship trails."] = "地图上显示 Zephras Isle 及其飞艇航线。", -- draft
 -- stale: ["boss and target of target"] = "首领和目标的目标", -- draft
+-- stale: ["online"] = "在线", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "升级：经验条之光和通知", -- draft
 -- stale: ["the level-up: your XP bar's light, the notice and the Level Up Card"] = "升级：经验条的光芒、提示和升级卡片", -- draft
 -- stale: ["the nameplates' debuffs"] = "姓名板的减益", -- draft

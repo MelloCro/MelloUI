@@ -35,6 +35,12 @@ Lang:Add("deDE", {
 	["Poison"] = "Gift",
 	-- QuestMoments
 	["Item Picked Up"] = "Gegenstand aufgenommen",
+	-- GroupMoment
+	["MelloUI Players"] = "MelloUI-Spieler", -- draft
+	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "Lässt andere MelloUI-Spieler in deiner Gruppe wissen, dass du auch MelloUI nutzt. Sein Moment auf der Seite Animationen zeigt sich, wenn einer von ihnen dir beitritt.", -- draft
+	["Spot a fellow MelloUI player the moment they join."] = "Erkenne andere MelloUI-Spieler, sobald sie beitreten.", -- draft
+	["MelloUI Player Joins"] = "MelloUI-Spieler tritt bei", -- draft
+	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "Tritt jemand mit MelloUI deiner Gruppe bei, treffen sich eure Porträts kurz am MelloUI-Siegel mit dem Namen, dann fliegt es in den Gruppenrahmen. Einmal pro Spieler in sechs Stunden.", -- draft
 	-- UIModifications
 	["UI Modifications"] = "UI-Anpassungen",
 	["The painted reskin and most of MelloUI's interface changes: fonts, Dark Mode, chat, tooltips, buffs, bar textures and more."] = "Der gemalte Reskin und die meisten Änderungen von MelloUI an der Oberfläche: Schriften, Dunkelmodus, Chat, Tooltips, Stärkungszauber, Leistentexturen und mehr.",
@@ -1829,10 +1835,6 @@ Lang:Add("deDE", {
 	["Minimal"] = "Minimal",
 	["Channel List As Icons"] = "Kanalliste als Symbole",
 	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "Die Kanalliste der minimalen Chatansicht zeigt nur ihre Symbole und lässt mehr Platz für die Nachrichten. Zeige auf ein Symbol für seinen Namen. Der kleine Griff am Rand der Liste macht dasselbe.",
-	["One Line Per Message"] = "Eine Zeile pro Nachricht", -- draft
-	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "Die minimale Chatansicht zeigt jede Nachricht in einer Zeile: Uhrzeit, Kanal, Name und Text, in der Reihenfolge des Spiel-Chats. Aus: der Name über der Nachricht.", -- draft
-	["Tab Switches Channel"] = "Tab wechselt den Kanal", -- draft
-	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "Beim Tippen wechselt Tab zum nächsten Chat, in dem du sprechen kannst: Sagen, Gruppe, Schlachtzug, Instanz, Gilde, dann deine Kanäle. Umschalt-Tab geht zurück, dein Text bleibt. Namensvorschläge, Flüsterziele und Slash-Befehle behalten ihr eigenes Tab.", -- draft
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "Der Hintergrund des Chats: Dunkel, der des Spiels, keiner oder einer, den ein SharedMedia-Addon teilt.",
 	["Set The Background Opacity"] = "Hintergrunddeckkraft festlegen",
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "Jedes Chatfenster nutzt dieselbe Hintergrundtransparenz. Aus: jedes behält seine eigene.",
@@ -1862,6 +1864,10 @@ Lang:Add("deDE", {
 	["Removes the brackets around the short tags."] = "Entfernt die Klammern um die kurzen Kürzel.",
 	["Chat Timestamps"] = "Chat-Zeitstempel",
 	["The time before each chat line, or None for no time. It is the game's own Chat Timestamps setting, and both chat views follow it."] = "Die Uhrzeit vor jeder Chatzeile oder Keine für keine Uhrzeit. Es ist die eigene Einstellung Chat-Zeitstempel des Spiels, und beide Chatansichten folgen ihr.",
+	["One Line Per Message"] = "Eine Zeile pro Nachricht", -- draft
+	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "Die minimale Chatansicht zeigt jede Nachricht in einer Zeile: Uhrzeit, Kanal, Name und Text, in der Reihenfolge des Spiel-Chats. Aus: der Name über der Nachricht.", -- draft
+	["Tab Switches Channel"] = "Tab wechselt den Kanal", -- draft
+	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "Beim Tippen wechselt Tab zum nächsten Chat, in dem du sprechen kannst: Sagen, Gruppe, Schlachtzug, Instanz, Gilde, dann deine Kanäle. Umschalt-Tab geht zurück, dein Text bleibt. Namensvorschläge, Flüsterziele und Slash-Befehle behalten ihr eigenes Tab.", -- draft
 	["Whisper Popup Window"] = "Flüster-Popup-Fenster",
 	["Each whisper opens a small window for that person, with a box to answer in. Whispers still show in the chat."] = "Jedes Flüstern öffnet ein kleines Fenster für diese Person, mit einem Feld zum Antworten. Flüstern erscheint weiter im Chat.",
 	-- CombatText
@@ -2214,7 +2220,6 @@ Lang:Add("deDE", {
 	["The look"] = "Das Aussehen",
 	["Frames and bars"] = "Fenster und Leisten",
 	["Quests and travel"] = "Quests und Reisen",
-	["Quality of life"] = "Komfort",
 	["Bars 1-8, stance, pet, possess, totem"] = "Leisten 1-8, Haltung, Begleiter",
 	["Backdrops And Shadows"] = "Hintergründe und Schatten",
 	["Button"] = "Taste",
@@ -2267,7 +2272,6 @@ Lang:Add("deDE", {
 	["Tray"] = "Liste",
 	["MelloUI Minimap"] = "MelloUI-Minikarte",
 	["The game's nameplates: pick a kind, click a part of it, change it."] = "Die Namensplaketten des Spiels: Wähle eine Art, klick auf einen Teil davon, ändere ihn.",
-	["Enemies' and NPCs' plates"] = "Plaketten von Gegnern und NPCs",
 	["Enemies"] = "Gegner",
 	["Health bar"] = "Gesundheitsbalken",
 	["Health number"] = "Gesundheitszahl", -- draft
@@ -2279,7 +2283,6 @@ Lang:Add("deDE", {
 	["Your debuffs"] = "Deine Schwächungen",
 	["The game's auras"] = "Die Auren des Spiels",
 	["Swing badge"] = "Schwungabzeichen",
-	["A class medallion over friendly players' names, in the open world"] = "Ein Klassenmedaillon über den Namen freundlicher Spieler, in der offenen Welt",
 	["Friendly players"] = "Freundliche Spieler",
 	["Medallion"] = "Medaillon",
 	["Role ring"] = "Rollenring",
@@ -2288,8 +2291,9 @@ Lang:Add("deDE", {
 	["Oldschool"] = "Oldschool",
 	["The painted reskin's own settings, kept here until the painted look becomes its own addon."] = "Die eigenen Einstellungen des gemalten Skins, hier aufbewahrt, bis das gemalte Aussehen ein eigenes Addon wird.",
 	["Profiles"] = "Profile",
+	["Mail"] = "Post",
+	["Automation"] = "Automatik", -- draft
 	["Quality of Life"] = "Komfort",
-	["The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip."] = "Die kleinen Helfer, je ein Reiter: der Händler, deine Auffüllliste und Quests, die für dich erledigt werden, der Text in der Bildschirmmitte, die Erinnerungen und Widgets, FPS / Latenz und der Tooltip.",
 	["Every frame: the debuff glow"] = "Jeder Rahmen: das Leuchten bei Schwächungen",
 	["All frames"] = "Alle Fenster",
 	["Unit & Group Frames"] = "Einheitenfenster",
@@ -2330,7 +2334,6 @@ Lang:Add("deDE", {
 	["Textures"] = "Texturen",
 	["Painted Skins"] = "Gemalte Skins",
 	["Borders"] = "Ränder",
-	["Mail"] = "Post",
 	["Arrow & Marker"] = "Pfeil & Markierung",
 	["Reading"] = "Vorlesen",
 	["Voices"] = "Stimmen",
@@ -2483,52 +2486,24 @@ Lang:Add("deDE", {
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Die Addons, mit denen MelloUI zusammenarbeitet: was es mit jedem macht und wo ihre Einstellungen sind.",
-	["MelloUI Player Joins"] = "MelloUI-Spieler tritt bei", -- draft
-	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "Tritt jemand mit MelloUI deiner Gruppe bei, treffen sich eure Porträts kurz am MelloUI-Siegel mit dem Namen, dann fliegt es in den Gruppenrahmen. Einmal pro Spieler in sechs Stunden.", -- draft
-	["MelloUI Players"] = "MelloUI-Spieler", -- draft
-	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "Lässt andere MelloUI-Spieler in deiner Gruppe wissen, dass du auch MelloUI nutzt. Sein Moment auf der Seite Animationen zeigt sich, wenn einer von ihnen dir beitritt.", -- draft
-	["Spot a fellow MelloUI player the moment they join."] = "Erkenne andere MelloUI-Spieler, sobald sie beitreten.", -- draft
-	["%s uses MelloUI too"] = "%s nutzt auch MelloUI", -- draft
-	["%s and %s use MelloUI too"] = "%s und %s nutzen auch MelloUI", -- draft
-	["%s, %s and %s use MelloUI too"] = "%s, %s und %s nutzen auch MelloUI", -- draft
-	["%d players in your group use MelloUI"] = "%d Spieler in deiner Gruppe nutzen MelloUI", -- draft
-	["Now in your group"] = "Jetzt in deiner Gruppe", -- draft
-	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Ohne Questie: Quests, die auf der Karte und der Minikarte keine Markierung und kein Gebiet hatten, werden jetzt angezeigt.", -- draft
-	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI lässt die Spieloption Show Quest POIs & Blobs an, solange seine Questmarkierungen an sind: Nur damit liefert das Spiel alle Questorte.", -- draft
-	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "Controller: Links und Namen in MelloUIs Chat öffnen nicht mehr die Fenster des Spiels, was die Tasten des Controllers blockierte.", -- draft
-	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "Controller: MelloUIs Schaltflächen im Beute-, Stapelteilen- und Postfenster des Spiels bleiben außerhalb des Controller-Cursors.", -- draft
-	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "Nächste Abgabe nimmt der Navigation nicht mehr deine eigene Kartenmarkierung, den Schritt eines Guides oder den Weg zu deiner Leiche weg.", -- draft
+	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "Konfigurator: Der Reiter eines Rahmens zeigt jetzt die Einstellungen all seiner Teile in einer Liste zum Scrollen. Klicke auf ein Teil, um zu seinen Einstellungen zu springen.", -- draft
+	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "Konfigurator: Die Teile stehen als Liste neben der Vorschau, mit einem Schalter „Zeigen“ bei den Teilen, die du ausblenden kannst.", -- draft
+	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "Einheitenrahmen: PvP-Abzeichen, Statusleuchten und Kampfleuchten werden mit ihrem Schalter „Zeigen“ in der Teileliste ein- und ausgeblendet.", -- draft
+	["Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does."] = "Konfigurator: Der Schalter jeder Funktion ist jetzt eine Leiste oben auf ihrem Reiter, mit ihrem Namen und dem, was sie macht.", -- draft
+	["Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it."] = "Konfigurator: Die Seitenliste zeigt alle Seiten auf einmal, mit einem Punkt für an, teilweise an oder aus. Startseite, Layout bearbeiten, Profile, Addons und Unterstützer sind Symbolknöpfe darüber.", -- draft
+	["Home: a What's new line with an arrow opens the setting it is about. Back to Home brings you back."] = "Startseite: Eine Zeile unter „Was ist neu“ mit Pfeil öffnet die Einstellung, um die es geht. „Zurück zu Startseite“ bringt dich zurück.", -- draft
+	["Quality of Life: four tabs in place of twelve, each helper under its own switch. Jump to takes you to one."] = "Lebensqualität: vier Reiter statt zwölf, jeder Helfer unter seinem eigenen Schalter. „Springe zu“ bringt dich zu einem.", -- draft
+	["Profiles: four cards. Import says what a string holds and the screen it was made for before you take it."] = "Profile: vier Karten. Der Import sagt, was eine Zeichenkette enthält und für welchen Bildschirm sie gemacht wurde, bevor du sie übernimmst.", -- draft
+	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "Konfigurator: Die eigene Zeile eines Rahmens und eines Teils ist jetzt die kräftige, seine Abschnitte stehen als kleine Beschriftungen darunter.", -- draft
+	["Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To."] = "Mail Recipients: neu gemacht. Eigene Gruppen, die Berufe deiner Charaktere, Zuletzt und eine Suche, während du in An tippst.", -- draft
+	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: gelöschte Charaktere verlassen die Liste von selbst, und eine unbekannte Klasse ist ein ? zum Anklicken, kein weißer Name.", -- draft
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Namensplaketten: Freundliche NSCs und freundliche Spieler haben ihre eigene Vorschau, eigene Positionen und Größen. Was du unter Gegner einstellst, ändert freundliche Plaketten nicht mehr.", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Freundliche Namensplaketten: Bei voller Gesundheit ausblenden zeigt nur den Namen, bis sie verletzt sind.", -- draft
-	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "Berufsabklingzeiten: Rezepte mit gemeinsamer Abklingzeit, wie die Transmutationen, melden sich mit nur einem Hinweis, wenn sie vorbei ist.", -- draft
-	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Minikarte ohne Questie: Die blauen Questkreise des Spiels weichen MelloUIs Markierungen.", -- draft
-	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "Karte: Bei ausgeschalteter MelloUI-Karte zeigt auch die Weltkarte des Spiels ohne Questie MelloUIs Questgebiete.", -- draft
-	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "Dienste-Leiste und Minikartenrahmen: keine blockierten Aktionen mehr, wenn sich der Minikartenknopf eines Addons im Kampf ändert.", -- draft
-	["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "Controller: Die Hintergrunddeckkraft lässt die verborgenen Chatfenster des Spiels in der minimalen Chatansicht in Ruhe.", -- draft
-	["French: many more settings and messages are translated (thanks to woofix)."] = "Französisch: Viele weitere Einstellungen und Meldungen sind übersetzt (danke an woofix).", -- draft
-	["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Karte und Minikarte ohne Questie: Deine Quests zeigen die Questgebiete und Punkte des Spiels im Look von MelloUI.", -- draft
-	["Easter egg added."] = "Osterei hinzugefügt.", -- draft
-	["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Schadensanzeige: Ist MelloUIs Anzeige aus, lässt sich die Anzeige des Spiels im Edit Layout wieder verschieben.", -- draft
-	["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Namensplaketten: Freundliche Plaketten, die nur den Namen zeigen, bekommen beim Darüberfahren keinen Plakettenrahmen mehr.", -- draft
-	["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "Chat: Kanäle, die andere Addons im Hintergrund nutzen, erscheinen in der minimalen Ansicht nicht mehr als Reiter.", -- draft
-	["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "Chat: Eine Zeile pro Nachricht zeigt Uhrzeit, Kanal, Name und Text in der minimalen Ansicht in einer Zeile.", -- draft
-	["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "Chat: Tab wechselt den Kanal springt beim Tippen zum nächsten Chat, in dem du sprechen kannst.", -- draft
-	["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "Chat: Kurze Kanal-Kürzel kürzen Kanalnamen jetzt in jeder Spielsprache, in beiden Chat-Ansichten.", -- draft
-	["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Karte: Quests, für die Questie keine Orte kennt, zeigen das Questgebiet und die Markierung des Spiels im Look von MelloUI.", -- draft
-	["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Persönliche Anzeige: eine eigene Vorschau im Reiter Persönlich. Zieh Zauberleiste, Text, Schwungabzeichen oder Abklingzeiten, um sie zu verschieben.", -- draft
-	["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Karte: In einem Schlachtfeld zeigen seine Basen, Türme und Lager, wer sie hält, wie auf der Karte des Spiels.", -- draft
-	["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Namensplaketten-Designer: Gesundheitszahl und Prozentwert lassen sich einzeln verschieben und skalieren, und die Namen haben eine Größe.", -- draft
-	["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "Namensplaketten: Das Schwungabzeichen rückt hinter den Prozentwert, wenn dieser neben der Leiste steht.", -- draft
-	["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur: Solange sein Leuchten an ist, treten die Sammel-Glanzlichter von Beutefunkeln für es zurück.", -- draft
-	["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2: Jedes Erz und jedes Kraut hat ein eigenes Symbol auf der Karte und der Minikarte.", -- draft
-	["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "Namensplaketten-Designer: Die Vorschau trägt das Aussehen deiner Plaketten, auch das Oldschool-Rahmenset und den Dunkelmodus.", -- draft
-	["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise: Seine Mana-, Wut- und Energiefüllung erscheint jetzt auf den Aktionsleisten von MelloUI.", -- draft
-	["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "Namensplaketten: Gesundheitstextgröße macht die Gesundheitszahlen kleiner, und Prozent neben der Leiste hält die Zahl in der Leiste.", -- draft
-	["Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them."] = "Namensplaketten-Designer: Ziehe die Gesundheitszahlen an eine beliebige Stelle der Plakette, ändere ihre Größe oder blende sie aus.", -- draft
-	["Personal Display: Number On The Bars, Percent Beside shows your health and power amounts in the middle of the bars."] = "Persönliche Anzeige: Zahl auf den Leisten, Prozent daneben zeigt deine Gesundheits- und Kraftbeträge in der Mitte der Leisten.", -- draft
-	["Personal Display: Text Size and Text Colour for all of its text."] = "Persönliche Anzeige: Textgröße und Textfarbe für ihren gesamten Text.", -- draft
-	["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Karte: Nur die verfolgten Quests und Nur die verfolgte Quest ändern die offene Karte sofort.", -- draft
-	["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Chinesischer Text: Titel und Überschriften in der richtigen Größe und chinesische Zeichen statt Kästchen.", -- draft
+	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "Nächste Abgabe nimmt der Navigation nicht mehr deine eigene Kartenmarkierung, den Schritt eines Guides oder den Weg zu deiner Leiche weg.", -- draft
+	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "Controller: Links und Namen in MelloUIs Chat öffnen nicht mehr die Fenster des Spiels, was die Tasten des Controllers blockierte.", -- draft
+	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "Controller: MelloUIs Schaltflächen im Beute-, Stapelteilen- und Postfenster des Spiels bleiben außerhalb des Controller-Cursors.", -- draft
+	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Ohne Questie: Quests, die auf der Karte und der Minikarte keine Markierung und kein Gebiet hatten, werden jetzt angezeigt.", -- draft
+	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI lässt die Spieloption Show Quest POIs & Blobs an, solange seine Questmarkierungen an sind: Nur damit liefert das Spiel alle Questorte.", -- draft
 	["Report a problem"] = "Ein Problem melden",
 	["Voice pack"] = "Stimmenpaket",
 	["open or close this window"] = "dieses Fenster öffnen oder schließen",
@@ -2667,13 +2642,11 @@ Lang:Add("deDE", {
 	["Delete"] = "Löschen",
 	["share string of '%s' (%d characters)"] = "Teilen-Text von „%s“ (%d Zeichen)",
 	["Could not share '%s': %s."] = "„%s“ konnte nicht geteilt werden: %s.",
-	["This character: %s      Default on a fresh install: %s"] = "Dieser Charakter: %s      Standard bei frischer Installation: %s",
 	["Profile '%s' saved."] = "Profil „%s“ gespeichert.",
-	["Type a name for the imported profile first, then click Import as."] = "Gib zuerst einen Namen für das importierte Profil ein und klicke dann auf „Importieren als“.",
-	["paste a MelloUI profile string for '%s'"] = "einen MelloUI-Profiltext für „%s“ einfügen",
+	["No profiles yet. Type a name above and save the current settings."] = "Noch keine Profile. Gib oben einen Namen ein und speichere die aktuellen Einstellungen.",
+	["Share"] = "Teilen",
 	["Not imported: %s."] = "Nicht importiert: %s.",
 	["Profile '%s' imported (%d settings). Load it from the list to use it."] = "Profil „%s“ importiert (%d Einstellungen). Lade es aus der Liste, um es zu nutzen.",
-	["No profiles yet. Type a name above and save the current settings."] = "Noch keine Profile. Gib oben einen Namen ein und speichere die aktuellen Einstellungen.",
 	["Search options"] = "Optionen durchsuchen",
 	["Nothing found. Try another word."] = "Nichts gefunden. Versuch ein anderes Wort.",
 	["%d more. Type more letters to narrow it down."] = "%d weitere. Tipp mehr Buchstaben, um es einzugrenzen.",
@@ -2884,10 +2857,10 @@ Lang:Add("deDE", {
 	["Your target"] = "Dein Ziel",
 	["The Nameplates switch is off: the game's own plate, none of MelloUI's parts on it."] = "Der Schalter Namensplaketten ist aus: die eigene Plakette des Spiels, keine Teile von MelloUI darauf.",
 	["Click a part to pick it; its settings open beside it."] = "Klicke auf einen Teil, um ihn zu wählen; seine Einstellungen öffnen sich daneben.",
-	["Its buffs"] = "Seine Stärkungen",
 	["Raid marker"] = "Schlachtzugsmarkierung",
-	["Elite icon"] = "Elite-Symbol",
 	["Level badge"] = "Stufenabzeichen",
+	["Its buffs"] = "Seine Stärkungen",
+	["Elite icon"] = "Elite-Symbol",
 	-- MelloUI_GroupFrames/GroupFrames.lua
 	["The aura's own icon, its time as a sweep."] = "Das eigene Symbol der Aura, ihre Zeit als Umlauf.",
 	["Draining Icon"] = "Leerlaufendes Symbol",
@@ -2923,6 +2896,7 @@ Lang:Add("deDE", {
 	["Battle.net Friends"] = "Battle.net-Freunde", -- draft
 	["No other characters."] = "Keine weiteren Charaktere.", -- draft
 	["None yet: a friend's characters are noted while they play."] = "Noch keine: Die Charaktere eines Freundes werden gemerkt, während er spielt.", -- draft
+	["Recent"] = "Neu",
 	-- Core/Integrations.lua
 	["Quests and guides"] = "Quests und Guides",
 	["Map and minimap"] = "Karte und Minikarte",
@@ -3078,17 +3052,22 @@ Lang:Add("deDE", {
 	["Route after the fight"] = "Route nach dem Kampf",
 	-- Core/QuestMoments.lua
 	["Ready to turn in"] = "Abgabebereit",
+	-- Core/GroupMoment.lua
+	["%s uses MelloUI too"] = "%s nutzt auch MelloUI", -- draft
+	["%s and %s use MelloUI too"] = "%s und %s nutzen auch MelloUI", -- draft
+	["%s, %s and %s use MelloUI too"] = "%s, %s und %s nutzen auch MelloUI", -- draft
+	["%d players in your group use MelloUI"] = "%d Spieler in deiner Gruppe nutzen MelloUI", -- draft
+	["Now in your group"] = "Jetzt in deiner Gruppe", -- draft
 	-- Core/Config.lua
 	["On"] = "An", -- draft
 	["Loading…"] = "Lädt…",
-	["Share"] = "Teilen",
 	["Set default"] = "Als Standard",
 	["built in"] = "eingebaut",
 	["comes with MelloUI"] = "kommt mit MelloUI",
 	["yours"] = "eigenes",
-	["A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."] = "Ein Profil ist jede Einstellung jedes Moduls. Jeder Charakter nutzt sein eigenes: Ein neuer Charakter startet mit einer Kopie des zuletzt genutzten, und deine Änderungen werden beim Spielen darin gespeichert, bei jedem Ausloggen und /reload. Laden legt diesem Charakter ein anderes Profil an (sein eigenes erneut geht zurück zum zuletzt gespeicherten Stand); Aktuelle speichern als macht ein neues für ihn. Ein Profil lässt deinen Dunkelmodus aus und was deinen Charakteren gehört: die Flugpunkte, die sie kennen, Spieleinstellungen, die MelloUI geliehen hat, und einmal erledigte Schritte. Das als Standard markierte wird angewendet, wenn MelloUI ganz ohne Einstellungen startet, etwa bei einer frischen Installation. Teilen gibt einen Text zum Weitergeben, Importieren als holt einen herein. Die Profile, die mit MelloUI kommen, sind immer hier.",
 	["Save current as"] = "Aktuelle speichern als",
 	["Import as"] = "Importieren als",
+	["and %d more"] = "und %d weitere", -- draft
 	["Plays the sound you picked."] = "Spielt den gewählten Sound ab.",
 	-- Core/SupportersHall.lua
 	["Champions"] = "Champions", -- draft
@@ -3493,7 +3472,6 @@ Lang:Add("deDE", {
 	["Remove the kind %s? Its items go back to their own kinds."] = "Die Art %s entfernen? Ihre Gegenstände kehren zu ihren eigenen Arten zurück.",
 	["Drop the item here: it always goes under %s."] = "Leg den Gegenstand hier ab: Er kommt immer unter %s.",
 	["Drop it here: it goes back under its own kind."] = "Leg ihn hier ab: Er kommt zurück unter seine eigene Art.",
-	["Recent"] = "Neu",
 	["Hearthstone"] = "Ruhestein",
 	["Consumable"] = "Verbrauchbar",
 	["Quest"] = "Quest",
@@ -3543,7 +3521,6 @@ Lang:Add("deDE", {
 	["Fishing %s"] = "Angeln %s", -- draft
 	["You have not learned fishing."] = "Du hast Angeln nicht erlernt.", -- draft
 	["Fish bite from %d, none get away from %d. Your skill: %d."] = "Fische beißen ab %d an, ab %d entkommt keiner mehr. Deine Fertigkeit: %d.", -- draft
-	["and %d more"] = "und %d weitere", -- draft
 	-- MelloUI_Map/MapQuestLog.lua
 	["Choose what the map shows."] = "Wähle, was die Karte zeigt.",
 	["Your quest log is empty."] = "Dein Questlog ist leer.",
@@ -3829,6 +3806,7 @@ Lang:Add("deDE", {
 	[" and "] = " und ",
 	["This profile's action bars, experience bar, bags and micro menu follow MelloUI's Edit Mode layout, which this character does not use yet. Use it on this character too?"] = "Aktionsleisten, Erfahrungsleiste, Taschen und Mikromenü dieses Profils folgen MelloUIs Bearbeitungsmodus-Layout, das dieser Charakter noch nicht nutzt. Auch auf diesem Charakter nutzen?",
 	["credits thanks github curseforge bug report problem issue links voice pack slash commands"] = "danksagung dank links fehler melden problem sprachpaket befehle credits thanks github curseforge bug report issue voice pack slash commands", -- draft
+	["paste a MelloUI profile string for '%s'"] = "einen MelloUI-Profiltext für „%s“ einfügen",
 	-- kept: Core/SupportersHall.lua
 	["code"] = "Code", -- draft
 	["translations"] = "Übersetzungen", -- draft
@@ -3947,8 +3925,6 @@ Lang:Add("deDE", {
 	[" and %d more"] = " und %d weitere",
 	["Kept, worth more at auction: %s%s (%s)%s"] = "Behalten, im Auktionshaus mehr wert: %s%s (%s)%s",
 	["Discard: %s is kept now (the Restock List's Never Discard page lets it go)."] = "Wegwerfen: %s wird jetzt behalten (die Seite Nie wegwerfen der Auffüllliste gibt es wieder frei).",
-	-- kept: Modules/MailRecipients.lua
-	["online"] = "online", -- draft
 	-- kept: Modules/Sparkles.lua
 	["Mine"] = "Meine", -- draft
 	-- kept: Modules/CustomSounds.lua
@@ -4074,6 +4050,7 @@ Lang:Add("deDE", {
 -- stale: ["A batch you craft: which one of how many, a ring for each item, and Stop on hover."] = "Eine Serie, die du herstellst: welches von wie vielen, ein Ring für jeden Gegenstand und „Stopp“ beim Darüberfahren.", -- draft
 -- stale: ["A button on the bag window that frees a slot: it throws away the grey or white junk item worth least (at a vendor it sells it). Never food, drink, potions, scrolls, conjured items, crafting materials, quest items, reagents, ammunition, keys, white gear or anything on your Restock list. A white item asks first."] = "Ein Knopf am Taschenfenster, der einen Platz frei macht: Er wirft den grauen oder weißen Plundergegenstand mit dem geringsten Wert weg (bei einem Händler verkauft er ihn). Nie Essen, Getränke, Tränke, Schriftrollen, herbeigezauberte Gegenstände, Handwerksmaterialien, Questgegenstände, Reagenzien, Munition, Schlüssel, weiße Ausrüstung oder irgendetwas auf deiner Auffüllliste. Ein weißer Gegenstand fragt zuerst.", -- draft
 -- stale: ["A class medallion above every party member's friendly nameplate, with a ring in their role's colour. In the open world; inside instances the game keeps friendly nameplates to itself."] = "Ein Klassenmedaillon über der freundlichen Namensplakette jedes Gruppenmitglieds, mit einem Ring in der Farbe seiner Rolle. In der offenen Welt; in Instanzen behält das Spiel die freundlichen Namensplaketten für sich.", -- draft
+-- stale: ["A class medallion over friendly players' names, in the open world"] = "Ein Klassenmedaillon über den Namen freundlicher Spieler, in der offenen Welt",
 -- stale: ["A coloured ring around the medallion for the member's assigned role: green healer, blue tank, red damage. Only when the group has roles set (the group finder sets them; a party can set them by hand)."] = "Ein farbiger Ring um das Medaillon für die zugewiesene Rolle des Mitglieds: grün Heiler, blau Tank, rot Schaden. Nur wenn die Gruppe Rollen gesetzt hat (die Dungeonbrowser setzt sie; eine Gruppe kann sie von Hand setzen).", -- draft
 -- stale: ["A cooldown's icon lights up while you press the action button with its spell, as the button does (Action Buttons)."] = "Das Symbol einer Abklingzeit leuchtet auf, solange du die Aktionstaste mit ihrem Zauber drückst, wie die Taste selbst (Aktionstasten).", -- draft
 -- stale: ["A count going up rolls over to its new number as a soft light runs along its line; a finished objective gets a tick drawn in its dash's place; a finished quest's last count rolls first, then a light runs over its title, its mark turns over to the hand-in ? and its turn-in line comes in. Off: the lines change at once, with their dashes. Not with Reduce Motion."] = "Ein steigender Zähler rollt zu seiner neuen Zahl, während ein weiches Licht seine Zeile entlangläuft; ein erledigtes Ziel bekommt einen Haken an der Stelle seines Strichs; beim letzten Zähler einer fertigen Quest rollt zuerst die Zahl, dann läuft ein Licht über ihren Titel, ihr Zeichen dreht sich zum Abgabe-? und ihre Abgabezeile kommt herein. Aus: Die Zeilen ändern sich sofort, mit ihren Strichen. Nicht mit „Bewegung reduzieren“.", -- draft
@@ -4107,6 +4084,7 @@ Lang:Add("deDE", {
 -- stale: ["A preview of the bar's layout. Changes show after a /reload."] = "Eine Vorschau des Leistenlayouts. Änderungen erscheinen nach einem /reload.", -- draft
 -- stale: ["A profession cooldown ready again (a transmute, mooncloth, the salt shaker). MelloUI learns it when you open that profession."] = "Eine Berufsabklingzeit wieder bereit (eine Transmutation, Mondstoff, der Salzstreuer). MelloUI lernt sie, wenn du diesen Beruf öffnest.", -- draft
 -- stale: ["A profile is a copy of every setting of every module. It leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once; loading a profile never touches those. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Load asks before it replaces your settings. Profiles you save here are kept with your settings; Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."] = "Ein Profil ist eine Kopie jeder Einstellung jedes Moduls. Es lässt deinen Dunkelmodus weg und was zu deinen Charakteren gehört: die Flugpunkte, die sie kennen, Spieleinstellungen, die MelloUI geliehen hat, und einmal erledigte Schritte; das Laden eines Profils berührt diese nie. Das als Standard markierte wird angewendet, wenn MelloUI ganz ohne Einstellungen startet, etwa bei einer frischen Installation. „Laden“ fragt, bevor es deine Einstellungen ersetzt. Profile, die du hier speicherst, bleiben bei deinen Einstellungen; „Teilen“ gibt einen Text, um eins weiterzugeben, und „Importieren als“ holt eins herein. Die Profile, die mit MelloUI kommen, sind immer hier.",
+-- stale: ["A profile is every setting of every module. Each character uses its own: a new character starts with a copy of the one last used, and your changes are saved into it as you play, at every logout and /reload. Load puts another profile on this character (its own again goes back to how it was last saved); Save current as makes a new one for it. A profile leaves out your Dark Mode and what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Share gives a string to pass one on, and Import as brings one in. The profiles that come with MelloUI are always here."] = "Ein Profil ist jede Einstellung jedes Moduls. Jeder Charakter nutzt sein eigenes: Ein neuer Charakter startet mit einer Kopie des zuletzt genutzten, und deine Änderungen werden beim Spielen darin gespeichert, bei jedem Ausloggen und /reload. Laden legt diesem Charakter ein anderes Profil an (sein eigenes erneut geht zurück zum zuletzt gespeicherten Stand); Aktuelle speichern als macht ein neues für ihn. Ein Profil lässt deinen Dunkelmodus aus und was deinen Charakteren gehört: die Flugpunkte, die sie kennen, Spieleinstellungen, die MelloUI geliehen hat, und einmal erledigte Schritte. Das als Standard markierte wird angewendet, wenn MelloUI ganz ohne Einstellungen startet, etwa bei einer frischen Installation. Teilen gibt einen Text zum Weitergeben, Importieren als holt einen herein. Die Profile, die mit MelloUI kommen, sind immer hier.",
 -- stale: ["A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill."] = "Eine abgabebereite Quest sagt, wer sie annimmt und wo, zum Beispiel: Abgeben: Gryan Starkmantel, Späherkuppe.", -- draft
 -- stale: ["A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached."] = "Eine Questverfolgung am Platz der Verfolgung des Spiels, die mit dem Mausrad scrollt, damit jede beobachtete Quest erreichbar ist.", -- draft
 -- stale: ["A quest with a time limit: a ring for its whole time and the time left."] = "Eine Quest mit Zeitlimit: ein Ring für ihre ganze Zeit und die Restzeit.", -- draft
@@ -4188,7 +4166,6 @@ Lang:Add("deDE", {
 -- stale: ["Attach To The Player Frame"] = "An das Spielerfenster heften", -- draft
 -- stale: ["Attacks that miss you: misses, dodges, parries, blocks, absorbs, resists and immunes."] = "Angriffe, die dich verfehlen: Verfehlen, Ausweichen, Parieren, Blocken, Absorbieren, Widerstehen und Immunität.", -- draft
 -- stale: ["Attunements"] = "Einstimmungen",
--- stale: ["Automation"] = "Automatik", -- draft
 -- stale: ["Available"] = "Verfügbar",
 -- stale: ["BUFFS by spell (yours and your group's)"] = "STÄRKUNGSZAUBER nach Zauber (deine und die deiner Gruppe)", -- draft
 -- stale: ["Bag window: worn gear dropped on a + slot goes into a free slot. Before, it went back on."] = "Taschenfenster: Angelegte Ausrüstung, die du auf ein +-Feld ziehst, kommt in einen freien Platz. Vorher ging sie zurück an den Charakter.", -- draft
@@ -4229,10 +4206,14 @@ Lang:Add("deDE", {
 -- stale: ["Chat tweaks"] = "Chat-Anpassungen", -- draft
 -- stale: ["Chat with a controller: pick Chat on the game's ring menu, then LB / RB switch tabs and the D-pad or the right stick scrolls."] = "Chat mit Controller: Wähle Chat im Ringmenü des Spiels, dann wechseln LB / RB die Reiter, und das Steuerkreuz oder der rechte Stick blättert.", -- draft
 -- stale: ["Chat: Chat View (Minimal) -- one dark panel, round tabs on a rail, each line under its sender, channel and time; a row of round buttons below."] = "Chat: Chatansicht (Minimal) -- ein dunkler Bereich, runde Reiter auf einer Leiste, jede Zeile unter ihrem Absender, Kanal und Zeit; eine Reihe runder Knöpfe darunter.", -- draft
+-- stale: ["Chat: One Line Per Message puts the time, channel, name and words on one line in the Minimal view."] = "Chat: Eine Zeile pro Nachricht zeigt Uhrzeit, Kanal, Name und Text in der minimalen Ansicht in einer Zeile.", -- draft
 -- stale: ["Chat: Parchment now works with the Game Windows chat view too, in all three skins: the chat windows on parchment, their lines in dark ink."] = "Chat: Pergament funktioniert jetzt auch mit der Chat-Ansicht „Spielfenster“, in allen drei Skins: die Chatfenster auf Pergament, ihre Zeilen in dunkler Tinte.", -- draft
+-- stale: ["Chat: Short Channel Tags shorten channel names in every game language, in both chat views."] = "Chat: Kurze Kanal-Kürzel kürzen Kanalnamen jetzt in jeder Spielsprache, in beiden Chat-Ansichten.", -- draft
+-- stale: ["Chat: Tab Switches Channel moves to the next chat you can speak in while you type."] = "Chat: Tab wechselt den Kanal springt beim Tippen zum nächsten Chat, in dem du sprechen kannst.", -- draft
 -- stale: ["Chat: a Chat Timestamps option on the Chat page sets the game's own chat timestamps, None hides them; the Minimal Chat View follows it."] = "Chat: Eine Option Chat-Zeitstempel auf der Chat-Seite stellt die eigenen Chat-Zeitstempel des Spiels ein, Keine blendet sie aus; die minimale Chatansicht folgt ihr.",
 -- stale: ["Chat: a Copy Chat button shows at the chat's top right corner while your mouse is on it; it opens the tab's lines in a window to copy, each with its time."] = "Chat: Ein Knopf „Chat kopieren“ erscheint in der oberen rechten Ecke des Chats, solange deine Maus darauf ist; er öffnet die Zeilen des Reiters in einem Fenster zum Kopieren, jede mit ihrer Uhrzeit.", -- draft
 -- stale: ["Chat: a Copy button on the whisper windows puts the whole conversation in a window to copy, links and long messages included."] = "Chat: Eine Schaltfläche Kopieren in den Flüsterfenstern legt das ganze Gespräch zum Kopieren in ein Fenster, Links und lange Nachrichten eingeschlossen.",
+-- stale: ["Chat: channels other addons use in the background no longer show up as tabs in the Minimal view."] = "Chat: Kanäle, die andere Addons im Hintergrund nutzen, erscheinen in der minimalen Ansicht nicht mehr als Reiter.", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles."] = "Chat: mehr Platz für deine Nachrichten: kleinerer Text, ein höherer Chat und ein höheres Flüsterfenster, mehr Raum um Zeilen und Blasen.", -- draft
 -- stale: ["Chat: more room for your messages: smaller text, a taller chat and whisper window, more space round the lines and bubbles; your text size stays after a /reload."] = "Chat: mehr Platz für deine Nachrichten: kleinere Schrift, höhere Chat- und Flüsterfenster, mehr Raum um Zeilen und Blasen; deine Schriftgröße bleibt nach einem /reload.", -- draft
 -- stale: ["Chat: right-click a person in the whisper window to remove that conversation, or all of them; they are gone from the saved history too."] = "Chat: Klicke im Flüsterfenster mit der rechten Maustaste auf eine Person, um dieses Gespräch oder alle zu entfernen; sie verschwinden auch aus dem gespeicherten Verlauf.",
@@ -4244,6 +4225,7 @@ Lang:Add("deDE", {
 -- stale: ["Chat: the whisper window now keeps your Battle.net friends' conversations over a logout too, and answering still reaches them after you log in again."] = "Chat: Das Flüsterfenster behält jetzt auch die Unterhaltungen mit deinen Battle.net-Freunden über einen Logout hinweg, und Antworten erreichen sie auch nach dem nächsten Login.",
 -- stale: ["Chat: the whisper window now stays on top of other windows, like the map and the bags, while it is open."] = "Chat: Das Flüsterfenster bleibt jetzt über anderen Fenstern wie der Karte und den Taschen, solange es offen ist.",
 -- stale: ["Chat: with the Minimal Chat View, the Combat Log tab now shows your fights as they happen, and closing the game's combat log filters no longer dumps old fight lines into it."] = "Chat: Mit der minimalen Chatansicht zeigt der Reiter Kampflog deine Kämpfe jetzt, während sie passieren, und das Schließen der Kampflog-Filter des Spiels kippt keine alten Kampfzeilen mehr hinein.",
+-- stale: ["Chinese text: titles and headings at their right size, and Chinese letters instead of boxes."] = "Chinesischer Text: Titel und Überschriften in der richtigen Größe und chinesische Zeichen statt Kästchen.", -- draft
 -- stale: ["Choose how MelloUI starts. Nothing changes until you install, and you can go back right after."] = "Wähle, wie MelloUI startet. Nichts ändert sich, bevor du installierst, und du kannst gleich danach zurück.", -- draft
 -- stale: ["Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off."] = "Klassen- und Reaktionsfarben, der Gesundheitsbalken und die Platzierung der Tooltips. Der dunkle Hintergrund gilt nur, solange der Tooltip-Skin aus ist.", -- draft
 -- stale: ["Class icons in portraits"] = "Klassensymbole in Porträts", -- draft
@@ -4262,6 +4244,7 @@ Lang:Add("deDE", {
 -- stale: ["Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page."] = "Konfigurator: Einheiten- & Gruppenfenster, Namensplaketten, Leisten und Minikarte sind Designer: Wähle ein Fenster, dann einen Teil, zieh Namen und Werte; eine neue Seite „Automatik“.", -- draft
 -- stale: ["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "Konfigurator: Eine neue Seite Addons listet die Addons, mit denen MelloUI zusammenarbeitet: was es mit jedem macht, ihre Links, wer welche Aufgabe übernimmt, und einen Schalter, damit MelloUI eines nicht mehr nutzt.",
 -- stale: ["Container"] = "Behälter",
+-- stale: ["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "Controller: Die Hintergrunddeckkraft lässt die verborgenen Chatfenster des Spiels in der minimalen Chatansicht in Ruhe.", -- draft
 -- stale: ["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "Controller: Das Steuerkreuz überspringt den Schließen-Knopf und die Reiter eines Fensters (B schließt, LB / RB wechseln die Reiter), und ein Mausklick auf den MelloUI-Knopf unter dem Spielmenü schließt das Menü.", -- draft
 -- stale: ["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Controller: Der gelbe Zeiger des Spiels erscheint nicht mehr über MelloUIs Fenstern, und die Tastenhinweise sind mittig und besser lesbar.", -- draft
 -- stale: ["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "Abklingzeit-Timer: Zahlen im Kampf kann den Countdown des Spiels im Kampf ausblenden, und Dunkelheit des Schattens macht den Schatten dunkler.", -- draft
@@ -4271,6 +4254,7 @@ Lang:Add("deDE", {
 -- stale: ["Custom Sounds: a new Your Sounds tab changes any sound, Level Up and Rare Alert included, to another of MelloUI's, the game's own, none, or a SharedMedia sound, your own files too."] = "Eigene Sounds: Ein neuer Reiter Deine Sounds ändert jeden Sound, auch Stufenaufstieg und Seltenen-Alarm, in einen anderen von MelloUI, den des Spiels, keinen oder einen SharedMedia-Sound, auch deine eigenen Dateien.",
 -- stale: ["Cut the speech off when you change target."] = "Bricht die Sprache ab, wenn du das Ziel wechselst.", -- draft
 -- stale: ["Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away."] = "Bricht die Sprache ab, wenn du den Dialog schließt. Standardmäßig aus, damit der NPC weiterredet, während du weggehst.", -- draft
+-- stale: ["Damage meter: with MelloUI's meter off, the game's own meter can be moved in Edit Layout again."] = "Schadensanzeige: Ist MelloUIs Anzeige aus, lässt sich die Anzeige des Spiels im Edit Layout wieder verschieben.", -- draft
 -- stale: ["Dark Mode on the unit frames: player, target, focus, pet, party, boss and target of target."] = "Dunkelmodus auf den Einheitenfenstern: Spieler, Ziel, Fokus, Begleiter, Gruppe, Boss und Ziel des Ziels.", -- draft
 -- stale: ["Dark Mode: an action button's gold frame for an active stance or a queued spell stays bright, as do its pressed, hover and out-of-range frames; only the plain frames darken."] = "Dunkelmodus: Der goldene Rahmen einer Aktionstaste für eine aktive Haltung oder einen vorgemerkten Zauber bleibt hell, ebenso die Rahmen für gedrückt, Mauszeiger darüber und außer Reichweite; nur die schlichten Rahmen werden dunkler.",
 -- stale: ["Dark Mode: gold words no longer darken with it, like the MelloUI button in the Game Menu, the chat's headers and the map's quest counts; only the frames and backgrounds darken."] = "Dunkelmodus: Goldene Schrift wird nicht mehr mit abgedunkelt, etwa die MelloUI-Schaltfläche im Spielmenü, die Überschriften im Chat und die Questzahlen auf der Karte; nur Rahmen und Hintergründe werden dunkler.",
@@ -4310,6 +4294,7 @@ Lang:Add("deDE", {
 -- stale: ["Dungeon Info: with DungeonJournal installed, its loot lists show too."] = "Dungeon-Info: mit installiertem DungeonJournal erscheinen auch dessen Beutelisten.", -- draft
 -- stale: ["Each frame's height (the game's raid frame: 36)."] = "Die Höhe jedes Fensters (das Schlachtzugsfenster des Spiels: 36).", -- draft
 -- stale: ["Each frame's width (the game's raid frame: 72)."] = "Die Breite jedes Fensters (das Schlachtzugsfenster des Spiels: 72).", -- draft
+-- stale: ["Easter egg added."] = "Osterei hinzugefügt.", -- draft
 -- stale: ["Edit Layout opened from the configurator brings you back to your page when you leave it."] = "Aus dem Konfigurator geöffnetes Edit Layout bringt dich beim Verlassen zu deiner Seite zurück.", -- draft
 -- stale: ["Edit Layout, bags and groups: more windows move without the reskin; quality gems and junk on every slot; party and raid frames keep their own places and indicators."] = "Layout bearbeiten, Taschen und Gruppen: mehr Fenster bewegen sich ohne den Skin; Qualitätsedelsteine und Plunder auf jedem Platz; Gruppen- und Schlachtzugsfenster behalten ihre eigenen Plätze und Anzeigen.", -- draft
 -- stale: ["Edit Layout, the map, Dungeon Info and the installer bring you back to your settings page; Dark Mode leaves it alone."] = "Layout bearbeiten, die Karte, Dungeon-Info und der Installer bringen dich zu deiner Einstellungsseite zurück; der Dunkelmodus lässt sie in Ruhe.", -- draft
@@ -4328,6 +4313,7 @@ Lang:Add("deDE", {
 -- stale: ["Edit Mode already keeps %d account layouts, the most it can. Delete one in Edit Mode, or switch the layout off on the Screen step."] = "Der Bearbeitungsmodus hat schon %d Accountlayouts, so viele er kann. Lösch eines im Bearbeitungsmodus oder schalte das Layout im Schritt „Bildschirm“ aus.", -- draft
 -- stale: ["Effects: bolder heals and cooldowns across the whole frame; Buff Landings in each school's colour; a threat halo (untick Hide Combat Flash)."] = "Effekte: kräftigere Heilungen und Abklingzeiten über das ganze Fenster; Buff-Landungen in der Farbe ihrer Schule; ein Bedrohungsschein (Kampfblinken ausblenden abwählen).", -- draft
 -- stale: ["Elites, rares, rare elites and bosses stand out: a metal line over the name with a crest on it. Gold with a crown and wings for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and red-bronze scrollwork with a skull, winged at both ends, for a boss. The plate itself keeps its look."] = "Elite-, seltene, seltene Elite- und Bossgegner fallen auf: eine Metalllinie über dem Namen mit einem Wappen darauf. Gold mit Krone und Flügeln für einen Elitegegner, Silber mit einem Stern für einen seltenen, Silber mit einem Goldstern und Flügeln für einen seltenen Elitegegner und rotbronzenes Rankenwerk mit einem Schädel, an beiden Enden geflügelt, für einen Boss. Die Plakette selbst behält ihr Aussehen.", -- draft
+-- stale: ["Enemies' and NPCs' plates"] = "Plaketten von Gegnern und NPCs",
 -- stale: ["Escape goes one step at a time; Settings Window Scale on Look sizes this window; helper texts are full size."] = "Escape geht Schritt für Schritt; „Skalierung des Optionsfensters“ unter Aussehen ändert seine Größe; Hilfetexte in voller Größe.", -- draft
 -- stale: ["Escape in the configurator goes one step at a time: an open list or panel, a picked part, the search, then the window."] = "Escape im Konfigurator geht Schritt für Schritt: eine offene Liste oder Leiste, ein gewähltes Teil, die Suche, dann das Fenster.", -- draft
 -- stale: ["Escape in the configurator goes one step at a time; its side list starts with Home and has a thin scroll bar."] = "Escape im Konfigurator geht Schritt für Schritt; seine Seitenliste beginnt mit Startseite und hat eine schmale Bildlaufleiste.", -- draft
@@ -4406,9 +4392,11 @@ Lang:Add("deDE", {
 -- stale: ["Frames: Hide Heal Numbers on your portrait; party: Flip Horizontally, Mouseover Highlight, raid frames wear Raid's look and stay in place when you switch."] = "Fenster: Heilungszahlen ausblenden am Porträt; Gruppe: Horizontal spiegeln, Hervorhebung bei Mauskontakt, Schlachtzugsfenster tragen das Aussehen von Schlachtzug und bleiben beim Wechsel an ihrem Platz.", -- draft
 -- stale: ["Frames: Hide Heal Numbers on your portrait; party: Flip Horizontally, Mouseover Highlight, the meter's numbers in a tab on each frame, Raid's look in raid frames."] = "Fenster: Heilungszahlen ausblenden am Porträt; Gruppe: Horizontal spiegeln, Hervorhebung bei Mauskontakt, die Zahlen des Meters in einem Reiter an jedem Fenster, Schlachtzugsfenster im Aussehen von Schlachtzug.", -- draft
 -- stale: ["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "Fenster: Heilungszahlen ausblenden am Porträt; die Zahlen des Meters in einem Reiter an deinem Fenster und jedem Gruppenfenster; Gruppe: Spiegeln, Hervorhebung bei Mauskontakt, Schlachtzugsfenster im Aussehen von Schlachtzug.", -- draft
+-- stale: ["French: many more settings and messages are translated (thanks to woofix)."] = "Französisch: Viele weitere Einstellungen und Meldungen sind übersetzt (danke an woofix).", -- draft
 -- stale: ["Fresh start"] = "Neuanfang", -- draft
 -- stale: ["Full experience"] = "Volles Erlebnis", -- draft
 -- stale: ["Game menu"] = "Spielmenü", -- draft
+-- stale: ["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2: Jedes Erz und jedes Kraut hat ein eigenes Symbol auf der Karte und der Minikarte.", -- draft
 -- stale: ["GatherMate2: its herbs, veins, fishing pools and treasures in MelloUI's own icons, on the map and the minimap."] = "GatherMate2: seine Kräuter, Adern, Fischschwärme und Schätze in MelloUIs eigenen Symbolen, auf der Karte und der Minikarte.", -- draft
 -- stale: ["Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu."] = "Gibt jedem Chatfenster dieselbe Hintergrunddeckkraft, in deinem Profil gespeichert. Aus: Jedes Fenster behält die Deckkraft aus dem Menü seines Reiters.", -- draft
 -- stale: ["Glowing Bars now lights MelloUI's own action bars and stance bar in every skin, instead of the hidden game bars underneath."] = "Glowing Bars lässt jetzt in jedem Design MelloUIs eigene Aktionsleisten und Haltungsleiste leuchten statt der verborgenen Spielleisten darunter.", -- draft
@@ -4555,6 +4543,7 @@ Lang:Add("deDE", {
 -- stale: ["Loading a profile made for another screen offers Fit to this screen; Gains keeps its place on a wide screen."] = "Ein Profil für einen anderen Bildschirm bietet „An diesen Bildschirm anpassen“ an; Gewinne behalten ihren Platz auf breiten Bildschirmen.", -- draft
 -- stale: ["Loot All Key: one key takes everything from the loot window (Windows > Loot windows)."] = "Alles-plündern-Taste: eine Taste nimmt alles aus dem Beutefenster (Fenster > Beutefenster).", -- draft
 -- stale: ["Loot rolls in a window of their own: every pick and number, and the item flies to the winner."] = "Beutewürfe in einem eigenen Fenster: jede Wahl und jede Zahl, und der Gegenstand fliegt zum Gewinner.", -- draft
+-- stale: ["Lueur: while its glow is on, Loot Sparkles' gathering glints step aside for it."] = "Lueur: Solange sein Leuchten an ist, treten die Sammel-Glanzlichter von Beutefunkeln für es zurück.", -- draft
 -- stale: ["Made-up members where your party frames stand, this list's indicators on them, until the preview ends. Out of combat only."] = "Ausgedachte Mitglieder dort, wo deine Gruppenfenster stehen, die Anzeigen dieser Liste darauf, bis die Vorschau endet. Nur außerhalb des Kampfes.", -- draft
 -- stale: ["Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only."] = "Ausgedachte Mitglieder dort, wo deine Schlachtzugsfenster stehen, deine Anzeigen darauf, bis die Vorschau endet. Nur außerhalb des Kampfes.", -- draft
 -- stale: ["Mail Recipients: a button beside the mailbox's To field lists your characters and your Battle.net friends' characters; a click fills in the name."] = "Post-Empfänger: Ein Knopf neben dem An-Feld des Briefkastens listet deine Charaktere und die deiner Battle.net-Freunde; ein Klick trägt den Namen ein.", -- draft
@@ -4562,20 +4551,26 @@ Lang:Add("deDE", {
 -- stale: ["Mail Recipients: the button beside To opens a list beside the Send Mail window. Friends unfold their characters in place, and it stays open or closed as you left it."] = "Post-Empfänger: Der Knopf neben „An“ öffnet eine Liste neben dem Fenster „Post versenden“. Freunde klappen ihre Charaktere an Ort und Stelle auf, und die Liste bleibt offen oder geschlossen, wie du sie verlassen hast.", -- draft
 -- stale: ["Mail: an empty subject takes the name of the first item you attach."] = "Post: Ein leerer Betreff bekommt den Namen des ersten angehängten Gegenstands.", -- draft
 -- stale: ["Mana, rage, energy and focus you gain (+12 Rage)."] = "Mana, Wut, Energie und Fokus, die du gewinnst (+12 Wut).", -- draft
+-- stale: ["ManaRise: its mana, rage and energy fill now shows on MelloUI's action bars."] = "ManaRise: Seine Mana-, Wut- und Energiefüllung erscheint jetzt auf den Aktionsleisten von MelloUI.", -- draft
+-- stale: ["Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look."] = "Karte und Minikarte ohne Questie: Deine Quests zeigen die Questgebiete und Punkte des Spiels im Look von MelloUI.", -- draft
 -- stale: ["Map with Questie: Shift over a quest icon opens its full tooltip at once, and letting go folds it again."] = "Karte mit Questie: Umschalt über einem Quest-Symbol öffnet sofort seinen vollen Tooltip, Loslassen klappt ihn wieder zu.", -- draft
 -- stale: ["Map with a controller: the D-pad reaches the buttons beside the quest list, Marker on your pin removes it, the crosshair is faster, and the mouse on its X closes the game's map too."] = "Karte mit Controller: Das Steuerkreuz erreicht die Knöpfe neben der Questliste, Markierung auf deiner Stecknadel entfernt sie, das Fadenkreuz ist schneller, und das Schließen der Karte mit der Maus schließt auch die Karte des Spiels.", -- draft
 -- stale: ["Map's quest log: Show on a quest with no place on the map, such as a crafting writ, says so instead of doing nothing."] = "Questlog der Karte: Zeigen bei einer Quest ohne Ort auf der Karte, etwa einem Handwerksauftrag, sagt das jetzt, statt nichts zu tun.", -- draft
 -- stale: ["Map's quest log: a tracked box on each zone and an All quests box put many quests in the Quest Tracker at once."] = "Questlog der Karte: Ein Häkchen an jeder Zone und eines für alle Quests setzen viele Quests auf einmal in die Questverfolgung.", -- draft
 -- stale: ["Map: Krol'dok Stronghold's entrance (levels 40-45) shows in the Riverglades, at the cave west of the fortress, and Route takes you there."] = "Karte: Der Eingang der Feste Krol'dok (Stufen 40-45) erscheint in den Flusslanden, an der Höhle westlich der Festung, und Route bringt dich hin.",
+-- stale: ["Map: Only The Tracked Quests and Focused Quest Only change the open map at once."] = "Karte: Nur die verfolgten Quests und Nur die verfolgte Quest ändern die offene Karte sofort.", -- draft
 -- stale: ["Map: Questie's flight master icons stay hidden while the map's Flight masters layer shows MelloUI's own."] = "Karte: Questies Flugmeister-Symbole bleiben verborgen, solange die Ebene Flugmeister der Karte MelloUIs eigene zeigt.",
 -- stale: ["Map: a Fog Of War option keeps the places you haven't explored hidden on the map, as on the game's own world map, until you walk there."] = "Karte: Die Option Nebel des Krieges hält Orte, die du noch nicht erkundet hast, auf der Karte verborgen wie auf der Weltkarte des Spiels, bis du dort hingehst.",
 -- stale: ["Map: a Map Coordinates option shows your coordinates in the line under the map, and the mouse's while it is over the map."] = "Karte: Die Option Kartenkoordinaten zeigt deine Koordinaten in der Zeile unter der Karte und die der Maus, solange sie über der Karte ist.",
 -- stale: ["Map: drag the grip in its bottom-right corner to size the map (the quest log beside it keeps its size), and drag its title bar to move it, no Edit Layout needed."] = "Karte: Zieh den Griff in der unteren rechten Ecke, um die Karte zu vergrößern oder zu verkleinern (das Questlog daneben behält seine Größe), und zieh die Titelleiste, um sie zu verschieben, ohne Layout-Bearbeitung.", -- draft
+-- stale: ["Map: in a battleground, its bases, towers and camps show who holds them, as on the game's own map."] = "Karte: In einem Schlachtfeld zeigen seine Basen, Türme und Lager, wer sie hält, wie auf der Karte des Spiels.", -- draft
 -- stale: ["Map: inside a battleground, the map shows you, your group and the battleground's flags."] = "Karte: In einem Schlachtfeld zeigt die Karte dich, deine Gruppe und die Flaggen des Schlachtfelds.", -- draft
 -- stale: ["Map: quest areas that touch now show one outline instead of a stack of rings; each objective keeps its marks where it is done, and hovering a mark shows its own area inside."] = "Karte: Questgebiete, die sich berühren, zeigen jetzt einen Umriss statt eines Stapels von Ringen; jedes Ziel behält seine Markierungen dort, wo es erledigt wird, und beim Überfahren einer Markierung erscheint sein eigenes Gebiet darin.",
+-- stale: ["Map: quests Questie has no places for show the game's own quest area and marker, in MelloUI's look."] = "Karte: Quests, für die Questie keine Orte kennt, zeigen das Questgebiet und die Markierung des Spiels im Look von MelloUI.", -- draft
 -- stale: ["Map: the first time you open the map after logging in, it shows your current zone (a city's own map in a city) instead of the whole world."] = "Karte: Wenn du die Karte nach dem Einloggen zum ersten Mal öffnest, zeigt sie dein aktuelles Gebiet (in einer Stadt ihre eigene Karte) statt der ganzen Welt.",
 -- stale: ["Map: the land between zones is painted in, Ahn'Qiraj and west of Dun Morogh among it; coastal zones reach the coast."] = "Karte: das Land zwischen den Zonen ist ausgemalt, darunter Ahn'Qiraj und westlich von Dun Morogh; Küstenzonen reichen bis zur Küste.", -- draft
 -- stale: ["Map: the painted map stays as you zoom in; the minimap ground only fades in over it up close. The wheel zooms smoothly, and a drag glides on."] = "Karte: die gemalte Karte bleibt beim Hineinzoomen; der Minikartenboden blendet erst ganz nah darüber ein. Das Rad zoomt sanft, und ein Ziehen gleitet nach.", -- draft
+-- stale: ["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "Karte: Bei ausgeschalteter MelloUI-Karte zeigt auch die Weltkarte des Spiels ohne Questie MelloUIs Questgebiete.", -- draft
 -- stale: ["Map: with Questie installed, its objective icons (swords, sacks ...) no longer show over MelloUI's quest areas and marks; MelloUI now knows Questie's icons by their kind, not their picture."] = "Karte: Mit installiertem Questie erscheinen dessen Zielsymbole (Schwerter, Säcke ...) nicht mehr über MelloUIs eigenen Questgebieten und Markierungen; MelloUI erkennt Questies Symbole jetzt an ihrer Art, nicht an ihrem Bild.",
 -- stale: ["Map: with Questie, its quest ! and ? on MelloUI's map are bigger and follow the Icon Size slider, and a click near one starts the route there."] = "Karte: Mit Questie sind dessen Quest-! und -? auf MelloUIs Karte größer und folgen dem Regler Symbolgröße, und ein Klick in die Nähe startet die Route dorthin.", -- draft
 -- stale: ["Map: with RareScanner and a HandyNotes plugin that also marks rares, a rare is no longer marked twice. RareScanner's mark is the one, on MelloUI's map and the minimap."] = "Karte: Mit RareScanner und einem HandyNotes-Plugin, das ebenfalls seltene Gegner markiert, wird ein seltener Gegner nicht mehr doppelt markiert. Es gilt die Markierung von RareScanner, auf MelloUIs Karte und der Minikarte.", -- draft
@@ -4612,6 +4607,7 @@ Lang:Add("deDE", {
 -- stale: ["Micro menu: moved to a place of its own, it no longer jumps back (after a vehicle, or when the action bar shows again), and its Edit Layout size now applies to the buttons."] = "Mikromenü: An einen eigenen Platz verschoben, springt es nicht mehr zurück (nach einem Fahrzeug oder wenn die Aktionsleiste wieder erscheint), und seine Größe aus dem Layout-Bearbeiten gilt jetzt auch für die Knöpfe.", -- draft
 -- stale: ["Mind Control and other possessions: the pet bar with the controlled creature's abilities stays on screen."] = "Gedankenkontrolle und andere Besessenheiten: Die Begleiterleiste mit den Fähigkeiten der kontrollierten Kreatur bleibt sichtbar.", -- draft
 -- stale: ["Minimap ring, zone text header, day/night indicator frame, tracking, calendar, zoom and addon buttons."] = "Ring der Minikarte, Zonentext-Kopf, Rahmen der Tag/Nacht-Anzeige, Aufspüren, Kalender, Zoom- und Addon-Knöpfe.", -- draft
+-- stale: ["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Minikarte ohne Questie: Die blauen Questkreise des Spiels weichen MelloUIs Markierungen.", -- draft
 -- stale: ["Minimap: RareScanner's icons on the minimap wear the same look."] = "Minikarte: Die Symbole von RareScanner auf der Minikarte tragen denselben Look.",
 -- stale: ["Minimap: a Minimap Coordinates option shows your coordinates under the minimap, and the mouse's in gold while it is over the minimap. It takes the place of Hide Minimap Coordinates."] = "Minikarte: Die Option Minikartenkoordinaten zeigt deine Koordinaten unter der Minikarte und die der Maus in Gold, solange sie über der Minikarte ist. Sie ersetzt „Koordinaten der Minikarte ausblenden“.",
 -- stale: ["Minimap: quest areas that touch show one outline there too, and hovering a quest mark lifts it and shows its own area, as on the map."] = "Minikarte: Questgebiete, die sich berühren, zeigen auch dort einen Umriss, und beim Überfahren einer Questmarkierung hebt sie sich und zeigt ihr eigenes Gebiet, wie auf der Karte.",
@@ -4627,6 +4623,9 @@ Lang:Add("deDE", {
 -- stale: ["Move the chat input box above the chat window and its tabs instead of below it."] = "Verschiebt das Chat-Eingabefeld über das Chatfenster und seine Reiter statt darunter.", -- draft
 -- stale: ["Move the crowd-control icon from the right side of the nameplate to above the name and enlarge it. Requires Blizzard's Crowd Control nameplate aura option to be on."] = "Verschiebt das Kontrollverlust-Symbol von der rechten Seite der Namensplakette über den Namen und vergrößert es. Braucht Blizzards Auren-Option „Kontrollverlust“ für Namensplaketten.", -- draft
 -- stale: ["Name and glow tweaks on the unit frames, the party's levels and the names' soft bands (they step aside where the reskin covers them)."] = "Namens- und Leuchtanpassungen an den Einheitenfenstern, die Stufen der Gruppe und die weichen Streifen der Namen (sie weichen, wo der Skin sie verdeckt).", -- draft
+-- stale: ["Nameplate Designer: drag the health numbers anywhere on the plate, size them, or hide them."] = "Namensplaketten-Designer: Ziehe die Gesundheitszahlen an eine beliebige Stelle der Plakette, ändere ihre Größe oder blende sie aus.", -- draft
+-- stale: ["Nameplate Designer: the health number and the percent move and size on their own, and the names have a size."] = "Namensplaketten-Designer: Gesundheitszahl und Prozentwert lassen sich einzeln verschieben und skalieren, und die Namen haben eine Größe.", -- draft
+-- stale: ["Nameplate Designer: the preview wears the look your plates wear, the Oldschool frame set and Dark Mode too."] = "Namensplaketten-Designer: Die Vorschau trägt das Aussehen deiner Plaketten, auch das Oldschool-Rahmenset und den Dunkelmodus.", -- draft
 -- stale: ["Nameplate Tweaks"] = "Namensplaketten-Anpassungen", -- draft
 -- stale: ["Nameplate Tweaks is off: the game's own plate, none of MelloUI's parts on it."] = "Namensplaketten-Anpassungen sind aus: die Plakette des Spiels, ohne MelloUIs Teile darauf.", -- draft
 -- stale: ["Nameplate health and cast bars in the kit."] = "Gesundheits- und Zauberbalken der Namensplaketten im Kit.", -- draft
@@ -4636,10 +4635,13 @@ Lang:Add("deDE", {
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "Namensplaketten-Designer: Ziehe Name, CC-Symbol, Questsymbol und Schlagabzeichen an jede Stelle der Plakette; Teile auf demselben Platz werden rot umrandet.", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "Namensplaketten-Designer: Das Elite-Symbol ist ein eigenes Teil zum Ziehen, Skalieren oder Ausblenden; das Verschieben der Schlachtzugsmarkierung nimmt das Elite-Symbol und die Stärkungszauber des Gegners nicht mehr mit.", -- draft
 -- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "Namensplaketten-Designer: Deine Plakettengröße und die platzierten Teile bleiben nach einem /reload erhalten, auch auf den Plaketten, die schon zu sehen sind.", -- draft
+-- stale: ["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "Namensplaketten: Gesundheitstextgröße macht die Gesundheitszahlen kleiner, und Prozent neben der Leiste hält die Zahl in der Leiste.", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Namensplaketten: „Nur meine Schwächungen“ für deine Schwächungszauber auf feindlichen Namensplaketten (standardmäßig an).", -- draft
+-- stale: ["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Namensplaketten: Freundliche Plaketten, die nur den Namen zeigen, bekommen beim Darüberfahren keinen Plakettenrahmen mehr.", -- draft
 -- stale: ["Nameplates: the combo points can be moved with a horizontal and a vertical offset."] = "Namensplaketten: Die Combopunkte lassen sich mit einem waagerechten und einem senkrechten Versatz verschieben.", -- draft
 -- stale: ["Nameplates: the nameplate preview shows the enemy's name centred above the bar, as the plates do."] = "Namensplaketten: Die Vorschau der Namensplakette zeigt den Namen des Gegners zentriert über dem Balken, wie die Plaketten selbst.", -- draft
 -- stale: ["Nameplates: the swing badge shows in the nameplate preview, with a Swing Badge Size setting from 50 to 200 %."] = "Namensplaketten: Das Schlagabzeichen erscheint in der Vorschau der Namensplakette, mit einer Einstellung für seine Größe von 50 bis 200 %.", -- draft
+-- stale: ["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "Namensplaketten: Das Schwungabzeichen rückt hinter den Prozentwert, wenn dieser neben der Leiste steht.", -- draft
 -- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Namensplaketten: Deine Schwächungen auf feindlichen Namensplaketten zeigen keine Uhr mehr, und ihre Zahlen sind nach der Restzeit gefärbt, rot unter 5 Sekunden.", -- draft
 -- stale: ["Names in chat"] = "Namen im Chat", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Neue Bewegung: Große Abklingzeiten, Questfortschritt, Stufenaufstieg, kritische Treffer, Combopunkte, Erinnerungen, der Zonenname, Rufgewinne; Treffereffekte erreichen dein Zielfenster.", -- draft
@@ -4706,11 +4708,14 @@ Lang:Add("deDE", {
 -- stale: ["Personal Display: Click Through, so Clique stops casting when you drag the camera over the bars."] = "Persönliche Anzeige: Durchklickbar, damit Clique nicht zaubert, wenn du die Kamera über die Leisten ziehst.", -- draft
 -- stale: ["Personal Display: Druid Forms. For a druid, two slim bars under the power bar show the powers of the other forms."] = "Persönliche Anzeige: Druidengestalten. Für Druiden zeigen zwei schmale Leisten unter der Ressourcenleiste die Ressourcen der anderen Gestalten.", -- draft
 -- stale: ["Personal Display: Mana Regen Pause. After a spell costs you mana, a light runs along the power bar for the five seconds your mana does not regenerate."] = "Persönliche Anzeige: Manaregeneration-Pause. Nachdem ein Zauber dich Mana gekostet hat, läuft ein Licht über die Ressourcenleiste, solange dein Mana fünf Sekunden lang nicht regeneriert.", -- draft
+-- stale: ["Personal Display: Number On The Bars, Percent Beside shows your health and power amounts in the middle of the bars."] = "Persönliche Anzeige: Zahl auf den Leisten, Prozent daneben zeigt deine Gesundheits- und Kraftbeträge in der Mitte der Leisten.", -- draft
 -- stale: ["Personal Display: Over The Personal Display puts the swing badge centred above the display instead of on your target's nameplate."] = "Persönliche Anzeige: „Über der persönlichen Anzeige“ setzt das Schlagabzeichen mittig über die Anzeige statt auf die Namensplakette deines Ziels.", -- draft
 -- stale: ["Personal Display: Percent Position puts the health and power percents on the bars, like Druid Forms' numbers."] = "Persönliche Anzeige: Prozentposition setzt die Prozentwerte von Gesundheit und Kraft auf die Leisten, wie die Zahlen der Druidengestalten.", -- draft
+-- stale: ["Personal Display: Text Size and Text Colour for all of its text."] = "Persönliche Anzeige: Textgröße und Textfarbe für ihren gesamten Text.", -- draft
 -- stale: ["Personal Display: Track By Name (Big Cooldowns' tab): type any buff or debuff, like Fingers of Frost, to see it in the Tracked Spells row while it lasts on you."] = "Persönliche Anzeige: Nach Namen verfolgen (Reiter Große Abklingzeiten): Gib einen beliebigen Stärkungs- oder Schwächungszauber ein, etwa Eisige Finger, um ihn in der Reihe der verfolgten Zauber zu sehen, solange er auf dir liegt.", -- draft
 -- stale: ["Personal Display: Tracked Spells (Big Cooldowns' tab): tick your class's spells, like Weakened Soul or Renew, to see them under the bars while they last on you."] = "Persönliche Anzeige: Verfolgte Zauber (Reiter der Großen Abklingzeiten): Hake Zauber deiner Klasse an, etwa Weakened Soul oder Renew, um sie unter den Leisten zu sehen, solange sie auf dir wirken.", -- draft
 -- stale: ["Personal Display: Tracked Spells, on Big Cooldowns' tab: tick your class's spells (Weakened Soul, Power Word: Shield, Renew, Forbearance...) to see them in a row under the bars while they last on you, with their seconds."] = "Persönliche Anzeige: Verfolgte Zauber auf dem Reiter der Großen Abklingzeiten: Hake Zauber deiner Klasse an (Weakened Soul, Power Word: Shield, Renew, Forbearance...), um sie in einer Reihe unter den Leisten zu sehen, solange sie auf dir wirken, mit ihren Sekunden.", -- draft
+-- stale: ["Personal Display: its own preview on the Personal tab. Drag the cast bar, text, swing badge or cooldowns to move them."] = "Persönliche Anzeige: eine eigene Vorschau im Reiter Persönlich. Zieh Zauberleiste, Text, Schwungabzeichen oder Abklingzeiten, um sie zu verschieben.", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their seconds drawn and coloured as on your debuffs on the nameplates (shown even with Percent And Spell Text off)."] = "Persönliche Anzeige: Die großen Abklingzeiten sind quadratisch im goldenen Rahmen der Anzeige, ihre Sekunden so gezeichnet und gefärbt wie bei deinen Schwächungen auf den Namensplaketten (auch wenn „Prozent- und Zaubertext“ aus ist).", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a gold line draining under each icon, with the seconds (shown even with Percent And Spell Text off)."] = "Persönliche Anzeige: Die großen Abklingzeiten sind quadratisch im goldenen Rahmen der Anzeige, ihre Zeit eine goldene Linie, die unter jedem Symbol abläuft, mit den Sekunden (auch wenn „Prozent- und Zaubertext“ aus ist).", -- draft
 -- stale: ["Personal Display: the Big Cooldowns are square in the display's gold rim, their time a thin line draining inside each icon, with the seconds."] = "Persönliche Anzeige: Die großen Abklingzeiten sind quadratisch im goldenen Rahmen der Anzeige, ihre Zeit eine dünne Linie, die in jedem Symbol abläuft, mit den Sekunden.", -- draft
@@ -4741,11 +4746,13 @@ Lang:Add("deDE", {
 -- stale: ["Previews: a dragged part stays inside; indicators: right-click to remove, spell groups to drag onto your frame (heals over time, defensives ...)."] = "Vorschauen: ein gezogener Teil bleibt drinnen; Indikatoren: Rechtsklick entfernt, Zaubergruppen zum Ziehen auf dein Fenster (Heilungen über Zeit, Verteidigung ...).", -- draft
 -- stale: ["Print the repair cost, the gold gained from selling junk and what Restock bought for you."] = "Schreibt die Reparaturkosten, das Gold aus dem Plunderverkauf und was Auffüllen für dich gekauft hat.", -- draft
 -- stale: ["Procs and auras in the title font, as the window titles. Off: in the text font, as the numbers."] = "Procs und Auren in der Titelschrift, wie die Fenstertitel. Aus: in der Textschrift, wie die Zahlen.", -- draft
+-- stale: ["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "Berufsabklingzeiten: Rezepte mit gemeinsamer Abklingzeit, wie die Transmutationen, melden sich mit nur einem Hinweis, wenn sie vorbei ist.", -- draft
 -- stale: ["Profiles: a /reload or a login no longer switches your Edit Mode layout back to Modern; your character keeps the layout you picked."] = "Profile: Ein /reload oder ein Login stellt dein Bearbeitungsmodus-Layout nicht mehr auf Modern zurück; dein Charakter behält das Layout, das du gewählt hast.",
 -- stale: ["Profiles: a profile now carries your Edit Mode layout too, so the action bars, bags and every frame you moved stand in the same place on every character that uses it."] = "Profile: Ein Profil enthält jetzt auch dein Bearbeitungsmodus-Layout, sodass Aktionsleisten, Taschen und jedes verschobene Fenster auf jedem Charakter, der es nutzt, am selben Platz stehen.",
 -- stale: ["Profiles: each character now keeps its own profile and gets it back at login, so setting up an alt no longer changes your main. A new character starts with a copy of the one last used."] = "Profile: Jeder Charakter behält jetzt sein eigenes Profil und bekommt es beim Einloggen zurück, sodass das Einrichten eines Twinks deinen Main nicht mehr verändert. Ein neuer Charakter startet mit einer Kopie des zuletzt genutzten.",
 -- stale: ["Profiles: your changes are saved into your character's profile as you play, at every logout and /reload, so loading it later never brings back an older copy."] = "Profile: Deine Änderungen werden beim Spielen in das Profil deines Charakters gespeichert, bei jedem Ausloggen und /reload, sodass ein späteres Laden nie eine ältere Kopie zurückbringt.",
 -- stale: ["Pulse, then steady"] = "Pulsieren, dann ruhig", -- draft
+-- stale: ["Quality of life"] = "Komfort",
 -- stale: ["Quest Moments: the item picked up animation stays longer. Its icon and count stay two seconds before it flies to your tracker."] = "Quest-Momente: Die Animation für einen aufgenommenen Gegenstand bleibt länger. Symbol und Zähler stehen zwei Sekunden, bevor sie zu deiner Questverfolgung fliegen.", -- draft
 -- stale: ["Quest Tracker: Header Text Size"] = "Questverfolgung: Textgröße der Überschriften", -- draft
 -- stale: ["Quest Tracker: Text Size"] = "Questverfolgung: Textgröße", -- draft
@@ -4813,6 +4820,7 @@ Lang:Add("deDE", {
 -- stale: ["Separate Debuffs"] = "Schwächungen getrennt", -- draft
 -- stale: ["Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the square minimap and \"Merge With Services\" on (the Minimap page, Services), the buttons sit inside the minimap's frame."] = "Dienstknöpfe unter der Minikarte; sie bewegen sich im Bearbeitungsmodus mit der Minikarte. Gruppen: eine Reihe Gruppenknöpfe so breit wie die Karte; ein Klick öffnet ihre Dienste mit ihren Entfernungen, ein Klick auf einen Dienst führt dich über die Straßen zum nächsten. Alle Knöpfe: zwei Reihen mit einem Symbol für jeden Dienst; ein Klick führt dorthin. Rechtsklick beendet die Route. Ein grauer Knopf hat auf diesem Kontinent noch keinen bekannten. Mit der eckigen Minikarte und eingeschaltetem „Mit Diensten verbinden“ (Seite „Minikarte“, Dienste) sitzen die Knöpfe im Rahmen der Minikarte.", -- draft
 -- stale: ["Service icons under the minimap that route you to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier."] = "Dienstsymbole unter der Minikarte, die dich zum nächsten Reparierer, Briefkasten, Gastwirt, Flugmeister, Auktionshaus, zur Bank, zum Lehrer, Barbier oder Transmogrifizierer führen.", -- draft
+-- stale: ["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "Dienste-Leiste und Minikartenrahmen: keine blockierten Aktionen mehr, wenn sich der Minikartenknopf eines Addons im Kampf ändert.", -- draft
 -- stale: ["Services: Trays Slide Out -- a group's list slides out from the minimap column like a drawer, and back in."] = "Dienste: Ausfahrende Listen -- die Liste einer Gruppe fährt wie eine Schublade aus der Minikarten-Spalte heraus und wieder hinein.", -- draft
 -- stale: ["Services: the AddOns group finds every addon's minimap button, not only LibDBIcon's."] = "Dienste: Die Addons-Gruppe findet jeden Minikartenknopf eines Addons, nicht nur die von LibDBIcon.", -- draft
 -- stale: ["Services: the AddOns group finds every addon's minimap button, not only LibDBIcon's; map pins and the game's own buttons stay on the map."] = "Dienste: Die Addons-Gruppe findet jeden Minikartenknopf eines Addons, nicht nur die von LibDBIcon; Kartenmarkierungen und die Knöpfe des Spiels bleiben auf der Karte.", -- draft
@@ -5077,6 +5085,7 @@ Lang:Add("deDE", {
 -- stale: ["The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row."] = "Die Größe der Schwächungs- und Stärkungszaubersymbole deines Ziels unter seinem Fenster in Pixeln. Die Reihen behalten eine Breite, also passen bei kleinerer Größe mehr in eine Reihe.", -- draft
 -- stale: ["The skill's new value and its cap after its name, such as 57 / 80."] = "Der neue Wert der Fertigkeit und ihre Obergrenze nach ihrem Namen, etwa 57 / 80.", -- draft
 -- stale: ["The small buttons for the game's windows. Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."] = "Die kleinen Knöpfe für die Fenster des Spiels. Immer: nie ausgeblendet. Im Kampf: außerhalb des Kampfes ausgeblendet, im Kampf zurück. Beim Darüberfahren: die ganze Zeit ausgeblendet, sichtbar, solange du darauf zeigst.", -- draft
+-- stale: ["The small helpers, a tab each: the vendor, your restock list and quests done for you, the text in the middle of the screen, the reminders and widgets, FPS / latency and the tooltip."] = "Die kleinen Helfer, je ein Reiter: der Händler, deine Auffüllliste und Quests, die für dich erledigt werden, der Text in der Bildschirmmitte, die Erinnerungen und Widgets, FPS / Latenz und der Tooltip.",
 -- stale: ["The soft glow around the button: a gentle pulse for a few seconds, then steady; always steady; or none. It brightens when you are close to where the reminder sends you."] = "Das weiche Leuchten um den Knopf: ein sanftes Pulsieren für ein paar Sekunden, dann ruhig; immer ruhig; oder keines. Es wird heller, wenn du nah an dem Ort bist, zu dem die Erinnerung dich schickt.", -- draft
 -- stale: ["The speaker's animated 3D face in the widget. Off: the book."] = "Das animierte 3D-Gesicht des Sprechers im Widget. Aus: das Buch.", -- draft
 -- stale: ["The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail."] = "Die eckige Karte, ihr Zonenkopf und die Dienste-Leiste in einem Rahmen: der Zonenname auf der oberen Leiste des Rahmens und unter der Karte eine Trennleiste namens Dienste über der Dienste-Leiste (mit der Reihe der Gruppenknöpfe, die Uhr neben dem Zonennamen). Für die eckige Form mit dem Fensterrahmen oder der einfachen Leiste.", -- draft
@@ -5098,11 +5107,13 @@ Lang:Add("deDE", {
 -- stale: ["The whisper popup on a parchment sheet, its text in dark ink."] = "Das Flüster-Popup auf einem Pergamentblatt, sein Text in dunkler Tinte.", -- draft
 -- stale: ["The whole map in the window frame."] = "Die ganze Karte im Fensterrahmen.", -- draft
 -- stale: ["The workbench when an item is crafted."] = "Die Werkbank, wenn ein Gegenstand hergestellt wird.", -- draft
+-- stale: ["This character: %s      Default on a fresh install: %s"] = "Dieser Charakter: %s      Standard bei frischer Installation: %s",
 -- stale: ["Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)."] = "Drei Zahlen oben auf deinem Fenster: das Schwert für den Schaden pro Sekunde dieses Kampfes, die Sanduhr für den dieses Laufs, das Kreuz für deine Heilung pro Sekunde. Live im Kampf, danach die des letzten Kampfes. Verschiebe sie unter „Layout bearbeiten“ (Deine Werte).", -- draft
 -- stale: ["Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own."] = "Titel, Überschriften, Dialognamen, Brief- und Buchtext sowie die Titelschrift des Kits auf den gemalten Schildern; ein Schriftstil setzt sie auf 100 % zurück (seine Schriften bringen ihre eigene Korrektur mit). Nicht die Titel- und Abschnittsüberschriften der Questverfolgung oder die Hinweise des Kampftexts: Sie haben eigene Größen.", -- draft
 -- stale: ["Tooltip: a Border choice for the Dark background: Dark, the game's own, none, or a SharedMedia border. SharedMedia backgrounds work for tooltips, the chat and party and raid frames."] = "Tooltip: eine Rahmen-Auswahl für den dunklen Hintergrund: Dunkel, der des Spiels, keiner oder ein SharedMedia-Rahmen. SharedMedia-Hintergründe gehen für Tooltips, den Chat und Gruppen- und Schlachtzugsfenster.", -- draft
 -- stale: ["Tooltips colour guilds, factions, levels and quest objectives. Macro Backup is gone: the game keeps your settings."] = "Tooltips färben Gilden, Fraktionen, Stufen und Questziele. Die Makro-Sicherung ist weg: Das Spiel behält deine Einstellungen.", -- draft
 -- stale: ["Tooltips: with Questie and Polestar, a creature's quest objectives are no longer listed twice. Questie's lines are the ones, and MelloUI's own item line steps aside for Questie too."] = "Tooltips: Mit Questie und Polestar stehen die Questziele einer Kreatur nicht mehr doppelt da. Questies Zeilen gelten, und MelloUIs eigene Gegenstandszeile tritt auch für Questie zurück.", -- draft
+-- stale: ["Type a name for the imported profile first, then click Import as."] = "Gib zuerst einen Namen für das importierte Profil ein und klicke dann auf „Importieren als“.",
 -- stale: ["UI Shade now covers the Personal Display, with its own switch and the Shade Strength slider."] = "Der UI-Schatten umfasst jetzt die persönliche Anzeige, mit eigenem Schalter und dem Regler für die Schattenstärke.", -- draft
 -- stale: ["Under 35% health the health bar turns ember."] = "Unter 35 % Gesundheit wird der Gesundheitsbalken glutrot.", -- draft
 -- stale: ["Unit Frame Bars: Font Size"] = "Balken der Einheitenfenster: Schriftgröße", -- draft
@@ -5229,6 +5240,7 @@ Lang:Add("deDE", {
 -- stale: ["fruit for your pet"] = "Obst für dein Tier",
 -- stale: ["fungus for your pet"] = "Pilze für dein Tier",
 -- stale: ["meat for your pet"] = "Fleisch für dein Tier",
+-- stale: ["online"] = "online", -- draft
 -- stale: ["the level-up: your XP bar's light and the notice"] = "der Stufenaufstieg: das Licht deiner Erfahrungsleiste und der Hinweis", -- draft
 -- stale: ["the level-up: your XP bar's light, the notice and the Level Up Card"] = "der Stufenaufstieg: das Licht deiner EP-Leiste, die Meldung und die Stufenaufstiegskarte", -- draft
 -- stale: ["the nameplates' debuffs"] = "die Schwächungszauber der Namensplaketten", -- draft
