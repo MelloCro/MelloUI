@@ -1156,10 +1156,10 @@ Lang:Add("frFR", {
 	["The size of the health numbers on the nameplates. Game's: the size the game gives them, the name's."] = "Taille des chiffres de vie sur les barres d’info. Jeu : reprend la taille du nom.",
 	["Percent Beside The Bar"] = "Pourcentage à côté de la barre",
 	["When the game shows both the health number and the percent on the nameplates (its Nameplates options), the number stands in the middle of the bar and the percent beside it, right of the level."] = "Lorsque le jeu affiche à la fois les points de vie et leur pourcentage sur les barres d’info, la valeur s’affiche au centre, et le pourcentage à côté de la barre, à droite du niveau.",
-	["Percent Size"] = "Taille du pourcentage", -- draft
-	["The size of the health percent on the nameplates. Number's: the health number's size."] = "La taille du pourcentage de vie sur les barres d'info. Chiffre : la taille du chiffre de vie.", -- draft
-	["Name Size"] = "Taille du nom", -- draft
-	["The size of the names on the nameplates. Game's: the size the game gives them."] = "La taille des noms sur les barres d'info. Jeu : la taille que le jeu leur donne.", -- draft
+	["Percent Size"] = "Taille du pourcentage",
+	["The size of the health percent on the nameplates. Number's: the health number's size."] = "Taille du pourcentage de vie sur les barres d’info. « Chiffres de vie » reprend la taille des chiffres de vie.",
+	["Name Size"] = "Taille du nom",
+	["The size of the names on the nameplates. Game's: the size the game gives them."] = "Taille des noms sur les barres d’info. « Jeu » reprend celle définie par le jeu.",
 	["Friendly NPCs: Own Plate Size"] = "PNJ amicaux : taille des barres",
 	["These plates take the width and height set here instead of the game's."] = "Ces barres d’info utilisent la largeur et la hauteur définies ici plutôt que celles du jeu.",
 	["Friendly NPCs: Plate Width"] = "PNJ amicaux : largeur des barres",
@@ -1879,10 +1879,10 @@ Lang:Add("frFR", {
 	["Minimal"] = "Minimale",
 	["Channel List As Icons"] = "Liste des canaux sous forme d’icônes",
 	["The Minimal Chat View's channel list shows only its icons, leaving more room for the messages. Point at an icon for its name. The small handle on the list's edge does the same."] = "La liste des canaux de la vue de chat minimale n’affiche que les icônes, pour laisser plus de place aux messages. Survolez une icône pour voir le nom du canal. La petite poignée au bord de la liste fait de même.",
-	["One Line Per Message"] = "Une ligne par message", -- draft
-	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "La vue minimale du chat affiche chaque message sur une ligne : l'heure, le canal, le nom et le texte, dans l'ordre du chat du jeu. Désactivé : le nom au-dessus du message.", -- draft
-	["Tab Switches Channel"] = "Tab change de canal", -- draft
-	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "Pendant que vous écrivez, Tab passe au chat suivant où vous pouvez parler : Dire, Groupe, Raid, Instance, Guilde, puis vos canaux. Maj-Tab revient en arrière, votre texte reste. Les suggestions de noms, les cibles de chuchotement et les commandes slash gardent leur propre Tab.", -- draft
+	["One Line Per Message"] = "Une ligne par message",
+	["The Minimal Chat View shows each message on one line: the time, the channel, the name and the words, in the order the game's own chat uses. Off: the name over the message."] = "La vue minimale affiche chaque message sur une seule ligne, dans l’ordre du chat du jeu : heure, canal, nom et texte. Désactivé : le nom s’affiche au-dessus du message.",
+	["Tab Switches Channel"] = "Tab change de canal",
+	["While you type, Tab moves to the next chat you can speak in: Say, Party, Raid, Instance, Guild, then your channels. Shift-Tab goes back, and your words stay. Name suggestions, whisper targets and slash commands keep their own Tab."] = "Pendant la saisie, Tab passe au canal suivant auquel vous pouvez parler : Dire, Groupe, Raid, Instance, Guilde, puis vos canaux. Maj-Tab revient au précédent sans effacer votre texte. Tab garde son rôle habituel pour les suggestions de noms, les destinataires de chuchotement et les commandes slash.",
 	["The chat's background: Dark, the game's own, none, or one shared by a SharedMedia addon."] = "Fond de la discussion : sombre, celui du jeu, aucun ou un fond partagé par un addon SharedMedia.",
 	["Set The Background Opacity"] = "Régler l'opacité du fond",
 	["Every chat window uses the same background opacity. Off: each keeps its own."] = "Chaque fenêtre de discussion utilise la même opacité de fond. Désactivé : chacune garde la sienne.",
@@ -2322,8 +2322,8 @@ Lang:Add("frFR", {
 	["Enemies' and NPCs' plates"] = "Barres des ennemis et des PNJ",
 	["Enemies"] = "Ennemis",
 	["Health bar"] = "Barre de vie",
-	["Health number"] = "Chiffre de vie", -- draft
-	["Health percent"] = "Pourcentage de vie", -- draft
+	["Health number"] = "Chiffre de vie",
+	["Health percent"] = "Pourcentage de vie",
 	["Threat line"] = "Ligne de menace",
 	["Combo points"] = "Points de combo",
 	["CC icon"] = "Icône de contrôle",
@@ -2541,11 +2541,11 @@ Lang:Add("frFR", {
 	["Its gathering nodes in MelloUI's icons"] = "Ses gisements avec les icônes de MelloUI",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
-	["MelloUI Player Joins"] = "Un joueur MelloUI rejoint", -- draft
-	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "Quand quelqu'un qui utilise MelloUI rejoint votre groupe, vos portraits se rejoignent un instant au sceau de MelloUI avec son nom, puis le tout s'envole vers son cadre de groupe. Une fois par joueur toutes les six heures.", -- draft
-	["MelloUI Players"] = "Joueurs MelloUI", -- draft
-	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "Fait savoir aux autres joueurs MelloUI de votre groupe que vous utilisez aussi MelloUI. Son moment, sur la page Animations, s'affiche quand l'un d'eux vous rejoint.", -- draft
-	["Spot a fellow MelloUI player the moment they join."] = "Repérez un autre joueur MelloUI dès qu'il rejoint.", -- draft
+	["MelloUI Player Joins"] = "Arrivée d’un joueur MelloUI",
+	["When someone who uses MelloUI joins your group, your portraits meet at the MelloUI seal for a moment with their name, then it flies into their party frame. Once a player in six hours."] = "Quand un joueur qui utilise MelloUI rejoint votre groupe, vos portraits se rejoignent brièvement autour du sceau de MelloUI avec son nom, puis son portrait rejoint son cadre de groupe. Une animation par joueur toutes les six heures.",
+	["MelloUI Players"] = "Joueurs MelloUI",
+	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "Indique aux autres joueurs MelloUI de votre groupe que vous utilisez aussi MelloUI. L’animation correspondante, dans l’onglet Animations, apparaît quand l’un d’eux vous rejoint.",
+	["Spot a fellow MelloUI player the moment they join."] = "Repérez un autre joueur MelloUI dès son arrivée dans votre groupe.",
 	["%s uses MelloUI too"] = "%s utilise aussi MelloUI",
 	["%s and %s use MelloUI too"] = "%s et %s utilisent aussi MelloUI",
 	["%s, %s and %s use MelloUI too"] = "%s, %s et %s utilisent aussi MelloUI",
@@ -2558,7 +2558,7 @@ Lang:Add("frFR", {
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "Quête à rendre la plus proche ne reprend plus la navigation lorsque vous avez posé votre propre repère, suivi une étape de guide ou pris la route vers votre cadavre.",
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Barres d’info : les PNJ et les joueurs amicaux ont leurs propres aperçus, positions et tailles. Les réglages des ennemis ne s’appliquent plus à leurs barres.",
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Barres d’info amicales : « Masquer à pleine santé » n’affiche que le nom tant que l’unité n’est pas blessée.",
-	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "Temps de recharge de métier : les recettes qui partagent un temps de recharge, comme les transmutations, donnent un seul avis quand il est terminé.", -- draft
+	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "Temps de recharge des métiers : les recettes qui partagent un temps de recharge, comme les transmutations, n’affichent qu’un avis lorsqu’il est terminé.",
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Minicarte sans Questie : les cercles bleus de quête du jeu laissent place aux marqueurs de MelloUI.", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "Carte : avec la carte de MelloUI désactivée, la carte du monde du jeu affiche aussi les zones de quête de MelloUI sans Questie.", -- draft
 	["Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight."] = "Barre des services et cadre de la minicarte : plus d'actions bloquées quand le bouton de minicarte d'un addon change en combat.", -- draft
@@ -3023,7 +3023,7 @@ Lang:Add("frFR", {
 	["its map data"] = "ses données de carte",
 	["its finds"] = "ses trouvailles",
 	["Its alert button"] = "Son bouton d'alerte",
-	["Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons: each ore and each herb its own (copper, iron, peacebloom ...), and one each for fishing pools and treasures."] = "Ses points de récolte sur la carte de MelloUI et sur ses propres repères de la mini-carte avec les icônes de MelloUI : chaque minerai et chaque plante a la sienne (cuivre, fer, pacifique...), et une pour les bancs de poissons et une pour les trésors.", -- draft
+	["Its gathering nodes on MelloUI's map and on its own minimap pins in MelloUI's icons: each ore and each herb its own (copper, iron, peacebloom ...), and one each for fishing pools and treasures."] = "Ses points de récolte apparaissent sur la carte de MelloUI et ses repères de minicarte avec les icônes de MelloUI : une icône par minerai ou plante (cuivre, fer, pacifique…), ainsi que des icônes pour les bancs de poissons et les trésors.",
 	["its nodes"] = "ses points",
 	["Its notes on MelloUI's map."] = "Ses notes sur la carte de MelloUI.",
 	["Its notes on MelloUI's map"] = "Ses notes sur la carte de MelloUI",
@@ -3033,10 +3033,10 @@ Lang:Add("frFR", {
 	["its main screen"] = "son écran principal",
 	["While it scans the minimap for herbs and ore, MelloUI keeps the minimap and what hangs on it in place."] = "Pendant qu'il scrute la minicarte à la recherche d'herbes et de minerai, MelloUI garde la minicarte et ce qui s'y rattache en place.",
 	["The minimap stays in place while it scans"] = "La minicarte reste en place pendant son balayage",
-	["Its glow on the ore, herb or quest object you walk up to: MelloUI's Loot Sparkles glints step aside while it is on, and leave the game's soft targeting settings to it."] = "Sa lueur sur le minerai, la plante ou l'objet de quête dont vous approchez : les reflets des Étincelles de butin de MelloUI s'effacent tant qu'elle est active et lui laissent les réglages du ciblage doux du jeu.", -- draft
-	["Its glow in place of MelloUI's gathering glints"] = "Sa lueur à la place des reflets de récolte de MelloUI", -- draft
-	["Loot Sparkles: Ore Veins"] = "Étincelles de butin : filons de minerai", -- draft
-	["its own switch"] = "son propre interrupteur", -- draft
+	["Its glow on the ore, herb or quest object you walk up to: MelloUI's Loot Sparkles glints step aside while it is on, and leave the game's soft targeting settings to it."] = "Sa lueur sur le minerai, la plante ou l’objet de quête dont vous approchez : les reflets des Étincelles de butin de MelloUI s’effacent tant qu’elle est active et laissent le ciblage doux du jeu s’en charger.",
+	["Its glow in place of MelloUI's gathering glints"] = "Sa lueur à la place des reflets de récolte de MelloUI",
+	["Loot Sparkles: Ore Veins"] = "Étincelles de butin : filons de minerai",
+	["its own switch"] = "son propre réglage",
 	["Its click-casting on MelloUI's unit and group frames."] = "Son lancement de sorts au clic sur les cadres d'unité et de groupe de MelloUI.",
 	["Click-casting on MelloUI's frames"] = "Lancement au clic sur les cadres de MelloUI",
 	["its click-casting"] = "son lancement au clic",
@@ -3076,9 +3076,9 @@ Lang:Add("frFR", {
 	["Bag window"] = "Fenêtre de sacs",
 	["MelloUI's Bag Window"] = "La fenêtre de sacs de MelloUI",
 	["MelloUI's bag window steps aside"] = "La fenêtre de sacs de MelloUI s'efface",
-	["Glow on the ore or herb you walk up to"] = "Lueur sur le minerai ou la plante dont vous approchez", -- draft
-	["MelloUI's Loot Sparkles"] = "Étincelles de butin de MelloUI", -- draft
-	["MelloUI's glints step aside"] = "Les reflets de MelloUI s'effacent", -- draft
+	["Glow on the ore or herb you walk up to"] = "Lueur sur le minerai ou la plante à proximité",
+	["MelloUI's Loot Sparkles"] = "Étincelles de butin de MelloUI",
+	["MelloUI's glints step aside"] = "Les reflets de MelloUI s’effacent",
 	["RareScanner's finds, in MelloUI's look"] = "Les trouvailles de RareScanner, à l'apparence de MelloUI",
 	["Not shown (RareScanner adds them)"] = "Non affichés (RareScanner les ajoute)",
 	["MelloUI's own steps aside while Polestar's switch is on"] = "Celle de MelloUI s'efface tant que l'option de Polestar est activée",
@@ -4230,7 +4230,7 @@ Lang:Add("frFR", {
 	["Debuff, %g s"] = "Affaiblissement, %g s",
 	["Your class has no short spells to track here."] = "Votre classe n’a pas de sorts courts à suivre ici.",
 	["Spell name or ID"] = "Nom ou identifiant du sort",
-	["The Personal Display is off: switch it on to see it here."] = "L'affichage personnel est désactivé : activez-le pour le voir ici.", -- draft
+	["The Personal Display is off: switch it on to see it here."] = "L’affichage personnel est désactivé : activez-le pour le voir ici.",
 	-- Kept: English still in the addon's code that the collector does not list (data drawn at run time, a chat line)
 	-- kept: Core/Core.lua
 	["plain"] = "simple",
