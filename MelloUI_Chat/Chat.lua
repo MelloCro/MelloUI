@@ -4520,7 +4520,9 @@ do
 			i = at % n + 1
 		end
 		local open = ChatFrameUtil and ChatFrameUtil.OpenChat
-		if type(open) == "function" then
+		-- (2.1.81: never in the Gamepad UI -- the game's chat line opened again from MelloUI's code is its pad UI's
+		-- in MelloUI's run; ChatView.lua's LinkClick)
+		if type(open) == "function" and not MelloUI.Safe.GamepadUI() then
 			pcall(open, T.list[i].slash .. text, rawget(box, "chatFrame"), T.Num(T.Read(box, "GetCursorPosition")))
 		end
 	end, "script")

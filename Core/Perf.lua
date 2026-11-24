@@ -1537,6 +1537,13 @@ function BUG.PadNotGames()
 		end
 		Walk(label, t, true)
 	end
+	-- (2.1.81) the registries' notes of the footers' events: nil values, which no walk of a table passes
+	pcall(BUG.PadEvents, function(name, notes, key)
+		local ok, secure, by = pcall(check, notes, key)
+		if ok and secure == false and #out < BUG.PAD_NAMES then
+			out[#out + 1] = format("%s (%s)", name, tostring(by))
+		end
+	end)
 	return out
 end
 
@@ -1555,8 +1562,9 @@ BUG.writeState = {}   -- [a value's name] = the addon that wrote it, as last see
 BUG.WRITE_HOOKS = {
 	-- (2.1.69) its navigation first: in the same run its calls come before the bindings they set
 	{ path = { "SmartNavigation" }, slots = { "activeInfo", "bindingActive", "currentButton" }, lists = { "activePanels" },
+		-- (2.1.81) TriggerEvent: the navigation's own events ("SelectedButtonUpdated", ...), for BUG.PadEvents below
 		methods = { "HandlePanelOpen", "RefreshButtonGroups", "RemovePanelInfo", "SetActiveFrame", "ActivateBinding",
-			"DeactivateBinding", "EnterFocusGroup" }, walk = "NavWalk" },
+			"DeactivateBinding", "EnterFocusGroup", "TriggerEvent" }, walk = "NavWalk" },
 	{ path = { "GamepadMode", "FrameControlsManager" }, slots = { "isUIFocused", "focusedFrame" },
 		methods = { "FrameShown", "FrameHidden", "SetUIFocusState", "ToggleUIFocus", "FocusFrame", "HandlePopupShown",
 			"HandlePopupHide", "SuspendFrame", "UnsuspendFrame", "HideActiveFrames" } },
@@ -1714,6 +1722,33 @@ function BUG.ChatSuspects(check)
 	return out
 end
 
+-- (2.1.81; the controller player's 2.1.79 report, read against the game's own source of that build) Where the loot
+-- window's pad bindings took MelloUI's name: its footer registers three callbacks as it shows (PromptedBindingFooter
+-- ShowAndActivateBindings: EventRegistry's "Gamepad.RefreshFrameFocus", the navigation's "SelectedButtonUpdated" and
+-- "SelectedButtonEnabledStateChanged"), and a registry's RegisterCallback reads its own note of that event
+-- (CallbackRegistry.lua UnregisterCallback: deferredCallbacks[event]) with no barrier -- a note every TriggerEvent of
+-- the event ends by writing (= nil). One of those events fired inside an addon's run leaves the note that addon's,
+-- nil as it is, and the next footer reads it. The notes, asked of the game with every watched call (Look: one that
+-- turns an addon's keeps the call and the way there -- the run that left it), and under "Not the game's" at a block
+BUG.PAD_EVENTS = {
+	{ "SmartNavigation", "SelectedButtonUpdated" }, { "SmartNavigation", "SelectedButtonEnabledStateChanged" },
+	{ "EventRegistry", "Gamepad.RefreshFrameFocus" },
+}
+BUG.PAD_EVENT_NOTES = { "deferredCallbacks", "executingEvents" }
+function BUG.PadEvents(Look)
+	for _, e in ipairs(BUG.PAD_EVENTS) do
+		local reg = rawget(_G, e[1])
+		if type(reg) == "table" then
+			for _, key in ipairs(BUG.PAD_EVENT_NOTES) do
+				local notes = rawget(reg, key)
+				if type(notes) == "table" then
+					Look(format("%s.%s[%s]", e[1], key, e[2]), notes, e[2])
+				end
+			end
+		end
+	end
+end
+
 function BUG.Wrote(spec, label, t, method, arg)
 	if #BUG.writes >= BUG.WRITES then
 		return
@@ -1750,6 +1785,7 @@ function BUG.Wrote(spec, label, t, method, arg)
 			end
 		end
 	end
+	pcall(BUG.PadEvents, Look)   -- (2.1.81: the registries' notes of the footers' three events)
 	local walk = spec.walk and BUG[spec.walk]
 	if walk then
 		local okN, lines = pcall(walk, check, t, arg)

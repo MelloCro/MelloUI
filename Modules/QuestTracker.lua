@@ -4286,6 +4286,11 @@ do
 				GameTooltip:Hide()
 				pcall(away.Back)
 			end
+		elseif MelloUI.Safe.GamepadUI() then
+			-- (2.1.81; the controller player's 2.1.79 report) the game's link handlers are not run from MelloUI's code
+			-- in the Gamepad UI: each ends in a window or the chat line of the game's, taken by its pad UI in MelloUI's
+			-- run (MelloUI_Chat's ChatView LinkClick). The hover's tooltip stays
+			return
 		elseif IsModifiedClick() and rawget(_G, "HandleModifiedItemClick") then
 			pcall(rawget(_G, "HandleModifiedItemClick"), text)
 		elseif rawget(_G, "SetItemRef") then

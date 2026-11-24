@@ -669,6 +669,11 @@ local function Panel()
 	end
 	local W = MelloUI.Widgets
 	local f = W.TrayBox(page, { name = "MelloUIMailRecipients" })
+	-- (2.1.81) inside the game's mail window: the panel and its rows kept out of the game's pad navigation (Core.lua,
+	-- Safe.PadIgnore; in the Gamepad UI the button that opens it does not show, Apply)
+	if Safe.PadIgnore then
+		Safe.PadIgnore(f)
+	end
 	f:SetWidth(R.PANEL_W)
 	f:SetPoint("TOPLEFT", mail, "TOPRIGHT", 12, 0)
 	f:SetPoint("BOTTOMLEFT", mail, "BOTTOMRIGHT", 12, 0)
@@ -718,6 +723,9 @@ local function Button()
 	end
 	local W = MelloUI.Widgets
 	button = Safe.CreateFrame("Button", nil, page)
+	if Safe.PadIgnore then
+		Safe.PadIgnore(button)   -- (2.1.81: never the game's pad navigation's)
+	end
 	button:SetSize(R.SIZE, R.SIZE)
 	button:SetPoint("LEFT", to, "RIGHT", R.GAP, 0)
 	button.icon = button:CreateTexture(nil, "ARTWORK")

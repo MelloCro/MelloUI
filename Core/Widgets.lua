@@ -118,6 +118,10 @@
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Widgets")
+-- (2.1.81) a control made inside a game window that the Gamepad UI's navigation has open (Discard's button on the loot
+-- window, made at the window's show) is made by Core's maker: the game's own CreateFrame there walks that window in
+-- MelloUI's run (Core.lua, Safe.CreateFrame). Everywhere else it is the game's call
+local CreateFrame = MelloUI.Safe.CreateFrame or CreateFrame
 local Shared = Perf.Shared
 local C_Timer = Perf.C_Timer   -- (a flash's hold: W.Flash)
 local Secret = MelloUI.Safe.IsSecret   -- (Core.lua's, one set for the addon)

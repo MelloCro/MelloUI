@@ -956,6 +956,10 @@ function Split.Make(f)
 	local half = W.Button(f, "½", Split.HALF_W, nil, { height = Split.HALF_H, onClick = Split.HalfClick })
 	Perf.HookScript(half, "OnEnter", Split.HalfEnter)
 	Perf.HookScript(half, "OnLeave", W.TipLeave)
+	-- (2.1.81) inside the game's split box: kept out of the game's pad navigation (Core.lua, Safe.PadIgnore)
+	if MelloUI.Safe.PadIgnore then
+		MelloUI.Safe.PadIgnore(half)
+	end
 	Split.half = half
 end
 

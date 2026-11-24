@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.81", lines = {
+		"Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons.",
+		"Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor.",
+	} },
 	{ version = "2.1.80", lines = {
 		"Without Questie: quests that had no mark or area on the map and the minimap show now.",
 		"MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it.",
@@ -193,9 +197,6 @@ local CHANGELOG = {
 	} },
 	{ version = "2.1.77", lines = {
 		"Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look.",
-	} },
-	{ version = "2.1.76", lines = {
-		"Easter egg added.",
 	} },
 }
 local LINKS = {

@@ -689,6 +689,13 @@ local function MakeButton(source, parent)
 	-- (W.PlateButton: the bag window's Settings is the same button)
 	local b, glyph = W.PlateButton(parent, SIZE_W, SIZE_H, GLYPH, AREA[source], BUTTON_SCRIPTS, "bin")
 	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")   -- (2.1.50: the right-click keeps)
+	-- (2.1.81; the controller player's 2.1.79 report: the loot window's pad bindings written as MelloUI's) the button
+	-- stands inside a window of the game's -- the loot window, the bags' Sort button -- where the game's pad navigation
+	-- takes every button for its own: kept out of it by the game's own mark (Core.lua, Safe.PadIgnore). The mouse's
+	-- as before
+	if MelloUI.Safe.PadIgnore then
+		MelloUI.Safe.PadIgnore(b)
+	end
 	b.source = source
 	W.Glyph(glyph, "bin")
 	buttons[source] = b

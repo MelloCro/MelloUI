@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.81
+
+- Fixed (controller): with the game's Gamepad UI on, a click on a name or a link in MelloUI's chat opened the game's menu, its chat line or its item window from MelloUI's own code, and the game then blocked the controller's buttons ("MelloUI has been blocked ..."). With a controller MelloUI no longer opens those. A link still shows its tooltip under the pointer; whispers and the player menu go through the game's own chat button. The quest tracker's links follow the same rule.
+- Fixed (controller): MelloUI's own buttons inside the game's windows (Discard on the loot window and the bags, the half on the split box, the recipients on the mail window) are kept out of the game's controller navigation. Its cursor could land on them, which could end in blocked buttons too.
+- The blocked-actions report (/mellobug) names more of what led to a block with a controller.
+
 ## 2.1.80
 
 - Fixed: without Questie, some quests in your log got no mark or area on MelloUI's map and the minimap. MelloUI reads the game's quest places from every zone now, as the game's own map shows them, and again when they arrive after a login or a quest taken. With Questie, the same fills in the quests Questie has no places for. /qlmap game lists what the game gives for each quest in your log.

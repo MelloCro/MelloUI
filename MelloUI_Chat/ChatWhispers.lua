@@ -440,7 +440,8 @@ end
 -- their name over Remove Conversation and Remove All Conversations
 function WV.PersonMenu(row)
 	local c = row and row.conv
-	if not (c and MenuUtil and MenuUtil.CreateContextMenu) then
+	-- (2.1.81: the game's menu is not opened from MelloUI's code in the Gamepad UI; ChatView.lua's LinkClick)
+	if MelloUI.Safe.GamepadUI() or not (c and MenuUtil and MenuUtil.CreateContextMenu) then
 		return
 	end
 	local name = WV.Shown(c)

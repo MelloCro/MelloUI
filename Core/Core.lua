@@ -733,6 +733,69 @@ function Safe.CreateFrame(frameType, name, parent, ...)
 	return frame
 end
 
+-- (2.1.81; the controller player's 2.1.79 report, 2026-11-24, read against the game's own source of that build) One
+-- of MelloUI's own controls that stands INSIDE a game window (Discard's button on the loot window, the split box's
+-- half) is a button to the game's pad navigation like the window's own: its walk lists it, the pad's cursor can stand
+-- on it, and from then on the navigation hooks its OnEnable / OnDisable and fires its own events from MelloUI's runs
+-- (SmartNavigation.lua TrackButtonEnabledState) -- which leaves a value in its callback registry that the next game
+-- window's pad footer reads: that window's bindings are written as MelloUI's and a later close is forbidden.
+--   Safe.PadIgnore(frame) -> frame   kept out of the game's pad navigation, it and everything in it, by the game's
+--       own switch for that (SmartNavigation_MarkFrameIgnored: never selected, so never hooked). The game sets the
+--       mark itself, without taint, out of combat only -- in a fight it waits for the fight's end (asked in one, the
+--       game shows its blocked-action line). Asked once a frame; nothing on a client without the navigation
+do
+	local marked = setmetatable({}, { __mode = "k" })    -- [frame] = true: asked for (the mark stays for the session)
+	local waiting = setmetatable({}, { __mode = "k" })   -- [frame] = true: asked in a fight
+	local queued = false
+
+	local function InFight()
+		local api, kinds = rawget(_G, "C_RestrictedActions"), Enum and Enum.AddOnRestrictionType
+		if type(api) == "table" and api.IsAddOnRestrictionActive and kinds and kinds.Combat ~= nil then
+			local ok, on = pcall(api.IsAddOnRestrictionActive, kinds.Combat)
+			if ok and not (issecretvalue and issecretvalue(on)) then
+				return on and true or false
+			end
+		end
+		return InCombatLockdown and InCombatLockdown() and true or false
+	end
+
+	local function Mark(frame)
+		local mark = rawget(_G, "SmartNavigation_MarkFrameIgnored")
+		if type(mark) == "function" then
+			pcall(mark, frame)
+		end
+	end
+
+	local function Flush()
+		queued = false
+		if InFight() then
+			return   -- (asked again at the next PadIgnore; the frames wait)
+		end
+		for frame in pairs(waiting) do
+			waiting[frame] = nil
+			Mark(frame)
+		end
+	end
+	Safe.PadIgnoreFlush = Flush   -- (the tests')
+
+	function Safe.PadIgnore(frame)
+		if type(frame) ~= "table" or marked[frame] or type(rawget(_G, "SmartNavigation_MarkFrameIgnored")) ~= "function" then
+			return frame
+		end
+		marked[frame] = true
+		if InFight() then
+			waiting[frame] = true
+			if not queued and MelloUI.Schedule and MelloUI.Schedule.WhenOutOfCombat then
+				queued = true
+				MelloUI.Schedule:WhenOutOfCombat(Flush, "pad: MelloUI's controls kept out of the game's navigation")
+			end
+			return frame
+		end
+		Mark(frame)
+		return frame
+	end
+end
+
 -- The screen as a player names it: its size in pixels and its aspect ratio
 -- ("32:9", "21:9", "16:9", "16:10", "3:2", "4:3", "5:4": the nearest one,
 -- and no label when none is within 4 %, as a triple screen or a 32:10), from

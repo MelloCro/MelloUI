@@ -1185,6 +1185,14 @@ local LinkClick = Perf.Shared("OnHyperlinkClick on the chat view", function(owne
 			end
 		end
 	end
+	-- (2.1.81; the controller player's 2.1.79 report, 2026-11-24: the game's player menu and its chat line, opened by a
+	-- click on a name here, written into the Gamepad UI's window manager, navigation and binding stack as MelloUI_Chat's
+	-- -- the next window's close was forbidden) In the Gamepad UI the game's link handler is not run from MelloUI's
+	-- code: every kind of link ends in a window, a menu or the chat line of the game's (a name: its menu or a whisper;
+	-- an item: ShowUIPanel(ItemRefTooltip)), which its pad UI takes in the caller's run. The hover's tooltip stays
+	if MelloUI.Safe.GamepadUI() then
+		return
+	end
 	if type(SetItemRef) == "function" then
 		pcall(SetItemRef, link, text, button, ChatFrame1)
 	end
@@ -2132,9 +2140,11 @@ end
 -- The row of buttons: who you speak to, then Channels, Friends, the fight history, the settings
 --------------------------------------------------------------------------------
 
+-- (2.1.81: never in the Gamepad UI -- the game's chat line opened from MelloUI's code is taken by its pad UI in
+-- MelloUI's run; LinkClick, above)
 local function Open(slash)
 	local open = ChatFrameUtil and ChatFrameUtil.OpenChat
-	if type(open) == "function" then
+	if type(open) == "function" and not MelloUI.Safe.GamepadUI() then
 		open(slash, ChatFrame1)
 	end
 end
@@ -2142,7 +2152,8 @@ end
 -- a channel's tab, right-clicked: speak in it, leave it (asked first: MelloUI:Confirm). MelloUI's own menu: nothing
 -- of the game's chat is driven from it (the game's /join and /leave do the rest)
 function View.ChannelMenu(t)
-	if not (MenuUtil and MenuUtil.CreateContextMenu and t.channel and t.number) then
+	-- (2.1.81: the game's menu is not opened from MelloUI's code in the Gamepad UI; LinkClick, above)
+	if MelloUI.Safe.GamepadUI() or not (MenuUtil and MenuUtil.CreateContextMenu and t.channel and t.number) then
 		return
 	end
 	MenuUtil.CreateContextMenu(t.button, function(_, root)
