@@ -794,6 +794,14 @@ end
 -- tracking (Enum.MinimapTrackingFilter.QuestPOIs), held off the same way
 -- (MelloUI:HoldTracking, heldMinimapQuestPOIs) while MelloUI's own marks are
 -- on the minimap (O.MiniWanted, MarksReady)
+-- (2.1.80; the user, 2026-11-24, of the game's Preset option Show Quest POIs &
+-- Blobs -- that CVar -- unticked in their game: "ticking that actually gave me
+-- more Pois and drew the areas") the CVar is more than the game's drawing: with
+-- it off the client hands out fewer quests' places and no area. So it is no
+-- longer held off: it is held ON while the marks read the game's places
+-- (O.GameReads; MelloUI.QuestObjectives.Hold), and the game's own markers and
+-- areas on its map are covered instead (O.GameCover) while Hide The Game's
+-- Quest Areas is on
 --------------------------------------------------------------------------------
 function O.GameMarksWanted()
 	local M = QL.M
@@ -804,19 +812,144 @@ function O.GameMiniWanted()
 	return (O.GameMarksWanted() and O.MiniWanted() and MarksReady()) and true or false
 end
 
+-- the marks read the game's places: on, and laid by MelloUI (MarksReady: Questie's places in MelloUI's look with the
+-- game's for the quests it lacks, or the game's alone without Questie)
+function O.GameReads()
+	local M = QL.M
+	return (M.isEnabled and M.db and M.db.objectiveMarks and MarksReady()) and true or false
+end
+
 local QUEST_POIS = Enum and Enum.MinimapTrackingFilter and Enum.MinimapTrackingFilter.QuestPOIs or 65536
+
+-- The game's own quest markers and areas on its world map, covered while `on` -- the switch that draws them stays on.
+-- Widget state alone: no pool call, no key written on the game's frames, no script of the game's run by MelloUI.
+--   its markers  (its quest provider's QuestPinTemplate pins, acquired anew at each of its refreshes) unseen and deaf:
+--                alpha 0, no mouse -- after each of its refreshes (a post-hook on that provider's RefreshAllData);
+--                with the cover off the same pass gives them back (a pooled pin keeps what it was given)
+--   its areas    (its one QuestBlobPinTemplate pin) drawn empty after each of its refreshes (DrawNone: no area, so
+--                no tooltip of one either; a post-hook on that pin's Refresh); with the cover off its next refresh
+--                draws again
+-- The two are found once among the map's providers (by the game's own mixin functions, none called) and hooked once,
+-- at the first cover: with Hide The Game's Quest Areas off nothing is looked for
+local cover = { on = false, touched = false, provider = nil, blob = nil, PIN = "QuestPinTemplate",
+	BLOB = "QuestBlobPinTemplate" }
+O.cover = cover
+
+local function CoverPin(pin, on)
+	pin:SetAlpha(on and 0 or 1)
+	pin:EnableMouse(not on)
+end
+
+function cover.Pins()
+	if not (cover.on or cover.touched) then
+		return
+	end
+	local map = rawget(_G, "WorldMapFrame")
+	if not (map and map.EnumeratePinsByTemplate) then
+		return
+	end
+	-- (EnumeratePinsByTemplate hands back a generic-for triple; a map without the template's pool raises)
+	local ok, f, state, init = pcall(map.EnumeratePinsByTemplate, map, cover.PIN)
+	if not ok or type(f) ~= "function" then
+		return
+	end
+	local on = cover.on
+	for pin in f, state, init do
+		pcall(CoverPin, pin, on)
+	end
+	if on then
+		cover.touched = true
+	end
+end
+
+function cover.Blob(pin)
+	if cover.on and type(pin) == "table" and pin.DrawNone then
+		pcall(pin.DrawNone, pin)
+	end
+end
+
+function cover.Find()
+	local map = rawget(_G, "WorldMapFrame")
+	local list = map and map.dataProviders
+	if type(list) ~= "table" then
+		return
+	end
+	local mixin = rawget(_G, "QuestDataProviderMixin")
+	local get = type(mixin) == "table" and mixin.GetPinTemplate or nil
+	for provider in pairs(list) do
+		if type(provider) == "table" then
+			-- (the game's quest provider: its mixin's own GetPinTemplate; one made from it with its own -- asked then,
+			-- and only one that has the mixin's ShouldShowQuest)
+			local mine = provider.GetPinTemplate
+			if not cover.provider and type(mine) == "function" and type(provider.RefreshAllData) == "function"
+				and type(provider.ShouldShowQuest) == "function" then
+				local is = mine == get
+				if not is then
+					local ok, name = pcall(mine, provider)
+					is = ok and name == cover.PIN
+				end
+				if is then
+					cover.provider = provider
+					hooksecurefunc(provider, "RefreshAllData", cover.Pins)
+				end
+			end
+			local pin = provider.pin
+			if not cover.blob and type(pin) == "table" and pin.pinTemplate == cover.BLOB
+				and type(pin.Refresh) == "function" and pin.DrawNone then
+				cover.blob = pin
+				hooksecurefunc(pin, "Refresh", cover.Blob)
+			end
+		end
+	end
+end
+
+function O.GameCover(on)
+	on = on and true or false
+	if not (on or cover.touched) then
+		cover.on = false
+		return   -- (never covered: nothing looked for, nothing to give back)
+	end
+	local found = cover.provider and cover.blob
+	if on and not found then
+		pcall(cover.Find)   -- (a map not there yet at login: looked for again at its next show, O.GameCoverShown)
+	end
+	if cover.on == on and found then
+		return
+	end
+	cover.on = on
+	cover.Pins()
+	cover.Blob(cover.blob)
+end
+
+-- the game's map shows or changes map (the Quest List's own provider's refresh): the two looked for again where they
+-- were not there before
+function O.GameCoverShown()
+	if cover.on and not (cover.provider and cover.blob) then
+		O.GameCover(true)
+	end
+end
+
+local function GameMarksNow()
+	local M = QL.M
+	if not M.db then
+		return
+	end
+	local QO = MelloUI.QuestObjectives
+	if QO and QO.Hold then
+		QO.Hold(M.db, O.GameReads())
+	end
+	O.GameCover(O.GameMarksWanted())
+	if MelloUI.HoldTracking then
+		MelloUI:HoldTracking(M.db, QUEST_POIS, "heldMinimapQuestPOIs", O.GameMiniWanted())
+	end
+end
 
 function O.GameMarks()
 	local M = QL.M
 	if not (M.db and MelloUI.HoldCVar) then
 		return
 	end
-	MelloUI.Kit:WhenOutOfCombat(function()
-		MelloUI:HoldCVar(M.db, "questPOI", "savedQuestPOI", O.GameMarksWanted(), "0")
-		if MelloUI.HoldTracking then
-			MelloUI:HoldTracking(M.db, QUEST_POIS, "heldMinimapQuestPOIs", O.GameMiniWanted())
-		end
-	end, "Quest List: the game's quest areas")
+	MelloUI.Kit:WhenOutOfCombat(GameMarksNow, "Quest List: the game's quest areas")
 end
 
 --------------------------------------------------------------------------------

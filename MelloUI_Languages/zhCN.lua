@@ -2487,6 +2487,7 @@ Lang:Add("zhCN", {
 	["%d players in your group use MelloUI"] = "队伍中有 %d 名玩家在用 MelloUI", -- draft
 	["Now in your group"] = "现在在你的队伍中", -- draft
 	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "未安装 Questie 时：之前在地图和小地图上没有标记和区域的任务现在会显示。", -- draft
+	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI 的任务标记开启时，会保持游戏选项 Show Quest POIs & Blobs 开启：只有开启它，游戏才会给出所有任务地点。", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "专业冷却：共享冷却的配方（如转化）在冷却结束时只提示一次。", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "地图：关闭 MelloUI 的地图时，没有 Questie 的情况下游戏自带的世界地图也会显示 MelloUI 的任务区域。", -- draft

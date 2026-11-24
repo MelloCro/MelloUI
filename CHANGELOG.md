@@ -3,6 +3,7 @@
 ## 2.1.80
 
 - Fixed: without Questie, some quests in your log got no mark or area on MelloUI's map and the minimap. MelloUI reads the game's quest places from every zone now, as the game's own map shows them, and again when they arrive after a login or a quest taken. With Questie, the same fills in the quests Questie has no places for. /qlmap game lists what the game gives for each quest in your log.
+- Fixed: the game hands out all quest places only while its option Show Quest POIs & Blobs (Options > Preset) is on, and MelloUI itself turned that option off to hide the game's blue quest markers. MelloUI keeps it on now while its quest marks are on, and Hide The Game's Quest Areas (Quest List > Map) hides the game's own markers and areas on the game's map by itself. Your own setting comes back when you turn MelloUI's quest marks off.
 
 ## 2.1.79
 

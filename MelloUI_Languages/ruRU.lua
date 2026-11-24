@@ -2487,6 +2487,7 @@ Lang:Add("ruRU", {
 	["%d players in your group use MelloUI"] = "Игроков в группе с MelloUI: %d", -- draft
 	["Now in your group"] = "Теперь в вашей группе", -- draft
 	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Без Questie: задания, у которых не было метки и области на карте и миникарте, теперь отображаются.", -- draft
+	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI держит игровую настройку Show Quest POIs & Blobs включённой, пока включены её метки заданий: только с ней игра сообщает все места заданий.", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "Время восстановления профессий: рецепты с общим временем восстановления, как трансмутации, дают одно уведомление, когда оно истекает.", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Миникарта без Questie: синие круги заданий игры уступают место меткам MelloUI.", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "Карта: при выключенной карте MelloUI карта мира игры тоже показывает области заданий MelloUI без Questie.", -- draft

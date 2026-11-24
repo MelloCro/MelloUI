@@ -163,7 +163,8 @@ M = MelloUI:RegisterModule("Map", {
 	defaults = { dungeonMaps = true, mapShare = false, iconScale = 1, coords = false, fog = false },
 	-- (1.0) the window's own state, the player's: where it looked, its quest log open and on which tab -- never in a
 	-- profile or the installer's Full (its layers and Tracked Only travel)
-	keep = { "view", "log", "logTab", "logMode", "mapShare" },
+	-- (2.1.80) savedQuestPOI: the game's quest places switch as the player had it (HoldPlaces)
+	keep = { "view", "log", "logTab", "logMode", "mapShare", "savedQuestPOI" },
 	options = {
 		{ type = "button", name = TEXT.open, text = "Open",
 		  desc = "Opens MelloUI's map. Your map key (M) and /mellomap open it too.",
@@ -510,6 +511,23 @@ Levels.on = function(key)
 	return LayerOn(key)
 end
 
+-- (2.1.80) the game's quest places switch held on while this map's objectives layer reads the game's places (the
+-- reader's own holder, MelloUI.QuestObjectives.Hold: with the switch off the client hands out fewer places and no
+-- area). Asked at the module's start and end and at the layer's switch; written out of combat
+local function HoldPlacesNow()
+	local QO = MelloUI.QuestObjectives
+	if QO and QO.Hold and M.db then
+		QO.Hold(M.db, (M.isEnabled and LayerOn("objectives") and Objectives.Data()) and true or false)
+	end
+end
+
+local function HoldPlaces()
+	local kit = MelloUI.Kit
+	if kit and kit.WhenOutOfCombat then
+		kit:WhenOutOfCombat(HoldPlacesNow, "Map: the game's quest places")
+	end
+end
+
 local function ApplyLayers()
 	local pins = win.pins
 	win.canvas:SetCaves(LayerOn("caves"))   -- (the caves are the canvas's own places, not pins)
@@ -546,6 +564,9 @@ local function SetLayer(key, on)
 		ApplyLayers()
 	end
 	local shown = built and win.frame and win.frame:IsShown()
+	if key == "objectives" then
+		HoldPlaces()   -- (2.1.80: the game's quest places switch, on while this layer reads them)
+	end
 	if key == "objectives" and shown then
 		Objectives.Lay()
 	end
@@ -1740,6 +1761,7 @@ function M:OnEnable(db)
 	AddonPins.MiniRares(true)   -- (2.1.57: another addon's rares off the minimap while RareScanner's stand there)
 	Levels.Mini(true)   -- (2.1.55: the pills and fishing badges there, by the same switches)
 	Layers.Corpse(true)   -- (2.1.65: your corpse on this map and the minimap, as the game's own map has it)
+	HoldPlaces()   -- (2.1.80: the game's quest places switch held on while the objectives layer reads them)
 end
 
 function M:OnSettingChanged(key, _, db)
@@ -1773,6 +1795,7 @@ function M:OnDisable()
 	AddonPins.MiniRares(false)   -- (2.1.57)
 	Levels.Mini(false)   -- (2.1.55)
 	Layers.Corpse(false)   -- (2.1.65)
+	HoldPlaces()   -- (2.1.80: the switch given back)
 	if win.frame then
 		Dungeon.Hide()
 	end

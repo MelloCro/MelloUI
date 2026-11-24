@@ -179,6 +179,7 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "2.1.80", lines = {
 		"Without Questie: quests that had no mark or area on the map and the minimap show now.",
+		"MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it.",
 	} },
 	{ version = "2.1.79", lines = {
 		"Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over.",

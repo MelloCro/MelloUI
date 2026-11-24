@@ -316,7 +316,8 @@ end
 --------------------------------------------------------------------------------
 local TRACE = { STEP = 40, PER_FRAME = 600, MAX_CELLS = 140 * 140, SIZE = 256,
 	RETRY = 2,      -- (2.1.80) an empty answer asked again this often a state, when the client says its places changed
-	AGAIN = 0.3 }   -- seconds after that word (its events come in bursts)
+	AGAIN = 0.3,    -- seconds after that word (its events come in bursts)
+	SWITCH = 2 }    -- (2.1.80) seconds after the game's quest places switch came on by a hold: asked again then
 QO.TRACE = TRACE
 QO.traced = {}   -- [questID] = { sig = its objectives' done flags, entries = list | false }
 -- (2.1.80) tries[questID] = { sig, n }: its empty trace asked again; timer: the client's places changed
@@ -780,6 +781,70 @@ local function OnPlaces()
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The game's quest places switch (2.1.80; the user, 2026-11-24, of the game's Preset option "Show Quest POIs & Blobs",
+-- unticked in their game: "ticking that actually gave me more Pois and drew the areas"). That option is the questPOI
+-- CVar, and it is more than the game's own drawing: with it off the client hands out the places of fewer quests
+-- (C_QuestLog.GetQuestsOnMap) and draws no area to trace. It is off in the game's Classic preset -- and was held off
+-- by MelloUI's own Hide The Game's Quest Areas until this version, which is why some quests had a place and some none.
+--   QO.Hold(db, on)   a module that reads the game's places holds the switch ON while it reads (MelloUI:HoldCVar: the
+--                     player's value noted in the module's savedQuestPOI, never in a profile, given back when it lets
+--                     go). One letting go gives the player's value back at once, so the others hold again; the switch
+--                     turned off elsewhere meanwhile (the game's option, its preset buttons: CVAR_UPDATE) is held again
+-- Written out of combat: the callers' part (Kit:WhenOutOfCombat). The game's own markers and areas, which the switch
+-- also turns on, are covered on the game's map by the Quest List (its O.GameCover)
+--------------------------------------------------------------------------------
+QO.SWITCH = "questPOI"
+QO.hold = { dbs = setmetatable({}, { __mode = "k" }), frame = nil, queued = false }
+
+-- the switch just came on by a hold: what was read without it is asked again, the asking's bound from its start
+local function SwitchCame()
+	local T = QO.trace
+	wipe(T.tries)
+	wipe(T.emptyOn)
+	OnPlaces()
+end
+
+function QO.HoldAgain()
+	local H = QO.hold
+	H.queued = false
+	local came = false
+	for db in pairs(H.dbs) do
+		came = MelloUI:HoldCVar(db, QO.SWITCH, "savedQuestPOI", true, "1") or came
+	end
+	if came and QO.trace.driver then
+		C_Timer.After(TRACE.SWITCH, SwitchCame)
+	end
+	return came
+end
+
+local function OnSwitch(_, _, name)
+	local H = QO.hold
+	if MelloUI.Safe.Value(name) == QO.SWITCH and next(H.dbs) and not H.queued then
+		H.queued = true
+		MelloUI.Kit:WhenOutOfCombat(QO.HoldAgain, "Quest places: the game's switch")
+	end
+end
+
+function QO.Hold(db, on)
+	if not (db and MelloUI.HoldCVar) then
+		return
+	end
+	local H = QO.hold
+	if on then
+		H.dbs[db] = true
+		if not H.frame then
+			H.frame = CreateFrame("Frame")
+			pcall(H.frame.RegisterEvent, H.frame, "CVAR_UPDATE")
+			H.frame:SetScript("OnEvent", OnSwitch)
+		end
+	else
+		H.dbs[db] = nil
+		MelloUI:HoldCVar(db, QO.SWITCH, "savedQuestPOI", false, "1")
+	end
+	QO.HoldAgain()
+end
+
 -- a frame of the driver's work. An error of it is caught: told once (the game's error handler), kept for /qlmap game,
 -- and the work put down -- an error a frame for ever otherwise
 function QO.trace.Beat(self)
@@ -864,6 +929,10 @@ function QO.Dump()
 	local ids = LogIDs()
 	MelloUI:Print("The game's quest places: MelloUI's marks %s, Questie %s, %d quests in your log, %d zones. Reading ...",
 		marks and "on" or "off", (QS and QS.GameOnly()) and "not there" or "there", #ids, #Zones())
+	-- (the game hands out fewer places with its switch off: its Preset option Show Quest POIs & Blobs)
+	local switch = MelloUI.CVarText and MelloUI:CVarText(QO.SWITCH)
+	MelloUI:Print("  The game's own switch (Options > Preset > Show Quest POIs & Blobs): %s, held on by MelloUI: %s.",
+		switch == "1" and "on" or (switch == "0" and "OFF" or "unknown"), next(QO.hold.dbs) and "yes" or "no")
 	if type(api) ~= "table" or not marks then
 		return
 	end

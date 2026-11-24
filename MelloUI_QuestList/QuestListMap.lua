@@ -1447,6 +1447,9 @@ function QL.CreateProvider()
 	-- pins again
 	function QL.Provider:RefreshAllData()
 		self:LayPins(true)
+		if QL.Objectives and QL.Objectives.GameCoverShown then
+			QL.Objectives.GameCoverShown()   -- (2.1.80: the game's own quest markers and areas covered)
+		end
 	end
 	WorldMapFrame:AddDataProvider(QL.Provider)
 	-- a new palette: the pins laid again while the map shows (a hidden map
