@@ -2905,9 +2905,43 @@ do
 		return ok and Plain(complete) == true
 	end
 
+	-- (2.1.82; High Speed Dirt on Discord, 2026-11-23 and 24, following RestedXP: "if I click on the RXP step it switches
+	-- the navigation for one second then switches back to a random quest", "Pins don't stick either - it appears then it
+	-- disappears immediately and goes back to tracking a quest", "Even corpse tracking switches back to an active
+	-- quest") Nearest Turn In followed its quest again at every rebuild in which the one followed was not ready to
+	-- hand in -- also where the player had just chosen a way of their own, and its follow (the game's super-track)
+	-- takes a map pin away with it (Route's DropPinForTrackedQuest) and the game's corpse run. It stands back while
+	-- the player is on a way of their own: dead (the game leads to the corpse), a map pin up -- theirs or a guide's
+	-- step's; not the one Route stands on a dock for the quest followed (Route:PinnedQuest) --, or the quest followed
+	-- the one a guide's step tracks (Guides.lua's Guide.quest). It follows again once that way is gone
+	function Near.OwnWay(followedID)
+		local dead = rawget(_G, "UnitIsDeadOrGhost")
+		if dead then
+			local ok, is = pcall(dead, "player")
+			if ok and Plain(is) == true then
+				return true
+			end
+		end
+		local R = Route()
+		local guide = R and R.Guide
+		if followedID and followedID ~= 0 and type(guide) == "table" and guide.active and guide.quest == followedID then
+			return true
+		end
+		if C_Map and C_Map.HasUserWaypoint and not RoutePinned() then
+			local ok, has = pcall(C_Map.HasUserWaypoint)
+			if ok and Plain(has) == true then
+				return true
+			end
+		end
+		return false
+	end
+
 	local function FollowNow()
 		local id = Near.turnInWant
 		Near.turnInWant = nil
+		if id and Near.OwnWay(Near.followed) then
+			return   -- (a way of the player's own taken in the frame between)
+		end
 		if id and C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then
 			if securecallfunction then
 				securecallfunction(C_SuperTrack.SetSuperTrackedQuestID, id)
@@ -2920,6 +2954,9 @@ do
 	function Near.PickTurnIn(list, followedID)
 		if followedID and followedID ~= 0 and Ready(followedID) then
 			return
+		end
+		if Near.OwnWay(followedID) then
+			return   -- (2.1.82: the player's own pin, a guide's step or the corpse run is not taken over)
 		end
 		-- (the nearest by its turn-in; none with a known place: the first ready one in the tracker's order)
 		local best, bestD, first = nil, nil, nil

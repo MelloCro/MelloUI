@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.82
+
+- Fixed: with Nearest Turn In on (the check mark in the quest tracker's header), the navigation jumped back to a quest ready to hand in within a second, whatever you had just chosen: a step of a guide such as RestedXP, your own map pin (it vanished), or the way to your corpse. Nearest Turn In now waits while you are on one of those, and follows the nearest quest to hand in again once it is gone.
+
 ## 2.1.81
 
 - Fixed (controller): with the game's Gamepad UI on, a click on a name or a link in MelloUI's chat opened the game's menu, its chat line or its item window from MelloUI's own code, and the game then blocked the controller's buttons ("MelloUI has been blocked ..."). With a controller MelloUI no longer opens those. A link still shows its tooltip under the pointer; whispers and the player menu go through the game's own chat button. The quest tracker's links follow the same rule.

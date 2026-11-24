@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.82", lines = {
+		"Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse.",
+	} },
 	{ version = "2.1.81", lines = {
 		"Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons.",
 		"Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor.",
@@ -194,9 +197,6 @@ local CHANGELOG = {
 		"Services bar and minimap frame: no more blocked actions when an addon's minimap button changes in a fight.",
 		"Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View.",
 		"French: many more settings and messages are translated (thanks to woofix).",
-	} },
-	{ version = "2.1.77", lines = {
-		"Map and minimap without Questie: your quests show the game's own areas and points, in MelloUI's look.",
 	} },
 }
 local LINKS = {

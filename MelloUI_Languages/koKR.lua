@@ -2490,6 +2490,7 @@ Lang:Add("koKR", {
 	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI의 퀘스트 표시가 켜져 있는 동안 게임 옵션 Show Quest POIs & Blobs를 켜 둡니다. 이 옵션이 켜져 있어야 게임이 모든 퀘스트 위치를 알려 줍니다.", -- draft
 	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "컨트롤러: MelloUI 대화창의 링크와 이름이 더 이상 게임의 창을 열지 않습니다. 이 때문에 컨트롤러 버튼이 차단되곤 했습니다.", -- draft
 	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "컨트롤러: 게임의 전리품, 묶음 나누기, 우편 창에 있는 MelloUI 버튼은 컨트롤러 커서가 선택하지 않습니다.", -- draft
+	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "가장 가까운 완료 퀘스트 따라가기가 더 이상 직접 찍은 지도 핀, 가이드의 단계, 시체로 가는 길에서 길 안내를 빼앗지 않습니다.", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "전문 기술 재사용 대기시간: 변환처럼 재사용 대기시간을 공유하는 제조법은 끝났을 때 알림이 하나만 나옵니다.", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Questie 없는 미니맵: 게임의 파란 퀘스트 원 대신 MelloUI의 표시가 나옵니다.", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "지도: MelloUI 지도를 끄면 Questie 없이도 게임의 세계 지도에 MelloUI의 퀘스트 지역이 표시됩니다.", -- draft
