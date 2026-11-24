@@ -17,11 +17,14 @@
 - Configurator: on Unit & Group Frames, Nameplates, Bars and Minimap a frame's and a part's own line is the strong one now (gold, larger, one rule under it), and the sections under it are small labels. Before, every section had its own gold title and rule.
 - Mail Recipients: the list beside Send Mail is redone. Every name has its class picture and its level, a friend who is playing has a green dot, and the list scrolls with a bar.
 - Mail Recipients: groups of your own. Pinned is the first; the group button on a name puts it in a group or makes a new one, and any name goes in: your own character, a friend's, someone you wrote to. The cog on a group renames, moves or deletes it.
-- Mail Recipients: your characters show their two professions, and the Professions view lists who has which, best skill first. A character's professions are noted when it logs in or stands at a mailbox.
+- Mail Recipients: your characters show their two professions, and the Professions view lists who has which, best skill first. A character's professions are noted when it logs in or stands at a mailbox, and the one you are on is in that view too. Point at a profession icon to see its name and skill.
 - Mail Recipients: what you type in To narrows the list, and looks through your guild and friends list too (Guild And Friends While Typing). Typing a profession finds its characters.
 - Mail Recipients: Recent, the last five names you sent a letter to (Recent Names, on by default).
 - Fixed in Mail Recipients: characters you had deleted stayed in the list. They move to Hidden at the list's foot by themselves, the bin on a name takes any name off, and Hidden brings one back.
 - Fixed in Mail Recipients: a character whose class MelloUI did not know was white, like a Priest. It has a ? now and a dimmer name; click the ? to pick the class. The class is also learned when that character logs in, or from your guild.
+- Fixed in Mail Recipients: a character was never noted (no class, level or professions) when the game gave no realm name during its sessions and it had not been noted before.
+- Fixed in Mail Recipients: two of your characters with the same first name shared one entry, so each login wrote over the other's class, level and professions. Each has its own now; log in once on each.
+- Blocked actions report (/mellobug): with a controller, it also says when the game's controller code ran from inside MelloUI's own code, with the way there, and which control the pad's cursor stood on when the game's controller values first changed.
 
 ## 2.1.83
 

@@ -1563,11 +1563,18 @@ BUG.WRITE_HOOKS = {
 	-- (2.1.69) its navigation first: in the same run its calls come before the bindings they set
 	{ path = { "SmartNavigation" }, slots = { "activeInfo", "bindingActive", "currentButton" }, lists = { "activePanels" },
 		-- (2.1.81) TriggerEvent: the navigation's own events ("SelectedButtonUpdated", ...), for BUG.PadEvents below
+		-- (2.1.84) RegisterCallback / UnregisterCallback: a footer's or a window's own slot in the navigation's registry
+		-- (BUG.Ran, below)
 		methods = { "HandlePanelOpen", "RefreshButtonGroups", "RemovePanelInfo", "SetActiveFrame", "ActivateBinding",
-			"DeactivateBinding", "EnterFocusGroup", "TriggerEvent" }, walk = "NavWalk" },
+			"DeactivateBinding", "EnterFocusGroup", "TriggerEvent", "RegisterCallback", "UnregisterCallback" }, walk = "NavWalk" },
+	-- (2.1.84) RefreshFocus: the one place "Gamepad.RefreshFrameFocus" is fired from
 	{ path = { "GamepadMode", "FrameControlsManager" }, slots = { "isUIFocused", "focusedFrame" },
 		methods = { "FrameShown", "FrameHidden", "SetUIFocusState", "ToggleUIFocus", "FocusFrame", "HandlePopupShown",
-			"HandlePopupHide", "SuspendFrame", "UnsuspendFrame", "HideActiveFrames" } },
+			"HandlePopupHide", "SuspendFrame", "UnsuspendFrame", "HideActiveFrames", "RefreshFocus" } },
+	-- (2.1.84) the game's own registry: only a footer's slot for the manager's event (`only`: the call's first value;
+	-- its TriggerEvent is every part of the game's, and is left alone: RefreshFocus above is this event's)
+	{ path = { "EventRegistry" }, slots = {}, methods = { "RegisterCallback", "UnregisterCallback" },
+		only = { ["Gamepad.RefreshFrameFocus"] = true } },
 	{ path = { "GamepadSharedUtility", "InputBindingManager" }, slots = { "currentCoreBindingActive" },
 		lists = { "activeBindings" }, methods = { "AddBindingSet", "RemoveSet" } },
 	{ path = { "GamepadMainActionBarFrame", "PageUnit" }, slots = { "activeBar" }, methods = { "SetActiveActionBar" } },
@@ -1749,7 +1756,58 @@ function BUG.PadEvents(Look)
 	end
 end
 
+-- (2.1.84; the controller player's report on 2.1.83, 2026-11-24: the loot window and the chat no longer turned the pad's
+-- state, the game's quest log opened from its ring menu still did -- its footer's bindings written as MelloUI's inside
+-- the game's own focus of its map, and nothing of MelloUI's on that way; read against the game's source of that build
+-- and traced in the simulator with the Gamepad UI forced on, no call of MelloUI's reached the game's pad code at the
+-- open) The note that turns a footer is left EARLIER, by a call of the game's pad code that ran inside an addon's run
+-- (its window manager's entries, its navigation's, a registry slot of a footer's events: BUG.WRITE_HOOKS), and the
+-- game cannot be asked for it afterwards: it is a nil. So the run itself is caught: with each watched call the way
+-- there is read, and a line of MelloUI's on it (this file's own left out) keeps the call, the line and the way -- the
+-- first BUG.RUNS of them a session, each call and line once.
+BUG.RUNS = 6
+BUG.runs = {}
+BUG.runSeen = {}
+BUG.OURS = "AddOns/MelloUI"
+
+-- the first line of MelloUI's own on the way here (nil: none, or no way to read)
+function BUG.Ours()
+	local ok, text = pcall(rawget(_G, "debugstack") or error, 1, 40, 20)
+	if not ok or Secret(text) or type(text) ~= "string" then
+		return nil
+	end
+	for line in text:gmatch("[^\n]+") do
+		if line:find(BUG.OURS, 1, true) and not line:find("Core/Perf.lua", 1, true) then
+			return ((line:gsub("^%s+", "")):gsub("Interface/AddOns/", "")):sub(1, 150)
+		end
+	end
+	return nil
+end
+
+function BUG.Ran(label, method, arg)
+	if #BUG.runs >= BUG.RUNS then
+		return
+	end
+	local ours = BUG.Ours()
+	if not ours then
+		return
+	end
+	local what = format("%s:%s(%s)", label, method, BUG.WhatName(arg))
+	local key = what .. "\t" .. ours
+	if BUG.runSeen[key] then
+		return
+	end
+	BUG.runSeen[key] = true
+	local okW, way = pcall(BUG.Way)
+	BUG.runs[#BUG.runs + 1] = {
+		at = BUG.beganAt and math.floor(GetTime() - BUG.beganAt) or nil,
+		what = what, ours = ours, combat = InCombatLockdown() and true or false,
+		way = okW and way or nil,
+	}
+end
+
 function BUG.Wrote(spec, label, t, method, arg)
+	pcall(BUG.Ran, label, method, arg)
 	if #BUG.writes >= BUG.WRITES then
 		return
 	end
@@ -1808,11 +1866,15 @@ function BUG.Wrote(spec, label, t, method, arg)
 		end
 	end
 	local okW, way = pcall(BUG.Way)
+	-- (2.1.84) the control the game's pad cursor stood on: the footers ask it what it offers
+	local nav = rawget(_G, "SmartNavigation")
+	local cursor = type(nav) == "table" and rawget(nav, "currentButton") or nil
 	BUG.writes[#BUG.writes + 1] = {
 		at = BUG.beganAt and math.floor(GetTime() - BUG.beganAt) or nil,
 		what = format("%s:%s(%s)", label, method, BUG.WhatName(arg)),
 		values = found, combat = InCombatLockdown() and true or false,
 		way = okW and way or nil,
+		cursor = type(cursor) == "table" and BUG.WhatName(cursor) or nil,
 	}
 end
 
@@ -1831,9 +1893,14 @@ function BUG.HookPad()
 			if type(t) == "table" then
 				spec.hooked = true
 				BUG.padWatched = BUG.padWatched or (BUG.beganAt and math.floor(GetTime() - BUG.beganAt) or 0)
+				local only = spec.only
 				for _, method in ipairs(spec.methods) do
 					if type(t[method]) == "function" then
 						rawHook(t, method, function(_, arg)
+							-- (a table of the game's own with other users: only the calls named, the secret test first)
+							if only and (Secret(arg) or type(arg) ~= "string" or not only[arg]) then
+								return
+							end
 							pcall(BUG.Wrote, spec, label, t, method, arg)
 						end)
 					end
@@ -1848,14 +1915,26 @@ function BUG.WriteLines()
 	if not BUG.padWatched then
 		return nil
 	end
-	if #BUG.writes == 0 then
-		return { format("The Gamepad UI's state: nothing written outside the game since %d s in.", BUG.padWatched) }
-	end
 	local out = {}
+	if #BUG.writes == 0 then
+		out[1] = format("The Gamepad UI's state: nothing written outside the game since %d s in.", BUG.padWatched)
+	end
 	for _, w in ipairs(BUG.writes) do
-		out[#out + 1] = format("The Gamepad UI's state written outside the game, %s s in, %s, by %s: %s", tostring(w.at or "?"),
-			w.combat and "in combat" or "out of combat", w.what, table.concat(w.values, ", "))
+		out[#out + 1] = format("The Gamepad UI's state written outside the game, %s s in, %s, by %s: %s%s", tostring(w.at or "?"),
+			w.combat and "in combat" or "out of combat", w.what, table.concat(w.values, ", "),
+			w.cursor and (" (the pad's cursor on " .. w.cursor .. ")") or "")
 		for _, line in ipairs(w.way or {}) do
+			out[#out + 1] = "  " .. line
+		end
+	end
+	-- (2.1.84) the game's pad code run from MelloUI's own: the runs that can leave a footer's note (BUG.Ran)
+	if #BUG.runs == 0 then
+		out[#out + 1] = format("The game's pad code: none of it run from MelloUI's own since %d s in.", BUG.padWatched)
+	end
+	for _, r in ipairs(BUG.runs) do
+		out[#out + 1] = format("The game's pad code run from MelloUI's own, %s s in, %s: %s, from %s", tostring(r.at or "?"),
+			r.combat and "in combat" or "out of combat", r.what, r.ours)
+		for _, line in ipairs(r.way or {}) do
 			out[#out + 1] = "  " .. line
 		end
 	end

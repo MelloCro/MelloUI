@@ -35,7 +35,7 @@
 --
 -- What it keeps, account-wide in its own settings (`keep`: never in a profile or a share string, as Services' learned
 -- services), only on this computer:
---   alts       ["Name-Realm"] = { name (the full name, first name and surname), realm, class (the class's token),
+--   alts       ["Full Name-Realm"] = { name (the full name, first name and surname), realm, class (the class's token),
 --              level, faction, seen, profs = { { name, icon, rank, cap, main } ... }, kept } -- this character as it
 --              logs in, levels and stands at a mailbox
 --   bnetChars  [BattleTag] = { ["Name-Server"] = { name, realm, class, level, faction, seen } } -- read from the game's
@@ -115,6 +115,10 @@ local TEXT = {
 	tipOf = "A character of %s.",
 	tipGone = "The game no longer names this character.",
 	tipClick = "Click: the letter goes to this character.",
+	you = "you",
+	tipYou = "The character you are on.",
+	tipSkillOf = "Skill %d of %d.",
+	tipSkill = "Skill %d.",
 }
 
 local M = MelloUI:RegisterModule("MailRecipients", {
@@ -260,24 +264,45 @@ function R.Realm()
 		return R.lastRealm
 	end
 	local short = Text(Call(UnitName, "player"))
+	local full = Text(MelloUI.UnitNameAs and Call(MelloUI.UnitNameAs, MelloUI, "player", "both"))
 	local alts = type(M.db) == "table" and type(M.db.alts) == "table" and M.db.alts or {}
-	local best, seen
-	for key, c in pairs(short and alts or {}) do
-		if type(key) == "string" and key:sub(1, #short + 1) == short .. "-" and type(c) == "table"
-			and type(c.realm) == "string" and c.realm ~= "" and (c.seen or 0) >= (seen or 0) then
-			best, seen = c.realm, c.seen or 0
+	-- (2.1.84) this character's own notes: the ones that bear its full name, or stand under its first name's key of
+	-- before; then -- a character with no note of its own, and the game naming no realm in its sessions -- the realm the
+	-- account's characters were last noted on: your characters play one server
+	local best, seen, any, anySeen
+	for key, c in pairs(alts) do
+		if type(c) == "table" and type(c.realm) == "string" and c.realm ~= "" then
+			local own = (full and c.name == full)
+				or (short and type(key) == "string" and key:sub(1, #short + 1) == short .. "-")
+			if own and (c.seen or 0) >= (seen or 0) then
+				best, seen = c.realm, c.seen or 0
+			end
+			if (c.seen or 0) >= (anySeen or 0) then
+				any, anySeen = c.realm, c.seen or 0
+			end
 		end
 	end
-	return best
+	return best or any
 end
 
+-- (2.1.84) no realm to be had at all (the game names none and nothing was ever noted): the character is noted without
+-- one, under its name alone ("Full Name-"), and counts as one of your server; its note moves under its realm once one
+-- is read.
+-- (2.1.84; the user in their game, 2026-11-24: their two characters showed no professions of each other -- both bear
+-- one first name, as "Arden Vale" and "Arden Holt" would, and UnitName gives the first name alone) The key is the FULL name's:
+-- under UnitName's, one note served both characters and each login wrote the other's away. A first name is not one
+-- character's on this client (a friend's three characters share one too)
 local function Me()
 	local short, realm = Text(Call(UnitName, "player")), R.Realm()
-	if not short or short == "" or not realm or realm == "" then
+	if not short or short == "" then
 		return nil
 	end
+	if realm == "" then
+		realm = nil
+	end
 	local full = Text(MelloUI.UnitNameAs and Call(MelloUI.UnitNameAs, MelloUI, "player", "both"))
-	return short .. "-" .. realm, (full and full ~= "") and full or short, realm, Text(Call(UnitFactionGroup, "player"))
+	full = (full and full ~= "") and full or short
+	return full .. "-" .. (realm or ""), full, realm, Text(Call(UnitFactionGroup, "player"))
 end
 
 -- a character on another SERVER than yours (2.1.62: R.ServerKey -- another layer of yours is no other realm): its realm
@@ -355,10 +380,22 @@ local function WriteMe()
 	local alts = Store("alts")
 	local _, class = Call(UnitClass, "player")
 	local rec = alts[key]
+	-- (2.1.84) this character's notes under other keys -- its first name's of before, another layer's, one made
+	-- without a realm: the one last seen is its note now, under its own key, the others go. Only a note that bears its
+	-- full name is its own: one under its first name's key may be the other character's of that first name
+	local here = R.ServerKey(realm)
+	for k, c in pairs(alts) do
+		if k ~= key and type(c) == "table" and c.name == name and (c.realm == nil or R.ServerKey(c.realm) == here) then
+			if type(rec) ~= "table" or (c.seen or 0) > (rec.seen or 0) then
+				rec = c
+			end
+			alts[k] = nil
+		end
+	end
 	if type(rec) ~= "table" then
 		rec = {}
-		alts[key] = rec
 	end
+	alts[key] = rec
 	rec.name, rec.full, rec.realm, rec.class = name, true, realm, Text(class)
 	rec.level, rec.faction, rec.seen = Num(Call(UnitLevel, "player")), faction, time()
 	-- (2.1.84) its professions, where the game has them by now (none read: what was noted stays)
@@ -689,8 +726,12 @@ local function Alts(me, myName, faction)
 			out[#out + 1] = { name = name, class = met and Text(met.class) or nil, level = met and Num(met.level) or nil, met = met }
 		end
 	end
-	-- (a first name borne twice in the list: the Quest List's class is neither's for sure)
+	-- (a first name borne twice in the list, or by the character you are on: the Quest List's class is neither's for sure)
 	local firsts = {}
+	local mine = myName and myName:match("^(%S+)")
+	if mine then
+		firsts[mine] = 1
+	end
 	for _, list in ipairs({ out, gone }) do
 		for _, c in ipairs(list) do
 			local first = c.name:match("^(%S+)")
@@ -888,6 +929,9 @@ function R.Gather()
 	R.byId = Fresh(R.byId)
 	R.mine = Fresh(R.mine)
 	R.gone = gone
+	-- (2.1.84) the character you are on: its own note, for the Professions view (no letter goes to yourself)
+	local own = me and type(M.db) == "table" and type(M.db.alts) == "table" and M.db.alts[me] or nil
+	R.own = type(own) == "table" and type(own.name) == "string" and own or nil
 	for _, c in ipairs(mine) do
 		local id = R.Id(c)
 		if id then
@@ -1058,11 +1102,19 @@ function R.HiddenFoot(F)
 end
 
 -- who has which profession: a heading a profession (the two a character has; fishing, cooking and first aid are its
--- tooltip's), your characters under it, the best skill first
+-- tooltip's), your characters under it, the best skill first. (2.1.84; the user, 2026-11-24, of the built view: "neither
+-- does my main even tho i have Skinning and Enchanting on it") The character you are on stands in it too, said to be
+-- you: the view is who has what, and a player with one other character saw an empty page
 function R.ProfView(L, F)
 	local folds = Store("folds")
 	local by, names = Fresh(R.profBy), Fresh(R.profNames)
 	R.profBy, R.profNames = by, names
+	for _, p in ipairs(R.own and type(R.own.profs) == "table" and R.own.profs or {}) do
+		if p.main and type(p.name) == "string" then
+			by[p.name] = { { c = R.own, p = p, own = true } }
+			names[#names + 1] = p.name
+		end
+	end
 	for _, c in ipairs(R.mine) do
 		local any = false
 		for _, p in ipairs(type(c.profs) == "table" and c.profs or {}) do
@@ -1090,7 +1142,8 @@ function R.ProfView(L, F)
 		if open then
 			for _, it in ipairs(list) do
 				local row = Add(L, "char", nil, it.c)
-				row.sect, row.skill = "prof", it.p.rank
+				row.sect, row.skill = it.own and "self" or "prof", it.p.rank
+				row.tag = it.own and Tr(TEXT.you) or nil
 			end
 		end
 	end
@@ -1244,6 +1297,10 @@ end
 R.PANEL_W, R.PAD, R.TOP, R.ROW_H = 236, 10, 62, 22
 R.CHIPS_Y, R.CHIPS_H = 36, 20
 R.DISC, R.PROF, R.CTL, R.FOLD, R.DOT = 18, 15, 16, 13, 7   -- a row's class picture, profession, control, fold, dot
+-- the two controls of a row under the pointer, from the row's right edge: 2, the bin, 4, the Groups button, 3. A row
+-- with profession icons keeps that room at its right (its level stands in it), so the buttons never cover the icons
+R.CTL_EDGE, R.CTL_GAP = 2, 4
+R.CTL_ROOM = R.CTL_EDGE + 2 * R.CTL + R.CTL_GAP + 3
 R.INDENT = 16        -- a friend's characters under their row
 R.BAR = 6            -- the room the scroll bar takes at the rows' right
 R.FOOT_MAX = 4       -- the most of the foot's names in view (the wheel brings the others)
@@ -1351,6 +1408,8 @@ function R.TipText(e)
 	end
 	if e.gone then
 		parts[#parts + 1] = Tr(TEXT.tipGone)
+	elseif e.sect == "self" then
+		parts[#parts + 1] = Tr(TEXT.tipYou)
 	elseif e.sect ~= "hidden" then
 		parts[#parts + 1] = Tr(TEXT.tipClick)
 	end
@@ -1482,41 +1541,44 @@ local function Ctl(row, what, glyph, click)
 	return b
 end
 
--- the row under the pointer: its controls in place of what its right side says
+-- the rows that wear the Groups button and the bin under the pointer
+function R.Controls(e)
+	local sect = e.sect
+	return e.kind == "char"
+		and (sect == "group" or sect == "recent" or sect == "alts" or sect == "friend" or sect == "found")
+end
+
+-- the row under the pointer: its controls in place of the number at its right.
+-- (2.1.84; the user in their game, 2026-11-24: "i cant mouseover the icons if im not sure what the professions are,
+-- because the mouseover options cover it") The profession icons stay: the controls stand in the room at the row's
+-- right that R.Lay keeps for them (R.CTL_ROOM), where the level was
 function R.Over(row)
 	local e = row.entry
 	if not e then
 		return
 	end
-	local sect = e.sect
-	if e.kind == "char" and (sect == "group" or sect == "recent" or sect == "alts" or sect == "friend" or sect == "found") then
-		local bin = sect ~= "found" and Ctl(row, "bin", "bin", BinClick) or nil
+	if R.Controls(e) then
+		local bin = e.sect ~= "found" and Ctl(row, "bin", "bin", BinClick) or nil
 		local group = Ctl(row, "group", "layers", GroupClick)
 		group:ClearAllPoints()
 		if bin then
 			bin:ClearAllPoints()
-			bin:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+			bin:SetPoint("RIGHT", row, "RIGHT", -R.CTL_EDGE, 0)
 			bin:Show()
-			group:SetPoint("RIGHT", bin, "LEFT", -4, 0)
+			group:SetPoint("RIGHT", bin, "LEFT", -R.CTL_GAP, 0)
 		else
-			group:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+			group:SetPoint("RIGHT", row, "RIGHT", -R.CTL_EDGE, 0)
 		end
 		group:Show()
 	elseif e.kind == "head" and e.group then
 		local cog = Ctl(row, "cog", "cog", CogClick)
 		cog:ClearAllPoints()
-		cog:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+		cog:SetPoint("RIGHT", row, "RIGHT", -R.CTL_EDGE, 0)
 		cog:Show()
 	else
 		return
 	end
 	row.right:Hide()
-	if row.p1 then
-		row.p1:Hide()
-	end
-	if row.p2 then
-		row.p2:Hide()
-	end
 end
 
 local RowEnter = Perf.Shared("OnEnter on a mail recipients row", function(row)
@@ -1544,7 +1606,7 @@ local RowClick = Perf.Shared("OnClick on a mail recipients row", function(row)
 		return
 	end
 	if e.kind == "char" then
-		if e.c and e.sect ~= "hidden" then
+		if e.c and e.sect ~= "hidden" and e.sect ~= "self" then
 			R.FlyClose()
 			Put(e.c)
 		end
@@ -1633,9 +1695,53 @@ function Make.disc(row)   -- (a class's picture)
 	return b
 end
 
-function Make.prof(row)   -- (a profession's icon)
+function Make.prof(row)   -- (a profession's icon on its heading)
 	local b = MelloUI.Widgets.RoundIcon(row, R.PROF)
 	b:EnableMouse(false)
+	return b
+end
+
+-- a profession's icon on a character's row (2.1.84; the user, 2026-11-24: they could not tell an icon's profession):
+-- under the pointer it names its profession and the skill; a click on it is the row's click
+function R.ProfTip(b)
+	local p = b.prof
+	if type(p) ~= "table" or type(p.name) ~= "string" then
+		return nil
+	end
+	local line
+	if p.rank and p.cap then
+		line = Tr(TEXT.tipSkillOf):format(p.rank, p.cap)
+	elseif p.rank then
+		line = Tr(TEXT.tipSkill):format(p.rank)
+	end
+	return p.name, line
+end
+
+R.ProfEnter = Perf.Shared("OnEnter on a mail recipient's profession", function(b)
+	if b.row then
+		R.Over(b.row)   -- (the pointer may come onto the icon first: the row's controls with it)
+	end
+	local title, line = R.ProfTip(b)
+	if title then
+		MelloUI.Widgets.ShowTooltip(b, title, line)
+	end
+end, "script")
+
+R.ProfClick = Perf.Shared("OnClick on a mail recipient's profession", function(b)
+	if b.row then
+		RowClick(b.row)
+	end
+end, "script")
+
+function Make.own(row)
+	local W = MelloUI.Widgets
+	local b = W.RoundIcon(row, R.PROF)
+	b.row, b.what = row, "prof"
+	b:RegisterForClicks("LeftButtonUp")
+	Perf.SetScript(b, "OnClick", R.ProfClick)
+	Perf.HookScript(b, "OnEnter", R.ProfEnter)
+	Perf.HookScript(b, "OnLeave", CtlLeave)
+	W.RowPlateChild(row, b)
 	return b
 end
 
@@ -1780,12 +1886,18 @@ function R.Lay(row, e)
 				nProf = nProf + 1
 			end
 		end
+		-- (2.1.84) a row that wears controls under the pointer keeps their room at its right, the icons left of it:
+		-- the buttons take the level's place there and the icons stay to be looked at
+		if nProf > 0 and R.Controls(e) then
+			used = math.max(used, R.CTL_ROOM)
+		end
 		-- (laid from the right: the second, then the first)
 		local at = nProf
 		for i = #e.c.profs, 1, -1 do
 			local p = e.c.profs[i]
 			if p.main and p.icon and at >= 1 and i <= 2 then
-				local icon = Part(row, "p" .. at, Make.prof)
+				local icon = Part(row, "p" .. at, Make.own)
+				icon.prof = p
 				SetIcon(icon, p.icon)
 				icon:ClearAllPoints()
 				icon:SetPoint("RIGHT", row, "RIGHT", -(used + (nProf - at) * (R.PROF + 3)), 0)
