@@ -4177,14 +4177,15 @@ do
 		MelloUI.Widgets.Icon(f.quest, QUEST_ICON.kill)   -- (the stage's enemy: a mob to slay)
 		f.quest:SetPoint("RIGHT", f.bar, "LEFT", -Stage.QUEST_GAP, 0)
 		f.name = Stage.Text(f.top, "SystemFont_NamePlate")
-		f.name:SetText(who and who.name or Stage.NAME)
+		local name = W.Tr(who and who.name or Stage.NAME)
+		f.name:SetText(name)
 		Plate.LOOK.alpha = MelloUI.Shade.TEXT.alpha
 		f.band = MelloUI.Shade:Band(f.top, Plate.LOOK)
 		if f.band then
 			-- (2.1.19) on a measure of the text, as the live plates' band (Plate.Make): the name's box spans the bar now
 			f.measure = MelloUI.Shade:Measure(f.top, f.name, Plate.POINT, Plate.MEASURE)
 			if f.measure then
-				MelloUI.Shade:MeasureText(f.measure, who and who.name or Stage.NAME)
+				MelloUI.Shade:MeasureText(f.measure, name)
 			end
 			f.band:Anchor(f.measure or f.name, Plate.PAD_X, Plate.PAD_Y)
 		end
