@@ -128,7 +128,7 @@ local CONFIG = {
 	-- over the header's line
 	HEAD_IN = 26, HEAD_TOP = 14, HEAD_RIGHT = 24, HEAD_CLOSE = 58, TABS_UP = 10, TAB_GAP = 4,
 	-- the side column: its rows' inset, the fixed entries' rows, the list's rows and headers, the foot line
-	SIDE_IN = 8, FIXED_ROW = 32, LIST_ROW = 29, LIST_HEAD = 28, SIDE_FOOT = 30, CONTENT_LEFT = 270,
+	SIDE_IN = 8, FIXED_ROW = 32, LIST_ROW = 23, LIST_HEAD = 21, TILE_GAP = 5, SIDE_FOOT = 30, CONTENT_LEFT = 270,
 	-- (the quiet stone's, spec.sideWash: over the painting's ground, -7 in KitWindow's FLAT.GROUND; its top this far
 	-- over the fixed entries, under the brand's line)
 	SIDE_WASH_LEVEL = -6, SIDE_WASH_UP = 12,
@@ -177,6 +177,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.84", lines = {
+		"Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings.",
+		"Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide.",
+		"Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list.",
+		"Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does.",
+		"Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it.",
+	} },
 	{ version = "2.1.83", lines = {
 		"Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates.",
 		"Friendly nameplates: Hide At Full Health shows only the name until they are hurt.",
@@ -191,9 +198,6 @@ local CHANGELOG = {
 	{ version = "2.1.80", lines = {
 		"Without Questie: quests that had no mark or area on the map and the minimap show now.",
 		"MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it.",
-	} },
-	{ version = "2.1.79", lines = {
-		"Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over.",
 	} },
 }
 local LINKS = {
@@ -1146,6 +1150,10 @@ local function NewPage(name, width)
 			end
 		end
 		self.current = sec
+		-- (2.1.84: the feature bar of the tab on show)
+		if self.bar then
+			CONFIG.LayBar(self, sec)
+		end
 		local Anim = MelloUI.Anim
 		for _, other in ipairs(self.sections) do
 			-- (a tab still fading out from the switch before ends its fade)
@@ -1185,7 +1193,10 @@ local function NewPage(name, width)
 		if self.current ~= sec then
 			self:Select(sec, animate)
 		end
-		self.pager:ScrollTo(math.max(0, self.headerHeight + y - 8), instant)
+		-- (2.1.84: a designer's stage across the page, pinned over the scroll's top, covers the rows under it -- the
+		-- row brought to under it)
+		local covered = self.dui and self.dui.Covered(self) or 0
+		self.pager:ScrollTo(math.max(0, self.headerHeight + y - 8 - covered), instant)
 	end
 
 	-- A picker page's picker line under the header's texts, the tab row
@@ -1203,6 +1214,16 @@ local function NewPage(name, width)
 			self.baseHeight = HeaderHeight(self)
 		end
 		local y = self.baseHeight
+		-- (2.1.84: the feature bar on top of the tab, CONFIG.Bar -- the content starts under it)
+		local bar = self.bar
+		if bar then
+			bar:ClearAllPoints()
+			bar:SetPoint("TOPLEFT", self, "TOPLEFT", PAD, -y)
+			bar:SetPoint("RIGHT", self, "RIGHT", -PAD, 0)
+			if bar:IsShown() then
+				y = y + CONFIG.BAR_H + CONFIG.BAR_GAP
+			end
+		end
 		local line = self.pickerLine
 		if line and self.pickerY then
 			line:ClearAllPoints()
@@ -1839,6 +1860,16 @@ do
 			r.name = extra.name or (first.kind == "module" and first.mod.title) or first.opt.name or first.id
 			r.wide, r.picture, r.swatch, r.also = extra.wide, extra.picture, extra.swatch, extra.also
 			r.shared = extra.shared   -- (one look, the designers: the Shared mark, W.Row's opts.shared)
+			-- (2.1.84, the designers' Parts list: a toggle that hides its part -- the part's Show there, mirrored,
+			-- and no row of its own beside a stage: DUI.ShowKeys, DUI.Made)
+			r.asShow = extra.asShow
+			-- (2.1.84, the feature bar: the layout's `bars`) the tab's own switch: the bar on top of the tab is its
+			-- place, CONFIG.Bar -- no row
+			local bars = L.bars and L.bars[p.key]
+			if bars and bars[t.name] == first.id then
+				r.bar = true
+				t.barRow = r
+			end
 			r.sharedWith = extra.sharedWith
 			r.free = (extra.free or (first.opt and first.opt.free)) and true or nil
 			-- (one-look D6) the module whose switches the row sleeps with while
@@ -2304,7 +2335,6 @@ local KeybindModeClick = Shared("OnClick on the configurator's Keybind Mode", fu
 end, "script")
 local RESET_W = 120
 local PREVIEW_H = 96        -- the live preview (Core/ConfigPreview.lua), at the content's top right
-local SWITCH_ROOM = 200     -- the header's right for a page's switch
 
 -- the texts (in-game words: no tool or other addon named)
 local TEXT = {
@@ -2350,12 +2380,15 @@ local TEXT = {
 	nothing = "Nothing to set here yet.",
 	scaleBusy = "Edit Layout is open: size it there.",
 	parts = "Parts:",   -- (the designers' Parts line)
+	listShow = "Show",   -- (2.1.84: the Parts list's switches, their heading)
 	pickPart = "Nothing to pick on it: its options are below.",
 	-- (the designers' block heads: shell-plan 4.6 / 4.8)
 	resetPart = "Reset part",
 	resetPartTip = "This part's settings back to their defaults, and its place on the frame. Switches of whole "
 		.. "modules and what belongs to your character stay as they are. It asks first.",
 	resetBlock = "Reset %s",
+	-- (2.1.84, the feature bar: a tab whose feature is off, with nothing else to show)
+	barOff = "%s: off", barWake = "Switch it on above: the settings on this tab wake with it.",
 	resetBlockTip = "Every setting of %s back to its default%s. Switches of whole modules and what belongs to your "
 		.. "character stay as they are. It asks first.",
 	resetElWhat = ": its own and its parts' (not All frames', not the places on the frame)",
@@ -4091,7 +4124,13 @@ function CONFIG.EmptyLine(sec, show)
 		return 0
 	end
 	local line, why, id, pick
-	for _, job in ipairs(sec.allJobs) do
+	-- (2.1.84, the feature bar: the tab's feature off -- said once, with what off means and how to wake it)
+	local jobs = sec.allJobs
+	local off = CONFIG.BarOffText(sec.page, sec)
+	if off then
+		line, jobs = off, EMPTY
+	end
+	for _, job in ipairs(jobs) do
 		if not (job.rows or job.dhead or job.dspec or job.note or job.isLinks) then
 			local _, w, l, i, p = Gate(sec.page, job)
 			if l then
@@ -4147,6 +4186,13 @@ function CONFIG.Reflow(sec)
 	end
 	local page, n = sec.page, #jobs
 	local live, at = sec.liveOf, sec.newY
+	-- (2.1.84, the designers' one scroll: a part's block that shows in one state of the stage only is off in the
+	-- others -- its head and its rows, so its headings too)
+	local blockAt = sec.blocks and page.dui and sec.blockAt or nil
+	if blockAt then
+		page.dui.BlockStates(page, sec)
+	end
+	local barOff = CONFIG.BarState(page, sec) == false
 	-- each job's state; a heading's: any row under it to the next heading
 	local head, headLive, any = nil, false, false
 	for i = 1, n do
@@ -4158,10 +4204,18 @@ function CONFIG.Reflow(sec)
 			head, headLive = i, false
 		else
 			local on = CONFIG.JobLive(page, job)
+			if on and blockAt and blockAt[i] and blockAt[i].off then
+				on = false
+			end
+			-- (2.1.84, the feature bar: its switch off -- the heads, the stage's own controls, the links and a
+			-- designer's part blocks sleep with it; a row follows its own gate)
+			if on and barOff and (job.dhead or job.dspec or job.isLinks or (blockAt and blockAt[i])) then
+				on = false
+			end
 			live[i] = on
-			-- (the configurator walk, 2026-11-04: Bars > Cast Bar's parts showed "Nothing to set here yet." over
-			-- their own head's "Nothing to set yet") a locked part's head says it already: the tab is not empty
-			if on and (not job.dhead or (job.dhead == "part" and job.t.part and job.t.part.locked)) then
+			-- (2.1.84, one scroll: a locked part has no block, so no head of its own to count -- the clause the
+			-- configurator walk of 2026-11-04 added for Bars > Cast Bar's parts went with their tabs)
+			if on and not job.dhead then
 				headLive, any = true, true
 			end
 		end
@@ -4248,6 +4302,10 @@ function CONFIG.Reflow(sec)
 	end
 	if changed and page.current == sec then
 		PageHeight(page, sec)
+	end
+	-- (2.1.84: the picked part's outline round its block where it stands now)
+	if blockAt and page.current == sec then
+		page.dui.Outline(page, sec)
 	end
 end
 
@@ -4594,13 +4652,275 @@ function CONFIG.LivePicks(page)
 	return shown
 end
 
+--------------------------------------------------------------------------------
+-- The feature bar (2.1.84; the user's pick A of the switches sketch, 2026-11-24 -- docs/plans/
+-- config-switches-sidelist.md): one place to turn a feature on. A tab that is a feature opens with a bar over its
+-- whole width -- the switch, the feature's name, the other tabs it also switches ("also Target, Focus") and one line
+-- saying what it is (the whole text in the switch's tooltip). The switch is the tab's own (the layout's `bars`: the
+-- row marked r.bar, not made as a row), else its page's (the page def's `module`: page.barModule); a tab with neither
+-- has no bar. One frame a page, made with the page, filled for the tab on show (CONFIG.LayBar: page:Select, and
+-- each refresh); the page's content starts under it (page:LayTabs).
+-- Off: the rows follow their own gates as before -- what still works stays -- and what only the feature gives sleeps
+-- with it: a designer's part blocks and heads, the stage's own controls, the links (CONFIG.Reflow) and the Parts
+-- list (DUI.Follow); a tab left with nothing says so once (CONFIG.EmptyLine: CONFIG.BarOffText).
+--------------------------------------------------------------------------------
+CONFIG.BAR_H, CONFIG.BAR_GAP = 46, 10
+
+-- the switch of layout tab `t` on `page`: -> its setting (a binding), its row (nil: the page's own switch)
+function CONFIG.BarOf(page, t)
+	local r = t and t.barRow
+	if r then
+		local b = Current(page, r) or r.b
+		if b then
+			return b, r
+		end
+	end
+	return page.barModule, nil
+end
+
+-- the bar's switch of the tab `sec`: true on, false off (its own gate asleep too), nil: the tab has no bar
+function CONFIG.BarState(page, sec)
+	if not (page.bar and sec and page.lay) then
+		return nil
+	end
+	local b, r = CONFIG.BarOf(page, page.lay.tabOf[sec.name])
+	if not b then
+		return nil
+	end
+	if r and not Gate(page, r) then
+		return false
+	end
+	return ValueOf(b) and true or false
+end
+
+-- a text's first sentence
+function CONFIG.FirstLine(text)
+	text = tostring(text or "")
+	local at = text:find("%.%s")
+	return at and text:sub(1, at) or text
+end
+
+-- the bar's name, what it says of itself (the switch's tooltip) and its one line -- the layout's own short one
+-- (`barLines`), else the first sentence of what it says -- in the language in use
+function CONFIG.BarTexts(page, b, r)
+	local T = MelloUI.Lang.T
+	local name, desc
+	if r then
+		name = r.name
+		desc = (b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc)
+	else
+		local def = page.lay.def
+		name = def.switchLabel or b.mod.title or b.mod.name
+		desc = def.switchDesc or b.mod.desc
+	end
+	desc = type(desc) == "string" and T(desc) or ""
+	local short = MelloUI.ConfigLayout.barLines
+	local line = short and short[b.id or (b.mod.name .. ".!enabled")]
+	return T(name), desc, line and T(line) or CONFIG.FirstLine(desc)
+end
+
+-- what a tab says once while its feature is off and nothing else shows (nil: it has none, or it is on): "<Name>:
+-- off", what the feature's own words say of off ("Off: the game's own plates, untouched."), and how to wake it
+function CONFIG.BarOffText(page, sec)
+	if CONFIG.BarState(page, sec) ~= false then
+		return nil
+	end
+	local b, r = CONFIG.BarOf(page, page.lay.tabOf[sec.name])
+	local name, desc = CONFIG.BarTexts(page, b, r)
+	if r then
+		local live, _, line = Gate(page, r)
+		if not live and line then
+			return MelloUI.Lang.F(TEXT.barOff, name) .. "\n" .. W.Tr(line)
+		end
+	end
+	local off = desc:match("Off: ([^%.]+%.)")
+	return MelloUI.Lang.F(TEXT.barOff, name) .. "\n" .. (off and (off:sub(1, 1):upper() .. off:sub(2) .. " ") or "")
+		.. MelloUI.Lang.T(TEXT.barWake)
+end
+
+function CONFIG.MakeBar(page)
+	local bar = CreateFrame("Frame", nil, page)
+	bar:SetHeight(CONFIG.BAR_H)
+	bar:SetFrameLevel(page:GetFrameLevel() + 2)
+	if not KIT then
+		W.Panel(bar, PANEL_ON)
+	end
+	local switch = W.Switch(bar, function()
+		local b = page.barB
+		return b and ValueOf(b) and true or false
+	end, function(value)
+		local b = page.barB
+		if b then
+			Write(b, value and true or false)
+		end
+	end, SwitchOpts())
+	switch:SetPoint("LEFT", bar, "LEFT", 14, 0)
+	local title = Text(bar, "GameFontNormalLarge", "", C.accent)
+	title:SetPoint("TOPLEFT", switch, "TOPRIGHT", 12, 5)
+	local also = Text(bar, "GameFontHighlightSmall", "", C.sub)
+	also:SetPoint("LEFT", title, "RIGHT", 12, -1)
+	local line = Text(bar, "GameFontHighlight", "", C.text)
+	line:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
+	line:SetPoint("RIGHT", bar, "RIGHT", -14, 0)
+	line:SetWordWrap(false)
+	if KIT then
+		CONFIG.InkOn(title, "title")
+		CONFIG.InkOn(also, "title")
+		CONFIG.InkOn(line, "title")
+	end
+	PageTip(switch, "", "")
+	bar.switch, bar.title, bar.also, bar.line = switch, title, also, line
+	bar:Hide()
+	page.bar = bar
+	page.switch = switch   -- (a jump to the page's own switch lights it: JumpTo's "!page:<key>")
+	page.refreshers[#page.refreshers + 1] = function()
+		CONFIG.LayBar(page, page.current)
+	end
+end
+
+-- the bar filled for the tab on show; shown or hidden with it, the page laid again when that changed; a designer's
+-- Parts list told when the feature went on or off
+function CONFIG.LayBar(page, sec)
+	local bar = page.bar
+	if not (bar and sec and page.lay) then
+		return
+	end
+	local b, r = CONFIG.BarOf(page, page.lay.tabOf[sec.name])
+	page.barB = b
+	local shown = b ~= nil
+	local state
+	if shown then
+		local name, desc, short = CONFIG.BarTexts(page, b, r)
+		local live, gateLine = true, nil
+		if r then
+			local l, _, line = Gate(page, r)
+			live, gateLine = l and true or false, line
+		end
+		bar.title:SetText(name)
+		bar.line:SetText(live and short or W.Tr(gateLine or ""))
+		local also = ""
+		if r and r.sharedWith then
+			local names = {}
+			for i, other in ipairs(r.sharedWith) do
+				names[i] = MelloUI.Lang.T(other)
+			end
+			also = MelloUI.Lang.F("also %s", table.concat(names, ", "))
+		end
+		bar.also:SetText(also)
+		bar.switch:SetEnabled(live)
+		bar.switch:SetAlpha(live and 1 or 0.5)
+		bar.switch.melloTipTitle, bar.switch.melloTipBody = name, desc
+		bar.switch:Refresh()
+		state = live and ValueOf(b) and true or false
+	end
+	local was = page.barState
+	page.barState = state
+	if shown ~= (bar:IsShown() and true or false) then
+		bar:SetShown(shown)
+		page:LayTabs(true)
+	end
+	if page.dui and was ~= state and page.current == sec and page.barTab == sec then
+		page.dKeep = true
+		page.dui.Follow(page, sec)
+		page.dKeep = nil
+	end
+	page.barTab = sec
+end
+
+-- a page's tab opened by its name (a designer's own way, its picked part let go)
+function CONFIG.OpenTab(page, name, animate)
+	if page.dui then
+		page.dui.OpenTab(page, name, animate)
+		return
+	end
+	for _, sec in ipairs(page.sections) do
+		if sec.name == name and page.current ~= sec then
+			page:Select(sec, animate)
+		end
+	end
+end
+
+-- a jump to a tab's own switch (RevealRow: it has no row): its tab at its top, the bar's switch lit. A switch several
+-- tabs share (Unit Frames: Player, Target, Focus, Pet) is lit where it stands when the tab on show has it
+function CONFIG.RevealBar(page, r, onShow)
+	local t = r.tab
+	local cur = page.current and page.lay.tabOf[page.current.name]
+	local here = cur and cur.barRow
+	if t and not (here and here.b and r.b and here.b.id == r.b.id) then
+		CONFIG.OpenTab(page, t.name, onShow)
+	end
+	page.pager:ScrollTo(0, not onShow)
+	if page.bar then
+		W.Flash(page.bar.switch)
+	end
+end
+
+-- a jump to the page's own switch (JumpTo's "!page:<key>"): a tab whose bar holds it -- the first one without a
+-- switch of its own, when the tab on show has one -- at its top, the switch lit
+function CONFIG.RevealPageBar(page, onShow)
+	local lay, cur = page.lay, page.current
+	local t = lay and cur and lay.tabOf[cur.name]
+	if t and t.barRow then
+		for _, sec in ipairs(page.sections) do
+			local other = lay.tabOf[sec.name]
+			if other and not other.barRow then
+				CONFIG.OpenTab(page, sec.name, onShow)
+				break
+			end
+		end
+	end
+	page.pager:ScrollTo(0, not onShow)
+	W.Flash(page.switch)
+end
+
+-- whether row `r` of layout tab `t` is made as a row of the page: not a tab's own switch (the bar), not a designer
+-- part's Show that the Parts list holds (DUI.Made)
+function CONFIG.RowMade(page, t, r)
+	return not r.bar and not (page.dui and not page.dui.Made(t, r))
+end
+
+-- (2.1.84, the side list's marks) what a page's switches say together -- its own (the page def's `module`) and each
+-- of its tabs' (the feature bar's: the layout's `bars`): "on" all of them, "off" none, "some"; nil: nothing to switch
+-- there. Read from the layout: a page not made yet has its mark. A tab's switch asleep behind another (Unit Frames
+-- while UI Modifications is off) counts as off
+function CONFIG.MarkOf(key)
+	local pl = Lay.Get().pages[key]
+	if not pl then
+		return nil
+	end
+	local on, total, seen = 0, 0, nil
+	local m = pl.def.module
+	if m then
+		total = 1
+		on = MelloUI:IsModuleEnabled(m) and 1 or 0
+	end
+	local as   -- (a page to ask the gates as: its name and layout are all they read of it for a plain row)
+	for _, t in ipairs(pl.tabs) do
+		local r = t.barRow
+		local b = r and r.b
+		if b and not (seen and seen[b.id]) then
+			seen = seen or {}
+			seen[b.id] = true
+			as = as or { name = key, lay = pl }
+			total = total + 1
+			if Gate(as, r) and ValueOf(b) then
+				on = on + 1
+			end
+		end
+	end
+	if total == 0 then
+		return nil
+	end
+	return (on == total and "on") or (on == 0 and "off") or "some"
+end
+
 local function Header(page, pl)
 	local def = pl.def
 	local module = def.module and MelloUI.modules[def.module]
 	local P = def.preview and pl.picks and MelloUI.ConfigPreview
 	local preview = type(P) == "table" and type(P.Make) == "function"
 	local _, flavour = PageMeta(page.name)
-	local right = module and SWITCH_ROOM or 0
+	local right = 0
 	-- (a page with no picker line -- the Bars designer -- has its action in the header, left of its switch)
 	local headAction = def.action == "keybind" and not pl.picks
 	if headAction then
@@ -4613,38 +4933,14 @@ local function Header(page, pl)
 	-- (Reset this page: the footer's one button, for the page on show -- CONFIG.Footer)
 	page.canReset = true
 	local head = page.head
-	local actionAt
 	if module then
-		-- the page's switch: its module's (Look's is UI Modifications', labelled
-		-- so, its tooltip saying all it takes with it), on the header's title line
-		local name = def.switchLabel or TEXT.enabled
-		local lbl = Text(head, "GameFontNormal", name, C.text)
-		local switch = W.Switch(head, function()
-			return MelloUI:IsModuleEnabled(module.name)
-		end, function(value)
-			MelloUI:SetModuleEnabled(module.name, value)
-			MelloUI:RefreshConfig()
-		end, SwitchOpts())
-		switch:SetPoint("TOPRIGHT", head, "TOPRIGHT", -CONFIG.HEAD_CLOSE, -CONFIG.HEAD_TOP - 4)
-		lbl:SetPoint("RIGHT", switch, "LEFT", -4, 0)
-		actionAt = lbl
-		PageTip(switch, name, def.switchDesc or module.desc)
-		-- (onelook D7) a page's switch new in an update (its page def's `new`: the Minimap page's, MelloUI's minimap)
-		if def.new then
-			W.Badge(switch, def.new)
-		end
-		page.switch, page.switchLabel = switch, lbl
-		page.refreshers[#page.refreshers + 1] = function()
-			switch:Refresh()
-		end
+		-- (2.1.84, the feature bar: the page's switch -- its module's; Look's is UI Modifications' -- stood on the
+		-- header's title line; it is the bar's on every tab without a switch of its own, CONFIG.Bar)
+		page.barModule = { kind = "module", mod = module }
 	end
 	if headAction then
 		local b = W.Button(head, KEYBIND_MODE.name, KEYBIND_MODE.width, nil, { gold = true, onClick = KeybindModeClick })
-		if actionAt then
-			b:SetPoint("RIGHT", actionAt, "LEFT", -16, 0)
-		else
-			b:SetPoint("TOPRIGHT", head, "TOPRIGHT", -CONFIG.HEAD_CLOSE, -CONFIG.HEAD_TOP)
-		end
+		b:SetPoint("TOPRIGHT", head, "TOPRIGHT", -CONFIG.HEAD_CLOSE, -CONFIG.HEAD_TOP)
 		page.action = b
 		W.ButtonTag(b, KEYBIND_MODE.new)
 	end
@@ -4793,21 +5089,17 @@ do
 			-- preview's list, and the page left Indicators for the frame's own rows -- the preview lets go of what it
 			-- held as its list changes) nothing picked on the tab of a family of parts (the Indicators: "ind:") is
 			-- still that tab: its list is the tab's own, the tray with no block open
-			if key == nil and page.current then
-				local name = rawget(page.current, "name")
-				local own = type(name) == "string" and name:sub(1, #el + 1) == el .. ":" and name:sub(#el + 2) or nil
-				local held = own and page.stageOfPart[el] and page.stageOfPart[el][own]
+			-- (2.1.84, one scroll: the part picked is the page's dPart, its block on its frame's tab)
+			if key == nil and page.dPart then
+				local held = page.stageOfPart[el] and page.stageOfPart[el][page.dPart]
 				if type(held) == "string" and held:sub(-1) == ":" then
 					return
 				end
 			end
 			local map = page.partOfStage[el]
-			local part = key and map and (map[key] or (key:match("^ind:") and map["ind:"]))
-			local sec = (part and page.secByName[el .. ":" .. part]) or page.secByName[el .. ":element"]
-			if sec and sec ~= page.current then
-				page.dFromStage = true
-				page:Select(sec, true)
-				page.dFromStage = nil
+			local part = key and map and (map[key] or (key:match("^ind:") and map["ind:"])) or nil
+			if part ~= page.dPart or page.current ~= page.secByName[el .. ":element"] then
+				DUI.PickPart(page, el, part, "stage")
 			end
 		end
 	end
@@ -4829,9 +5121,12 @@ do
 		return function()
 			page.dEl = nil
 			if page.current then
-				page.dChipState = true
+				-- (2.1.84, one scroll: the part picked kept while its block stays; the blocks of a state come and go)
+				local keep = page.dKeep
+				page.dChipState, page.dKeep = true, true
 				DUI.Follow(page, page.current)
-				page.dChipState = nil
+				page.dChipState, page.dKeep = nil, keep
+				CONFIG.Reflow(page.current)
 			end
 		end
 	end
@@ -4982,10 +5277,11 @@ do
 	end
 	DUI.SlotClick = Shared("OnClick on a designer sample's part", function(hit)
 		local page = hit.page
-		local sec = page and page.secByName and page.secByName[hit.el .. ":" .. hit.part]
-		if sec and sec ~= page.current then
-			MelloUI:PlayUISound("tab")
-			page:Select(sec, true)
+		if page and page.secByName then
+			if hit.part ~= page.dPart then
+				MelloUI:PlayUISound("tab")
+			end
+			DUI.PickPart(page, hit.el, hit.part, "slot")
 		end
 	end, "script")
 	DUI.SlotEnter = Shared("OnEnter on a designer sample's part", function(hit)
@@ -5033,8 +5329,251 @@ do
 			kind = "element"
 		end
 		if kind then
-			local job = { dhead = kind, t = t, gap = sec.jobs and SECTION_GAP or 0 }
+			-- (2.1.84, one scroll: a part's block under its frame's, or under the part's before it -- a wider gap)
+			local gap = sec.jobs and ((kind == "part" and sec.blocks and DUI.BLOCK_GAP) or SECTION_GAP) or 0
+			local job = { dhead = kind, t = t, gap = gap }
 			Queue(sec, job, ElementJob, job.gap + ROW_HEIGHT)
+		end
+	end
+
+	----------------------------------------------------------------------
+	-- One scroll (2.1.84; the user's pick A of the designer layout sketch, 2026-11-24 -- docs/plans/
+	-- designer-one-scroll.md; before it a part's rows had a tab of their own, one part on show at a time: "you
+	-- can't see what a frame offers"): a frame's tab holds the frame's own block, then a block for each of its
+	-- parts -- the part's head ("<Part> · <Frame>", Reset part), its own controls on the stage and its rows --
+	-- under one another. A part's tab in the layout (Lay.Designer: "<el>:<part>", where its R lines put its rows)
+	-- is no tab of the page: its block's place on its frame's (sec.blockOf[part]). A part picked (page.dPart: its
+	-- line in the Parts list, the part on the stage or the slot, a jump to one of its rows) is lit in the list and
+	-- on the stage, its block outlined and brought under the view's top; the frame's own tab clicked lets it go.
+	-- A part that shows in one state of the stage only (Raid's Status text) has its block while the stage is in
+	-- it, as its line in the list; a locked part, or one with nothing of its own, has a line and no block.
+	----------------------------------------------------------------------
+	DUI.BLOCK_GAP = 18
+	DUI.BOX_LEVEL = 34   -- (the Parts list's panel over its page: over the rows and the outline, under the stage)
+
+	-- the tab of the page a layout tab's rows stand on: a part's, its frame's own
+	function DUI.HomeOf(pl, t)
+		return t.part and t.el and pl.tabOf[t.el.key .. ":element"] or nil
+	end
+
+	-- (2.1.84; the user, 2026-11-24, of the built page's two questions: "1. Yes show them, 2. List only") a part's
+	-- Show is its line's switch in the Parts list, the one place for it, wherever the list stands beside a stage:
+	--   * a part the stage can hide: the stage's own Show (stage:PartShown / ShowPart) -- no Show row in its block
+	--     (DUI.Specs)
+	--   * a part a setting of its module hides -- the R line's `asShow`: Unit Frames' Hide PvP Badge, Hide Status
+	--     Glow, Hide Combat Flash -- that setting, mirrored. Its row stays in the layout (a search finds it, a reset
+	--     and Copy from reach it) and is not made in the block (DUI.Made); a jump to it lights its switch
+	--     (DUI.RevealShow)
+	-- Under a stage across the page, or with none, there is no list of switches: the rows stand as before.
+
+	-- whether row `r` of a part's layout tab `t` is made as a row of its block
+	function DUI.Made(t, r)
+		return not (r.asShow and t.part and DUI.Beside(t))
+	end
+	-- the rows of section `s` of layout tab `t` the page makes
+	function DUI.RowsOf(t, s)
+		local n = 0
+		for _, r in ipairs(s.rows) do
+			if DUI.Made(t, r) then
+				n = n + 1
+			end
+		end
+		return n
+	end
+
+	-- whether a part's tab has anything of its own to show: a row, a link, a control of its part on the stage
+	function DUI.OwnAny(pt)
+		local specs = DUI.Specs(pt)
+		for _, s in ipairs(pt.sections) do
+			if not s.element and (DUI.RowsOf(pt, s) > 0 or #s.links > 0 or (specs and specs[s.name])) then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- the setting of a part's layout tab that hides the part (its R line's `asShow`), nil: none
+	function DUI.ShowRow(pt)
+		for _, s in ipairs(pt.sections) do
+			if not s.element then
+				for _, r in ipairs(s.rows) do
+					if r.asShow then
+						return r
+					end
+				end
+			end
+		end
+		return nil
+	end
+
+	-- a jump to such a setting (RevealRow: it has no row): its frame's tab, its line's switch lit
+	function DUI.RevealShow(page, r)
+		local t = r.tab
+		if not (t and t.el and t.part) then
+			return
+		end
+		DUI.PickPart(page, t.el.key, t.part.key)
+		for i = 1, page.partChips.count do
+			if page.dShowKey[i] == r and page.partSwitches[i] then
+				W.Flash(page.partSwitches[i])
+			end
+		end
+	end
+
+	-- a frame's parts queued after its own block (BuildElementPage's QueueTab, a part's own sections only), each
+	-- block's jobs kept: { key, t (its layout tab), first, last (its jobs in the section), state }
+	function DUI.QueueBlocks(page, sec, t, QueueTab)
+		local el = t.el
+		if not el or t.part or type(el.parts) ~= "table" then
+			return
+		end
+		for _, part in ipairs(el.parts) do
+			local pt = page.lay.tabOf[el.key .. ":" .. part.key]
+			if pt and not part.locked and DUI.OwnAny(pt) then
+				sec.blocks, sec.blockOf, sec.blockAt = sec.blocks or {}, sec.blockOf or {}, sec.blockAt or {}
+				local first = (sec.jobs and #sec.jobs or 0) + 1
+				QueueTab(sec, pt, true)
+				local last = sec.jobs and #sec.jobs or 0
+				if last >= first then
+					local blk = { key = part.key, t = pt, first = first, last = last, state = part.state }
+					sec.blocks[#sec.blocks + 1] = blk
+					sec.blockOf[part.key] = blk
+					for i = first, last do
+						sec.blockAt[i] = blk
+					end
+				end
+			end
+		end
+	end
+
+	-- the stage of the frame a tab is for (nil: none), and the state it is in
+	function DUI.StageOf(page, el)
+		local stage = el and page.stageKind and page.stages and page.stages[page.stageKind[el] or ""] or nil
+		return stage, stage and stage.ctx and stage.ctx.state or nil
+	end
+
+	-- each block on or off by the stage's state (CONFIG.Reflow asks before it lays the section)
+	function DUI.BlockStates(page, sec)
+		local t = page.lay.tabOf[sec.name]
+		local _, state = DUI.StageOf(page, t and t.el and t.el.key)
+		for _, blk in ipairs(sec.blocks) do
+			blk.off = blk.state ~= nil and blk.state ~= state
+		end
+	end
+
+	-- a block's top (its head's, under the gap before it) and its bottom, in its section's units, as laid now
+	function DUI.BlockSpan(sec, blk)
+		local at = (sec.newY and sec.newY[blk.first] ~= nil) and sec.newY or sec.jobY0
+		local H, live = sec.jobH0, sec.liveOf
+		local head = sec.allJobs[blk.first]
+		local top = (at[blk.first] or 0) + (head and head.gap or 0)
+		local bottom = top + ROW_HEIGHT
+		for i = blk.first, blk.last do
+			if live[i] ~= false and at[i] and H[i] then
+				bottom = math.max(bottom, at[i] + H[i])
+			end
+		end
+		return top, bottom
+	end
+
+	-- the picked part's block outlined on its frame's tab: two hairlines of the pick's gold (the stage's own mark
+	-- of a picked part), laid again whenever the section is (CONFIG.Reflow)
+	function DUI.Outline(page, sec)
+		local box = page.dOutline
+		local blk = page.dPart and sec.blockOf and sec.blockOf[page.dPart]
+		if not blk or blk.off or not sec.jobY0 then
+			if box then
+				box:Hide()
+			end
+			return
+		end
+		if not box then
+			box = CreateFrame("Frame", nil, sec)
+			W.Edges(box, "selectedTrim", "OVERLAY")
+			box.inner = CreateFrame("Frame", nil, box)
+			box.inner:SetPoint("TOPLEFT", box, "TOPLEFT", 1, -1)
+			box.inner:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -1, 1)
+			W.Edges(box.inner, "selectedTrim", "OVERLAY")
+			page.dOutline = box
+		end
+		local top, bottom = DUI.BlockSpan(sec, blk)
+		if box:GetParent() ~= sec then
+			box:SetParent(sec)
+		end
+		box:SetFrameLevel(sec:GetFrameLevel() + 30)
+		box:ClearAllPoints()
+		box:SetPoint("TOPLEFT", sec, "TOPLEFT", 3, -(top - 3))
+		box:SetPoint("TOPRIGHT", sec, "TOPRIGHT", -3, -(top - 3))
+		box:SetHeight(math.max(10, bottom - top + 6))
+		box:Show()
+	end
+
+	-- a block brought under the view's top (a glide; `instant`: at once)
+	function DUI.ShowBlock(page, sec, blk, instant)
+		if not (blk and sec.jobY0) or page.pager:Current() ~= page then
+			return
+		end
+		local top = DUI.BlockSpan(sec, blk)
+		page.pager:ScrollTo(math.max(0, page.headerHeight + top - 8 - DUI.Covered(page)), instant)
+	end
+
+	-- a part picked (nil: none, the frame's own): its frame's tab on show, the part lit in the list and on the
+	-- stage, its block outlined and -- unless a row of it was jumped to (`how` "row": RevealRow scrolls) -- brought
+	-- under the view's top. `how` "stage": picked there (the stage is not told again)
+	function DUI.PickPart(page, el, key, how)
+		local home = el and page.secByName[el .. ":element"]
+		if not home then
+			return
+		end
+		-- (a part of one state of the stage -- Raid's Status text -- picked from another: DUI.FollowStage puts the
+		-- stage in its state, whose listener lays the Parts and the blocks again)
+		local blk = key and home.blockOf and home.blockOf[key] or nil
+		page.dPart = blk and key or nil
+		page.dKeep, page.dFromStage = true, how == "stage" or nil
+		if page.current ~= home then
+			page:Select(home, true)
+		else
+			DUI.Follow(page, home)
+		end
+		page.dKeep, page.dFromStage = nil, nil
+		if how ~= "row" and page.dPart then
+			DUI.ShowBlock(page, home, blk)
+		end
+	end
+
+	-- a layout tab by its name opened (/mello <words>, a jump): a frame's own tab at its top, a part's block
+	-- (true: the name is one of the page's)
+	function DUI.OpenTab(page, name, animate)
+		local t = page.lay.tabOf[name]
+		if not t then
+			return false
+		end
+		if t.part then
+			DUI.PickPart(page, t.el.key, t.part.key)
+			return true
+		end
+		local sec = page.secByName[name]
+		if sec and page.current ~= sec then
+			page:Select(sec, animate)
+			page.pager:ScrollTo(0, not animate)
+		end
+		return sec ~= nil
+	end
+
+	-- a row brought into view (RevealRow): the part whose block holds it is the picked one
+	function DUI.RowPicked(page, sec, r)
+		local at
+		for i, job in ipairs(sec.allJobs or EMPTY) do
+			if job == r then
+				at = i
+				break
+			end
+		end
+		local blk = at and sec.blockAt and sec.blockAt[at]
+		local t = page.lay.tabOf[sec.name]
+		local key = blk and blk.key or nil
+		if t and t.el and key ~= page.dPart then
+			DUI.PickPart(page, t.el.key, key, "row")
 		end
 	end
 
@@ -5354,8 +5893,11 @@ do
 		if not part then
 			return nil
 		end
-		local specs = { part = part, kind = st.kind }
-		if part.hide then
+		-- (2.1.84, one scroll: every part's block on show at once) `bound`: the stage's part these controls are for,
+		-- whatever is picked there; a family's ("ind:") stay the picked one's
+		local specs = { part = part, kind = st.kind, bound = key:sub(-1) ~= ":" and key or nil }
+		-- (2.1.84, "List only": beside a stage the part's Show is its line's switch in the Parts list)
+		if part.hide and not DUI.Beside(t) then
 			DUI.AddSpec(specs, "General", "before", "show")
 		end
 		-- (2.1.52: `sizeRow` -- its size is a setting with a row of its own on this tab: no second slider for it)
@@ -5381,9 +5923,9 @@ do
 		return (which == "size" or which:sub(1, 5) == "text:") and W.SLIDER_ROW_HEIGHT or ROW_HEIGHT
 	end
 
-	function DUI.QueueSpecs(sec, list, part, kind)
+	function DUI.QueueSpecs(sec, list, part, kind, bound)
 		for _, which in ipairs(list) do
-			Queue(sec, { dspec = which, part = part, kind = kind }, ElementJob, DUI.SpecHeight(which))
+			Queue(sec, { dspec = which, part = part, kind = kind, key = bound }, ElementJob, DUI.SpecHeight(which))
 		end
 	end
 
@@ -5396,7 +5938,8 @@ do
 	function DUI.Spec(sec, job)
 		local page = sec.page
 		local stage = (page.stages and job.kind and page.stages[job.kind]) or page.stage
-		local build = stage and stage:PartSpec(job.part, job.dspec, DUI.SPEC_OPTS)
+		local opts = job.key and { row = DUI.SPEC_OPTS.row, key = job.key } or DUI.SPEC_OPTS
+		local build = stage and stage:PartSpec(job.part, job.dspec, opts)
 		local h = DUI.SpecHeight(job.dspec)
 		if not build then
 			Placed(sec, nil, h)
@@ -5471,9 +6014,45 @@ do
 			end
 		end
 		page.elChips = page.tabRow and page.tabRow.clip   -- (the Tutorial's pointer: the frames' row)
-		page.partsLabel = Text(page, "GameFontHighlight", TEXT.parts)
+		-- (2.1.84, one scroll: beside a stage the Parts are a list in a panel under it, DUI.Lay -- the panel a frame
+		-- under the list's texts, chips and switches, which stand on a holder over it)
+		-- (over the page's rows -- under a stage across the page the strip is pinned and the rows scroll under it --
+		-- and under the stage and the slot, DUI.MakeSlot's + 40; it takes the mouse so no row is clicked through it)
+		page.partsBox = CreateFrame("Frame", nil, page)
+		page.partsBox:SetFrameLevel(page:GetFrameLevel() + DUI.BOX_LEVEL)
+		page.partsBox:EnableMouse(true)
+		if not KIT then
+			W.Panel(page.partsBox, PANEL_ON)
+		else
+			-- (Oldschool: a page lies on the painting's parchment, no panel -- the strip pinned under a stage across
+			-- the page covers the rows that scroll under it with that parchment itself, where it lies: the picture's
+			-- file and crop on the picture's own points, cut to the strip -- W.ScrollRow's paper band's way)
+			local paper = shell.ground
+			local file = paper and paper.GetTexture and paper:GetTexture()
+			if file then
+				local band = page.partsBox:CreateTexture(nil, "BACKGROUND")
+				band:SetTexture(file)
+				band:SetTexCoord(paper:GetTexCoord())
+				band:SetVertexColor(paper:GetVertexColor())
+				band:SetAllPoints(paper)
+				page.partsBox:SetClipsChildren(true)
+			end
+		end
+		page.partsBox:Hide()
+		page.partsOver = CreateFrame("Frame", nil, page)
+		page.partsOver:SetAllPoints(page)
+		page.partsOver:SetFrameLevel(page:GetFrameLevel() + DUI.BOX_LEVEL + 2)
+		page.partsLabel = Text(page.partsOver, "GameFontHighlight", TEXT.parts)
+		page.showLabel = Text(page.partsOver, "GameFontHighlight", TEXT.listShow)
+		page.showLabel:Hide()
+		page.partSwitches, page.dShowKey = {}, {}
+		-- (laid again at each refresh, not only read: a setting's switch comes and goes with its gate)
+		page.refreshers[#page.refreshers + 1] = function()
+			DUI.LaySwitches(page)
+		end
 		if KIT then
 			CONFIG.InkOn(page.partsLabel, "title")   -- (1.2.4, stage 5: on the parchment, CONFIG.Paper)
+			CONFIG.InkOn(page.showLabel, "title")
 		end
 		-- (1.2.4, Oldschool: the row's cut edges banded with the painting's own parchment -- the user's "b: parchment
 		-- band", "The parchment itself")
@@ -5481,11 +6060,13 @@ do
 		page.partChips = W.Chips(page, { width = page.width - PAD * 2 - PARTS_W,
 			ink = KIT and "box" or nil, row = true,
 			paper = KIT and shell.ground or nil, onPick = function(_, key)
-			local sec = page.dEl and page.secByName[page.dEl .. ":" .. key]
-			if sec and sec ~= page.current then
-				page:Select(sec, true)
+			-- (2.1.84, one scroll: its block on the frame's tab, brought under the view's top -- the one picked
+			-- already too: back to its block from wherever the scroll went)
+			if page.dEl then
+				DUI.PickPart(page, page.dEl, key, "list")
 			end
 		end })
+		page.partChips:SetFrameLevel(page:GetFrameLevel() + DUI.BOX_LEVEL + 2)
 		page.partsHint = Text(page, "GameFontDisable", TEXT.pickPart)
 		DUI.MakeStage(page, pl)
 		DUI.MakeSlot(page, pl)
@@ -5508,24 +6089,192 @@ do
 				y = y + top:GetHeight() + DUI.HEAD_GAP
 			end
 		end
-		page.partChips:SetFlow((beside and DUI.LEFT_W or page.width - PAD * 2) - PARTS_W, beside)
+		-- (2.1.84, one scroll -- the user's pick A: "the chips become a list in the empty space, each part with its
+		-- Show switch") beside a stage the Parts are a list: a line each (two columns past DUI.LIST_ROWS lines -- the
+		-- nameplate's twelve -- so the pinned column never runs out of the view), a part's Show at its line's end
+		page.dLaid, page.dStrip = true, nil
+		local cols = beside and (page.partChips.count > DUI.LIST_ROWS and 2 or 1) or nil
+		page.partChips:SetFlow(beside and (DUI.LEFT_W - DUI.LIST_PAD * 2)
+			or (page.width - PAD * 2 - PARTS_W - (top and DUI.LIST_PAD * 2 or 0)), beside, cols)
 		page.partsLabel:ClearAllPoints()
 		page.partChips:ClearAllPoints()
 		page.partsHint:ClearAllPoints()
+		page.partsBox:ClearAllPoints()
+		page.showLabel:ClearAllPoints()
+		page.dList = beside and true or nil
 		if beside then
 			-- (under the stage's caption, which wraps under the stage there; a slot has none)
 			local cap = top.caption and top.opts and top.opts.captionBelow and top.caption
 			local under, below = cap or top, cap and (Num(cap:GetStringHeight()) or 0) + 4 or 0
-			page.partsLabel:SetPoint("TOPLEFT", under, "BOTTOMLEFT", 2, -(DUI.HEAD_GAP + 4))
-			page.partChips:SetPoint("TOPLEFT", under, "BOTTOMLEFT", PARTS_W, -DUI.HEAD_GAP)
-			page.partsHint:SetPoint("TOPLEFT", under, "BOTTOMLEFT", PARTS_W + 2, -(DUI.HEAD_GAP + 4))
-			page.leftBottom = y + top:GetHeight() + below + DUI.HEAD_GAP + math.max(page.partChips:Height(), 22) + 12
+			local box = page.partsBox
+			local boxH = DUI.LIST_HEAD + math.max(page.partChips:Height(), 22) + DUI.LIST_PAD
+			box:SetPoint("TOPLEFT", under, "BOTTOMLEFT", 0, -(DUI.HEAD_GAP + 2))
+			box:SetSize(DUI.LEFT_W, boxH)
+			page.partsLabel:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD, -7)
+			page.showLabel:SetPoint("TOPRIGHT", box, "TOPRIGHT", -DUI.LIST_PAD, -7)
+			page.partChips:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD, -DUI.LIST_HEAD)
+			page.partsHint:SetPoint("TOPLEFT", under, "BOTTOMLEFT", 2, -(DUI.HEAD_GAP + 4))
+			page.leftBottom = y + top:GetHeight() + below + DUI.HEAD_GAP + 2 + boxH + 12
+			DUI.LaySwitches(page)
 			return y
+		end
+		if top then
+			-- (2.1.84, one scroll under a stage across the page -- the bars': the Parts line a strip under the stage,
+			-- pinned with it, so the part picked and the way to another stay in view while the blocks scroll under)
+			local box = page.partsBox
+			local h = math.max(page.partChips:Height(), 22) + DUI.STRIP_PAD * 2
+			box:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, 0)
+			box:SetSize(page.width - PAD * 2, h)
+			page.partsLabel:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD, -(DUI.STRIP_PAD + 4))
+			page.partChips:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD + PARTS_W, -DUI.STRIP_PAD)
+			page.partsHint:SetPoint("TOPLEFT", box, "TOPLEFT", DUI.LIST_PAD + PARTS_W + 2, -(DUI.STRIP_PAD + 4))
+			page.dStrip = h
+			DUI.LaySwitches(page)
+			return y - DUI.HEAD_GAP + page.dStrip + 8
 		end
 		page.partsLabel:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + 2, -(y + 4))
 		page.partChips:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + PARTS_W, -y)
 		page.partsHint:SetPoint("TOPLEFT", page, "TOPLEFT", PAD + PARTS_W + 2, -(y + 4))
+		DUI.LaySwitches(page)
 		return y + math.max(page.partChips:Height(), 22) + 12
+	end
+
+	-- what stays over the scroll's top while the page scrolls under it: a stage across the page and the Parts strip
+	-- under it (beside its rows a stage covers none of them)
+	DUI.STRIP_PAD = 7
+	function DUI.Covered(page)
+		local top = DUI.Top(page)
+		if not top or page.besideY then
+			return 0
+		end
+		return (Num(top:GetHeight()) or 0) + (page.dStrip or 0)
+	end
+
+	-- the list: its head's room (the Parts: and Show words), its margin, the lines one column holds
+	DUI.LIST_HEAD, DUI.LIST_PAD, DUI.LIST_ROWS = 28, 10, 8
+
+	-- the stage's part a list line's Show is for (page.dShowKey[i]), told as the lines are set: a part of the frame
+	-- with a part on the stage that can be hidden there (the stage engine's own Show: stage:PartShown / ShowPart)
+	-- (a line's entry: the stage's key -- a string -- or the row of the setting that hides the part, DUI.ShowRow)
+	function DUI.ShowKeys(page, t, items)
+		local keys = page.dShowKey
+		for i = 1, math.max(page.dShowMost or 0, #items) do
+			keys[i] = nil
+		end
+		page.dShowMost = #items
+		if not DUI.Beside(t) then
+			return
+		end
+		local st = t.el and t.el.stage
+		local CP = MelloUI.ConfigPreview
+		local staged = type(st) == "table" and st.kind and CP and CP.PartOf
+		for i, item in ipairs(items) do
+			local part = item.part
+			local key = part and part.stage
+			if staged and type(key) == "string" and key:sub(-1) ~= ":" and not part.locked then
+				local def = CP.PartOf(st.kind, part.pick or st.pick, key)
+				if def and def.hide then
+					keys[i] = key
+				end
+			end
+			if not keys[i] and part and not part.locked then
+				local pt = page.lay.tabOf[t.el.key .. ":" .. part.key]
+				keys[i] = pt and DUI.ShowRow(pt) or nil
+			end
+		end
+	end
+
+	-- a line's switch, made on its first need
+	function DUI.ListSwitch(page, i)
+		local sw = page.partSwitches[i]
+		if not sw then
+			sw = W.Switch(page.partsOver, function()
+				local stage, key = DUI.StageOf(page, page.dEl), page.dShowKey[i]
+				if type(key) == "table" then
+					-- (the setting hides the part: shown while it is off)
+					return not ValueOf(Current(page, key))
+				end
+				return not (stage and key and stage:PartShown(key) == false)
+			end, function(v)
+				local stage, key = DUI.StageOf(page, page.dEl), page.dShowKey[i]
+				if type(key) == "table" then
+					local b = Current(page, key)
+					if b then
+						Write(b, not v)
+					end
+				elseif stage and key then
+					stage:ShowPart(key, v)
+				end
+			end)
+			PageTip(sw, "", "")
+			page.partSwitches[i] = sw
+			page.dSwitchMost = math.max(page.dSwitchMost or 0, i)
+		end
+		return sw
+	end
+
+	-- the switches at their lines' ends (the list on show: beside a stage), the Show word over them while any is
+	function DUI.LaySwitches(page)
+		local chips, any = page.partChips, false
+		local on = page.dList and chips:IsShown()
+		for i = 1, math.max(page.dSwitchMost or 0, chips.count) do
+			local b = chips.buttons[i]
+			local key = page.dShowKey[i]
+			-- (a setting's switch only while the setting is awake: its row's gate -- Unit Frames off, no switch)
+			-- (a line whose one setting is asleep -- Hide PvP Badge under the painted unit frames -- is dimmed and
+			-- its tooltip says what wakes it, as the part's tab said before the one scroll)
+			local item = b and i <= chips.count and b.melloItem
+			if on and item and item.bare and type(key) == "table" then
+				local live, _, line = Gate(page, key)
+				local asleep = not live or nil
+				if item.asleep ~= asleep then
+					item.asleep = asleep
+					item.tip = asleep and line or nil
+					chips:SetState(item.key, asleep and "locked" or nil)
+				end
+			end
+			if on and i <= chips.count and key and b and (type(key) ~= "table" or CONFIG.JobLive(page, key)) then
+				local sw = DUI.ListSwitch(page, i)
+				sw:ClearAllPoints()
+				sw:SetPoint("RIGHT", b, "LEFT", (b.melloColW or DUI.LEFT_W) - 4, 0)
+				DUI.SwitchTip(page, sw, b.melloItem, key)
+				sw:Show()
+				sw:Refresh()
+				any = true
+			elseif page.partSwitches[i] then
+				page.partSwitches[i]:Hide()
+			end
+		end
+		page.showLabel:SetShown(any)
+	end
+
+	-- a line's switch says what it shows: the part; a setting's also what the setting says of itself and the other
+	-- frames it is for ("also Target, Focus": the row's Shared mark)
+	function DUI.SwitchTip(page, sw, item, key)
+		local T = MelloUI.Lang.T
+		local title = item and T(item.label) or ""
+		local body = ""
+		if type(key) == "table" then
+			local shape = Current(page, key) or key.b
+			body = Tip(page, key, shape) or ""
+			if key.sharedWith then
+				local names = {}
+				for n, name in ipairs(key.sharedWith) do
+					names[n] = T(name)
+				end
+				body = body .. (body ~= "" and "\n" or "") .. MelloUI.Lang.F("also %s", table.concat(names, ", "))
+			end
+		end
+		sw.melloTipTitle, sw.melloTipBody = title, body
+	end
+
+	function DUI.RefreshSwitches(page)
+		for i = 1, page.dSwitchMost or 0 do
+			local sw = page.partSwitches[i]
+			if sw and sw:IsShown() then
+				sw:Refresh()
+			end
+		end
 	end
 
 	-- a section selected: the frames' tabs follow it -- its frame's the picked one while one of its parts is open too,
@@ -5538,34 +6287,71 @@ do
 		end
 		local el = t.el and t.el.key or nil
 		local pick = el or (t.family and t.family.key)
+		-- (2.1.84, one scroll) the part picked on this frame's tab: kept by who picked it (DUI.PickPart, the stage's
+		-- state: page.dKeep), let go by any other select -- the frame's own tab clicked, another frame's, a jump
+		local had = page.dPart
+		if not page.dKeep then
+			page.dPart = nil
+		end
+		local own = el and page.stageKind and page.stages and page.stages[page.stageKind[el] or ""]
+		local stage = own or page.stage
+		local state = stage and stage.ctx and stage.ctx.state
+		-- (a part of a state the stage has left -- its state chip clicked -- is let go; one picked from another
+		-- state is kept: DUI.FollowStage puts the stage in its state)
+		local blk = page.dPart and sec.blockOf and sec.blockOf[page.dPart]
+		if page.dPart and (not blk or (page.dChipState and blk.state ~= nil and blk.state ~= state)) then
+			page.dPart = nil
+		end
+		-- (the tab whose part the list, the slot and the stage follow: the picked part's layout tab, else the frame's)
+		local tt = (el and page.dPart and page.lay.tabOf[el .. ":" .. page.dPart]) or t
 		for _, tab in ipairs(page.tabs) do
 			local on = tab.melloElement == pick
 			tab:SetSelected(on)
-			if on and tab.section ~= sec then
+			-- (a part picked: a click on its frame's tab lets it go, back at the tab's top)
+			if on and (tab.section ~= sec or page.dPart) then
 				tab:SetEnabled(true)
 			end
 		end
+		page.dLaid = nil
+		local relay = false
 		if el ~= page.dEl then
 			page.dEl = el
 			local items = {}
-			local own = el and page.stageKind and page.stages and page.stages[page.stageKind[el] or ""]
-			local stage = own or page.stage
-			local state = stage and stage.ctx and stage.ctx.state
 			for _, part in ipairs(t.el and t.el.parts or EMPTY) do
 				if not part.state or part.state == state then
-					items[#items + 1] = { key = part.key, label = part.label, tip = part.locked,
-						state = part.locked and "locked" or nil }
+					items[#items + 1] = { key = part.key, label = part.label, tip = part.locked, part = part }
 				end
 			end
+			DUI.ShowKeys(page, t, items)
+			-- (a part with no block -- locked, or nothing of its own -- is a dimmed line, unless its Show is there:
+			-- a part whose one setting is whether it shows)
+			for i, item in ipairs(items) do
+				local none = item.part.locked or not (sec.blockOf and sec.blockOf[item.key])
+				item.state = (item.part.locked or (none and not page.dShowKey[i])) and "locked" or nil
+				item.bare = none and not item.part.locked or nil   -- (DUI.LaySwitches: its Show its one setting)
+			end
 			page.partChips:SetItems(items)
+			relay = true
 		end
-		page.partChips:Select(t.part and t.part.key or nil)
-		local parts = el ~= nil and page.partChips.count > 0
+		page.partChips:Select(tt.part and tt.part.key or nil)
+		-- (2.1.84, the feature bar: the frame's feature off -- its parts sleep, no list of them)
+		local parts = el ~= nil and page.partChips.count > 0 and CONFIG.BarState(page, sec) ~= false
 		page.partsLabel:SetShown(parts)
 		page.partChips:SetShown(parts)
 		page.partsHint:SetShown(el ~= nil and page.partChips.count == 0)
-		DUI.FollowSlot(page, el, t)
-		DUI.FollowStage(page, el, t)
+		DUI.FollowSlot(page, el, tt)
+		DUI.FollowStage(page, el, tt)
+		-- (the list's lines changed: its panel's height, its columns and its switches -- unless the stage or the slot
+		-- coming or going laid the page already)
+		if relay and not page.dLaid then
+			page:LayTabs(true)
+		end
+		page.partsBox:SetShown(parts and (page.dList == true or page.dStrip ~= nil))
+		DUI.LaySwitches(page)
+		DUI.Outline(page, sec)
+		if had and not page.dPart and not page.dKeep and page.pager:Current() == page then
+			page.pager:ScrollTo(0)
+		end
 	end
 
 	-- the stage follows the tab: shown for a frame with one (its pick, unless
@@ -5612,8 +6398,9 @@ do
 				page.dStaging = true
 				stage:Select(key)
 				page.dStaging = nil
-			elseif not key and t.part and not page.dFromStage and stage.selected then
+			elseif not key and not page.dFromStage and stage.selected then
 				-- (2026-10-20, the visual sweep: a part with nothing on the stage -- the Health bar -- lets its pick go)
+				-- (2.1.84, one scroll: no part picked -- the frame's own tab clicked -- lets the stage's go too)
 				page.dStaging = true
 				stage:Select(nil)
 				page.dStaging = nil
@@ -5647,6 +6434,14 @@ function BuildElementPage(key, width)
 		page.SetPick = SetPick
 	end
 	Header(page, pl)
+	-- (2.1.84) the feature bar: made with a page that has a switch -- its own module's, or a tab's (the layout's bars)
+	local anyBar = page.barModule ~= nil
+	for _, t in ipairs(pl.tabs) do
+		anyBar = anyBar or t.barRow ~= nil
+	end
+	if anyBar then
+		CONFIG.MakeBar(page)
+	end
 	-- the header's controls dressed now (the dropdowns); the tabs dress
 	-- themselves and every row is dressed as it is made
 	W.Dress(page, SKIN)
@@ -5659,60 +6454,79 @@ function BuildElementPage(key, width)
 			end
 		end
 	end
-	for _, t in ipairs(pl.tabs) do
-		local sec = NewSection(page, t.name)
-		sec.hasNew = t.new
-		-- (1.2.4: its rows two to a line, CONFIG.Half; layout C: a tab beside its stage one to a line in the column
-		-- right of it, made at that width)
-		sec.beside = page.beside and page.dui.Beside(t) or nil
-		sec.columns = not sec.beside
-		if sec.beside then
-			sec:SetWidth(page.dui.RightW(page))
-		end
-		-- (a designer's part tab: its part's own controls on the stage --
+	-- a layout tab's sections queued on `sec`; `own`: a part's own sections only (2.1.84, one scroll: its block on
+	-- its frame's tab -- the frame's sections stand there once, in the frame's own block)
+	local function QueueTab(sec, t, own)
+		-- (a designer's part: its part's own controls on the stage --
 		-- Show, Size, Place -- in its sections, around its rows)
 		local specs = page.dui and page.dui.Specs(t)
 		for _, s in ipairs(t.sections) do
-			if page.dui then
-				page.dui.QueueHead(sec, t, s)
-			end
-			local spec = specs and not s.element and specs[s.name]
-			CONFIG.Cogs(s)
-			if #s.rows > 0 or #s.links > 0 or spec then
-				s.gap = s == t.firstSection and 0 or SECTION_GAP
-				Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)
-				if spec then
-					page.dui.QueueSpecs(sec, spec.before, specs.part, specs.kind)
+			if not (own and s.element) then
+				if page.dui then
+					page.dui.QueueHead(sec, t, s)
 				end
+				local spec = specs and not s.element and specs[s.name]
+				CONFIG.Cogs(s)
+				local made = 0
 				for _, r in ipairs(s.rows) do
-					-- (a designer's element row stands on every tab of its
-					-- element: a jump to it opens its element's own, the first)
-					-- (1.2.4: a sub-setting stands behind its switch's cog, CONFIG.Cog)
-					if not r.cogParent then
-						Queue(sec, r, ElementJob, RowH(r, sec))
-						-- (a designer's element row stands on every tab of its
-						-- element: a jump to it opens its element's own, the first)
-						if not page.rowSec[r] then
-							page.rowSec[r], page.rowY[r] = sec, sec.jobY[#sec.jobs]
-						end
+					if CONFIG.RowMade(page, t, r) then
+						made = made + 1
 					end
 				end
-				-- (point 5: its links one line of chips at its end, CONFIG.MakeLinks)
-				if #s.links > 0 then
-					s.linkLine = s.linkLine or { isLinks = true, links = s.links }
-					Queue(sec, s.linkLine, ElementJob, ROW_HEIGHT)
-				end
-				if spec then
-					page.dui.QueueSpecs(sec, spec.after, specs.part, specs.kind)
+				if made > 0 or #s.links > 0 or spec then
+					s.gap = (s == t.firstSection or (own and s == t.sections[1])) and 0 or SECTION_GAP
+					Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)
+					if spec then
+						page.dui.QueueSpecs(sec, spec.before, specs.part, specs.kind, specs.bound)
+					end
+					for _, r in ipairs(s.rows) do
+						-- (1.2.4: a sub-setting stands behind its switch's cog, CONFIG.Cog)
+						-- (2.1.84: a setting that is its part's Show in the Parts list is no row, DUI.Made)
+						-- (2.1.84: the tab's own switch stands in its bar, CONFIG.RowMade; the sub-settings that
+						-- hung behind its cog are rows of the tab)
+						if (not r.cogParent or r.cogParent.bar) and CONFIG.RowMade(page, t, r) then
+							Queue(sec, r, ElementJob, RowH(r, sec))
+							-- (the tab a jump to it opens, and its place there: the first it stands on)
+							if not page.rowSec[r] then
+								page.rowSec[r], page.rowY[r] = sec, sec.jobY[#sec.jobs]
+							end
+						end
+					end
+					-- (point 5: its links one line of chips at its end, CONFIG.MakeLinks)
+					if #s.links > 0 then
+						s.linkLine = s.linkLine or { isLinks = true, links = s.links }
+						Queue(sec, s.linkLine, ElementJob, ROW_HEIGHT)
+					end
+					if spec then
+						page.dui.QueueSpecs(sec, spec.after, specs.part, specs.kind, specs.bound)
+					end
 				end
 			end
 		end
-		CONFIG.KeepPlaces(sec)
-		if not sec.jobs then
-			-- (a tab with nothing on it: its line, as a module with no options had)
-			local fs = Text(sec, "GameFontDisable", TEXT.nothing)
-			fs:SetPoint("TOPLEFT", 14, -(SEC_INSET + 8))
-			sec.y = SEC_INSET + 30
+	end
+	for _, t in ipairs(pl.tabs) do
+		-- (2.1.84, one scroll: a part's tab is no tab of the page -- its block is queued with its frame's, below)
+		if not (page.dui and page.dui.HomeOf(pl, t)) then
+			local sec = NewSection(page, t.name)
+			sec.hasNew = t.new
+			-- (1.2.4: its rows two to a line, CONFIG.Half; layout C: a tab beside its stage one to a line in the
+			-- column right of it, made at that width)
+			sec.beside = page.beside and page.dui.Beside(t) or nil
+			sec.columns = not sec.beside
+			if sec.beside then
+				sec:SetWidth(page.dui.RightW(page))
+			end
+			QueueTab(sec, t)
+			if page.dui then
+				page.dui.QueueBlocks(page, sec, t, QueueTab)
+			end
+			CONFIG.KeepPlaces(sec)
+			if not sec.jobs then
+				-- (a tab with nothing on it: its line, as a module with no options had)
+				local fs = Text(sec, "GameFontDisable", TEXT.nothing)
+				fs:SetPoint("TOPLEFT", 14, -(SEC_INSET + 8))
+				sec.y = SEC_INSET + 30
+			end
 		end
 	end
 	if #page.sections == 0 then
@@ -5743,8 +6557,13 @@ end
 function RevealRow(page, r, onShow)
 	-- (1.2.4, pick B: a sub-setting behind its switch's cog -- the switch brought into view, its panel opened while
 	-- the switch is on)
+	-- (2.1.84: a tab's own switch has no row -- its tab, the bar's switch lit)
+	if r.bar then
+		CONFIG.RevealBar(page, r, onShow)
+		return
+	end
 	local owner = r.cogParent
-	if owner then
+	if owner and not owner.bar then
 		RevealRow(page, owner, onShow)
 		local sec = page.rowSec and page.rowSec[owner]
 		local e = sec and sec.built and sec.built[owner]
@@ -5760,6 +6579,10 @@ function RevealRow(page, r, onShow)
 	end
 	local sec, y = page.rowSec and page.rowSec[r], page.rowY and page.rowY[r]
 	if not sec then
+		-- (2.1.84: a setting that is its part's Show in a designer's Parts list has no row -- its switch lit)
+		if page.dui and r.asShow then
+			page.dui.RevealShow(page, r)
+		end
 		return
 	end
 	-- (1.2.4: the row made and its tab laid first -- the rows over it close up round the hidden ones, CONFIG.Reflow --
@@ -5770,6 +6593,10 @@ function RevealRow(page, r, onShow)
 	CONFIG.Reflow(sec)
 	y = page.rowY[r] or y
 	page:RevealAt(sec, y, not onShow, onShow)
+	-- (2.1.84, a designer's one scroll: the part whose block holds the row is the picked one)
+	if page.dui and sec.blocks then
+		page.dui.RowPicked(page, sec, r)
+	end
 	-- (the copy on the section shown: a designer's element row is made on each of its tabs)
 	local e = sec.built and sec.built[r]
 	-- (1.2.4, pick B: a row whose switch is off is not shown -- the switch that wakes it is brought up instead, as a
@@ -5807,8 +6634,7 @@ function JumpTo(id, pick)
 	if header then
 		local page, onShow = ShowPage(header)
 		if page then
-			page.pager:ScrollTo(0, not onShow)
-			W.Flash(page.switch)
+			CONFIG.RevealPageBar(page, onShow)
 		end
 		NavFollow(true)
 		return
@@ -5841,6 +6667,10 @@ local PageRefresh = Shared("the configurator's page refresh (once a frame)", fun
 	local page = window and currentPage and pages[currentPage]
 	if page and page.stale and window:IsShown() and window.pager:Current() == page then
 		page:Refresh()
+	end
+	-- (2.1.84: the side list's marks follow a switch flipped on a page)
+	if window and window.marksStale and window:IsShown() then
+		CONFIG.RailMarks()
 	end
 end)
 function AskPageRefresh()
@@ -7187,8 +8017,12 @@ CONFIG.SHELL = { area = "config", painting = CONFIG.PAINTING, title = "MelloUI",
 	sounds = true, mover = { key = "MelloUIConfigFrame", plainDrag = "always", group = "tool" } }
 -- the side column's fixed entries, over the search box (the sketch's: Edit Layout an action, the others pages; Home
 -- first since Suggestion 1 point 6, 2026-11-04 -- the window opens on it)
-CONFIG.FIXED = { "Home", "EditLayout", "Look", "Profiles", "Addons", "Supporters" }
-CONFIG.FIXED_KEY = { EditLayout = true, Look = true, Home = true, Profiles = true, Addons = true, Supporters = true }
+-- (2.1.84; the user's pick A of the switches sketch, 2026-11-24 -- docs/plans/config-switches-sidelist.md: "every
+-- page in view") a row of icon tiles (W.NavRail's `tiles`: their names in their tooltips), Look the first entry of its
+-- group in the list (the layout's groups), the list's rows and heads tighter (CONFIG.LIST_ROW, LIST_HEAD): nothing
+-- of the list below the fold; each page's mark at its right (CONFIG.RailMarks)
+CONFIG.FIXED = { "Home", "EditLayout", "Profiles", "Addons", "Supporters" }
+CONFIG.FIXED_KEY = { EditLayout = true, Home = true, Profiles = true, Addons = true, Supporters = true }
 
 -- The side list's groups (0.15.0: Core/ConfigLayout.lua's `groups`, the
 -- grouped rail the user picked; made once, at the first open): a header per
@@ -7247,13 +8081,27 @@ function CONFIG.RailOf(key)
 	return CONFIG.FIXED_KEY[key] and window.fixed or window.rail
 end
 
--- The side list's states: a page whose module is off shows it on its icon
+function CONFIG.RailMarks()
+	if not (window and window.rail and window.navEntries) then
+		return
+	end
+	local rail = window.rail
+	for key in pairs(window.navEntries) do
+		if not CONFIG.FIXED_KEY[key] then
+			rail:SetMark(key, CONFIG.MarkOf(key))
+		end
+	end
+	window.marksStale = nil
+end
+
+-- The side list's states: a page whose module is off shows it on its icon; each page's mark
 local function RefreshNav()
 	for key, entry in pairs(window.navEntries) do
 		if entry.module then
 			CONFIG.RailOf(key):SetState(key, not MelloUI:IsModuleEnabled(entry.module) and "off" or nil)
 		end
 	end
+	CONFIG.RailMarks()
 	window.navStale = nil
 end
 
@@ -7880,11 +8728,18 @@ local function Jump(e)
 		return
 	end
 	if kind == "tab" then
-		local sec = page.sections[e.tab]
-		if sec and page.current ~= sec then
-			page:Select(sec, onShow)
+		-- (2.1.84, a designer's one scroll: its layout tabs by their names -- a frame's own tab, a part's block on
+		-- it, DUI.OpenTab; elsewhere a layout tab is the page's tab of the same number)
+		local t = page.dui and page.lay and page.lay.tabs[e.tab]
+		if t then
+			page.dui.OpenTab(page, t.name, onShow)
+		else
+			local sec = page.sections[e.tab]
+			if sec and page.current ~= sec then
+				page:Select(sec, onShow)
+			end
+			page.pager:ScrollTo(0, not onShow)
 		end
-		page.pager:ScrollTo(0, not onShow)
 	elseif kind == "pick" then
 		page:SetPick(e.pick)
 		page.pager:ScrollTo(0, not onShow)
@@ -8134,6 +8989,7 @@ end
 -- game's own chat Background slider, a bulk write) marks the pages stale and
 -- refreshes the page on show once, on the next frame (AskPageRefresh)
 local function Config_OnSetting()
+	window.marksStale = true
 	AskPageRefresh()
 	MelloUI.ConfigMotion:Refresh()   -- (Reduce Motion switched while it is open)
 end
@@ -8146,9 +9002,10 @@ local function Config_OnModule(name, enabled)
 	end
 	for key, entry in pairs(window.navEntries) do
 		if entry.module == name then
-			window.rail:SetState(key, not enabled and "off" or nil)
+			CONFIG.RailOf(key):SetState(key, not enabled and "off" or nil)
 		end
 	end
+	window.marksStale = true
 	-- (rows wake or sleep with a module: the page on show on the next frame)
 	AskPageRefresh()
 end
@@ -8713,12 +9570,14 @@ local function CreateWindow()
 	-- leave (BeginRows / EndRows)
 	local width = CONFIG.PAINTING.modern.side - 2 * CONFIG.SIDE_IN
 	-- (Suggestion 1 point 6: the tooltips to the left, off the page; the list's thin scroll bar)
+	-- (2.1.84: the fixed entries a row of icon tiles; the list's rows keep room for their marks)
 	local fixed = W.NavRail(window, { width = width, rowHeight = CONFIG.FIXED_ROW, iconMaker = NavIcon, box = false,
-		scroll = false, inset = 4, onSelect = NavClick, skin = shell, tipAnchor = "ANCHOR_LEFT" })
+		scroll = false, inset = 4, onSelect = NavClick, skin = shell, tipAnchor = "ANCHOR_TOPLEFT",
+		tiles = CONFIG.TILE_GAP })   -- (a tile's name is its tooltip: over the tile, on the brand, not off the window)
 	window.fixed = fixed
 	local rail = W.NavRail(window, { width = width, rowHeight = CONFIG.LIST_ROW, headerHeight = CONFIG.LIST_HEAD,
 		iconSize = 20, iconMaker = NavIcon, box = false, inset = 4, onSelect = NavClick, skin = shell,
-		head = Search.HEAD, onResult = Search.Pick, tipAnchor = "ANCHOR_LEFT", bar = 3 })
+		head = Search.HEAD, onResult = Search.Pick, tipAnchor = "ANCHOR_LEFT", bar = 3, marks = true })
 	window.rail = rail
 	window.parts.nav = rail.box
 	-- the search box on its strip (nothing else of the search now)
@@ -8753,6 +9612,7 @@ local function CreateWindow()
 		fixed:SetGroups({ top })
 		rail:SetGroups(groups)
 		EndRows()
+		CONFIG.RailMarks()
 		-- (Edit Layout's entry: the search's result for it lights it, its tooltip texts read from it)
 		local edit = fixed.rows.EditLayout
 		if edit then
@@ -8802,7 +9662,7 @@ local function CreateWindow()
 
 	-- the tour's one table
 	window.tour = { window = window, pager = pager, select = TourSelect, page = TourPage, part = TourPart, navEntry = TourNav,
-		scrollTo = TourScrollTo, search = Search, why = CONFIG.Why }
+		scrollTo = TourScrollTo, search = Search, why = CONFIG.Why, jump = JumpTo }   -- (jump: a jump to a setting's place)
 
 	-- the look switched with the window open (the shell's 'look:config')
 	shell:OnKit(Config_OnKit)
@@ -9012,6 +9872,11 @@ function MelloUI:OpenConfig(word)
 		page:SetPick(pick)
 	end
 	if tab then
+		-- (2.1.84: a designer's tabs by their layout names -- a frame's own, a part's block on it, DUI.OpenTab)
+		if page.dui and page.lay then
+			page.dui.OpenTab(page, tab, wasShown)
+			return
+		end
 		-- (a page of no layout -- Addons, 2.1.44 -- its tabs are its sections, by their names)
 		for i, t in ipairs(page.lay and page.lay.tabs or page.sections or EMPTY) do
 			local sec = page.sections[i]

@@ -2493,6 +2493,11 @@ Lang:Add("koKR", {
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "가장 가까운 완료 퀘스트 따라가기가 더 이상 직접 찍은 지도 핀, 가이드의 단계, 시체로 가는 길에서 길 안내를 빼앗지 않습니다.", -- draft
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "이름표: 우호적 NPC와 우호적 플레이어에 각각의 미리 보기, 위치, 크기가 생겼습니다. 적 탭에서 바꾼 설정은 더 이상 우호적 이름표를 바꾸지 않습니다.", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "우호적 이름표: 생명력이 가득할 때 숨기기를 켜면 다칠 때까지 이름만 보입니다.", -- draft
+	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "설정 창: 프레임의 탭에서 이제 모든 부분의 설정을 한 번에 스크롤해 볼 수 있습니다. 부분을 클릭하면 해당 설정으로 이동합니다.", -- draft
+	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "설정 창: 미리보기 옆에 부분 목록이 있으며, 숨길 수 있는 부분에는 표시 스위치가 있습니다.", -- draft
+	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "유닛 프레임: PvP 휘장, 상태 광채, 전투 광채는 부분 목록의 표시 스위치로 보이거나 숨깁니다.", -- draft
+	["Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does."] = "설정 창: 각 기능의 스위치가 이제 탭 맨 위의 막대에 있으며, 이름과 하는 일이 함께 표시됩니다.", -- draft
+	["Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it."] = "설정 창: 옆 목록에 모든 페이지가 한 번에 보이며, 점으로 켜짐, 일부 켜짐, 꺼짐을 표시합니다. 처음, 레이아웃 편집, 프로필, 애드온, 후원자는 그 위의 아이콘 버튼입니다.", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "전문 기술 재사용 대기시간: 변환처럼 재사용 대기시간을 공유하는 제조법은 끝났을 때 알림이 하나만 나옵니다.", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "Questie 없는 미니맵: 게임의 파란 퀘스트 원 대신 MelloUI의 표시가 나옵니다.", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "지도: MelloUI 지도를 끄면 Questie 없이도 게임의 세계 지도에 MelloUI의 퀘스트 지역이 표시됩니다.", -- draft

@@ -2076,6 +2076,25 @@ do
 		end
 	end
 
+	-- (2.1.84, the designers' Parts list: a part's Show beside its name) whether the part of `key` the stage shows now
+	-- is shown -- nil: none of that key there, or one that cannot be hidden -- and its Show written (the same place a
+	-- part's own Show row writes: stage:PartSpec's "show")
+	function M.PartShown(stage, key)
+		local part = key and stage.byKey[key]
+		if not (part and part.hide) then
+			return nil
+		end
+		local cur = E.Current(part)
+		return not (cur and cur.show == false)
+	end
+
+	function M.ShowPart(stage, key, on)
+		local part = key and stage.byKey[key]
+		if part and part.hide then
+			E.Write(stage, part, E.With(part, { show = on and true or false }))
+		end
+	end
+
 	-- every moved part back, after one question (none moved: the line at once)
 	function M.ResetAll(stage)
 		local def = stage.def
@@ -2132,12 +2151,19 @@ do
 	-- opts.row(parent, y, label, which) -> a row: the host's own (the
 	-- designer's part tabs: a configurator row, its control at the right as
 	-- every row's)
+	-- (2.1.84, the designers' one scroll -- the user's pick A, 2026-11-24, docs/plans/designer-one-scroll.md: every
+	-- part's block on show at once) opts.key: the stage's part these rows are for whatever is picked there (the one
+	-- of that key the stage shows now; none: the rows read nothing and write nothing)
 	function M.PartSpec(stage, part, which, opts)
 		if not part then
 			return nil
 		end
 		local typed = opts and opts.row
+		local bound = opts and opts.key
 		local function Picked()
+			if bound then
+				return stage.byKey[bound]
+			end
 			return stage:Selected()
 		end
 		local function Row(parent, y, label)

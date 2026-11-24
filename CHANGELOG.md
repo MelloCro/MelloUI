@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.84
+
+- Configurator: on Unit & Group Frames, Nameplates, Bars and Minimap a frame's tab now shows everything it has in one scroll: the frame's own settings first, then each part's under its own heading. Before, only one part's settings showed at a time.
+- Configurator: click a part on the preview or in the Parts list and the page jumps to that part's settings and outlines them. A click on the frame's tab goes back to the top.
+- Configurator: beside a preview the Parts are a list, with a Show switch on the parts you can hide. That switch is now the one place for a part's Show; the Show row inside each part's settings is gone. On Bars the Parts line stays under the preview while you scroll.
+- Unit frames: Hide PvP Badge, Hide Status Glow and Hide Combat Flash are now the Show switches of PvP badge, Status glow and Combat glow in that list. They work the other way round: on means shown. Your settings are kept.
+- Configurator: a feature's switch is in one place now, a bar on top of its tab with its name and what it does. Before it sat in the page's header, in a tab's first row or inside a frame's own settings. With the switch off the tab says what off means.
+- Configurator: the side list shows every page without scrolling. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above the search box (their names are in their tooltips), and Look is the first entry under The look. Buffs & Debuffs and Chat are entries of Frames and bars, and Quality of Life of Quests and travel.
+- Configurator: a dot beside each page in the side list shows whether its features are on, partly on or off.
+
 ## 2.1.83
 
 - Nameplates: the designer has three kinds of plate now, each with its own preview, places and sizes: Enemies, Friendly NPCs and Friendly players. Before, what you set under Enemies (a moved name, its size, the plate's size, the health numbers, the cast bar) was laid on friendly plates too. Friendly plates start at the game's own layout: if you had moved or resized parts, your friendly plates go back to it with this update, and you set them in their own tab.

@@ -2493,6 +2493,11 @@ Lang:Add("zhCN", {
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "“最近的可交任务”不再从你自己的地图标记、指南的步骤或跑尸路线上抢走导航。", -- draft
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "姓名板：友方 NPC 和友方玩家有了各自的预览、位置和大小。在“敌人”下的设置不再改变友方姓名板。", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "友方姓名板：“满血时隐藏”在其受伤之前只显示名字。", -- draft
+	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "设置窗口：框体的标签页现在在一个滚动列表中显示其所有部件的设置。点击某个部件即可跳到它的设置。", -- draft
+	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "设置窗口：部件在预览旁排成列表，可以隐藏的部件带有“显示”开关。", -- draft
+	["Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list."] = "单位框体：PvP 徽章、状态光效和战斗光效通过部件列表中的“显示”开关来显示或隐藏。", -- draft
+	["Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does."] = "设置窗口：每项功能的开关现在是其标签页顶部的一条栏，带有名称和作用说明。", -- draft
+	["Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it."] = "设置窗口：侧边列表一次显示所有页面，并用圆点表示开启、部分开启或关闭。主页、编辑布局、配置、插件和支持者是列表上方的图标按钮。", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "专业冷却：共享冷却的配方（如转化）在冷却结束时只提示一次。", -- draft
 	["Minimap without Questie: the game's blue quest circles give way to MelloUI's marks."] = "没有 Questie 时的小地图：游戏的蓝色任务圆圈由 MelloUI 的标记取代。", -- draft
 	["Map: with MelloUI's map off, the game's world map shows MelloUI's quest areas without Questie too."] = "地图：关闭 MelloUI 的地图时，没有 Questie 的情况下游戏自带的世界地图也会显示 MelloUI 的任务区域。", -- draft

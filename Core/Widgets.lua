@@ -7031,9 +7031,11 @@ end
 --   chips:Select(key)   chips:Selected()   chips:SetState(key, state)
 --   chips:Height()   the height the rows take
 --   chips:Refit()   measured and laid again (a font changed: the Interface text size, a skin), as they are
---   chips:SetFlow(width, wrap)   a row's chips at another width, wrapping there (`wrap`: a narrow column -- the
---     configurator's Parts under a stage beside its rows, layout C) or back in their row; measured and laid again
---   chips.buttons, chips.count, chips.row (a row's W.ScrollRow), chips.wrap
+--   chips:SetFlow(width, wrap, columns)   a row's chips at another width, wrapping there (`wrap`: a narrow column --
+--     the configurator's Parts under a stage beside its rows, layout C) or back in their row; measured and laid
+--     again. `columns` (with `wrap`; 2.1.84): a list -- one chip a line, down that many columns of equal width (a
+--     chip's column width: its melloColW)
+--   chips.buttons, chips.count, chips.row (a row's W.ScrollRow), chips.wrap, chips.columns
 --------------------------------------------------------------------------------
 
 do
@@ -7368,6 +7370,27 @@ do
 			return
 		end
 		local gap = spec.gap or CHIP_GAPS[1]
+		-- (2.1.84, the designers' Parts list: SetFlow's `columns`) a list: one chip a line, down `columns` columns of
+		-- equal width in turn (the first holds the odd one), each chip as wide as its label
+		local cols = chips.columns
+		if cols and room then
+			local per = math.ceil(chips.count / cols)
+			local colW = math.floor(room / cols)
+			for i = 1, chips.count do
+				local b = chips.buttons[i]
+				local w = Fit(b, CHIP_PADS[1])
+				local c, r = math.floor((i - 1) / per), (i - 1) % per
+				b:ClearAllPoints()
+				b:SetPoint("TOPLEFT", chips, "TOPLEFT", c * colW, -(r * (h + gap)))
+				b.melloColW = colW
+				if w > colW then
+					b:SetWidth(colW)
+				end
+			end
+			chips.rows = per
+			chips:SetSize(room, math.max(1, per > 0 and (per * h + (per - 1) * gap) or 0))
+			return
+		end
 		local x, y, rows, widest = 0, 0, 0, 1
 		for i = 1, chips.count do
 			local b = chips.buttons[i]
@@ -7481,9 +7504,10 @@ do
 	end
 
 	-- a row's chips at `width`, wrapping there or in their row (laid with their labels measured anew, as Refit)
-	local function SetFlow(chips, width, wrap)
+	local function SetFlow(chips, width, wrap, columns)
 		chips.spec.width = width
 		chips.wrap = (wrap and chips.row ~= nil) or nil
+		chips.columns = chips.wrap and Num(columns) or nil
 		Refit(chips)
 	end
 
@@ -7526,7 +7550,14 @@ end
 --         taller than its view, following the glide; dragged, the list
 --         follows: rail.bar; Suggestion 1 point 6, the configurator's side
 --         list), tipAnchor (its rows' and results' tooltips; nil:
---         "ANCHOR_RIGHT" -- the configurator's "ANCHOR_LEFT": off its page)
+--         "ANCHOR_RIGHT" -- the configurator's "ANCHOR_LEFT": off its page),
+--         tiles (2.1.84; a gap: the entries a row of icon tiles sharing the
+--         rail's width, that far apart -- each its icon in the middle of a
+--         hairline box, no name on it: its tooltip always names it, with
+--         "New" under the name where a row would wear the tag, and a small
+--         gold dot in the tile's corner; the marker on the chosen tile;
+--         headers and folds are not for it), marks (2.1.84; true: room at each
+--         row's right for a state mark, rail:SetMark)
 --   rail:SetGroups(groups)   groups = { { key, title (nil: no header),
 --                            collapsible, category (true, without a title: a
 --                            category of one page -- its entries drawn as the
@@ -7548,6 +7579,10 @@ end
 --                               same key again does nothing
 --   rail:SetState(key, state)   nil | "off" (icon dimmed, name kept in the
 --                               text colour) | "done" (doneGlyph) | "todo"
+--   rail:SetMark(key, mark)     (spec.marks) nil | "on" (a gold dot) | "some"
+--                               (a gold ring, its left half full) | "off" (a
+--                               quiet ring) at the row's right: what the entry
+--                               leads to is on, partly on, off
 --   rail:Fold(groupKey, folded, instant)
 --   rail:Reveal(key)   unfolds its group and scrolls the row into view AT
 --                      ONCE (a help tip's target); returns the row
@@ -7603,6 +7638,9 @@ local RAIL_TAG_GAP = 3   -- a name to its New tag's plate
 -- a group's header: its emblem's size and place, where its title starts with an emblem and without one (2.1.52: a
 -- category of one page stands in the same places -- the user's pick B of configurator-sidelist-sketch, 2026-11-14)
 Rail.HEAD = { emblem = 18, emblemX = 24, textX = 46, plainX = 26 }
+-- (2.1.84) a row's state mark: its size, its middle inside the row's right edge, the room a row keeps for it; a
+-- tile's New dot: its size and its place inside the tile's top right corner
+Rail.MARK = { size = 7, x = 14, room = 24, dot = 5, dotIn = 4 }
 
 local function IsSelected(row)
 	local rail = railOf[row]
@@ -7632,17 +7670,22 @@ local RailTipEnter = Shared("OnEnter on a NavRail entry (tooltip)", function(row
 		icon:SetHovered(true)
 	end
 	local e = row.entry
-	local clippedName = row.text.IsTruncated and row.text:IsTruncated()
+	local rail = railOf[row]
+	-- (2.1.84: a tile carries no name -- its tooltip always does)
+	local tile = rail and rail.spec.tiles and true or false
+	local clippedName = tile or (row.text.IsTruncated and row.text:IsTruncated())
 	local tip = e and W.Tr(e.tip)
 	if not (clippedName or tip) then
 		return
 	end
 	local P = MelloUI.Look.TipPalette()   -- (the palette's gold and text colour)
 	local gold, text = P.selectedTrim, P.text
-	local rail = railOf[row]
 	GameTooltip:SetOwner(row, rail and rail.spec.tipAnchor or "ANCHOR_RIGHT")
 	if clippedName then
 		GameTooltip:SetText(row.text:GetText(), gold[1], gold[2], gold[3], 1, true)
+		if tile and row.newDot and row.newDot:IsShown() then
+			GameTooltip:AddLine(W.Tr(W.NEW), gold[1], gold[2], gold[3])
+		end
 		if tip then
 			GameTooltip:AddLine(tip, text[1], text[2], text[3], true)
 		end
@@ -7709,6 +7752,42 @@ local function DressHeader(K, h, skin)
 	if rail then
 		rail:Paint()
 	end
+end
+
+-- (2.1.84) a row's state mark (rail:SetMark): two pictures of the icon set tinted by palette key, made with the first
+-- mark the row shows -- the set's ring (its drawn middle) and its disc, whole ("on") or its left half ("some"). (The
+-- Rail's own, not a local: the main chunk is near Lua's 200 locals)
+function Rail.PaintMark(row, state)
+	local m = row.mark
+	if not state then
+		if m then
+			m.ring:Hide()
+			m.disc:Hide()
+		end
+		return
+	end
+	local M = Rail.MARK
+	if not m then
+		m = {}
+		m.ring = row:CreateTexture(nil, "OVERLAY")
+		m.ring:SetSize(M.size, M.size)
+		m.ring:SetPoint("CENTER", row, "RIGHT", -M.x, 0)
+		MelloUI.Icons.Set(m.ring, "pad_circle", 2 * M.size, 0.25, 0.75, 0.25, 0.75)
+		m.disc = row:CreateTexture(nil, "OVERLAY")
+		m.disc:SetPoint("LEFT", m.ring, "LEFT", 0, 0)
+		row.mark = m
+	end
+	if m.state ~= state then
+		m.state = state
+		local half = state == "some"
+		m.disc:SetSize(half and M.size / 2 or M.size, M.size)
+		MelloUI.Icons.Set(m.disc, "badge_disc", M.size, 0, half and 0.5 or 1, 0, 1)
+	end
+	m.ring:SetShown(state ~= "on")
+	m.disc:SetShown(state ~= "off")
+	local key = state == "off" and "mutedText" or "selectedTrim"
+	W.Paint(m.ring, key, "vertex", 1)
+	W.Paint(m.disc, key, "vertex", 1)
 end
 
 local function NewRow(rail)
@@ -7878,10 +7957,12 @@ function Rail:SetGroups(groups)
 		self.groupOf[key] = nil
 	end
 	local n = 0
-	local right = spec.doneGlyph and -24 or -6
+	local tiles = spec.tiles and true or false
+	local kept = spec.doneGlyph or spec.marks   -- (the row's right kept for a done glyph, a state mark)
+	local right = kept and -Rail.MARK.room or -6
 	for gi, g in ipairs(groups) do
 		local gkey = g.key or gi
-		if g.title then
+		if g.title and not tiles then
 			local h = table.remove(self.headerPool) or NewHeader(self)
 			h.key, h.collapsible = gkey, g.collapsible
 			h.text:SetText(W.Tr(g.title))
@@ -7946,7 +8027,11 @@ function Rail:SetGroups(groups)
 					row.icon = spec.iconMaker and spec.iconMaker(row, spec.iconSize, spec.skin)
 						or row:CreateTexture(nil, "ARTWORK")
 					row.icon:SetSize(spec.iconSize, spec.iconSize)
-					row.icon:SetPoint("LEFT", 8, 0)
+					if tiles then
+						row.icon:SetPoint("CENTER", row, "CENTER", 0, 0)
+					else
+						row.icon:SetPoint("LEFT", 8, 0)
+					end
 					if row.icon.EnableMouse then
 						row.icon:EnableMouse(false)
 					end
@@ -7967,9 +8052,28 @@ function Rail:SetGroups(groups)
 			-- keeps its room -- "UI Modifications" whole at the largest Font
 			-- Style), the name cut before it only when it must be
 			local tagged = Shows(e.new)
+			if tiles then
+				-- (2.1.84) a tile: no name on it, its hairline box, a gold dot in its corner for New
+				row.text:Hide()
+				if not row.tileEdges then
+					row.tileEdges = W.HairEdges(row, "ARTWORK")
+				end
+				if tagged and not row.newDot then
+					local M = Rail.MARK
+					row.newDot = row:CreateTexture(nil, "OVERLAY")
+					row.newDot:SetSize(M.dot, M.dot)
+					row.newDot:SetPoint("TOPRIGHT", row, "TOPRIGHT", -M.dotIn, -M.dotIn)
+					MelloUI.Icons.Set(row.newDot, "badge_disc", M.dot)
+					W.Paint(row.newDot, "selectedTrim", "vertex", 1)
+				end
+				if row.newDot then
+					row.newDot:SetShown(tagged)
+				end
+				tagged = false
+			end
 			if tagged and not row.newTag then
 				row.newTag = W.Tag(row, W.NEW, true)
-				row.newTag:SetPoint("RIGHT", row, "RIGHT", (spec.doneGlyph and right or -RAIL_TAG_IN) - TAG_SNUG_X, 0)
+				row.newTag:SetPoint("RIGHT", row, "RIGHT", (kept and right or -RAIL_TAG_IN) - TAG_SNUG_X, 0)
 			end
 			W.TagShown(row.newTag, tagged)
 			if tagged then
@@ -8010,6 +8114,27 @@ function Rail:Layout(instant)
 	end
 	local spec = self.spec
 	local content = self.content
+	if spec.tiles then
+		-- (2.1.84) the tiles: one row, the rail's width shared -- whole units each, what is left between them
+		local n = #self.order
+		local w = n > 0 and math.floor((self.width - (n - 1) * spec.tiles) / n) or self.width
+		local gap = n > 1 and (self.width - n * w) / (n - 1) or 0
+		for i, f in ipairs(self.order) do
+			local x = (i - 1) * (w + gap)
+			f:ClearAllPoints()
+			f:SetPoint("TOPLEFT", content, "TOPLEFT", x, 0)
+			f:SetWidth(w)
+			f:Show()
+			f.y, f.x, f.w = 0, x, w
+		end
+		content:SetHeight(spec.rowHeight)
+		if not self.scroll then
+			self.box:SetHeight(spec.rowHeight + 2 * spec.inset + spec.head)
+		end
+		self:PlaceMarker(true)
+		self:BarRange()
+		return
+	end
 	local y = 0
 	for _, f in ipairs(self.order) do
 		local isRow = f.entry ~= nil
@@ -8093,10 +8218,17 @@ local function MarkRow(rail, row, height, instant)
 		marker:SetHeight(height)
 	end
 	local y = -row.y
-	if instant or not marker:IsShown() then
+	-- (2.1.84: a tile's own place and width; the marker goes there at once -- its glide is the list's, down a column)
+	local tile = rail.spec.tiles and row.x ~= nil
+	local width = tile and row.w or rail.width
+	if rail.markerWidth ~= width then
+		rail.markerWidth = width
+		marker:SetWidth(width)
+	end
+	if instant or tile or not marker:IsShown() then
 		Anim:Stop(marker, "y")
 		marker:ClearAllPoints()
-		marker:SetPoint("TOPLEFT", rail.content, "TOPLEFT", 0, y)
+		marker:SetPoint("TOPLEFT", rail.content, "TOPLEFT", tile and row.x or 0, y)
 		marker:Show()
 	else
 		Anim:To(marker, "y", y, 0.15, "outCubic")
@@ -8140,6 +8272,9 @@ function Rail:Paint()
 		end
 		if row.check then
 			row.check:SetShown(st == "done")
+		end
+		if self.marks or row.mark then
+			Rail.PaintMark(row, self.marks and self.marks[key] or nil)
 		end
 	end
 	for gkey, h in pairs(self.headers) do
@@ -8185,6 +8320,21 @@ function Rail:SetState(key, state)
 	if self.state[key] ~= state then
 		self.state[key] = state
 		self:Paint()
+	end
+end
+
+function Rail:SetMark(key, mark)
+	local marks = self.marks
+	if not marks then
+		marks = {}
+		self.marks = marks
+	end
+	if marks[key] ~= mark then
+		marks[key] = mark
+		local row = self.rows[key]
+		if row then
+			Rail.PaintMark(row, mark)
+		end
 	end
 end
 
