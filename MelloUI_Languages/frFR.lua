@@ -2516,16 +2516,16 @@ Lang:Add("frFR", {
 	["MelloUI Players"] = "Joueurs MelloUI", -- draft
 	["Lets other MelloUI players in your group know you use MelloUI too. Its moment, on the Animations page, shows when one of them joins you."] = "Fait savoir aux autres joueurs MelloUI de votre groupe que vous utilisez aussi MelloUI. Son moment, sur la page Animations, s'affiche quand l'un d'eux vous rejoint.", -- draft
 	["Spot a fellow MelloUI player the moment they join."] = "Repérez un autre joueur MelloUI dès qu'il rejoint.", -- draft
-	["%s uses MelloUI too"] = "%s utilise aussi MelloUI", -- draft
-	["%s and %s use MelloUI too"] = "%s et %s utilisent aussi MelloUI", -- draft
-	["%s, %s and %s use MelloUI too"] = "%s, %s et %s utilisent aussi MelloUI", -- draft
-	["%d players in your group use MelloUI"] = "%d joueurs de votre groupe utilisent MelloUI", -- draft
-	["Now in your group"] = "Maintenant dans votre groupe", -- draft
-	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Sans Questie : les quêtes qui n’avaient ni marque ni zone sur la carte et la minicarte s’affichent maintenant.", -- draft
-	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI garde l’option du jeu Show Quest POIs & Blobs activée tant que ses marques de quête sont actives : le jeu ne donne tous les lieux de quête qu’avec elle.", -- draft
-	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "Manette : les liens et les noms du chat de MelloUI n’ouvrent plus les fenêtres du jeu, ce qui bloquait les boutons de la manette.", -- draft
-	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "Manette : les boutons de MelloUI dans les fenêtres de butin, de division de pile et de courrier du jeu restent hors du curseur de la manette.", -- draft
-	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "« Quête à rendre la plus proche » ne reprend plus la navigation à votre propre repère de carte, à l’étape d’un guide ni au chemin vers votre cadavre.", -- draft
+	["%s uses MelloUI too"] = "%s utilise aussi MelloUI",
+	["%s and %s use MelloUI too"] = "%s et %s utilisent aussi MelloUI",
+	["%s, %s and %s use MelloUI too"] = "%s, %s et %s utilisent aussi MelloUI",
+	["%d players in your group use MelloUI"] = "%d joueurs de votre groupe utilisent MelloUI",
+	["Now in your group"] = "Dans votre groupe",
+	["Without Questie: quests that had no mark or area on the map and the minimap show now."] = "Sans Questie : les quêtes sans marque ni zone sur la carte ou la minicarte s’affichent désormais.",
+	["MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it."] = "MelloUI maintient activée l’option du jeu « Afficher les points d’intérêt et les zones de quête » tant que ses repères de quête sont actifs : le jeu ne fournit tous les lieux de quête que lorsque cette option est activée.",
+	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "Manette : les liens et les noms dans la discussion de MelloUI n’ouvrent plus les fenêtres du jeu, qui bloquaient les commandes de la manette.",
+	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "Manette : le curseur ne sélectionne plus les boutons de MelloUI dans les fenêtres de butin, de division des piles et de courrier du jeu.",
+	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "Quête à rendre la plus proche ne reprend plus la navigation lorsque vous avez posé votre propre repère, suivi une étape de guide ou pris la route vers votre cadavre.",
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Barres de nom : les PNJ amicaux et les joueurs amicaux ont leur propre aperçu, leurs positions et leurs tailles. Ce que vous réglez sous Ennemis ne change plus les barres amicales.", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Barres de nom amicales : Masquer à pleine santé n’affiche que le nom tant qu’ils ne sont pas blessés.", -- draft
 	["Profession Cooldowns: recipes that share a cooldown, like the transmutes, give one notice when it is over."] = "Temps de recharge de métier : les recettes qui partagent un temps de recharge, comme les transmutations, donnent un seul avis quand il est terminé.", -- draft
@@ -4224,6 +4224,26 @@ Lang:Add("frFR", {
 	-- kept: Core/Companions.lua
 	["Route's road and quest objective data could not be loaded: %s. Until then routes follow only the paths you have walked, and a tracked quest keeps the game's own marker."] = "Les données des routes et des objectifs de quête d’Itinéraire n’ont pas pu être chargées : %s. En attendant, les itinéraires suivent uniquement les chemins que vous avez parcourus et les quêtes suivies conservent le repère du jeu.",
 	-- kept: Core/QuestObjectives.lua
+	["The game's quest places: MelloUI's marks %s, Questie %s, %d quests in your log, %d zones. Reading ..."] = "Lieux de quête du jeu : repères MelloUI %s, Questie %s, %d quêtes dans le journal, %d zones. Lecture en cours…",
+	["  The game's own switch (Options > Preset > Show Quest POIs & Blobs): %s, held on by MelloUI: %s."] = "  Option du jeu (Options > Préréglages > Afficher les points d’intérêt et les zones de quête) : %s ; maintenue activée par MelloUI : %s.",
+	["  The reader stopped on an error: %s"] = "  La lecture s’est interrompue à cause d’une erreur : %s",
+	["  The reader is not through after %d seconds (zones %s, areas %s)."] = "  La lecture n’est pas terminée après %d s (zones %s, secteurs %s).",
+	["  %s (%d)%s: the game's map %d, on that map's list: %s, found on zone: %s, areas: %s"] = "  %s (%d)%s : carte du jeu %d, dans sa liste de quêtes : %s, zone trouvée : %s, secteurs : %s",
+	["  %d quests with a place from the game, %d without any."] = "  %d quêtes avec un lieu indiqué par le jeu, %d sans lieu.",
+	["%d on map %s"] = "%d sur la carte %s",
+	["none"] = "aucun",
+	[", complete"] = ", terminée",
+	["not there"] = "absent",
+	["there"] = "présent",
+	["yes"] = "oui",
+	["no"] = "non",
+	["OFF"] = "DÉSACTIVÉ",
+	["still read"] = "en cours de lecture",
+	["read"] = "lues",
+	["still traced"] = "en cours de relevé",
+	["traced"] = "relevés",
+	["not read"] = "non lues",
+	["not traced"] = "non relevées",
 	["item"] = "objet de quête",
 	-- kept: Core/QuestieLook.lua
 	["quest"] = "quête",
@@ -4424,12 +4444,14 @@ Lang:Add("frFR", {
 	-- kept: Modules/MeterRaid.lua
 	["This fight"] = "Ce combat",
 	-- kept: Modules/SwingTimers.lua
+	["swing %6.2f  "] = "attaque %6.2f  ",
 	["Swing Timer"] = "Minuteur d’attaque",
 	-- kept: Modules/MailRecipients.lua
 	["online"] = "en ligne",
 	-- kept: Modules/Sparkles.lua
 	["Mine"] = "Les miens", -- draft
 	-- kept: Modules/CustomSounds.lua
+	["SFX %s"] = "Effet sonore %s",
 	["From SharedMedia"] = "De SharedMedia",
 	-- kept: Modules/PlateImpact.lua
 	["Impact Effects: target an enemy whose nameplate shows, then press Play."] = "Effets d’impact : ciblez un ennemi dont la barre d’info est visible, puis cliquez sur Jouer.",
@@ -4581,6 +4603,7 @@ Lang:Add("frFR", {
 	["Export"] = "Exporter",
 	["Clear city"] = "Effacer la ville",
 	-- kept: MelloUI_Chat/Chat.lua
+	["  ChatFontNormal: %s"] = "  Police de discussion ChatFontNormal : %s",
 	["Whisper popups"] = "Fenêtres de chuchotement",
 	-- kept: MelloUI_Chat/ChatView.lua
 	["Whisper someone"] = "Chuchoter à quelqu’un",
@@ -5177,6 +5200,10 @@ Lang:Add("frFR", {
 	["The frame around progress bars: reputation, skills, professions, experience, tooltips and the damage meter. Frame Set is your Frame Set's own bar frame."] = "Cadre des barres de progression : réputation, compétences, métiers, expérience, infobulles et compteur de dégâts. Style de cadres reprend le cadre de barre du style choisi.",
 	["Level orb changed: type /reload to see it on frames already shown."] = "Orbe de niveau modifié. Tapez /reload pour voir le changement sur les cadres déjà affichés.",
 	["Window look changed: type /reload to see it on windows already opened."] = "Style des fenêtres modifié. Tapez /reload pour voir le changement dans les fenêtres déjà ouvertes.",
+	-- kept: Core/Schedule.lua
+	["cvar uiScale = %s, useUiScale = %s"] = "Variables du jeu uiScale = %s, useUiScale = %s",
+	-- kept: Core/GroupMoment.lua
+	["MelloUI Players: %d in the group as read, the moment %s, in a group %s"] = "Joueurs MelloUI : %d membres du groupe recensés ; animation %s ; en groupe : %s",
 })
 
 -- No longer in the addon (kept for a line that comes back; never loaded):
