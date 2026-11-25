@@ -2532,6 +2532,8 @@ Lang:Add("frFR", {
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
+	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Texte de combat : les chiffres de soins ressemblent maintenant à des soins : un + devant le chiffre, qui s'élève avec une lueur douce, sans effets de coup.", -- draft
+	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Texte de combat : en groupe, les chiffres de vos coups d'arme ne disparaissent plus après avoir soigné quelqu'un.", -- draft
 	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Texte de combat : Style des dégâts de combat (avant : Vos dégâts) refait. Choisissez Pop, Slam ou Stamp : des coups plus vifs et des critiques qui tombent avec un éclair.", -- draft
 	["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "Texte de combat : Pop, Slam et Stamp aussi pour le texte autour de votre personnage. Edit Position déplace et redimensionne la zone de chaque type.", -- draft
 	["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "Texte de combat : contour pour vos chiffres de dégâts, et les coups de sorts dans la couleur de leur école.", -- draft
@@ -2552,8 +2554,6 @@ Lang:Add("frFR", {
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Barres de nom : les PNJ amicaux et les joueurs amicaux ont leur propre aperçu, leurs positions et leurs tailles. Ce que vous réglez sous Ennemis ne change plus les barres amicales.", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Barres de nom amicales : Masquer à pleine santé n’affiche que le nom tant qu’ils ne sont pas blessés.", -- draft
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "« Quête à rendre la plus proche » ne reprend plus la navigation à votre propre repère de carte, à l’étape d’un guide ni au chemin vers votre cadavre.", -- draft
-	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "Manette : les liens et les noms du chat de MelloUI n’ouvrent plus les fenêtres du jeu, ce qui bloquait les boutons de la manette.", -- draft
-	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "Manette : les boutons de MelloUI dans les fenêtres de butin, de division de pile et de courrier du jeu restent hors du curseur de la manette.", -- draft
 	["Report a problem"] = "Signaler un problème",
 	["Voice pack"] = "Pack de voix",
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre",
@@ -5294,6 +5294,8 @@ Lang:Add("frFR", {
 -- stale: ["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "Configurateur : une nouvelle page Addons liste les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun, leurs liens, qui fait quelle tâche, et un interrupteur pour que MelloUI cesse d'en utiliser un.",
 -- stale: ["Container"] = "Conteneur",
 -- stale: ["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "Manette : l'opacité du fond laisse tranquilles les fenêtres de discussion cachées du jeu avec la vue de discussion minimale.", -- draft
+-- stale: ["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "Manette : les boutons de MelloUI dans les fenêtres de butin, de division de pile et de courrier du jeu restent hors du curseur de la manette.", -- draft
+-- stale: ["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "Manette : les liens et les noms du chat de MelloUI n’ouvrent plus les fenêtres du jeu, ce qui bloquait les boutons de la manette.", -- draft
 -- stale: ["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "Manette : la croix directionnelle ignore le bouton de fermeture et les onglets des fenêtres (B ferme, LB/RB changent d’onglet). Un clic sur le bouton MelloUI sous le menu du jeu ferme aussi ce menu.",
 -- stale: ["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "Manette : le pointeur jaune du jeu ne s’affiche plus sur les fenêtres de MelloUI et les indications des touches sont centrées et plus lisibles.",
 -- stale: ["Cooking trainer"] = "maître cuisinier",

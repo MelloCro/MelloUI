@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.86
+
+- Combat Text: Healing Numbers look like healing now, not like a hit on your friend. A heal has a + before its number, swells in softly and floats up with a soft light in the healing colour behind it. No white flash, no streak and no shake, and a crit heal gets a ring of that light in place of the crit hit's effect.
+- Combat Text: in a group, the numbers of your weapon swings no longer go missing after you healed someone.
+
 ## 2.1.85
 
 - Combat Text: clearer names. Combat Text Style is now Personal Combat Text Style, and Your Damage is Combat Damage Style. The Text section has one size for each: Personal Combat Text Size (it was Text Around You, on Look > Fonts) and Combat Damage Size. Game Damage Numbers Size (it was Numbers Over Enemies) sizes the game's own numbers and no longer changes MelloUI's.

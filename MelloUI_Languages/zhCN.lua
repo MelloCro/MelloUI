@@ -2457,6 +2457,8 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "战斗文字：治疗数字现在看起来像治疗了：数字前有 +，伴随柔和的光向上飘起，没有打击效果。", -- draft
+	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "战斗文字：在队伍中，治疗他人之后你的武器攻击数字不再消失。", -- draft
 	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "战斗文字：战斗伤害样式（原“你的伤害”）已重做。选择 Pop、Slam 或 Stamp：命中更干脆，暴击伴随闪光落下。", -- draft
 	["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "战斗文字：角色周围的文字也可使用 Pop、Slam 和 Stamp。Edit Position 可移动并缩放每类文字的区域。", -- draft
 	["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "战斗文字：伤害数字描边，法术命中显示其学派的颜色。", -- draft
@@ -2477,8 +2479,6 @@ Lang:Add("zhCN", {
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "姓名板：友方 NPC 和友方玩家有了各自的预览、位置和大小。在“敌人”下的设置不再改变友方姓名板。", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "友方姓名板：“满血时隐藏”在其受伤之前只显示名字。", -- draft
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "“最近的可交任务”不再从你自己的地图标记、指南的步骤或跑尸路线上抢走导航。", -- draft
-	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "手柄：MelloUI 聊天中的链接和名字不再打开游戏自带的窗口，此前这会导致手柄按键被阻止。", -- draft
-	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "手柄：MelloUI 在游戏拾取、拆分堆叠和邮件窗口中的按钮不再被手柄光标选中。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3329,6 +3329,8 @@ Lang:Add("zhCN", {
 -- stale: ["Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page."] = "配置器：单位和小队框体、姓名板、动作条和小地图都变成设计器：选一个框体，再选一个部分，拖动名字和数值；新增自动化页面。", -- draft
 -- stale: ["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "设置窗口：新的“插件”页面列出与 MelloUI 配合的插件：MelloUI 对每个插件做什么、它们的链接、哪项工作由谁负责，以及一个让 MelloUI 不再使用某个插件的开关。", -- draft
 -- stale: ["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "手柄：使用简洁聊天视图时，背景不透明度不再改动游戏隐藏的聊天窗口。", -- draft
+-- stale: ["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "手柄：MelloUI 在游戏拾取、拆分堆叠和邮件窗口中的按钮不再被手柄光标选中。", -- draft
+-- stale: ["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "手柄：MelloUI 聊天中的链接和名字不再打开游戏自带的窗口，此前这会导致手柄按键被阻止。", -- draft
 -- stale: ["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "手柄：方向键会跳过窗口的关闭按钮和标签页（B 关闭，LB / RB 切换标签页），用鼠标点击游戏菜单下方的 MelloUI 按钮会关闭菜单。", -- draft
 -- stale: ["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "手柄：游戏的黄色指针不再显示在 MelloUI 窗口之上，按键提示已居中且更易辨认。", -- draft
 -- stale: ["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "冷却计时：战斗中显示数字可在战斗中隐藏游戏的倒计时，扫过暗度可让扫过更暗。", -- draft

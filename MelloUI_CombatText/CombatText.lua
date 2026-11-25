@@ -1024,7 +1024,9 @@ local E = {}
 
 local function Clear(e)
 	e.kind, e.value, e.sign, e.crit, e.label, e.name, e.tail, e.colour, e.glyph, e.harmful = nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
-	e.who, e.glancing, e.tick = nil, nil, nil
+	-- (2.1.86: `heal` too -- it stayed set on the one entry table, so after your first heal every hit was kept as a
+	-- heal: a weapon swing's number, told by its swing and not by a line, went missing in a group)
+	e.who, e.glancing, e.tick, e.heal = nil, nil, nil, nil
 	return e
 end
 
@@ -1258,6 +1260,9 @@ local function LineHidden(line)
 		if line.main and line.main.SetTextScale then
 			line.main:SetTextScale(1)
 		end
+		if line.signed and line.sign.SetTextScale then
+			line.sign:SetTextScale(1)   -- (a heal's "+", sized with its number)
+		end
 	end
 	local spares = line.spares or pool
 	spares[#spares + 1] = line
@@ -1421,8 +1426,15 @@ DEALT.look = {
 	stamp = { life = 1.15, crit = 1.7, word = 1.15, tick = 0.9, rows = 5, push = 0.09 },
 }
 DEALT.LIGHTS = { glow = "glow_white.tga", halo = "halo_white.tga", rays = "rays_gold.tga", streakW = "streak_white.tga",
-	streakG = "streak_gold.tga" }
+	streakG = "streak_gold.tga", healGlow = "glow_white.tga", healHalo = "halo_white.tga" }
 DEALT.DEBRIS = 12
+-- (2.1.86; the user in their game, 2026-11-25: "Healing numbers on top of friendly players look like they are taking
+-- damage instead of receaving healing") a heal has a way of its own in every look, never a blow's: a "+" before the
+-- number, it swells in softly and floats up, a soft light of its own colour behind it -- no white flash, no streak, no
+-- gold, no shake; a crit heal bigger, a ring of its colour opening round it (DEALT.Mend, DEALT.MendLight). Its lights
+-- are their own textures (TINT), in the line's colour: the white art, tinted.
+DEALT.TINT = { healGlow = true, healHalo = true }
+DEALT.mend = { life = 1.15, crit = 1.5 }
 
 function DEALT.Seg(t, a, b)
 	local v = (t - a) / (b - a)
@@ -1468,6 +1480,9 @@ function DEALT.Light(line, key)
 			t:SetTexture("Interface\\AddOns\\MelloUI\\Media\\FrameFX\\" .. file)
 		end
 		t:SetBlendMode("ADD")
+		if DEALT.TINT[key] and line.cr then
+			t:SetVertexColor(line.cr, line.cg, line.cb)
+		end
 		fx[key] = t
 	end
 	return t
@@ -1512,14 +1527,57 @@ function DEALT.Scale(line, k, flash)
 	if value.SetTextScale then
 		value:SetTextScale(k)
 	end
+	-- (a heal's "+": with its number)
+	local sign = line.signed and line.sign or nil
+	if sign and sign.SetTextScale then
+		sign:SetTextScale(k)
+	end
 	local r = line.cr
 	if r then
 		flash = flash < 0 and 0 or flash > 1 and 1 or flash
 		if flash ~= line.flashed then
 			line.flashed = flash
 			value:SetTextColor(r + (1 - r) * flash, line.cg + (1 - line.cg) * flash, line.cb + (1 - line.cb) * flash)
+			if sign then
+				sign:SetTextColor(r + (1 - r) * flash, line.cg + (1 - line.cg) * flash, line.cb + (1 - line.cb) * flash)
+			end
 		end
 	end
+end
+
+-- a heal's lights at `t` of its life: a soft light of its colour behind the number, a crit's ring opening round it
+function DEALT.MendLight(line, t, crit)
+	local D = DEALT
+	local F = line.F
+	local e = D.Seg(t, 0.05, crit and 0.6 or 0.45)
+	D.Lit(line, "healGlow", line.main, "CENTER", 0, 0, (crit and 6.2 or 3.8) * F, (crit and 3.6 or 2.3) * F,
+		(crit and 0.8 or 0.55) * D.Seg(t, 0, 0.08) * (1 - e), 0)
+	if crit then
+		local open = 0.45 + 1.15 * D.Out(e)
+		D.Lit(line, "healHalo", line.main, "CENTER", 0, 0, 4.4 * F * open, 3.6 * F * open, 0.85 * (1 - e), 0)
+	end
+end
+
+-- a heal in Pop and Slam: its place (from the plate's middle), size and alpha at `t` -- over the plate, to one side
+-- by its slot (a crit in the middle, higher), floating up all its life
+function DEALT.Mend(line, t)
+	local D = DEALT
+	local F, life, crit = line.F, line.life, line.kindC == "crit"
+	local s = t / life
+	local rise = 0.5 * (s + D.Out(s))
+	local x, y, k
+	if crit then
+		x = (line.r1 - 0.5) * 0.8 * F
+		y = (2.4 + 1.5 * rise) * F
+		k = D.Pop(t, 0.6, 1.22, 0.18, 0.46)
+	else
+		-- (as far to a side as a blow's slot: two heals on one friend stand clear of each other)
+		x = line.side * (1.5 + line.row * 0.45 + line.r1 * 0.4) * F
+		y = (1.3 + line.row * 0.35 + 1.9 * rise) * F
+		k = D.Pop(t, 0.75, 1.1, 0.14, 0.36)
+	end
+	D.MendLight(line, t, crit)
+	return x, y, k, D.Seg(t, 0, 0.1) * (1 - D.Seg(t, life - 0.35, life))
 end
 
 -- the line at (x, y) from the plate's point; false when the plate takes no anchor any more
@@ -1538,6 +1596,7 @@ function DEALT.Step(line, share)
 	local t, F, life = share * line.life, line.F, line.life
 	local look, crit, word = line.look, line.kindC == "crit", line.kindC == "word"
 	local tick = line.kindC == "tick"
+	local heal = line.heal
 	local x, y, a
 	local k, flash = 1, 0
 	if tick and look ~= "stamp" then
@@ -1545,6 +1604,9 @@ function DEALT.Step(line, share)
 		x = (look == "pop" and 1 or -1) * (0.3 + 0.5 * line.r1) * F
 		y = (0.8 * Out(t / life) - 0.1) * F
 		a = Seg(t, 0, 0.05) * (1 - Seg(t, life - 0.22, life)) * 0.9
+	elseif heal and look ~= "stamp" then
+		-- (2.1.86) a heal: never a blow's way
+		x, y, k, a = D.Mend(line, t)
 	elseif look == "pop" then
 		if crit then
 			local lift = Out(Seg(t, 0.9, 1.25)) * 0.75 * F
@@ -1629,7 +1691,7 @@ function DEALT.Step(line, share)
 				elseif o == line then
 					seen = true
 				end
-				if o.kindC == "crit" and not tick then
+				if o.kindC == "crit" and not tick and not o.heal then   -- (a crit heal jolts nothing)
 					jolt = jolt + D.Shake(now - o.t0, 0, 0.15, 0.11 * F, o.r2)
 				end
 			end
@@ -1641,7 +1703,12 @@ function DEALT.Step(line, share)
 		if tick then
 			x, y = -0.55 * F, above
 			a = Seg(t, 0, 0.04) * (1 - Seg(t, life - 0.25, life)) * (rows >= 3 and 0 or rows == 2 and 0.5 or 0.9)
-			k = D.Pop(t, 1.35, 1, 0.001, 0.09)
+			k = heal and 1 or D.Pop(t, 1.35, 1, 0.001, 0.09)
+		elseif heal then
+			-- (2.1.86) a heal in the column: it swells in where a hit stamps, its own light, no streak
+			a = Seg(t, 0, 0.1) * (1 - Seg(t, life - 0.3, life)) * dim
+			k = crit and D.Pop(t, 0.7, 1.2, 0.16, 0.42) or D.Pop(t, 0.8, 1.08, 0.12, 0.32)
+			D.MendLight(line, t, crit)
 		elseif crit then
 			k = t < 0.09 and (2.3 - 1.3 * Out(t / 0.09)) or (1 + 0.05 * (1 - Seg(t, 0.09, 0.22)))
 			flash = 1 - Seg(t, 0.09, 0.25)
@@ -1797,19 +1864,37 @@ DealtLine = function(unit, e)
 	if tick then
 		align = look == "pop" and "LEFT" or "RIGHT"
 	end
+	-- (2.1.86) a heal: a "+" before its number, as the text around you writes a heal
+	local heal = e.heal and not word
+	if heal then
+		e.sign = "+"
+	end
 	Fill(line, e, align, size * (e.glancing and D.glancing or 1) * (e.crit and D.crit or 1) * (word and D.word or 1)
 		* (tick and D.tick or 1))
 	local main = word and line.word or line.value
 	line.main = main
+	line.heal, line.signed = heal or nil, e.sign ~= nil
 	-- its colour, for the flash (a word has none)
 	local c = (not word) and e.colour or nil
 	line.cr, line.cg, line.cb, line.flashed = c and c[1], c and c[2], c and c[3], 0
+	-- (a heal's lights made for an earlier heal of this line: in today's colour)
+	if heal and line.fx and c then
+		for key in pairs(D.TINT) do
+			local t = line.fx[key]
+			if t then
+				t:SetVertexColor(c[1], c[2], c[3])
+			end
+		end
+	end
 	local F = TextSize() * size
 	line.F, line.look, line.plate = F, look, plate
 	line.kindC = e.crit and "crit" or (word and "word" or (tick and "tick" or "hit"))
 	line.r1, line.r2, line.r3 = math.random(), math.random(), math.random()
 	line.t0 = GetTime()
 	line.life = e.crit and spec.crit or (word and spec.word or (tick and spec.tick or spec.life))
+	if heal and not tick and look ~= "stamp" then
+		line.life = e.crit and D.mend.crit or D.mend.life   -- (a heal floats: a little longer than a blow)
+	end
 	if e.crit then
 		lane.crits = lane.crits + 1
 		line.side = lane.crits % 2 == 0 and 1 or -1

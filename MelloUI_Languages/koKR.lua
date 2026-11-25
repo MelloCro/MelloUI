@@ -2457,6 +2457,8 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "전투 문자: 치유 숫자가 이제 치유처럼 보입니다. 숫자 앞에 +가 붙고, 부드러운 빛과 함께 떠오르며, 타격 효과가 없습니다.", -- draft
+	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "전투 문자: 파티에서 누군가를 치유한 뒤에도 무기 공격 숫자가 사라지지 않습니다.", -- draft
 	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "전투 문자: 전투 피해 스타일(이전의 내 피해)이 새로워졌습니다. Pop, Slam, Stamp 중에서 고르세요. 더 경쾌한 타격, 번쩍이며 꽂히는 치명타.", -- draft
 	["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "전투 문자: 캐릭터 주변 문자에도 Pop, Slam, Stamp를 쓸 수 있습니다. Edit Position으로 종류별 영역을 옮기고 크기를 조절합니다.", -- draft
 	["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "전투 문자: 피해 숫자 외곽선, 그리고 주문 피해는 속성 색으로 표시됩니다.", -- draft
@@ -2477,8 +2479,6 @@ Lang:Add("koKR", {
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "이름표: 우호적 NPC와 우호적 플레이어에 각각의 미리 보기, 위치, 크기가 생겼습니다. 적 탭에서 바꾼 설정은 더 이상 우호적 이름표를 바꾸지 않습니다.", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "우호적 이름표: 생명력이 가득할 때 숨기기를 켜면 다칠 때까지 이름만 보입니다.", -- draft
 	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "가장 가까운 완료 퀘스트 따라가기가 더 이상 직접 찍은 지도 핀, 가이드의 단계, 시체로 가는 길에서 길 안내를 빼앗지 않습니다.", -- draft
-	["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "컨트롤러: MelloUI 대화창의 링크와 이름이 더 이상 게임의 창을 열지 않습니다. 이 때문에 컨트롤러 버튼이 차단되곤 했습니다.", -- draft
-	["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "컨트롤러: 게임의 전리품, 묶음 나누기, 우편 창에 있는 MelloUI 버튼은 컨트롤러 커서가 선택하지 않습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3329,6 +3329,8 @@ Lang:Add("koKR", {
 -- stale: ["Configurator: Unit & Group Frames, Nameplates, Bars and Minimap are designers: pick a frame, then a part, drag names and values; a new Automation page."] = "구성기: 개체 및 그룹 창, 이름표, 바, 미니맵이 디자이너가 됨: 창을 고르고 부분을 골라 이름과 값을 끌어 옮기세요. 새 자동화 페이지.", -- draft
 -- stale: ["Configurator: a new Addons page lists the addons MelloUI works with: what it does with each, their links, who does which job, and a switch to stop MelloUI using one."] = "설정 창: 새 애드온 페이지에서 MelloUI와 함께 작동하는 애드온을 보여 줍니다. 각 애드온으로 무엇을 하는지, 링크, 어떤 일을 누가 맡는지, 그리고 MelloUI가 그 애드온을 쓰지 않게 하는 스위치가 있습니다.", -- draft
 -- stale: ["Controller: Background Opacity leaves the game's hidden chat windows alone under the Minimal Chat View."] = "컨트롤러: 최소 채팅 보기에서는 배경 불투명도가 게임의 숨겨진 채팅 창을 건드리지 않습니다.", -- draft
+-- stale: ["Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor."] = "컨트롤러: 게임의 전리품, 묶음 나누기, 우편 창에 있는 MelloUI 버튼은 컨트롤러 커서가 선택하지 않습니다.", -- draft
+-- stale: ["Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons."] = "컨트롤러: MelloUI 대화창의 링크와 이름이 더 이상 게임의 창을 열지 않습니다. 이 때문에 컨트롤러 버튼이 차단되곤 했습니다.", -- draft
 -- stale: ["Controller: the D-pad skips a window's close button and its tabs (B closes, LB / RB switch tabs), and a mouse click on the MelloUI button under the Game Menu closes the menu."] = "컨트롤러: 방향 패드가 창의 닫기 버튼과 탭을 건너뜁니다(B는 닫기, LB / RB는 탭 전환). 게임 메뉴 아래 MelloUI 버튼을 마우스로 클릭하면 메뉴가 닫힙니다.", -- draft
 -- stale: ["Controller: the game's yellow pointer no longer shows over MelloUI's windows, and the button prompts are centred and easier to read."] = "컨트롤러: 게임의 노란 포인터가 더 이상 MelloUI 창 위에 표시되지 않으며, 버튼 안내가 가운데 정렬되어 읽기 쉬워졌습니다.", -- draft
 -- stale: ["Cooldown Timers: Numbers In Fights can hide the game's countdown in fights, and Sweep Darkness makes the sweep darker."] = "재사용 대기 타이머: 전투 중 숫자로 전투 중 게임의 카운트다운을 숨길 수 있고, 쓸기 어둡기로 쓸기를 더 어둡게 합니다.", -- draft

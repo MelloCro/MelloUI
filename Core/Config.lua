@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.86", lines = {
+		"Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects.",
+		"Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone.",
+	} },
 	{ version = "2.1.85", lines = {
 		"Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash.",
 		"Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area.",
@@ -205,10 +209,6 @@ local CHANGELOG = {
 	{ version = "2.1.82", lines = {
 		"Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse.",
 	} },
-	{ version = "2.1.81", lines = {
-		"Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons.",
-		"Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -219,6 +219,7 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.86"] = { "CombatText.dealtHeals", false },
 	["2.1.85"] = { "CombatText.dealt", "CombatText.style", "CombatText.dealtOutline", "CombatText.dealtGroups",
 		"CombatText.dealtHeals", "UIModifications.frameSet" },
 	["2.1.84"] = { "=unit frames", "=nameplates", "UnitFrames.hidePvPBadge", "UIModifications.qol_Tooltip", false, false,
