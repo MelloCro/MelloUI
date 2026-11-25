@@ -2457,6 +2457,8 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "Индикаторы здоровья: имя выбранного в цель вражеского игрока больше не отображается дважды поверх себя (имя поверх полного имени).", -- draft
+	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Индикаторы здоровья: имя, скрытое в конструкторе индикаторов, остаётся скрытым и у игроков с коротким именем.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Текст боя: числа исцеления теперь выглядят как исцеление: + перед числом, оно плавно поднимается с мягким светом, без эффектов удара.", -- draft
 	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Текст боя: в группе числа ваших ударов оружием больше не пропадают после того, как вы кого-то исцелили.", -- draft
 	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Текст боя: «Стиль боевого урона» (раньше «Ваш урон») переделан. Выберите Pop, Slam или Stamp: удары резче, а криты падают со вспышкой.", -- draft
@@ -2478,7 +2480,6 @@ Lang:Add("ruRU", {
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: удалённые персонажи сами уходят из списка, а неизвестный класс теперь знак «?», по которому можно щёлкнуть, а не белое имя.", -- draft
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Индикаторы здоровья: у дружественных НИП и дружественных игроков свой предпросмотр, свои положения и размеры. Настройки вкладки «Враги» больше не меняют дружественные индикаторы.", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Дружественные индикаторы здоровья: «Скрывать при полном здоровье» показывает только имя, пока они не ранены.", -- draft
-	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "«Ближайшая сдача» больше не перехватывает навигацию у вашей метки на карте, шага гайда и пути к вашему телу.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3728,6 +3729,7 @@ Lang:Add("ruRU", {
 -- stale: ["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "Индикаторы: значок удара встаёт за процентом, когда тот стоит рядом с полосой.", -- draft
 -- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Индикаторы здоровья: ваши ослабления на вражеских индикаторах больше не показывают часы, а их числа окрашиваются по оставшемуся времени, красным при менее 5 секунд.", -- draft
 -- stale: ["Names in chat"] = "Имена в чате", -- draft
+-- stale: ["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "«Ближайшая сдача» больше не перехватывает навигацию у вашей метки на карте, шага гайда и пути к вашему телу.", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Новое движение: большие восстановления, прогресс заданий, новый уровень, криты, приёмы серии, напоминания, название зоны, рост репутации; эффекты попаданий доходят до рамки цели.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "Новый ресурс подсвечивается впереди полосы, и она дорастает до него; большое получение искрит на краю (ровные тики энергии — нет).", -- draft
 -- stale: ["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "Новое: «Отделить от портрета» на странице «Напоминания» даёт кнопке напоминаний собственное место; перемещается в «Изменить раскладку».", -- draft

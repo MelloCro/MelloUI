@@ -2457,6 +2457,8 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "이름표: 대상으로 지정한 적 플레이어의 이름이 더 이상 겹쳐서 두 번 표시되지 않습니다(이름 위에 전체 이름).", -- draft
+	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "이름표: 이름표 디자이너에서 숨긴 이름은 짧은 이름으로 표시되는 플레이어에게도 숨겨집니다.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "전투 문자: 치유 숫자가 이제 치유처럼 보입니다. 숫자 앞에 +가 붙고, 부드러운 빛과 함께 떠오르며, 타격 효과가 없습니다.", -- draft
 	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "전투 문자: 파티에서 누군가를 치유한 뒤에도 무기 공격 숫자가 사라지지 않습니다.", -- draft
 	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "전투 문자: 전투 피해 스타일(이전의 내 피해)이 새로워졌습니다. Pop, Slam, Stamp 중에서 고르세요. 더 경쾌한 타격, 번쩍이며 꽂히는 치명타.", -- draft
@@ -2478,7 +2480,6 @@ Lang:Add("koKR", {
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: 삭제한 캐릭터는 목록에서 저절로 빠지고, 직업을 모르는 캐릭터는 흰색 이름이 아니라 누를 수 있는 ?로 표시됩니다.", -- draft
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "이름표: 우호적 NPC와 우호적 플레이어에 각각의 미리 보기, 위치, 크기가 생겼습니다. 적 탭에서 바꾼 설정은 더 이상 우호적 이름표를 바꾸지 않습니다.", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "우호적 이름표: 생명력이 가득할 때 숨기기를 켜면 다칠 때까지 이름만 보입니다.", -- draft
-	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "가장 가까운 완료 퀘스트 따라가기가 더 이상 직접 찍은 지도 핀, 가이드의 단계, 시체로 가는 길에서 길 안내를 빼앗지 않습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3728,6 +3729,7 @@ Lang:Add("koKR", {
 -- stale: ["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "이름표: 백분율이 막대 옆에 있을 때 스윙 배지가 그 뒤로 비켜납니다.", -- draft
 -- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "이름표: 적 이름표의 내 약화 효과에 더 이상 시계 표시가 나오지 않으며, 숫자는 남은 시간에 따라 색이 바뀌고 5초 미만이면 빨간색이 됩니다.", -- draft
 -- stale: ["Names in chat"] = "대화의 이름", -- draft
+-- stale: ["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "가장 가까운 완료 퀘스트 따라가기가 더 이상 직접 찍은 지도 핀, 가이드의 단계, 시체로 가는 길에서 길 안내를 빼앗지 않습니다.", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "새 움직임: 큰 재사용 대기시간, 퀘스트 진행, 레벨업, 치명타, 연계 점수, 알림, 지역 이름, 평판 획득; 충격 효과가 대상 개체창에도.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "새 자원이 막대 앞에서 빛나고 막대가 거기까지 자랍니다. 크게 얻으면 가장자리에서 불꽃이 튑니다(기력의 꾸준한 틱은 아님).", -- draft
 -- stale: ["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "새 기능: 알림 페이지의 초상화에서 분리로 알림 버튼에 자체 위치를 줍니다. 배치 편집에서 옮깁니다.", -- draft

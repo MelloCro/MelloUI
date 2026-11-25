@@ -2464,6 +2464,8 @@ Lang:Add("deDE", {
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Die Addons, mit denen MelloUI zusammenarbeitet: was es mit jedem macht und wo ihre Einstellungen sind.",
+	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "Namensplaketten: Der Name eines anvisierten feindlichen Spielers wird nicht mehr doppelt übereinander angezeigt (Vorname über vollem Namen).", -- draft
+	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Namensplaketten: Ein im Namensplaketten-Designer ausgeblendeter Name bleibt auch bei Spielern mit Kurznamen ausgeblendet.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Kampftext: Heilungszahlen sehen jetzt nach Heilung aus: ein + vor der Zahl, sie schwebt mit einem sanften Licht nach oben, ohne Treffereffekte.", -- draft
 	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Kampftext: In einer Gruppe fehlen die Zahlen deiner Waffenschläge nicht mehr, nachdem du jemanden geheilt hast.", -- draft
 	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Kampftext: Kampfschaden-Stil (vorher Dein Schaden) neu gemacht. Wähle Pop, Slam oder Stamp: knackigere Treffer und kritische Treffer, die mit einem Blitz einschlagen.", -- draft
@@ -2485,7 +2487,6 @@ Lang:Add("deDE", {
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: gelöschte Charaktere verlassen die Liste von selbst, und eine unbekannte Klasse ist ein ? zum Anklicken, kein weißer Name.", -- draft
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Namensplaketten: Freundliche NSCs und freundliche Spieler haben ihre eigene Vorschau, eigene Positionen und Größen. Was du unter Gegner einstellst, ändert freundliche Plaketten nicht mehr.", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Freundliche Namensplaketten: Bei voller Gesundheit ausblenden zeigt nur den Namen, bis sie verletzt sind.", -- draft
-	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "Nächste Abgabe nimmt der Navigation nicht mehr deine eigene Kartenmarkierung, den Schritt eines Guides oder den Weg zu deiner Leiche weg.", -- draft
 	["Report a problem"] = "Ein Problem melden",
 	["Voice pack"] = "Stimmenpaket",
 	["open or close this window"] = "dieses Fenster öffnen oder schließen",
@@ -4644,6 +4645,7 @@ Lang:Add("deDE", {
 -- stale: ["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "Namensplaketten: Das Schwungabzeichen rückt hinter den Prozentwert, wenn dieser neben der Leiste steht.", -- draft
 -- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "Namensplaketten: Deine Schwächungen auf feindlichen Namensplaketten zeigen keine Uhr mehr, und ihre Zahlen sind nach der Restzeit gefärbt, rot unter 5 Sekunden.", -- draft
 -- stale: ["Names in chat"] = "Namen im Chat", -- draft
+-- stale: ["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "Nächste Abgabe nimmt der Navigation nicht mehr deine eigene Kartenmarkierung, den Schritt eines Guides oder den Weg zu deiner Leiche weg.", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "Neue Bewegung: Große Abklingzeiten, Questfortschritt, Stufenaufstieg, kritische Treffer, Combopunkte, Erinnerungen, der Zonenname, Rufgewinne; Treffereffekte erreichen dein Zielfenster.", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "Neue Ressource leuchtet vor dem Balken auf, der hineinwächst; ein großer Gewinn sprüht Funken an seiner Kante (die gleichmäßigen Ticks der Energie nicht).", -- draft
 -- stale: ["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "Neu: Vom Porträt lösen auf der Seite Erinnerungen gibt dem Erinnerungsknopf einen eigenen Platz, verschoben mit Layout bearbeiten.", -- draft

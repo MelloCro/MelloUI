@@ -261,14 +261,15 @@ function M:PlaceName(uf)
 		M.LayPart(uf.name, uf.HealthBarsContainer, place)
 		local point = type(place.point) == "string" and place.point or "CENTER"
 		uf.name:SetJustifyH(point:find("LEFT") and "LEFT" or (point:find("RIGHT") and "RIGHT") or "CENTER")
-		local hide = place.show == false
-		uf.name:SetAlpha(hide and 0 or 1)
-		M.nameHidden[uf.name] = hide or nil
+		-- (2.1.87, GitHub issue 67: the alpha is Plate.NameAlpha's -- this wrote 1 on a name a cover had hidden, at
+		-- every target change through the combo points' lift: the full name under the cover's first name)
+		M.nameHidden[uf.name] = (place.show == false) or nil
+		Plate.NameAlpha(uf)
 		return true
 	end
 	if uf and uf.name and M.nameHidden[uf.name] then
 		M.nameHidden[uf.name] = nil
-		uf.name:SetAlpha(1)   -- (its place taken back: seen again)
+		Plate.NameAlpha(uf)   -- (its place taken back: seen again, unless a cover stands for it)
 	end
 	local placer = Plate.placer
 	if placer and placer(uf) then
@@ -1841,10 +1842,32 @@ function Plate.Sync(uf)
 		return
 	end
 	local want = (Plate.live[uf] and Plate.measured[uf] == true and Plate.shown[uf.name] == true
-		and Plate.Want(uf)) and true or false
+		and not M.nameHidden[uf.name] and Plate.Want(uf)) and true or false
 	if band:IsShown() ~= want then
 		band:SetShown(want)
 	end
+end
+
+-- (2.1.87, GitHub issue 67: "Names on nameplates overlap") A plate name's glyphs have two reasons to be unseen and one
+-- alpha: a cover of ours draws the name's form in their place (Plate.hidden), and the Nameplate Designer hid the name
+-- (M.nameHidden, its place's show). Both are settled here, through the two writers Plate.Hide and Plate.Reveal (no
+-- other line sets anything on the game's name): unseen while either holds. A name the Designer hid shows no cover and
+-- no band.
+-- Before, M:PlaceName wrote 1 whenever it laid a placed name again -- a target change, through the combo points'
+-- lift -- and the full name stood under the cover's first name until the plate's next layout; a name the Designer
+-- hid still showed its cover. Never per update: a layout, a target change, a setting.
+function Plate.NameAlpha(uf)
+	local name = uf and uf.name
+	if not name then
+		return
+	end
+	if Plate.hidden[name] then
+		Plate.Hide(name)     -- (covered: hidden again, the cover's way)
+	else
+		Plate.Reveal(name)   -- (seen as far as the Designer shows it)
+	end
+	Plate.CoverShow(uf)
+	Plate.Sync(uf)
 end
 
 -- The form on this plate (Show Names As), or nil while the game's full name
@@ -1888,16 +1911,16 @@ function Plate.Hide(name)
 end
 
 function Plate.Reveal(name)
-	local how = Plate.HIDE
-	if how == "alpha" then
-		pcall(name.SetAlpha, name, 1)
-	elseif how == "gradient" then
+	if Plate.HIDE == "gradient" then
 		if type(name.ClearAlphaGradient) == "function" then
 			pcall(name.ClearAlphaGradient, name)
 		else
 			pcall(name.SetAlphaGradient, name, 1024, 1)
 		end
 	end
+	-- (2.1.87: back as far as the Nameplate Designer shows the name -- one it hid stays unseen: Plate.NameAlpha's rule.
+	-- The Designer's own hide is this alpha in every way of hiding)
+	pcall(name.SetAlpha, name, M.nameHidden[name] and 0 or 1)
 end
 
 -- The cover's own look over its copy of the game's name. Shade copies the game's font, justify and shadow onto a
@@ -2018,7 +2041,7 @@ function Plate.CoverShow(uf)
 	if not fs then
 		return
 	end
-	local want = (Plate.coverOn[name] ~= nil and Plate.shown[name] == true) and true or false
+	local want = (Plate.coverOn[name] ~= nil and Plate.shown[name] == true and not M.nameHidden[name]) and true or false
 	if Plate.coverShown[name] ~= want then
 		Plate.coverShown[name] = want
 		fs:SetShown(want)
@@ -2135,10 +2158,18 @@ Plate.Cleared = Perf.Shared("OnUnitCleared on a nameplate (the names' undo)", fu
 		return
 	end
 	Plate.live[uf] = nil
+	local hid = false
 	if uf.name then
 		Plate.stale[uf.name] = nil
+		-- (2.1.87: a name the Nameplate Designer hid goes back to seen with the rest, laid again at the frame's next
+		-- unit -- a pooled frame carries no hidden name to the Settings' preview plate)
+		hid = M.nameHidden[uf.name] == true
+		M.nameHidden[uf.name] = nil
 	end
 	Plate.Off(uf)
+	if hid then
+		Plate.NameAlpha(uf)
+	end
 	Plate.measured[uf], Plate.textOf[uf] = false, nil
 end)
 

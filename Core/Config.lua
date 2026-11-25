@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.87", lines = {
+		"Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name).",
+		"Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too.",
+	} },
 	{ version = "2.1.86", lines = {
 		"Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects.",
 		"Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone.",
@@ -206,9 +210,6 @@ local CHANGELOG = {
 		"Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates.",
 		"Friendly nameplates: Hide At Full Health shows only the name until they are hurt.",
 	} },
-	{ version = "2.1.82", lines = {
-		"Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -219,13 +220,13 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.87"] = { "=nameplates", "=nameplates" },
 	["2.1.86"] = { "CombatText.dealtHeals", false },
 	["2.1.85"] = { "CombatText.dealt", "CombatText.style", "CombatText.dealtOutline", "CombatText.dealtGroups",
 		"CombatText.dealtHeals", "UIModifications.frameSet" },
 	["2.1.84"] = { "=unit frames", "=nameplates", "UnitFrames.hidePvPBadge", "UIModifications.qol_Tooltip", false, false,
 		"=qol", "=profiles", "=unit frames", "MailRecipients.recent", "MailRecipients.bnet" },
 	["2.1.83"] = { "Nameplates.npcPlateSize", "Nameplates.npcHideFull" },
-	["2.1.82"] = { "QuestTracker.nearestTurnIn" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },

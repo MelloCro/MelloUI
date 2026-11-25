@@ -2457,6 +2457,8 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "姓名板：选中的敌方玩家的名字不再重叠显示两次（名字叠在全名上）。", -- draft
+	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "姓名板：在姓名板设计器中隐藏的名字，对以短名显示的玩家同样保持隐藏。", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "战斗文字：治疗数字现在看起来像治疗了：数字前有 +，伴随柔和的光向上飘起，没有打击效果。", -- draft
 	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "战斗文字：在队伍中，治疗他人之后你的武器攻击数字不再消失。", -- draft
 	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "战斗文字：战斗伤害样式（原“你的伤害”）已重做。选择 Pop、Slam 或 Stamp：命中更干脆，暴击伴随闪光落下。", -- draft
@@ -2478,7 +2480,6 @@ Lang:Add("zhCN", {
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients：已删除的角色会自动从列表中移除；未知职业显示为可点击的 ?，不再是白色名字。", -- draft
 	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "姓名板：友方 NPC 和友方玩家有了各自的预览、位置和大小。在“敌人”下的设置不再改变友方姓名板。", -- draft
 	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "友方姓名板：“满血时隐藏”在其受伤之前只显示名字。", -- draft
-	["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "“最近的可交任务”不再从你自己的地图标记、指南的步骤或跑尸路线上抢走导航。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3728,6 +3729,7 @@ Lang:Add("zhCN", {
 -- stale: ["Nameplates: the swing badge steps past the percent when it stands beside the bar."] = "姓名板：当百分比位于条旁时，挥击徽章会移到百分比之后。", -- draft
 -- stale: ["Nameplates: your debuffs on enemy nameplates no longer show a clock sweep, and their numbers are coloured by the time left, red under 5 seconds."] = "姓名板：敌方姓名板上你的减益效果不再显示时钟转圈，数字按剩余时间着色，少于5秒时变为红色。", -- draft
 -- stale: ["Names in chat"] = "聊天中的名字", -- draft
+-- stale: ["Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse."] = "“最近的可交任务”不再从你自己的地图标记、指南的步骤或跑尸路线上抢走导航。", -- draft
 -- stale: ["New motion: Big Cooldowns, quest progress, Level Up, crits, combo points, reminders, the zone's name, reputation gains; Impact Effects reach your target frame."] = "新动效：重要冷却、任务进度、升级、暴击、连击点、提醒、区域名、声望获得；冲击效果也作用于目标框体。", -- draft
 -- stale: ["New power lights ahead of the bar, which grows into it; a big gain sparks at its edge (energy's steady ticks do not)."] = "新获得的能量在条的前方亮起，条再长到那里；大量获得时在边缘迸出火花（能量的稳定恢复不会）。", -- draft
 -- stale: ["New: Detach From Portrait on the Reminders page gives the reminder button its own place, moved in Edit Layout."] = "新增：提醒页面的“从头像分离”让提醒按钮拥有自己的位置，可在“编辑布局”中移动。", -- draft

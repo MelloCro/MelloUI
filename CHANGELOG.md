@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.87
+
+- Nameplates: an enemy player's name no longer shows twice over itself after you target them (their first name over their full name). It happened with Show Names As on a short form and the name moved in the Nameplate Designer, and stayed until the plate left the screen.
+- Nameplates: a name you hide in the Nameplate Designer is now hidden on players shown by a short name too, and the shade behind it goes with it.
+
 ## 2.1.86
 
 - Combat Text: Healing Numbers look like healing now, not like a hit on your friend. A heal has a + before its number, swells in softly and floats up with a soft light in the healing colour behind it. No white flash, no streak and no shake, and a crit heal gets a ring of that light in place of the crit hit's effect.
