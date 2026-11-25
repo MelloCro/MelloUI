@@ -6551,7 +6551,10 @@ local function CheckArrival()
 		end
 		-- with Travel Time, how long the way took: "Arrived: Stormwind (2:48)"
 		local took = Travel.Took(destination)
-		M:Notify("Arrived: " .. (destination.label or "destination") .. (took and (" (" .. took .. ")") or ""), "arrive")
+		local label = destination.label or M.Tr("destination")
+		local text = M.F("Arrived: %s", label)
+		if took then text = text .. " (" .. took .. ")" end
+		M:Notify(text, "arrive")
 		if destination.fromWaypoint and C_Map.ClearUserWaypoint then
 			pcall(C_Map.ClearUserWaypoint)
 		end
@@ -7584,7 +7587,7 @@ do
 		end
 		if not trip.arrived then
 			trip.arrived = true
-			M:Notify("Arrived: " .. (s.label or "destination"), "arrive")
+			M:Notify(M.F("Arrived: %s", s.label or M.Tr("destination")), "arrive")
 			TR.Changed(trip)
 		end
 		return true
