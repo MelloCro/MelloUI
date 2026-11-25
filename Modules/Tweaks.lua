@@ -121,9 +121,9 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "toggle", key = "noticeOutline", name = "Outlined Text",
 		  desc = "An outline on MelloUI's on-screen text: notices, Combat Text, Gains and, with Text Shade on, the zone text and the messages in the middle of the screen. Off: soft text on a dark shadow." },
 		{ type = "header", name = "Combat Text" },
-		{ type = "slider", key = "worldTextScale", name = "Numbers Over Enemies", min = 0.5, max = 3, step = 0.1,
-		  format = function(v) return string.format("%.1fx", v) end, search = "world text scale",
-		  desc = "The size of the game's damage numbers over enemies." },
+		{ type = "slider", key = "worldTextScale", name = "Game Damage Numbers Size", min = 0.5, max = 3, step = 0.1,
+		  format = function(v) return string.format("%.1fx", v) end, search = "world text scale numbers over enemies",
+		  desc = "The size of the game's own damage numbers over enemies (Combat Damage Style: Game)." },
 		-- (0.19.9, L1 of keybind_layout_sketch: Action Bars > Bars > Layout)
 		{ type = "header", name = "Bar Layout" },
 		{ type = "dropdown", key = "barLayoutBar", name = "Which Bar", values = {

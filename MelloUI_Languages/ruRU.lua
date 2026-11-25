@@ -583,8 +583,6 @@ Lang:Add("ruRU", {
 	["Outlined Text"] = "Текст с контуром", -- draft
 	["An outline on MelloUI's on-screen text: notices, Combat Text, Gains and, with Text Shade on, the zone text and the messages in the middle of the screen. Off: soft text on a dark shadow."] = "Контур у экранного текста MelloUI: уведомлений, текста боя, находок и, с «Тенью текста», названия зоны и сообщений в середине экрана. Выкл.: мягкий текст на тёмной тени.", -- draft
 	["Combat Text"] = "Текст боя", -- draft
-	["Numbers Over Enemies"] = "Числа над врагами", -- draft
-	["The size of the game's damage numbers over enemies."] = "Размер чисел урона игры над противниками.", -- draft
 	["Bar Layout"] = "Раскладка панелей", -- draft
 	["Which Bar"] = "Какая панель", -- draft
 	["The bar the rows below set: its rows, icons, icon size and padding. MelloUI's own action bars change at once; the stance and pet bars (and the game's bars with UI Modifications off) are saved into your active Edit Mode layout once you let a slider go, and show after a /reload."] = "Панель, которую настраивают строки ниже: её ряды, значки, размер и отступы. Собственные панели действий MelloUI меняются сразу; панели стоек и питомца (и панели игры без изменений интерфейса) сохраняются в активную раскладку режима редактирования, когда вы отпускаете ползунок, и видны после /reload.", -- draft
@@ -1860,23 +1858,12 @@ Lang:Add("ruRU", {
 	-- CombatText
 	["The text around your character in a fight (damage taken, heals, procs) in MelloUI's look, or the game's own."] = "Текст вокруг персонажа в бою (полученный урон, исцеление, срабатывания) в стиле MelloUI или игры.", -- draft
 	["Your hits taken, heals and procs in MelloUI's soft look, or the game's own text."] = "Полученные удары, исцеление и срабатывания в мягком облике MelloUI или текст игры.", -- draft
-	["Combat Text Style"] = "Стиль текста боя", -- draft
-	["How the text around your character is shown. Game: the game's own. Lanes: damage taken left, healing right. Feed: one column over your portrait. Classic: one stream over your head."] = "Как показан текст вокруг персонажа. Игра: игровой. Дорожки: полученный урон слева, исцеление справа. Лента: колонка над портретом. Классика: поток над головой.", -- draft
 	["Game (Blizzard)"] = "Игра (Blizzard)", -- draft
 	["Lanes: round your character"] = "Дорожки: вокруг персонажа", -- draft
 	["Feed: over your portrait"] = "Лента: над портретом", -- draft
 	["Classic: one stream, restyled"] = "Классика: один поток, по-новому", -- draft
-	["Your Damage"] = "Ваш урон", -- draft
-	["How your damage numbers over enemies look. Game: the game's own. Rise, Beside, Fan or Stack: MelloUI's, shown solo; in a group the game's show."] = "Как выглядят ваши числа урона над противниками. Игра: игровые. Подъём, Сбоку, Веер или Стопка: числа MelloUI в одиночной игре; в группе — игровые.", -- draft
-	["Rise: up from the enemy"] = "Подъём: вверх от врага", -- draft
-	["Beside: up from the plate's side"] = "Сбоку: вверх от края индикатора", -- draft
-	["Fan: up, left and right"] = "Веер: вверх, влево и вправо", -- draft
-	["Stack: a column beside the enemy"] = "Стопка: колонка рядом с врагом", -- draft
-	["Your Damage Size"] = "Размер «Вашего урона»", -- draft
-	["The size of your damage numbers over enemies."] = "Размер ваших чисел урона над противниками.", -- draft
 	["Plays sample lines in the chosen style."] = "Проигрывает примеры строк в выбранном стиле.", -- draft
 	["a short burst in the chosen style"] = "короткая серия в выбранном стиле", -- draft
-	["Text Around You"] = "Текст вокруг вас", -- draft
 	["The size of the text around your character. Crits are a third bigger."] = "Размер текста вокруг персонажа. Криты на треть крупнее.", -- draft
 	["Notices In Title Font"] = "Оповещения шрифтом заголовков", -- draft
 	["Procs and auras in the title font. Off: the text font."] = "Срабатывания и ауры шрифтом заголовков. Выкл.: шрифтом текста.", -- draft
@@ -2416,9 +2403,8 @@ Lang:Add("ruRU", {
 	["Tooltip Border"] = "Рамка подсказок", -- draft
 	["Only while the health bar shows (Hide Health Bar off)"] = "Только при видимой полосе здоровья", -- draft
 	["MelloUI Combat Text"] = "Текст боя MelloUI", -- draft
-	["Only while MelloUI draws Your Damage"] = "Только пока MelloUI рисует «Ваш урон»", -- draft
-	["Only for the Lanes, Feed and Classic styles"] = "Только для стилей «Дорожки», «Лента» и «Классика»", -- draft
 	["Only for the Lanes style"] = "Только для стиля «Дорожки»", -- draft
+	["Only for the Lanes, Feed and Classic styles"] = "Только для стилей «Дорожки», «Лента» и «Классика»", -- draft
 	["Only while the Player Frame fades"] = "Только пока гаснет рамка игрока", -- draft
 	["Only with the Personal Display on"] = "Только с включённым личным дисплеем", -- draft
 	["Hidden (Hide This Bar)"] = "Скрыта («Скрыть эту панель»)", -- draft
@@ -2471,6 +2457,11 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Текст боя: «Стиль боевого урона» (раньше «Ваш урон») переделан. Выберите Pop, Slam или Stamp: удары резче, а криты падают со вспышкой.", -- draft
+	["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "Текст боя: Pop, Slam и Stamp теперь и для текста вокруг персонажа. Edit Position перемещает область каждого вида и меняет её размер.", -- draft
+	["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "Текст боя: обводка чисел урона, а урон от заклинаний в цвете своей школы.", -- draft
+	["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "Текст боя: ваш урон в оформлении MelloUI теперь и в группе (тест), а тики идут отдельной маленькой дорожкой.", -- draft
+	["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "Текст боя: числа исцеления. Ваше исцеление союзников в том же стиле, у их индикатора здоровья.", -- draft
 	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool: вкладка «Рамки» стала короче. «Рамка индикаторов здоровья» и «Сфера уровня» убраны: и то, и другое рисует ваш Набор рамок.", -- draft
 	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "Настройки: вкладка рамки теперь показывает параметры всех её частей в одном списке с прокруткой. Щёлкните по части, чтобы перейти к её параметрам.", -- draft
 	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "Настройки: части показаны списком рядом с предпросмотром, с переключателем «Показывать» у тех частей, которые можно скрыть.", -- draft
@@ -3276,6 +3267,7 @@ Lang:Add("ruRU", {
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "Сумки: в своих видах теперь может быть несколько правил; предмет, подходящий под любое из них, попадает в вид (один вид «Инструмент профессии» для кирок и удочек).", -- draft
 -- stale: ["Bar Texture (Look)"] = "Текстура полос (Облик)", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "Панели: переключатели тени за панелями команд теперь находятся в разделе «Подложки и тени», и поиск их находит.", -- draft
+-- stale: ["Beside: up from the plate's side"] = "Сбоку: вверх от края индикатора", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "Отчёт о заблокированных действиях (/mellobug): с геймпадом он также следит за навигацией геймпада в игре.", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "Отчёт о заблокированных действиях (/mellobug): с геймпадом он отмечает, что первым изменило значения геймпада в игре.", -- draft
 -- stale: ["Browns with gold bevels"] = "Коричневые с золотыми фасками", -- draft
@@ -3328,6 +3320,8 @@ Lang:Add("ruRU", {
 -- stale: ["Colour of the health bars: the unit frames', the nameplates' and your party and raid frames' (Group Frames). Blizzard bakes the green into its artwork, so the module has to colour flat textures itself. By health shades the bar from your full health colour through the half one to the low one, and keeps doing so in combat. My Colour is one colour of yours. An NPC's nameplate keeps the game's own colour (its reaction and threat) with every choice but By health. On the party and raid frames Class and Class / reaction are the class colour."] = "Цвет полос здоровья: на рамках, индикаторах здоровья и ваших рамках группы и рейда («Рамки группы»). Blizzard впекает зелёный в оформление, поэтому модулю приходится самому окрашивать плоские текстуры. «По здоровью» переводит полосу от вашего цвета полного здоровья через цвет половины к цвету низкого и продолжает в бою. «Мой цвет» — один ваш цвет. Индикатор здоровья NPC сохраняет цвет игры (его отношение и угрозу) при любом выборе, кроме «По здоровью». На рамках группы и рейда «Класс» и «Класс / отношение» дают цвет класса.", -- draft
 -- stale: ["Colour the border of unit tooltips by class (players) or reaction (NPCs)."] = "Окрашивает рамку подсказок юнитов по классу (игроки) или отношению (NPC).", -- draft
 -- stale: ["Colour the tooltip health bar by class or reaction instead of green."] = "Окрашивает полосу здоровья в подсказке по классу или отношению вместо зелёного.", -- draft
+-- stale: ["Combat Text Style"] = "Стиль текста боя", -- draft
+-- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Текст боя: «Ваш урон» переделан. Выберите Pop, Slam или Stamp: удары резче, а криты падают со вспышкой.", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "Текст боя: аура, появляющаяся и исчезающая каждые несколько секунд («Демоническое знание» с питомцем), показывается один раз.", -- draft
 -- stale: ["Combat, frames and tooltips"] = "Бой, рамки и подсказки", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "Компактные рамки рейда, рамки групп и тотемы в наборе.", -- draft
@@ -3429,6 +3423,7 @@ Lang:Add("ruRU", {
 -- stale: ["Fade: Action Bar 8"] = "Угасание: панель команд 8", -- draft
 -- stale: ["Fade: Stance & Pet Bar"] = "Угасание: панель стоек и питомца", -- draft
 -- stale: ["Fading"] = "Угасание", -- draft
+-- stale: ["Fan: up, left and right"] = "Веер: вверх, влево и вправо", -- draft
 -- stale: ["Features"] = "Функции", -- draft
 -- stale: ["Features are off: switch them on in /mello."] = "Функции выключены: включите их в /mello.", -- draft
 -- stale: ["Features on: %s"] = "Включённые функции: %s", -- draft
@@ -3556,6 +3551,7 @@ Lang:Add("ruRU", {
 -- stale: ["How the parchment looks wherever it shows: the sheets switched on below, and the quest log, quest and spell book pages. Burnt paper: warm paper with burnt edges, big pages with curled corners. Classic vellum: the vellum with painted brush-stroke edges from before 0.20.1."] = "Как выглядит пергамент везде, где он показан: листы, включённые ниже, и страницы журнала заданий, заданий и книги заклинаний. Обожжённая бумага: тёплая бумага с обожжёнными краями, большие страницы с загнутыми углами. Классический пергамент: пергамент с краями, нарисованными кистью, как до 0.20.1.", -- draft
 -- stale: ["How the raid's frames are grouped: by raid group (1 to 8), by role, by class, or one list."] = "Как группируются рамки рейда: по группе рейда (1–8), по роли, по классу или одним списком.", -- draft
 -- stale: ["How the route is drawn on the world map and the minimap: red beads in gold rings, one pale gold line, or short pale gold dashes. The destination is a flag in a gold ring either way."] = "Как рисуется маршрут на карте мира и мини-карте: красные бусины в золотых кольцах, одна бледно-золотая линия или короткие бледно-золотые штрихи. Цель в любом случае — флаг в золотом кольце.", -- draft
+-- stale: ["How the text around your character is shown. Game: the game's own. Lanes: damage taken left, healing right. Feed: one column over your portrait. Classic: one stream over your head."] = "Как показан текст вокруг персонажа. Игра: игровой. Дорожки: полученный урон слева, исцеление справа. Лента: колонка над портретом. Классика: поток над головой.", -- draft
 -- stale: ["How the value is written."] = "Как записывается значение.", -- draft
 -- stale: ["How thick your share is on the race bar's line (its pins and labels keep their size). Also in Edit Layout: right-click the race bar."] = "Насколько толста ваша доля на линии полосы гонки (её метки и подписи сохраняют размер). Также в «Изменить раскладку»: правый щелчок по полосе гонки.", -- draft
 -- stale: ["How wide the bars are; the weapon's rim hangs left of them and the seconds right of them. Also in Edit Layout (right-click a bar there)."] = "Насколько широки полосы; ободок оружия висит слева от них, секунды — справа. Также в «Изменить раскладку» (правый щелчок по полосе там).", -- draft
@@ -3563,6 +3559,7 @@ Lang:Add("ruRU", {
 -- stale: ["How wide the map is. The round map is as tall as it is wide, and its painted ring grows and shrinks with it. The square map's border and the zone name keep their size, the Services buttons too (smaller only on a map too narrow for them), and the Quest Tracker under the map follows its width. Edit Mode's minimap Size no longer sizes the map while the Minimap Kit is on."] = "Насколько широка карта. Круглая карта столь же высока, сколь широка, и её рисованное кольцо растёт и сжимается вместе с ней. Рамка квадратной карты и название зоны сохраняют размер, кнопки «Услуг» тоже (меньше только на слишком узкой для них карте), а отслеживание заданий под картой следует её ширине. «Размер» мини-карты в режиме редактирования больше не задаёт размер карты, пока включён набор мини-карты.", -- draft
 -- stale: ["How wide the race bar is. Also in Edit Layout: right-click the race bar."] = "Насколько широка полоса гонки. Также в «Изменить раскладку»: правый щелчок по полосе гонки.", -- draft
 -- stale: ["How wide the tracker is when it does not match the minimap's width (at least 60). Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)."] = "Ширина отслеживания, когда оно не повторяет ширину мини-карты (не меньше 60). «Из режима редактирования»: как ширина отслеживания игры. Ручка в левом нижнем углу задаёт ширину и высоту перетаскиванием (только высоту, пока оно повторяет мини-карту).", -- draft
+-- stale: ["How your damage numbers over enemies look. Game: the game's own. Rise, Beside, Fan or Stack: MelloUI's, shown solo; in a group the game's show."] = "Как выглядят ваши числа урона над противниками. Игра: игровые. Подъём, Сбоку, Веер или Стопка: числа MelloUI в одиночной игре; в группе — игровые.", -- draft
 -- stale: ["How your heals look. By Class: Holy for priests and paladins, Nature for druids, Water for shamans (Holy for anyone else). Water: water circles your cast bar, a winding stream throws off droplets, a splash lands; a shield is a water bubble, a heal to full a geyser. Holy: gold sparks spiral into your spell's icon, a gold comet flies, a white flash and a burst of rays land, rune marks linger round the frame. Nature: green and gold ribbons circle your cast bar, ribbons fly shedding leaves, leaves burst and rise. Quiet: your cast bar's fill glows, a thin thread of light flies, the frame's border flares. Each kind lands its own way in each look: a heal over time sinks in, a shield wraps the frame in a barrier, protection puts a crest over it, a heal to full raises a column of light, a resurrection lights the fallen one's frame."] = "Как выглядит ваше исцеление. «По классу»: «Свет» для жрецов и паладинов, «Природа» для друидов, «Вода» для шаманов («Свет» для остальных). «Вода»: вода кружит у индикатора заклинаний, извилистый поток роняет капли, приземляется всплеск; щит — водяной пузырь, полное исцеление — гейзер. «Свет»: золотые искры спиралью уходят в значок заклинания, летит золотая комета, приземляются белая вспышка и всплеск лучей, руны задерживаются вокруг рамки. «Природа»: зелёные и золотые ленты кружат у индикатора заклинаний, ленты летят, роняя листья, листья взрываются и поднимаются. «Тихо»: заливка индикатора заклинаний светится, летит тонкая нить света, рамка вспыхивает. Каждый вид приземляется по-своему в каждом облике: периодическое исцеление впитывается, щит окутывает рамку барьером, защита ставит над ней герб, полное исцеление поднимает столб света, воскрешение озаряет рамку павшего.", -- draft
 -- stale: ["Icon frames and bar backgrounds of the Essential, Utility and Buff cooldown viewers."] = "Рамки значков и фон полос у окон основных, вспомогательных способностей и положительных эффектов.", -- draft
 -- stale: ["Icons stay smooth and sharp at every size and UI scale: each one is drawn from a copy made for its size on your screen."] = "Значки остаются гладкими и чёткими при любом размере и масштабе: каждый рисуется из копии под его размер на экране.", -- draft
@@ -3743,6 +3740,7 @@ Lang:Add("ruRU", {
 -- stale: ["Not with Attach To The Player Frame"] = "Не с креплением к рамке игрока", -- draft
 -- stale: ["Nudge the text down (negative) or up (positive)."] = "Сдвигает текст вниз (отрицательное) или вверх (положительное).", -- draft
 -- stale: ["Nudge the text left (negative) or right (positive) from where Blizzard places its own bar text."] = "Сдвигает текст влево (отрицательное) или вправо (положительное) от места, где Blizzard ставит собственный текст полосы.", -- draft
+-- stale: ["Numbers Over Enemies"] = "Числа над врагами", -- draft
 -- stale: ["Off Hand Bar"] = "Полоса левой руки", -- draft
 -- stale: ["Off-hand bar"] = "Полоса левой руки", -- draft
 -- stale: ["Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before."] = "Рамки группы в стиле Oldschool: значок уровня и его рамка рисуются поверх кольца портрета. Раньше кольцо проходило поверх значка.", -- draft
@@ -3764,6 +3762,7 @@ Lang:Add("ruRU", {
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "Одна короткая строка в верхней трети экрана, когда у MelloUI есть для вас новости: маршрут задан или пройден, услуга запомнена, задания подземелья перечислены. Она гаснет через несколько секунд. Переместите её в «Изменить раскладку».", -- draft
 -- stale: ["Only for the Dark background"] = "Только для «Тёмного» фона", -- draft
 -- stale: ["Only when attached to the frame"] = "Только при прикреплении к рамке", -- draft
+-- stale: ["Only while MelloUI draws Your Damage"] = "Только пока MelloUI рисует «Ваш урон»", -- draft
 -- stale: ["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "Только с «Минимальным» видом или рисованным чатом", -- draft
 -- stale: ["Only with the cast bars' Painted Skin"] = "Только с рисованным обликом индикаторов заклинаний", -- draft
 -- stale: ["Only with the unit frames' Painted Skin"] = "Только с рисованным обликом рамок", -- draft
@@ -3881,6 +3880,7 @@ Lang:Add("ruRU", {
 -- stale: ["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "Список пополнения: теперь каталог по видам (напитки, еда, боеприпасы, зелья, эликсиры, свитки, яды, реагенты) с поиском: отметьте каждый предмет, который нужно держать, и укажите количество.", -- draft
 -- stale: ["Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up."] = "Пополнение: «Список покупок ниже» даёт списку у торговца собственную долю, и он может открыться раньше напоминания.", -- draft
 -- stale: ["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "Пополнение: охотники могут держать корм для питомца по рациону (мясо, рыба, хлеб, сыр, фрукты, грибы), а список вмещает 40 строк.", -- draft
+-- stale: ["Rise: up from the enemy"] = "Подъём: вверх от врага", -- draft
 -- stale: ["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "Выбор роли: при входе в подземелье в группе роли вашего класса падают над персонажем. Один щелчок задаёт вашу, и он может запомнить её для следующих.", -- draft
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "Круглые рамки чёткие в малом размере: кольца кнопок «Услуг» и стилей «Круглой рамки» сплошные, а не пунктирные.", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route следует Follow The Arrow, Azeroth Pilot Reloaded, стрелке TomTom и Guidelime так же, как RestedXP. Включено несколько гидов? MelloUI спросит, какой оставить.", -- draft
@@ -3947,6 +3947,7 @@ Lang:Add("ruRU", {
 -- stale: ["Space between the name / debuff row and the crowd-control icon."] = "Расстояние между строкой имени / отрицательных эффектов и значком контроля.", -- draft
 -- stale: ["Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak."] = "Группы заклинаний для каждого класса: одна раскладка для всех ваших персонажей; выключенное заклинание — настройка только вашего класса.", -- draft
 -- stale: ["Spot"] = "Место", -- draft
+-- stale: ["Stack: a column beside the enemy"] = "Стопка: колонка рядом с врагом", -- draft
 -- stale: ["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "Отметьте звёздочкой нужные предметы: розыгрыш одного из них светится золотом и выделяет «Мне это нужно». «Взять задания»: Route проведёт ко всем заданиям подземелья самым быстрым путём.", -- draft
 -- stale: ["Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout."] = "Припасы, почта, ремонт и обучение: мягкий намёк у портрета, никогда не нытьё. С виджетами розыгрыша добычи, призывов и прочего, и показателем FPS / задержки.", -- draft
 -- stale: ["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "Страница поддержавших: имена теперь висят на трёх анимированных знамёнах, по одному на уровень, а Patreon и Discord MelloUI — в окне для копирования.", -- draft
@@ -3960,6 +3961,7 @@ Lang:Add("ruRU", {
 -- stale: ["Swing timer: Swing Ring Width (Thin, Medium, Thick) and Swing Ring Colour options for the ring that fills round the swing badge; the part still to fill is now a dark track, easier to see."] = "Таймер ударов: параметры «Ширина кольца удара» (Тонкое, Среднее, Толстое) и «Цвет кольца удара» для кольца, заполняющегося вокруг значка; ещё не заполненная часть теперь тёмная дорожка, её лучше видно.", -- draft
 -- stale: ["Take the tour"] = "Экскурсия", -- draft
 -- stale: ["Take this indicator off the list (this spec only)."] = "Убрать этот индикатор из списка (только для этой специализации).", -- draft
+-- stale: ["Text Around You"] = "Текст вокруг вас", -- draft
 -- stale: ["Text height relative to the icon size."] = "Высота текста относительно размера значка.", -- draft
 -- stale: ["Text size. Default follows the status bar text font of the game (and the Fonts module)."] = "Размер текста. По умолчанию следует шрифту текстовых индикаторов игры (и модулю «Шрифты»).", -- draft
 -- stale: ["The Fight History window: every fight of this session, grouped by run, with the damage, healing and your spells of each. It opens from its button in the chat's button column and from the summary. It takes the place of the game's meter windows."] = "Окно «История боёв»: каждый бой этой сессии, по забегам, с уроном, исцелением и вашими заклинаниями в каждом. Открывается своей кнопкой в колонке кнопок чата и из итога. Заменяет окна счетчика урона игры.", -- draft
@@ -4147,6 +4149,7 @@ Lang:Add("ruRU", {
 -- stale: ["The size of Your Damage's numbers over the enemies (Rise, Beside, Fan and Stack), whatever the text around you. 70% by default."] = "Размер чисел «Вашего урона» над врагами («Подъём», «Сбоку», «Веер» и «Стопка»), каким бы ни был текст вокруг вас. По умолчанию 70%.", -- draft
 -- stale: ["The size of each combo point, as a share of the health bar's height."] = "Размер каждого приёма серии как доля высоты полосы здоровья.", -- draft
 -- stale: ["The size of the bar's buttons. 100% is the game's own size."] = "Размер кнопок панели. 100% — размер игры.", -- draft
+-- stale: ["The size of the game's damage numbers over enemies."] = "Размер чисел урона игры над противниками.", -- draft
 -- stale: ["The size of the numbers over the enemies and the ones you heal: the game's own, and Your Damage's when MelloUI draws them (one or the other shows). 1.0 is the game's size."] = "Размер чисел над врагами и над теми, кого вы лечите: собственных чисел игры и «Вашего урона», когда их рисует MelloUI (видны одни или другие). 1.0 — размер игры.", -- draft
 -- stale: ["The size of the quest titles and the section headers (the headers in the Fonts module's title face, which draws them larger); the objectives are one size smaller. The Fonts' Titles & headers size does not change it."] = "Размер названий заданий и заголовков разделов (заголовки — шрифтом заголовков модуля «Шрифты», который рисует их крупнее); цели на размер меньше. «Размер заголовков» в «Шрифтах» его не меняет.", -- draft
 -- stale: ["The size of the soft shade behind the combat text, the text over you and Your Damage alike. 100% is the notices' shade; less hugs the numbers closer; 0% shows none."] = "Размер мягкой тени за текстом боя — и над вами, и у «Вашего урона». 100% — тень оповещений; меньше — плотнее к числам; 0% — без тени.", -- draft
@@ -4154,6 +4157,7 @@ Lang:Add("ruRU", {
 -- stale: ["The size of the tracker's title, Objectives (in the Fonts module's title face, which draws it larger). The Fonts' Titles & headers size does not change it."] = "Размер заголовка отслеживания, «Задачи» (шрифтом заголовков модуля «Шрифты», который рисует его крупнее). «Размер заголовков» в «Шрифтах» его не меняет.", -- draft
 -- stale: ["The size of your buff and debuff icons under the player frame, in pixels (the target's are 22 by default). The rows keep one width, so a smaller size fits more in a row."] = "Размер значков ваших эффектов под рамкой игрока в пикселях (у цели по умолчанию 22). Ряды сохраняют одну ширину, поэтому меньший размер вмещает больше в ряд.", -- draft
 -- stale: ["The size of your buff and debuff icons, in pixels: MelloUI's own rows while Your Buffs And Debuffs shows them, else the game's buff and debuff bars (saved into your Edit Mode layout in its own steps of 3 pixels, shown after a reload; 30 is the game's size)."] = "Размер значков ваших положительных и отрицательных эффектов в пикселях: ряды MelloUI, пока их показывает «Ваши положительные и отрицательные эффекты», иначе панели эффектов игры (сохраняется в вашей раскладке режима редактирования шагами по 3 пикселя, видно после перезагрузки; 30 — размер игры).", -- draft
+-- stale: ["The size of your damage numbers over enemies."] = "Размер ваших чисел урона над противниками.", -- draft
 -- stale: ["The size of your debuff icons on enemy nameplates, in pixels."] = "Размер значков ваших отрицательных эффектов на индикаторах здоровья врагов в пикселях.", -- draft
 -- stale: ["The size of your swing timer's weapon badge on your target's nameplate."] = "Размер значка оружия вашего таймера ударов на индикаторе здоровья вашей цели.", -- draft
 -- stale: ["The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row."] = "Размер значков эффектов вашей цели под её рамкой в пикселях. Ряды сохраняют одну ширину, поэтому меньший размер вмещает больше в ряд.", -- draft
@@ -4259,6 +4263,8 @@ Lang:Add("ruRU", {
 -- stale: ["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "Мировой маркер: у задания он стоит на собственной точке игры, на её настоящей высоте, даже когда вы смотрите с холма.", -- draft
 -- stale: ["Write these lines in the chat instead of showing them on the screen. They show there even while Chat Notices is off."] = "Пишет эти строки в чат вместо показа на экране. Там они видны, даже если «Оповещения в чате» выключены.", -- draft
 -- stale: ["You are reminded when a line drops below this share of its amount: at 50 %, a line of 20 water reminds you at 9. At a shop it is bought back up to the full amount. The reminder needs Reminders on; the Restock List marks the low lines either way."] = "Напоминание приходит, когда строка опускается ниже этой доли своего количества: при 50 % строка из 20 воды напомнит на 9. У торговца она докупается до полного количества. Напоминанию нужны включённые «Напоминания»; «Список пополнения» в любом случае отмечает строки, где мало.", -- draft
+-- stale: ["Your Damage"] = "Ваш урон", -- draft
+-- stale: ["Your Damage Size"] = "Размер «Вашего урона»", -- draft
 -- stale: ["Your UI and bars stay. MelloUI's features switch on."] = "Ваш интерфейс и панели остаются. Функции MelloUI включаются.", -- draft
 -- stale: ["Your addons' minimap buttons (Questie and the others that put a round button on the minimap's edge) taken off the minimap and gathered into one more group in the Services row, AddOns: click it for a list of them. A click on an addon there is that addon's own (left, right or middle), and pointing at it shows its own tooltip. Only with Button Layout's Groups. Off: the buttons go back on the minimap."] = "Кнопки мини-карты ваших модификаций (Questie и другие, что ставят круглую кнопку на край мини-карты) снимаются с мини-карты и собираются в ещё одну группу ряда услуг, «Модификации»: нажмите её, чтобы увидеть их список. Щелчок по модификации там — щелчок самой модификации (левый, правый или средний), а наведение показывает её собственную подсказку. Только с «Группами» в «Раскладке кнопок». Выкл.: кнопки возвращаются на мини-карту.", -- draft
 -- stale: ["Your aura indicators on the frames. Off: the frames show none."] = "Ваши индикаторы эффектов на рамках. Выкл.: рамки их не показывают.", -- draft

@@ -447,7 +447,7 @@ function Preview:Start(scene, part)
 		MelloUI:Announce(TEXT.inCombat, "info")
 		return false, "combat"
 	end
-	if MelloUI:EditingLayout() then
+	if MelloUI:EditingLayout() or MelloUI:EditSession() then   -- (a feature's own session too, 2.1.85)
 		MelloUI:Announce(TEXT.editing, "info")
 		return false, "editlayout"
 	end
@@ -575,7 +575,7 @@ function Preview:Once(fn)
 		MelloUI:Announce(TEXT.inCombat, "info")
 		return false
 	end
-	if MelloUI:EditingLayout() then
+	if MelloUI:EditingLayout() or MelloUI:EditSession() then   -- (a feature's own session too, 2.1.85)
 		MelloUI:Announce(TEXT.editing, "info")
 		return false
 	end

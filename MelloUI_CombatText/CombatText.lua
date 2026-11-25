@@ -69,10 +69,10 @@
 -- behaviour should stay the same as its the default, i dont want to change
 -- the feel of dealing damage"; the sketch combat_dealt_looks.jpg): Game (the
 -- default: the engine's numbers, untouched), or MelloUI draws the hits at
--- each enemy's nameplate -- Rise (straight up, as the game's), Fan (up, left
--- and right in turn) or Stack (a short column beside the plate, newest on
--- top). As the game's: a crit bigger, a glancing blow smaller, about a
--- second and a half each. The source is UNIT_COMBAT for the plates' units
+-- each enemy's nameplate. (2.1.85: the looks redone -- Pop, Slam and Stamp
+-- in place of Rise, Beside, Fan and Stack, DEALT.look below; Outlined Numbers;
+-- a spell's hit in its school's colour.) A crit bigger, a glancing blow
+-- smaller. The source is UNIT_COMBAT for the plates' units
 -- (the user's check: it comes for target AND nameplateN, the same hit -- the
 -- plates only, so no hit counts twice -- with plain amounts in a fight; the
 -- combat log is restricted on this client). UNIT_COMBAT says what the enemy
@@ -176,10 +176,13 @@ local T = {
 }
 
 local TEXT = {
-	gameStyle = "Combat Text Style and Your Damage are both Game: the game draws them. Pick Lanes, Feed or Classic, or a Your Damage look, to preview MelloUI's.",
-	dealtTarget = "Target an enemy, with enemy nameplates on, to preview Your Damage at its nameplate.",
+	gameStyle = "Personal Combat Text Style and Combat Damage Style are both Game: the game draws them. Pick Lanes, Feed or Classic, or a Combat Damage Style, to preview MelloUI's.",
+	dealtTarget = "Target an enemy, with enemy nameplates on, to preview Combat Damage at its nameplate.",
 	missing = "Not in this client",
-	dealtOwns = "Off while MelloUI draws your damage (Your Damage)",
+	dealtOwns = "Off while MelloUI draws your damage (Combat Damage Style)",
+	healsOwns = "Off while MelloUI draws your healing (Healing Numbers)",
+	editPick = "Pick Pop, Slam or Stamp as Personal Combat Text Style first: their lines have areas you can place.",
+	editBusy = "Close Edit Layout first, then press Edit Position again.",
 	-- words the game names itself (COMBAT_TEXT_*); these when it does not
 	MISS = "Miss", DODGE = "Dodge", PARRY = "Parry", EVADE = "Evade", IMMUNE = "Immune", DEFLECT = "Deflect",
 	REFLECT = "Reflect", MISFIRE = "Misfire", BLOCK = "Block", ABSORB = "Absorb", RESIST = "Resist",
@@ -190,6 +193,10 @@ local TEXT = {
 
 local STYLES = {
 	{ value = "game", label = "Game (Blizzard)" },
+	-- (2.1.85: the three looks of Combat Damage Style for the text around you too, each kind of line in its own area)
+	{ value = "pop", label = "Pop: lands beside your character" },
+	{ value = "slam", label = "Slam: thrown off on an arc" },
+	{ value = "stamp", label = "Stamp: tidy columns" },
 	{ value = "lanes", label = "Lanes: round your character" },
 	{ value = "feed", label = "Feed: over your portrait" },
 	{ value = "classic", label = "Classic: one stream, restyled" },
@@ -200,11 +207,23 @@ local STYLES = {
 local DEALT = {
 	styles = {
 		{ value = "game", label = "Game (Blizzard)" },
-		{ value = "rise", label = "Rise: up from the enemy" },
-		{ value = "side", label = "Beside: up from the plate's side" },
-		{ value = "fan", label = "Fan: up, left and right" },
-		{ value = "stack", label = "Stack: a column beside the enemy" },
+		{ value = "pop", label = "Pop: lands above the plate" },
+		{ value = "slam", label = "Slam: thrown out on an arc" },
+		{ value = "stamp", label = "Stamp: a column beside the plate" },
 	},
+	-- (2.1.85) the looks of before, read as the new one nearest to them
+	old = { rise = "pop", side = "pop", fan = "pop", stack = "stamp" },
+	outlines = { { value = "thick", label = "Thick" }, { value = "thin", label = "Thin" }, { value = "none", label = "None" } },
+	most = 8,          -- the most lines at one plate (its own count: Most Lines is the text around you's)
+	word = 0.6,        -- a word (Dodge, Parry ...), times the look's size
+	tick = 0.62,       -- a tick of damage over time, times the look's size
+	-- the combat log's lines (DEALT.Frame below): this frame's counts, its hits waiting for the frame's end, your
+	-- swings whose numbers are still to come (0.3 to 1.3 s after the swing: the user's runs showed 0.48 to 1.10)
+	log = { at = -1, lines = 0, swings = 0, casts = 0, hits = {}, n = 0, pending = {}, spare = {}, timer = false,
+		lagMin = 0.3, lagMax = 1.3 },
+	-- a hit's school, as the game numbers them (UNIT_COMBAT's last value): its meaning colour's key
+	schools = { { 2, "combatHoly" }, { 4, "combatFire" }, { 8, "combatNature" }, { 16, "combatFrost" },
+		{ 32, "combatShadow" }, { 64, "combatArcane" } },
 	keys = { "enemyDamage", "enemyPeriodic", "enemyPet" },
 	owns = { enemyDamage = true, enemyPeriodic = true, enemyPet = true },
 	words = { DODGE = true, PARRY = true, MISS = true, EVADE = true, IMMUNE = true, DEFLECT = true, REFLECT = true,
@@ -214,22 +233,19 @@ local DEALT = {
 	-- the text size times this, per look (the game's numbers over enemies are
 	-- about twice the size of the text over you; the column smaller), and
 	-- times the game's World Text Scale, as its own numbers
-	size = { rise = 3.2, side = 2.6, fan = 2.9, stack = 1.5 },
+	size = { pop = 2.9, slam = 2.9, stamp = 2.9 },
 	pool = {},         -- the dealt lines' spares (never shared with the self text's)
-	stagger = 30,      -- Rise: a hit close behind the last, beside it in turn
 	crit = 1.15,       -- a crit, times that (on top of the crit size every line has)
 	glancing = 0.8,    -- a glancing blow, times that
-	startY = 6,        -- Rise and Fan start on the enemy: over its plate's middle
-	rise = 150,        -- Rise's way up, most of it at once (outCubic)
-	fanX = 80, fanY = 120,
-	sideX = 24, sideRise = 90,   -- Beside: from the plate's right edge, up and out (0.25.0), clear of the name
 	hold = 0.2,        -- a hit before you are on the enemy's list: held this long for the threat update
 	held = {},         -- those hits: { unit, at, kind, value, crit, glancing, colour, label } (pooled)
 	spare = {},
 	samples = {        -- Preview's (made up, plain): event, flag, amount, school
-		{ "WOUND", "", 1284, 1 }, { "WOUND", "CRITICAL", 3051, 1 }, { "DODGE", "", 0, 1 }, { "WOUND", "", 212, 4 },
-		{ "WOUND", "GLANCING", 96, 1 },
+		{ "WOUND", "", 1284, 1 }, { "WOUND", "", 212, 4 }, { "WOUND", "CRITICAL", 3051, 1 }, { "DODGE", "", 0, 1 },
+		{ "WOUND", "", 468, 16 }, { "WOUND", "GLANCING", 96, 1 }, { "WOUND", "", 730, 32 }, { "WOUND", "CRITICAL", 2210, 4 },
 	},
+	-- Preview's on a friend's plate: flag, amount
+	heals = { { "", 412 }, { "", 96 }, { "CRITICAL", 1310 }, { "", 388 }, { "", 96 }, { "", 505 } },
 }
 
 -- the over-enemy switches: the game's own CVars, both spellings (this
@@ -268,6 +284,9 @@ M = MelloUI:RegisterModule("CombatText", {
 		style = "game",
 		dealt = "game",
 		dealtScale = 0.7,   -- (0.25.0: Your Damage Size; players found the numbers too big)
+		dealtGroups = true,   -- (2.1.85: Your Damage In Groups, by the combat log's lines)
+		dealtHeals = true,    -- (2.1.85: Healing Numbers, your heals at the friend's nameplate)
+		dealtOutline = "thick",   -- (2.1.85: Number Outline, the user: "the option to add outline to the damage text")
 		size = T.size,
 		titleNotices = true,
 		shadeSize = 1,
@@ -282,19 +301,35 @@ M = MelloUI:RegisterModule("CombatText", {
 		reputation = true,
 	},
 	options = {
-		{ type = "dropdown", key = "style", name = "Combat Text Style", values = STYLES,
-		  desc = "How the text around your character is shown. Game: the game's own. Lanes: damage taken left, healing right. Feed: one column over your portrait. Classic: one stream over your head." },
-		{ type = "dropdown", key = "dealt", name = "Your Damage", values = DEALT.styles,
-		  desc = "How your damage numbers over enemies look. Game: the game's own. Rise, Beside, Fan or Stack: MelloUI's, shown solo; in a group the game's show." },
+		-- (2.1.85; the user, 2026-11-24, of the two dropdowns: "First one is the Personal Combat Text Style, second one
+		-- is Combat Damage Style", and of the two sliders: "first one should scale the Personal Combat Text Style,
+		-- second one Combat Damage Style") the names; in the code `style` and `dealt` (Your Damage) as before
+		{ type = "dropdown", key = "style", name = "Personal Combat Text Style", values = STYLES,
+		  desc = "How the text around your character is shown. Game: the game's own. Pop, Slam or Stamp: MelloUI's new looks, each kind of line in an area of its own (Edit Position). Lanes, Feed and Classic: the earlier looks." },
+		{ type = "button", name = "Edit Position", text = "Edit", new = "2.1.85",
+		  hint = "move and size each area",
+		  desc = "Opens Edit Layout with only Combat Text's areas: Damage Taken, Healing, Procs and Resources. Drag one to move it, use the mouse wheel to size it. For Pop, Slam and Stamp.",
+		  onClick = function() M.EditPosition() end },
+		{ type = "dropdown", key = "dealt", name = "Combat Damage Style", values = DEALT.styles,
+		  desc = "How your damage numbers over enemies look. Game: the game's own. Pop, Slam or Stamp: MelloUI's." },
+		{ type = "toggle", key = "dealtGroups", name = "Combat Damage In Groups", new = "2.1.85",
+		  desc = "In a group, MelloUI shows your own hits: the ones the game's combat log names as yours. It needs the Combat Log's filter on My actions, and your pet's hits are not shown. Off: the game's own numbers in a group." },
+		-- (2.1.85; the user, 2026-11-24: "You forgot the Healing Numbers in the Damage Numbers, the healing that appears
+		-- above the friendly player when healing him")
+		{ type = "toggle", key = "dealtHeals", name = "Healing Numbers", new = "2.1.85",
+		  missing = function() return not Enemy.Name("enemyHealing") and TEXT.missing or nil end,
+		  desc = "Your heals in the same look, at the nameplate of the friend you heal, in place of the game's own healing numbers. It needs friendly nameplates shown and the Combat Log's filter on My actions. Where MelloUI cannot draw them (friendly nameplates off, or inside dungeons and raids, where the game keeps friendly nameplates to itself) the game's own numbers show. Off: always the game's own." },
+		{ type = "dropdown", key = "dealtOutline", name = "Number Outline", new = "2.1.85", values = DEALT.outlines,
+		  desc = "The dark outline around MelloUI's numbers (Combat Damage Style, and the numbers around you in Pop, Slam and Stamp): thick, thin or none. None: the soft shade behind them instead." },
 		-- (0.25.0; the user, 2026-10-20: "our custom damage font can not be scaled down, people complain its too big":
 		-- this client has no World Text Scale, so nothing sized them)
-		{ type = "slider", key = "dealtScale", name = "Your Damage Size", min = 0.3, max = 1.5, step = 0.05, percent = true,
-		  desc = "The size of your damage numbers over enemies." },
+		{ type = "slider", key = "dealtScale", name = "Combat Damage Size", min = 0.3, max = 1.5, step = 0.05, percent = true,
+		  desc = "The size of your damage numbers over enemies in Pop, Slam and Stamp." },
 		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a short burst in the chosen style",
 		  desc = "Plays sample lines in the chosen style.",
 		  onClick = function() M.Preview() end },
-		{ type = "slider", key = "size", name = "Text Around You", min = T.sizeMin, max = T.sizeMax, step = 1,
+		{ type = "slider", key = "size", name = "Personal Combat Text Size", min = T.sizeMin, max = T.sizeMax, step = 1,
 		  search = "combat text size",
 		  desc = "The size of the text around your character. Crits are a third bigger." },
 		{ type = "toggle", key = "titleNotices", name = "Notices In Title Font",
@@ -341,7 +376,7 @@ end
 local function Style()
 	local db = M.db
 	local s = db and db.style
-	if s == "lanes" or s == "feed" or s == "classic" then
+	if s == "lanes" or s == "feed" or s == "classic" or s == "pop" or s == "slam" or s == "stamp" then
 		return s
 	end
 	return "game"
@@ -356,10 +391,21 @@ end
 local function Dealt()
 	local db = M.db
 	local d = db and db.dealt
-	if d == "rise" or d == "side" or d == "fan" or d == "stack" then
+	d = DEALT.old[d] or d
+	if d == "pop" or d == "slam" or d == "stamp" then
 		return d
 	end
 	return "game"
+end
+
+-- Number Outline: a dark outline on Your Damage's numbers ("thick", true for thin) and no soft band behind them,
+-- or false: the band
+function DEALT.Outlined()
+	local v = M.db and M.db.dealtOutline
+	if v == "none" or v == false then
+		return false
+	end
+	return v == "thin" and true or "thick"
 end
 
 local function DealtOn()
@@ -379,6 +425,19 @@ local function PlatesShown()
 	return true
 end
 
+-- the friendly players' nameplates shown (the game's switch, its own key); a secret or unknown answer counts as
+-- shown
+function DEALT.FriendPlates()
+	if not (C_CVar and C_CVar.GetCVarBool) then
+		return true
+	end
+	local ok, on = pcall(C_CVar.GetCVarBool, "nameplateShowFriendlyPlayers")
+	if ok and on ~= nil and not Secret(on) then
+		return on and true or false
+	end
+	return true
+end
+
 -- (retail, never shipped: the user's own play while WoW Forever is down, 2026-10-24: "in the open world the damage
 -- numbers are shown from every source, even other players that are attacking the same target as me, that should
 -- never be the case") the retail client (MelloUI.Retail): its open-world enemies are shared by everyone who
@@ -393,8 +452,72 @@ end
 -- in this fight (DEALT.threatHidden: a secret answer seen; the fight's end
 -- tries again)
 local function DealtDrawing()
-	return DealtOn() and PlatesShown() and not MelloUI.Threat.Grouped() and not DEALT.threatHidden
-		and not DEALT.Untellable()
+	if not (DealtOn() and PlatesShown()) or DEALT.Untellable() then
+		return false
+	end
+	if MelloUI.Threat.Grouped() or DEALT.threatHidden then
+		return DEALT.ByLog()   -- (2.1.85: your own hits told by the combat log's lines)
+	end
+	return true
+end
+
+-- (2.1.85) The combat log's lines. The user's two runs of /mello combattext log (2026-11-24, a melee character, solo
+-- and in a group; the Combat Log's filter on My actions) showed what comes with a hit of your own:
+--   a special or a spell   its log line and the hit on the plate in ONE frame, the line first
+--   a tick                 the same, the hit first, and no cast of yours in that frame
+--   a weapon swing         PLAYER_SWING and its line in one frame, the hit on the plate 0.5 to 1.1 s later (alone);
+--                          a swing dodged or parried has no line, its word comes as late
+-- and nothing else: a hit with no line in its frame and no swing of yours before it is somebody else's. So each
+-- frame's lines, swings and casts are counted (DEALT.Frame), a hit waits for its frame's end (DEALT.Queue ->
+-- DEALT.Close) and is yours when a line of that frame is left for it, or a swing of yours is due. The lines are only
+-- counted: their text and colour are never read. Solo every hit on an enemy you fight is drawn as before; the lines
+-- only tell its ticks. Your pet's hits have no swing event: in a group they are not shown.
+function DEALT.LinesOn()
+	local CL = rawget(_G, "C_CombatLog")
+	local fn = type(CL) == "table" and CL.AreFilteredEventsEnabled
+	if type(fn) ~= "function" then
+		return false
+	end
+	local ok, on = pcall(fn)
+	return ok and not Secret(on) and on == true
+end
+
+function DEALT.ByLog()
+	local db = M.db
+	return not (db and db.dealtGroups == false) and DEALT.LinesOn()
+end
+
+-- The lines' switch is the game's: its Combat Log window turns them off as it hides. While Your Damage is on, a
+-- change of that switch applies the state again (the game's own numbers back when the lines stop: a post-hook, the
+-- apply a frame later), and in a group with Your Damage In Groups on MelloUI asks for the lines itself
+function DEALT.KeepLines()
+	if not DealtOn() then
+		return
+	end
+	local CL = rawget(_G, "C_CombatLog")
+	if type(CL) ~= "table" or type(CL.SetFilteredEventsEnabled) ~= "function" then
+		return
+	end
+	if not DEALT.hooked then
+		DEALT.hooked = true
+		hooksecurefunc(CL, "SetFilteredEventsEnabled", function()
+			if not DEALT.again then
+				DEALT.again = true
+				C_Timer.After(0, function()
+					DEALT.again = false
+					if M.isEnabled and DEALT.Apply then
+						DEALT.Apply()   -- (the state applied again: set below, with Apply)
+					end
+				end)
+			end
+		end)
+	end
+	local db = M.db
+	local grouped = (MelloUI.Threat.Grouped() or DEALT.threatHidden) and not (db and db.dealtGroups == false)
+	-- (your heals are told by the lines everywhere, alone too: DEALT.HealsReady)
+	if (grouped or DEALT.HealsReady()) and not DEALT.LinesOn() then
+		pcall(CL.SetFilteredEventsEnabled, true)
+	end
 end
 
 local function TextSize()
@@ -454,6 +577,9 @@ function Enemy.Missing(key)
 	if DEALT.owns[key] and DealtOn() then
 		return TEXT.dealtOwns
 	end
+	if key == "enemyHealing" and DEALT.HealsDrawing() then
+		return TEXT.healsOwns
+	end
 	if Enemy.Name(key) then
 		return nil
 	end
@@ -509,6 +635,93 @@ function Enemy.Flush()
 	for key, value in pairs(enemyPending) do
 		enemyPending[key] = nil
 		Enemy.Write(key, value)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Your heals (2.1.85; the user, 2026-11-24: "You forgot the Healing Numbers in the Damage Numbers, the healing that
+-- appears above the friendly player when healing him"): the numbers of the healing you do, at the nameplate of the
+-- friend you heal, in Combat Damage Style's look -- IN PLACE of the game's own (Healing Over Friends,
+-- floatingCombatTextCombatHealing: off meanwhile, its value noted in db.savedDealt as the damage ones'), never added:
+-- only while the game's were on. UNIT_COMBAT says a plate's unit was healed, never by whom, and no threat list helps
+-- here: a heal is yours when the combat log's lines say so (DEALT.Queue's vouch, as your damage in a group), alone
+-- too, so MelloUI asks for the lines (DEALT.KeepLines). MelloUI draws at a plate, so it stands back -- the game's own
+-- numbers shown -- where it has none to stand on: the friendly players' nameplates off (nameplateShowFriendlyPlayers),
+-- inside a dungeon or a raid (the game keeps the friendly plates to itself there), and anywhere else such a plate was
+-- met (FORBIDDEN_NAME_PLATE_UNIT_ADDED, or a healed plate that cannot be had: DEALT.noFriend, until the next loading
+-- screen). Never your own plate (the text around you has that heal), never an enemy healing itself. A friend whose
+-- nameplate is not on the screen has no number.
+--------------------------------------------------------------------------------
+
+-- the game's healing numbers on, as the player left them (the value noted while MelloUI stands in for them)
+function DEALT.GameHeals()
+	local name = Enemy.Name("enemyHealing")
+	if not name then
+		return false
+	end
+	local db = M.db
+	local saved = db and db.savedDealt
+	local v = type(saved) == "table" and saved[name] or nil
+	if v == nil then
+		local ok, now = pcall(C_CVar.GetCVar, name)
+		v = ok and Text(now) or nil
+	end
+	return v == "1"
+end
+
+-- a dungeon or a raid: the friendly plates are the game's alone there
+function DEALT.Instanced()
+	local ok, inside, kind = pcall(IsInInstance)
+	return ok and not Secret(inside) and inside == true and not Secret(kind) and (kind == "party" or kind == "raid")
+end
+
+-- everything your heals need but the lines
+function DEALT.HealsReady()
+	local db = M.db
+	if not DealtOn() or (db and db.dealtHeals == false) or DEALT.Untellable() then
+		return false
+	end
+	if DEALT.noFriend or DEALT.Instanced() or not DEALT.FriendPlates() then
+		return false
+	end
+	return DEALT.GameHeals()
+end
+
+-- MelloUI draws your heals now
+function DEALT.HealsDrawing()
+	return DEALT.HealsReady() and DEALT.LinesOn()
+end
+
+-- why MelloUI does not draw your heals now, in a few words (nil: it does): /mello combattext log's first line
+function DEALT.HealsWhy()
+	local db = M.db
+	if not DealtOn() then
+		return "Combat Damage Style is Game"
+	elseif db and db.dealtHeals == false then
+		return "Healing Numbers is off"
+	elseif not Enemy.Name("enemyHealing") then
+		return "this client has no switch for the game's healing numbers"
+	elseif not DEALT.GameHeals() then
+		return "the game's Healing Over Friends is off"
+	elseif not DEALT.FriendPlates() then
+		return "friendly nameplates are off"
+	elseif DEALT.Instanced() then
+		return "inside a dungeon or a raid"
+	elseif DEALT.noFriend then
+		return "a friendly nameplate here is the game's own"
+	elseif not DEALT.LinesOn() then
+		return "the combat log's lines are not coming"
+	end
+	return nil
+end
+
+-- a friendly plate MelloUI cannot stand on was met: the game's own healing numbers until the next loading screen
+function DEALT.NoFriend()
+	if not DEALT.noFriend then
+		DEALT.noFriend = true
+		if DEALT.Apply then
+			DEALT.Apply()
+		end
 	end
 end
 
@@ -637,12 +850,31 @@ local function DealtFree()
 			return false
 		end
 	end
+	local heal = Enemy.Name("enemyHealing")
+	if heal and not FreeInCombat(heal) then
+		return false
+	end
 	return true
 end
 
-local function DealtSwitch(on)
+-- one of the game's numbers: off (its value noted), or back as it was
+function DEALT.Put(saved, name, off)
+	if not name then
+		return
+	end
+	if off then
+		DealtOff(saved, name)
+	elseif saved[name] ~= nil then
+		SetCVar(name, saved[name])
+		saved[name] = nil
+	end
+end
+
+-- (2.1.85: `heals`, the game's healing numbers by themselves -- MelloUI may draw your damage and not your heals, or
+-- the other way round) the game's numbers MelloUI stands in for now: the damage ones (`damage`), the healing one
+local function DealtSwitch(damage, heals)
 	if MelloUI.InCombat() and not DealtFree() then
-		S.dealtPending = on and "on" or "off"
+		S.dealtPending = true   -- (applied again at the fight's end)
 		Events()
 		return
 	end
@@ -651,25 +883,16 @@ local function DealtSwitch(on)
 	if not db then
 		return
 	end
-	if on then
-		local saved = db.savedDealt or {}
-		db.savedDealt = saved
-		for _, key in ipairs(DEALT.keys) do
-			DealtOff(saved, Enemy.Name(key))
-			local also = ENEMY[key].also
-			if also then
-				DealtOff(saved, NameOf(also) or nil)
-			end
-		end
-	else
-		local saved = db.savedDealt
-		if saved then
-			db.savedDealt = nil
-			for name, v in pairs(saved) do
-				SetCVar(name, v)
-			end
+	local saved = db.savedDealt or {}
+	for _, key in ipairs(DEALT.keys) do
+		DEALT.Put(saved, Enemy.Name(key), damage)
+		local also = ENEMY[key].also
+		if also then
+			DEALT.Put(saved, NameOf(also) or nil, damage)
 		end
 	end
+	DEALT.Put(saved, Enemy.Name("enemyHealing"), heals)
+	db.savedDealt = next(saved) ~= nil and saved or nil
 end
 
 --------------------------------------------------------------------------------
@@ -696,7 +919,8 @@ end
 -- Font's face); kept, so a line that keeps its size is not styled again
 local function StyleText(fs, size, numbers)
 	size = math.floor(size + 0.5)
-	local key = numbers and -size or size
+	local outlined = numbers and DEALT.Outlined() or false
+	local key = numbers and -(size + (outlined == "thick" and 0.5 or outlined and 0.25 or 0)) or size
 	if fs.melloSize == key then
 		return
 	end
@@ -707,7 +931,7 @@ local function StyleText(fs, size, numbers)
 		if MelloUI.StyleFont then
 			-- (the size is Combat Text's own: the face's correction alone, never
 			-- the Fonts' Interface text size; 0.19.4)
-			MelloUI:StyleFont(fs, numbers and "fontDamage" or "fontText", object, size, "", Outline(), numbers or "own")
+			MelloUI:StyleFont(fs, numbers and "fontDamage" or "fontText", object, size, "", outlined or Outline(), numbers or "own")
 		end
 	end
 end
@@ -800,7 +1024,7 @@ local E = {}
 
 local function Clear(e)
 	e.kind, e.value, e.sign, e.crit, e.label, e.name, e.tail, e.colour, e.glyph, e.harmful = nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
-	e.who, e.glancing = nil, nil
+	e.who, e.glancing, e.tick = nil, nil, nil
 	return e
 end
 
@@ -819,7 +1043,8 @@ end
 -- the regions laid for an alignment and a main text, only when they change
 -- (a pooled line serves every kind); `size` the main text's, for its shade
 local function Lay(row, align, main, hasTail, hasSign, size)
-	local share = ShadeShare()
+	-- (2.1.85: an outlined number of Your Damage stands without the band)
+	local share = (row.dealt and DEALT.Outlined()) and 0 or ShadeShare()
 	size = math.floor((Num(size) or TextSize()) + 0.5)
 	local key = align .. main .. (hasTail and "t" or "") .. (hasSign and "s" or "") .. size .. ":" .. share
 	if row.laid == key then
@@ -1028,8 +1253,11 @@ local function LineHidden(line)
 	end
 	MelloUI.Anim:Stop(line)
 	MelloUI.Anim:StopMirror(line)
-	if line.flare then
-		line.flare:Hide()   -- (a crit's flare never outlives its line: DEALT.punch)
+	if line.dealt then
+		DEALT.LightsOff(line)   -- (a light never outlives its line)
+		if line.main and line.main.SetTextScale then
+			line.main:SetTextScale(1)
+		end
 	end
 	local spares = line.spares or pool
 	spares[#spares + 1] = line
@@ -1165,181 +1393,798 @@ end
 -- handed to Fill as a factor of the text around you's size, so Text Around You
 -- never moves it (the configurator audit: one size per thing on screen)
 local function DealtScale(look)
+	-- (2.1.85; the user: "both of these sliders do the same thing") the game's World Text Scale no longer sizes
+	-- MelloUI's numbers too: it is the size of the game's own (Game Damage Numbers Size), Combat Damage Size ours
 	local world = 1
-	-- (2026-10-30: the client's own name for it, Forever's WorldTextScale_v2: Tweaks' MelloUI.WorldTextCVar)
-	local name = MelloUI.WorldTextCVar and MelloUI.WorldTextCVar()
-	if name and C_CVar and C_CVar.GetCVar then
-		local ok, v = pcall(C_CVar.GetCVar, name)
-		world = ok and tonumber(Text(v)) or 1
-		if world < 0.5 then
-			world = 0.5
-		elseif world > 3 then
-			world = 3
-		end
-	end
 	local own = Num(M.db and M.db.dealtScale) or 0.7
 	own = math.max(0.3, math.min(1.5, own))
 	return (DEALT.size[look] or 1) * world * own * T.size / TextSize()
 end
 
--- (1.2.0, the user's pick of 2026-10-22: BuildData/output/animation_previews/more_anims.html, "yes to all") your
--- crit punches in: its number bigger and settling (the engine's text scale: the line's anchoring on a plate cannot be
--- read, so the line itself is never scaled), a gold flare behind it and a small shake of the number inside its line
--- (centred lines only), over DEALT.punch.time (Anim:Drive; Reduce Motion: none of it). The flare made with a line's
--- first crit, kept with the line, and SHOWN ONLY WHILE ITS PUNCH RUNS (the user's video, 2026-10-22: a crit's flare lit
--- again after its punch and stayed while the number faded): hidden at the punch's last step, at its end however the
--- drive ended (PunchDone), when the line is put away (LineHidden) and when a spare is taken. A crit fades in at once
--- (punch.fadeIn): the number's own fade had hidden its punch
-DEALT.punch = { time = 0.45, grow = 0.6, settle = 0.16, shake = 0.18, fadeIn = 0.02 }
+-- (2.1.85; the user, 2026-11-24: "i want to redo the custom damage text, with much more high quality and better impact
+-- and critical effects ... snappier and impactfull", their pick of the sketch's three takes: "all 3") Your Damage's
+-- three looks, each ONE drive per line (Anim:Drive -> DEALT.Step: the line's place set from offsets, never read --
+-- a plate's anchoring is secret --, the number's size by the engine's text scale, its own colour run to white for its
+-- flash, the look's own lights added on). Everything is counted in ems: F, a plain hit's text size, so the looks keep
+-- their proportions at every Your Damage Size.
+--   pop    a hit lands in one of six slots left and right above the plate with a hard pop, hangs, lifts off (0.8 s);
+--          a crit drops in from large above them: flash, ring, rays, a short shake (1.25 s)
+--   slam   a hit thrown from above the name on an arc, a streak behind it, falling as it fades (0.8 s); a crit: a
+--          gold slash through the plate, streaks thrown from it, the number rising high and hanging (1.3 s)
+--   stamp  a column at the plate's right end: each hit stamps in at the foot and shoves the older ones up a row
+--          (five rows); a crit over a bar of light, a ring on the plate's end, the column jolts (1.7 s)
+-- A word (Dodge, Parry ...) small and quiet in each. Reduce Motion: the number at its place, a fade, nothing else.
+-- The lights are made with a line's first need of them and kept with the line; shown only while their part plays.
+DEALT.look = {
+	pop = { life = 0.8, crit = 1.25, word = 0.68, tick = 0.62 },
+	slam = { life = 0.78, crit = 1.32, word = 0.7, tick = 0.58 },
+	stamp = { life = 1.15, crit = 1.7, word = 1.15, tick = 0.9, rows = 5, push = 0.09 },
+}
+DEALT.LIGHTS = { glow = "glow_white.tga", halo = "halo_white.tga", rays = "rays_gold.tga", streakW = "streak_white.tga",
+	streakG = "streak_gold.tga" }
+DEALT.DEBRIS = 12
 
-function DEALT.PunchStep(line, share)
-	local P, value, flare = DEALT.punch, line.value, line.flare
-	local t = share * P.time
-	local k, dx, dy, a = 1, 0, 0, 0
-	if share < 1 then
-		if t < P.settle then
-			local y = t / P.settle - 1   -- (outBack: past its end a hair, then back)
-			k = 1 + P.grow * (1 - (1 + 2.9 * y * y * y + 1.9 * y * y))
-		end
-		if line.punchCenter and t < P.shake then
-			local s = 1 - t / P.shake
-			dx, dy = math.sin(t * 140) * 2.5 * s, math.cos(t * 110) * 2 * s
-		end
-		a = 0.85 * (1 - share)
+function DEALT.Seg(t, a, b)
+	local v = (t - a) / (b - a)
+	return v < 0 and 0 or v > 1 and 1 or v
+end
+
+function DEALT.Out(v)   -- (outCubic)
+	v = v < 0 and 0 or v > 1 and 1 or v
+	local u = 1 - v
+	return 1 - u * u * u
+end
+
+-- a pop: from `from` up to `peak` by `up` seconds, down to 1 by `down`
+function DEALT.Pop(t, from, peak, up, down)
+	if t < up then
+		return from + (peak - from) * DEALT.Out(t / up)
 	end
+	return peak + (1 - peak) * DEALT.Out(DEALT.Seg(t, up, down))
+end
+
+function DEALT.Shake(t, from, len, amp, r)
+	if t < from or t > from + len then
+		return 0
+	end
+	return math.sin((t - from) * 110 + r * 6.283) * amp * (1 - (t - from) / len)
+end
+
+-- a light of the line, made at its first need (the look's own art: FrameFX.Light)
+function DEALT.Light(line, key)
+	local fx = line.fx
+	if not fx then
+		fx = {}
+		line.fx = fx
+	end
+	local t = fx[key]
+	if not t then
+		t = line:CreateTexture(nil, "ARTWORK", nil, 6)
+		local file = DEALT.LIGHTS[key] or DEALT.LIGHTS.streakG
+		local Lights = MelloUI.FrameFX
+		if type(Lights) == "table" and Lights.Light then
+			Lights.Light(t, file)
+		else
+			t:SetTexture("Interface\\AddOns\\MelloUI\\Media\\FrameFX\\" .. file)
+		end
+		t:SetBlendMode("ADD")
+		fx[key] = t
+	end
+	return t
+end
+
+-- a light shown at (x, y) from `rel`'s point, w by h, at an alpha, turned; alpha 0: away
+function DEALT.Lit(line, key, rel, point, x, y, w, h, a, rot)
+	if a <= 0.004 then
+		local fx = line.fx
+		local t = fx and fx[key]
+		if t then
+			t:Hide()
+		end
+		return
+	end
+	local t = DEALT.Light(line, key)
+	t:ClearAllPoints()
+	if not pcall(t.SetPoint, t, "CENTER", rel, point, x, y) then
+		t:Hide()
+		return
+	end
+	t:SetSize(w, h)
+	t:SetAlpha(a > 1 and 1 or a)
+	if t.SetRotation then
+		t:SetRotation(rot or 0)
+	end
+	t:Show()
+end
+
+function DEALT.LightsOff(line)
+	local fx = line.fx
+	if fx then
+		for _, t in pairs(fx) do
+			t:Hide()
+		end
+	end
+end
+
+-- the number's size, and its flash: its own colour run towards white (plain numbers: the palette's and the meanings')
+function DEALT.Scale(line, k, flash)
+	local value = line.main
 	if value.SetTextScale then
 		value:SetTextScale(k)
 	end
-	if line.punchCenter then
-		value:SetPoint("CENTER", line, "CENTER", dx, dy)
-	end
-	if flare then
-		if share >= 1 then
-			flare:SetAlpha(0)
-			flare:Hide()
-		else
-			local w = 0.6 + 0.6 * share
-			flare:SetSize(line.flareW * w, line.flareH)
-			flare:SetAlpha(a)
-			flare:Show()
+	local r = line.cr
+	if r then
+		flash = flash < 0 and 0 or flash > 1 and 1 or flash
+		if flash ~= line.flashed then
+			line.flashed = flash
+			value:SetTextColor(r + (1 - r) * flash, line.cg + (1 - line.cg) * flash, line.cb + (1 - line.cb) * flash)
 		end
 	end
 end
 
--- the punch over, however its drive ended: at rest, the flare away
-function DEALT.PunchDone(line)
-	DEALT.PunchStep(line, 1)
+-- the line at (x, y) from the plate's point; false when the plate takes no anchor any more
+function DEALT.Place(line, x, y)
+	line:ClearAllPoints()
+	return pcall(line.SetPoint, line, line.pt, line.plate, line.rel, x, y)
 end
 
-function DEALT.Punch(line, size, align)
-	if MelloUI.Anim.reduceMotion then
+-- one step of a line's life (`share` 0..1 of it)
+function DEALT.Step(line, share)
+	if share >= 1 then
 		return
 	end
-	local flare = line.flare
-	if not flare then
-		flare = line:CreateTexture(nil, "ARTWORK", nil, 7)
-		-- (2.1.59) the look's own glow (MelloUI.FrameFX.Light: Oldschool's painted one, the Default skin's)
-		local Lights = MelloUI.FrameFX
-		if type(Lights) == "table" and Lights.Light then
-			Lights.Light(flare, "glow_white.tga")
+	local D = DEALT
+	local Seg, Out = D.Seg, D.Out
+	local t, F, life = share * line.life, line.F, line.life
+	local look, crit, word = line.look, line.kindC == "crit", line.kindC == "word"
+	local tick = line.kindC == "tick"
+	local x, y, a
+	local k, flash = 1, 0
+	if tick and look ~= "stamp" then
+		-- a tick: small and quiet in its own lane at the plate's end (Pop: the right one, Slam: the left), rising
+		x = (look == "pop" and 1 or -1) * (0.3 + 0.5 * line.r1) * F
+		y = (0.8 * Out(t / life) - 0.1) * F
+		a = Seg(t, 0, 0.05) * (1 - Seg(t, life - 0.22, life)) * 0.9
+	elseif look == "pop" then
+		if crit then
+			local lift = Out(Seg(t, 0.9, 1.25)) * 0.75 * F
+			x = (line.r1 - 0.5) * 1.5 * F + D.Shake(t, 0.11, 0.15, 0.11 * F, line.r2)
+			y = (4 + 0.2 * line.r3) * F + lift + D.Shake(t, 0.11, 0.15, 0.08 * F, line.r3)
+			k = t < 0.11 and (2.5 - 1.5 * Out(t / 0.11)) or (1 + 0.06 * (1 - Seg(t, 0.11, 0.26)))
+			a = Seg(t, 0, 0.055) * (1 - Seg(t, 0.98, 1.25))
+			flash = t >= 0.11 and (1 - Seg(t, 0.11, 0.26)) or 0
+			local e = Seg(t, 0.11, 0.38)
+			local on = t >= 0.11 and 1 or 0
+			D.Lit(line, "rays", line.main, "CENTER", 0, 0, 7.75 * F * (0.75 + 0.5 * Out(e)), 7.75 * F * (0.75 + 0.5 * Out(e)),
+				on * 0.95 * (1 - e), 0.35 + line.r2)
+			D.Lit(line, "halo", line.main, "CENTER", 0, 0, 4.75 * F * (0.5 + 1.2 * Out(e)), 3.75 * F * (0.5 + 1.2 * Out(e)),
+				on * 0.9 * (1 - e), 0)
+			D.Lit(line, "glow", line.main, "CENTER", 0, 0, 6.5 * F, 3.75 * F, on * 0.9 * (1 - Seg(t, 0.11, 0.25)), 0)
+		elseif word then
+			x = -(0.3 + 0.75 * Out(Seg(t, 0, life))) * F
+			y = (0.4 + 0.3 * line.r1) * F
+			k = D.Pop(t, 0.7, 1.12, 0.06, 0.13)
+			a = Seg(t, 0, 0.05) * (1 - Seg(t, life - 0.25, life))
 		else
-			flare:SetTexture("Interface\\AddOns\\MelloUI\\Media\\FrameFX\\glow_white.tga")
+			local up = Seg(t, 0.45, 0.8)
+			x = line.side * (1.63 + line.row * 0.43 + line.r1 * 1.13) * F
+			y = (1.33 + line.row * 0.85 + line.r2 * 0.13 + up * up * 0.8) * F
+			k = D.Pop(t, 0.35, 1.32, 0.06, 0.135)
+			a = Seg(t, 0, 0.04) * (1 - Seg(t, 0.56, 0.8))
+			flash = 0.9 * (1 - Seg(t, 0, 0.12))
+			D.Lit(line, "glow", line.main, "CENTER", 0, 0, 3.75 * F, 2.4 * F, 0.5 * (1 - Seg(t, 0, 0.15)), 0)
 		end
-		flare:SetBlendMode("ADD")
-		line.flare = flare
+	elseif look == "slam" then
+		local oy = 1.2 * F
+		if crit then
+			local vx, vy, g = line.side * (0.9 + 1.1 * line.r1) * F, 8.75 * F, 15.6 * F
+			x = vx * t + D.Shake(t, 0.12, 0.14, 0.125 * F, line.r2)
+			y = oy + 0.75 * F + vy * t - 0.5 * g * t * t + D.Shake(t, 0.12, 0.14, 0.09 * F, line.r3)
+			k = t < 0.12 and (0.7 + 0.52 * Out(t / 0.12)) or (1.22 - 0.22 * Out(Seg(t, 0.12, 0.24)))
+			a = Seg(t, 0, 0.04) * (1 - Seg(t, 0.98, 1.32))
+			flash = 1 - Seg(t, 0.06, 0.24)
+			-- the slash and the glow stay on the plate, the streaks fly from it: anchored to the plate, not the number
+			local plate = line.plate
+			D.Lit(line, "streakG", plate, "CENTER", line.side * 0.4 * F, oy + 1.1 * F, 11.25 * F * Out(Seg(t, 0, 0.11)), 1.9 * F,
+				1 - Seg(t, 0, 0.3), 0.42 * line.side)
+			D.Lit(line, "glow", plate, "CENTER", 0, oy + F, 5.25 * F, 3.25 * F, 0.8 * (1 - Seg(t, 0, 0.22)), 0)
+			local st = Seg(t, 0.02, 0.52)
+			local ts = t - 0.02
+			for i = 1, D.DEBRIS do
+				local ang = (i / D.DEBRIS) * 6.283 + line.r2 * 2
+				local sp = (5.25 + ((i * 53) % 100) * 0.0525) * F
+				local live = (st > 0 and st < 1) and (1 - st) or 0
+				local sx, sy = math.cos(ang) * sp, math.sin(ang) * sp * 0.8 - 22.5 * F * ts
+				D.Lit(line, i, plate, "CENTER", math.cos(ang) * sp * ts, oy + F + math.sin(ang) * sp * ts * 0.8 - 11.25 * F * ts * ts,
+					1.5 * F * (1 - st * 0.5), 0.33 * F, live, live > 0 and math.atan2(sy, sx) or 0)
+			end
+		elseif word then
+			local vx, vy, g = line.side * 1.9 * F, 4.1 * F, 11.25 * F
+			x, y = vx * t, oy - 0.4 * F + vy * t - 0.5 * g * t * t
+			a = Seg(t, 0, 0.04) * (1 - Seg(t, life - 0.25, life))
+		else
+			local vx, vy, g = line.side * (3.75 + 4.1 * line.r1) * F, (10.25 + 2.1 * line.r2) * F, 25 * F
+			x, y = vx * t, oy + vy * t - 0.5 * g * t * t
+			k = D.Pop(t, 0.5, 1.2, 0.08, 0.17)
+			a = Seg(t, 0, 0.03) * (1 - Seg(t, 0.5, 0.78))
+			flash = 0.8 * (1 - Seg(t, 0, 0.11))
+			local rot = math.atan2(vy - g * t, vx)
+			D.Lit(line, "streakW", line.main, "CENTER", -math.cos(rot) * 1.1 * F, -math.sin(rot) * 1.1 * F, 3.75 * F, 0.9 * F,
+				0.8 * (1 - Seg(t, 0, 0.17)), rot)
+		end
+	else
+		-- stamp: the rows newer than this one have shoved it up (each over DEALT.look.stamp.push), a crit jolts the column
+		local now = GetTime()
+		local lane, push = line.lane, D.look.stamp.push
+		local above, rows, jolt = 0, 0, 0
+		local lines = lane and lane.lines
+		if lines then
+			local seen = false
+			for i = 1, #lines do
+				local o = lines[i]
+				-- (the ticks a column of their own at the plate's other end)
+				if seen and (o.kindC == "tick") == tick then
+					above = above + o.rowH * Out((now - o.t0) / push)
+					rows = rows + 1
+				elseif o == line then
+					seen = true
+				end
+				if o.kindC == "crit" and not tick then
+					jolt = jolt + D.Shake(now - o.t0, 0, 0.15, 0.11 * F, o.r2)
+				end
+			end
+		end
+		-- (a row's middle in its own slot: a crit's taller row stands clear of the rows next to it)
+		x, y = 0.55 * F + jolt, above + (line.rowH - F) * 0.5
+		local dim = rows >= D.look.stamp.rows and 0 or rows == 4 and 0.45 or rows == 3 and 0.75 or 1
+		a = Seg(t, 0, 0.035) * (1 - Seg(t, life - 0.22, life)) * dim
+		if tick then
+			x, y = -0.55 * F, above
+			a = Seg(t, 0, 0.04) * (1 - Seg(t, life - 0.25, life)) * (rows >= 3 and 0 or rows == 2 and 0.5 or 0.9)
+			k = D.Pop(t, 1.35, 1, 0.001, 0.09)
+		elseif crit then
+			k = t < 0.09 and (2.3 - 1.3 * Out(t / 0.09)) or (1 + 0.05 * (1 - Seg(t, 0.09, 0.22)))
+			flash = 1 - Seg(t, 0.09, 0.25)
+			local e = Seg(t, 0.06, 0.34)
+			D.Lit(line, "streakG", line.main, "CENTER", 0, 0, 9.5 * F * (0.7 + 0.3 * Out(e)), 2.9 * F, 0.95 * (1 - e), 0)
+			D.Lit(line, "halo", line.plate, "RIGHT", 0, 0, 3.75 * F * (0.4 + 1.3 * Out(e)), 3.75 * F * (0.4 + 1.3 * Out(e)),
+				0.9 * (1 - e), 0)
+			D.Lit(line, "rays", line.main, "CENTER", 0, 0, 5.4 * F * (0.8 + 0.4 * Out(e)), 5.4 * F * (0.8 + 0.4 * Out(e)),
+				0.7 * (1 - e), line.r1)
+		else
+			k = D.Pop(t, 1.7, 1, 0.001, 0.09)
+			if not word then
+				flash = 0.85 * (1 - Seg(t, 0, 0.11))
+				D.Lit(line, "streakW", line.main, "BOTTOM", 0, 0, 3 * F, 0.75 * F, 0.85 * (1 - Seg(t, 0.02, 0.19)), 0)
+			end
+		end
 	end
-	local gold = RoleRGB("gold")
-	flare:SetVertexColor(gold[1], gold[2], gold[3])
-	flare:ClearAllPoints()
-	flare:SetPoint("CENTER", line.value, "CENTER", 0, 0)
-	line.flareW, line.flareH = size * 4.5, size * 1.2
-	line.punchCenter = align == "CENTER"
-	MelloUI.Anim:Drive(line, DEALT.PunchStep, DEALT.punch.time, "linear", DEALT.PunchDone)
+	if not D.Place(line, x, y) then
+		a = 0
+	end
+	line:SetAlpha(a)
+	D.Scale(line, k, flash)
 end
 
-local function DealtLine(unit, e, hold)
+-- this frame's counts (a new frame closes the one before it first)
+function DEALT.Frame()
+	local L, now = DEALT.log, GetTime()
+	if L.at ~= now then
+		DEALT.Close()
+		L.at, L.lines, L.swings, L.casts = now, 0, 0, 0
+	end
+	return L
+end
+
+-- a hit on a plate, kept for its frame's end; `vouch`: drawn only when the log names it yours (a group, and every
+-- heal: e.heal)
+function DEALT.Queue(unit, e, vouch)
+	local L = DEALT.Frame()
+	local n = L.n + 1
+	L.n = n
+	local h = L.hits[n]
+	if not h then
+		h = {}
+		L.hits[n] = h
+	end
+	h.unit, h.kind, h.value, h.crit, h.glancing, h.colour, h.label = unit, e.kind, e.value, e.crit, e.glancing, e.colour, e.label
+	h.word = e.kind == "avoid"
+	h.vouch, h.heal = vouch and true or false, e.heal and true or false
+	h.free = L.lines - L.swings   -- (the lines seen before it that no swing of this frame takes)
+	if not L.timer then
+		L.timer = true
+		C_Timer.After(0, DEALT.Close)
+	end
+end
+
+-- its life over, however the drive ended: at rest, put away (OnHide: LineHidden)
+function DEALT.StepDone(line)
+	DEALT.LightsOff(line)
+	DEALT.Scale(line, 1, 0)
+	if line.main and line.main.SetTextScale then
+		line.main:SetTextScale(1)
+	end
+	line:Hide()
+end
+
+local DealtLine
+
+-- the frame closed: its swings take their lines (one that landed has one), then each waiting hit is told
+function DEALT.Close()
+	local L = DEALT.log
+	L.timer = false
+	local pend = L.pending
+	local free = L.lines
+	for i = 1, #pend do
+		local sw = pend[i]
+		if sw.line == nil then
+			sw.line = free > 0
+			if free > 0 then
+				free = free - 1
+			end
+		end
+	end
+	local n = L.n
+	L.n = 0
+	for i = 1, n do
+		local h = L.hits[i]
+		local mine, tick = not h.vouch, false
+		if not h.word and free > 0 then
+			-- a line of this frame is its own: a special, a spell, a heal or a tick
+			free = free - 1
+			mine = true
+			tick = h.free <= 0 and L.casts == 0
+		elseif not h.heal then
+			-- a swing of yours whose number is due now: one that landed for a hit, one that did not for a word
+			for j = 1, #pend do
+				local sw = pend[j]
+				local age = L.at - sw.at
+				if age >= L.lagMin and age <= L.lagMax and (sw.line == true) == (not h.word) then
+					L.spare[#L.spare + 1] = tremove(pend, j)
+					mine = true
+					break
+				end
+			end
+		end
+		if mine then
+			local e = Clear(E)
+			e.kind, e.value, e.crit, e.glancing, e.colour, e.label = h.kind, h.value, h.crit, h.glancing, h.colour, h.label
+			e.tick = tick or nil
+			e.heal = h.heal or nil
+			DealtLine(h.unit, e)
+		end
+		h.value, h.colour, h.label = nil, nil, nil   -- (nothing of the game's kept past its frame)
+	end
+	for j = #pend, 1, -1 do
+		if L.at - pend[j].at > L.lagMax then
+			L.spare[#L.spare + 1] = tremove(pend, j)
+		end
+	end
+	L.lines, L.swings, L.casts = 0, 0, 0
+end
+
+DealtLine = function(unit, e)
 	local plate = PlateOf(unit)
 	if not plate then
 		return nil
 	end
+	local D = DEALT
 	local look = Dealt()
-	local lane = DEALT.lanes[unit]
-	if not lane then
-		lane = { lines = {}, last = -10, stack = 0, flip = 1 }
-		DEALT.lanes[unit] = lane
+	local spec = D.look[look]
+	if not spec then
+		return nil
 	end
-	local most = T.lines   -- (its own count: Most Lines is the text around you's)
-	while #lane.lines >= most do
+	local lane = D.lanes[unit]
+	if not lane then
+		lane = { lines = {}, hits = 0, crits = 0 }
+		D.lanes[unit] = lane
+	end
+	while #lane.lines >= D.most do
 		local oldest = lane.lines[1]
 		LineHidden(oldest)
 		oldest:Hide()
 	end
 	local size = DealtScale(look)
-	local pitch = math.floor(Pitch() * size + 0.5)
-	-- Stack: the lines there a slot down under the new one (laid again from
-	-- the offsets given: a plate's anchoring cannot be read back)
-	if look == "stack" then
-		for _, old in ipairs(lane.lines) do
-			old.slotY = (old.slotY or 0) - pitch
-			old:ClearAllPoints()
-			pcall(old.SetPoint, old, "LEFT", plate, "TOPRIGHT", 6, old.slotY)
-		end
-	end
+	local word = e.kind == "avoid"
+	local tick = e.tick and not e.crit and not word
 	local holder = DealtHolder()
-	local line = TakeLine(holder, DEALT.pool)
-	line.dealt = true   -- (the Game Numbers Font: Fill)
+	local line = TakeLine(holder, D.pool)
+	line.dealt = true   -- (the Game Numbers Font and Outlined Numbers: Fill)
 	line.lane = lane
 	lane.lines[#lane.lines + 1] = line
-	if line.flare then
-		DEALT.PunchStep(line, 1)   -- (a spare whose crit was cut short: at rest)
+	D.LightsOff(line)
+	local align = look == "stamp" and "LEFT" or ((look == "pop" and word) and "RIGHT" or "CENTER")
+	if tick then
+		align = look == "pop" and "LEFT" or "RIGHT"
 	end
-	Fill(line, e, (look == "stack" or look == "side") and "LEFT" or "CENTER",
-		size * (e.glancing and DEALT.glancing or 1) * (e.crit and DEALT.crit or 1))
-	-- (Rise: a hit close behind the last starts beside it, in turn)
-	local now = GetTime()
-	if now - lane.last < T.stack then
-		lane.stack = math.min(lane.stack + 1, most)
+	Fill(line, e, align, size * (e.glancing and D.glancing or 1) * (e.crit and D.crit or 1) * (word and D.word or 1)
+		* (tick and D.tick or 1))
+	local main = word and line.word or line.value
+	line.main = main
+	-- its colour, for the flash (a word has none)
+	local c = (not word) and e.colour or nil
+	line.cr, line.cg, line.cb, line.flashed = c and c[1], c and c[2], c and c[3], 0
+	local F = TextSize() * size
+	line.F, line.look, line.plate = F, look, plate
+	line.kindC = e.crit and "crit" or (word and "word" or (tick and "tick" or "hit"))
+	line.r1, line.r2, line.r3 = math.random(), math.random(), math.random()
+	line.t0 = GetTime()
+	line.life = e.crit and spec.crit or (word and spec.word or (tick and spec.tick or spec.life))
+	if e.crit then
+		lane.crits = lane.crits + 1
+		line.side = lane.crits % 2 == 0 and 1 or -1
+		line.row = 0
+	elseif tick then
+		line.side, line.row = 1, 0   -- (a tick takes no slot of the hits')
 	else
-		lane.stack = 0
+		lane.hits = lane.hits + 1
+		line.side = lane.hits % 2 == 0 and 1 or -1
+		line.row = math.floor((lane.hits - 1) / 2) % 3
 	end
-	lane.last = now
-	local point, rel, x, y = "CENTER", "CENTER", 0, DEALT.startY
-	if look == "stack" then
-		point, rel, x, y = "LEFT", "TOPRIGHT", 6, 0
-		line.slotY = 0
-	elseif look == "side" then
-		-- (Beside: at the bar's right end, the name left clear; a hit close behind the last a little higher)
-		point, rel, x, y = "LEFT", "RIGHT", 10, lane.stack * pitch * 0.45
-	elseif look == "rise" and lane.stack > 0 then
-		lane.flip = -lane.flip
-		x, y = lane.flip * DEALT.stagger, y - pitch * 0.4
+	line.rowH = F * (e.crit and 1.475 or (word and 0.775 or (tick and D.tick or 1)))
+	if tick then
+		if look == "pop" then
+			line.pt, line.rel = "LEFT", "RIGHT"
+		else
+			line.pt, line.rel = "RIGHT", "LEFT"
+		end
+	elseif look == "stamp" then
+		line.pt, line.rel = "LEFT", "RIGHT"
+	elseif look == "pop" and word then
+		line.pt, line.rel = "RIGHT", "LEFT"
+	else
+		line.pt, line.rel = "CENTER", "CENTER"
 	end
-	line:ClearAllPoints()
-	if not pcall(line.SetPoint, line, point, plate, rel, x, y) then
+	holder:Show()
+	local Anim = MelloUI.Anim
+	if Anim.reduceMotion then
+		-- no pop, no travel, no lights: at its place, a fade
+		local x, y = 0, 1.6 * F
+		if tick then
+			x, y = (look == "pop" and 0.5 or -0.5) * F, 0
+		elseif look == "stamp" then
+			x, y = 0.55 * F, (#lane.lines - 1) * F
+		elseif look == "pop" and word then
+			x, y = -0.5 * F, 0.4 * F
+		elseif e.crit then
+			y = 3.2 * F
+		else
+			x = line.side * (1.6 + line.row * 0.5) * F
+		end
+		if not D.Place(line, x, y) then
+			LineHidden(line)
+			line:Hide()
+			return nil
+		end
+		line:SetAlpha(1)
+		Anim:Mirror(line, 0.05, line.life - 0.3, 0.25)
+		return line
+	end
+	if not D.Place(line, 0, F) then
 		LineHidden(line)
 		line:Hide()
 		return nil
 	end
-	holder:Show()
-	local Anim = MelloUI.Anim
-	local held = hold or (e.crit and T.critHold or T.hold)
-	-- (a crit in at once, its punch the way in: DEALT.punch)
-	local fadeIn = (e.crit and not Anim.reduceMotion) and DEALT.punch.fadeIn or T.fadeIn
-	local life = fadeIn + held + T.fadeOut
-	Anim:Mirror(line, fadeIn, held, T.fadeOut)
-	if look == "rise" then
-		Anim:Slide(line, point, plate, rel, x, y, 0, DEALT.rise, life, "outCubic")
-	elseif look == "side" then
-		Anim:Slide(line, point, plate, rel, x, y, DEALT.sideX, DEALT.sideRise, life, "outCubic")
-	elseif look == "fan" then
-		lane.flip = -lane.flip
-		Anim:Slide(line, point, plate, rel, x, y, lane.flip * DEALT.fanX, DEALT.fanY, life, "outCubic")
-	end
-	if e.crit then
-		DEALT.Punch(line, TextSize() * size * DEALT.crit * T.crit, (look == "stack" or look == "side") and "LEFT" or "CENTER")
-	end
+	line:SetAlpha(0)
+	line:Show()
+	Anim:Drive(line, D.Step, line.life, "linear", D.StepDone)
 	return line
 end
+
+--------------------------------------------------------------------------------
+-- The text around you in the three looks (2.1.85; the user, 2026-11-24: "we need to redo the Personal Combat text
+-- that appears on my character, 3 varriants same style and impact", then "to be able to move and resize the windows of
+-- all of those elements separatelly in the Edit Layout, but that specific feature should have its special session in
+-- the Edit Layout where only it is shown, nothing else ... and a setting called Edit Position", "build all 3").
+-- Four areas, each a holder of its own with its own mover -- moved and sized in Combat Text's own Edit Layout session
+-- only (the movers' `session`, MelloUI:StartEditLayout's scope "combattext": the Edit Position button), never in the
+-- common one: Damage Taken, Healing, Procs, Resources. A line plays in its kind's area in the chosen look -- Pop, Slam
+-- or Stamp: Combat Damage Style's engine and lights (DEALT.Seg / Pop / Shake / Lit / Scale), counted in ems of the
+-- text's size. Damage taken grows to the left of its area's right edge and sinks (the area stands left of the
+-- character by default), healing to the right of its area's left edge and rises, procs and resources are centred.
+-- Numbers wear the crisp look (the numbers' face, Number Outline, no band); a proc keeps its title font and band.
+--------------------------------------------------------------------------------
+local PERS = {
+	looks = { pop = true, slam = true, stamp = true },
+	order = { "taken", "heal", "notice", "resource" },
+	areas = {
+		-- (the labels alone: the session is Combat Text's own, its name on the dock)
+		taken = { label = "Damage Taken", x = -200, y = 10, pt = "RIGHT", align = "RIGHT" },
+		heal = { label = "Healing", x = 200, y = 10, pt = "LEFT", align = "LEFT" },
+		notice = { label = "Procs", x = 0, y = 180, pt = "CENTER", align = "CENTER", w = 240 },   -- (a proc's name is long)
+		resource = { label = "Resources", x = 0, y = -160, pt = "CENTER", align = "CENTER" },
+	},
+	of = { taken = "taken", heal = "heal", notice = "notice", avoid = "notice", combat = "notice", rep = "notice",
+		resource = "resource" },
+	life = {
+		pop = { hit = 0.9, crit = 1.3, heal = 1.0, notice = 1.5, word = 0.75, res = 0.8 },
+		slam = { hit = 0.82, crit = 1.35, heal = 1.05, notice = 1.5, word = 0.76, res = 0.8 },
+		stamp = { hit = 1.2, crit = 1.7, heal = 1.2, notice = 1.6, word = 1.2, res = 0.9 },
+	},
+	W = 150, H = 110,   -- an area's box: its plate in Edit Layout
+	sampleY = 0.3,      -- a sample's place in the box, of its height from the middle: clear of the plate's name
+	most = 8,
+	SESSION = "combattext", TITLE = "Combat Text",
+}
+
+function PERS.On()
+	return M.isEnabled and PERS.looks[Style()] == true
+end
+
+-- an area, made at its first line (or for Edit Position): its holder and its mover
+function PERS.Area(name)
+	local A = PERS.areas[name]
+	if not A then
+		return nil
+	end
+	if A.holder then
+		return A
+	end
+	local h = CreateFrame("Frame", "MelloUICombatArea_" .. name, UIParent)
+	h:SetSize(A.w or PERS.W, PERS.H)
+	h:SetFrameStrata("LOW")
+	h:SetClampedToScreen(true)
+	h:EnableMouse(false)
+	A.holder, A.lines, A.n = h, {}, 0
+	-- (the middle of the game's screen, where the character stands: MelloUI:PlayPoint's rule)
+	A.home = function(frame)
+		MelloUI:PlayPoint(frame, "CENTER", "CENTER", A.x, A.y)
+	end
+	A.home(h)
+	A.entry = MelloUI:RegisterMover(h, h, { key = "combat_" .. name, default = A.home, min = 0.5, max = 2.5, base = 1,
+		label = A.label, page = OWNER, when = PERS.On, category = "combat", session = PERS.SESSION })
+	if not MelloUI:RestorePosition(A.entry.key, h) then
+		A.home(h)
+	end
+	return A
+end
+
+function PERS.Place(line, x, y)
+	line:ClearAllPoints()
+	line:SetPoint(line.pt, line.area.holder, line.pt, x, y)
+end
+
+-- one step of a line's life in its area
+function PERS.Step(line, share)
+	if share >= 1 then
+		return
+	end
+	local D = DEALT
+	local Seg, Out = D.Seg, D.Out
+	local t, F, life, look, kc = share * line.life, line.F, line.life, line.look, line.kindC
+	local name = line.aname
+	local dir = name == "taken" and -1 or 1                               -- (damage taken sinks, the rest rises)
+	local side = name == "taken" and -1 or (name == "heal" and 1 or 0)    -- (away from the character)
+	local x = 0
+	local y, a
+	local k, flash = 1, 0
+	local out = 1 - Seg(t, life - 0.27, life)
+	if look == "stamp" then
+		-- a column: each newer line of the area has shoved this one a row (resources: down, under the feet)
+		local now, above, rows, jolt = GetTime(), 0, 0, 0
+		local lines = line.area.lines
+		local seen = false
+		for i = 1, #lines do
+			local o = lines[i]
+			if seen then
+				above = above + o.rowH * Out((now - o.t0) / 0.09)
+				rows = rows + 1
+			elseif o == line then
+				seen = true
+			end
+			if o.kindC == "crit" then
+				jolt = jolt + D.Shake(now - o.t0, 0, 0.15, 0.15 * F, o.r2)
+			end
+		end
+		local max = (name == "notice" or name == "resource") and 2 or 5
+		x, y = jolt, (name == "resource" and -above or above)
+		a = Seg(t, 0, 0.035) * out * (rows >= max and 0 or rows == max - 1 and 0.5 or 1)
+		if kc == "crit" then
+			k = t < 0.09 and (2.3 - 1.3 * Out(t / 0.09)) or (1 + 0.05 * (1 - Seg(t, 0.09, 0.22)))
+			flash = 1 - Seg(t, 0.09, 0.25)
+			local e = Seg(t, 0.06, 0.34)
+			D.Lit(line, "streakG", line.main, "CENTER", 0, 0, 9 * F * (0.7 + 0.3 * Out(e)), 2.8 * F, 0.95 * (1 - e), 0)
+			D.Lit(line, "halo", line.main, "CENTER", 0, 0, 4.2 * F * (0.4 + 1.2 * Out(e)), 3 * F * (0.4 + 1.2 * Out(e)), 0.85 * (1 - e), 0)
+			D.Lit(line, "rays", line.main, "CENTER", 0, 0, 5.2 * F * (0.8 + 0.4 * Out(e)), 5.2 * F * (0.8 + 0.4 * Out(e)), 0.7 * (1 - e), line.r1)
+		elseif kc == "notice" then
+			k = t < 0.09 and (1.9 - 0.9 * Out(t / 0.09)) or (1 + 0.05 * (1 - Seg(t, 0.09, 0.22)))
+			D.Lit(line, "streakG", line.main, "CENTER", 0, 0, 11 * F * (0.7 + 0.3 * Out(Seg(t, 0.04, 0.32))), 2.5 * F,
+				0.9 * (1 - Seg(t, 0.04, 0.34)), 0)
+		else
+			k = D.Pop(t, 1.6, 1, 0.001, 0.09)
+			if kc == "hit" or kc == "heal" then
+				flash = 0.8 * (1 - Seg(t, 0, 0.11))
+				D.Lit(line, "streakW", line.main, "BOTTOM", 0, 0, 3 * F, 0.75 * F, 0.8 * (1 - Seg(t, 0.02, 0.19)), 0)
+			end
+		end
+	elseif look == "slam" then
+		if kc == "crit" then
+			local vx, vy, g = side * (2.9 + 1.8 * line.r1) * F, 13.7 * F, 25 * F
+			x = vx * t + D.Shake(t, 0.12, 0.14, 0.2 * F, line.r2)
+			y = vy * t - 0.5 * g * t * t + D.Shake(t, 0.12, 0.14, 0.15 * F, line.r3)
+			k = t < 0.12 and (0.7 + 0.52 * Out(t / 0.12)) or (1.22 - 0.22 * Out(Seg(t, 0.12, 0.24)))
+			a = Seg(t, 0, 0.04) * (1 - Seg(t, life - 0.35, life))
+			flash = 1 - Seg(t, 0.06, 0.24)
+			-- the slash, the glow and the streaks stay at the area (away from the character), the number flies
+			local holder = line.area.holder
+			D.Lit(line, "streakG", holder, line.pt, side * 6 * F, 0, 11.5 * F * Out(Seg(t, 0, 0.11)), 2.5 * F, 1 - Seg(t, 0, 0.3),
+				-0.42 * side)
+			D.Lit(line, "glow", holder, line.pt, side * 3.5 * F, 0, 6.5 * F, 4.2 * F, 0.8 * (1 - Seg(t, 0, 0.22)), 0)
+			local st = Seg(t, 0.02, 0.5)
+			local ts = t - 0.02
+			local base = side < 0 and 3.1416 or 0
+			for i = 1, 9 do
+				local ang = base + (i / 9 - 0.5) * 2.2 + line.r2 * 0.3
+				local sp = (6 + ((i * 53) % 100) * 0.058) * F
+				local live = (st > 0 and st < 1) and (1 - st) or 0
+				local sx, sy = math.cos(ang) * sp, math.sin(ang) * sp * 0.8 - 39.5 * F * ts
+				D.Lit(line, i, holder, line.pt, side * 1.5 * F + math.cos(ang) * sp * ts,
+					math.sin(ang) * sp * ts * 0.8 - 19.7 * F * ts * ts, 1.7 * F * (1 - st * 0.5), 0.4 * F, live,
+					live > 0 and math.atan2(sy, sx) or 0)
+			end
+		elseif kc == "hit" then
+			local vx, vy, g = side * (6.5 + 5 * line.r1) * F, (8.5 + 3 * line.r2) * F, 39 * F
+			x, y = vx * t, vy * t - 0.5 * g * t * t
+			k = D.Pop(t, 0.5, 1.2, 0.08, 0.17)
+			a = Seg(t, 0, 0.03) * (1 - Seg(t, life - 0.28, life))
+			flash = 0.8 * (1 - Seg(t, 0, 0.11))
+			local rot = math.atan2(vy - g * t, vx)
+			D.Lit(line, "streakW", line.main, "CENTER", -math.cos(rot) * 1.1 * F, -math.sin(rot) * 1.1 * F, 3.7 * F, 0.9 * F,
+				0.8 * (1 - Seg(t, 0, 0.17)), rot)
+		elseif kc == "heal" then
+			local vx, vy, g = (3.9 + 2.4 * line.r1) * F, 7.9 * F, 10 * F
+			x, y = vx * t, vy * t - 0.5 * g * t * t
+			k = D.Pop(t, 0.6, 1.18, 0.08, 0.17)
+			a = Seg(t, 0, 0.04) * out
+			flash = 0.6 * (1 - Seg(t, 0, 0.13))
+		elseif kc == "notice" then
+			y = 2.9 * F * Out(t / 0.26) + 0.5 * F * Seg(t, 0.26, life)
+			k = t < 0.11 and (0.6 + 0.65 * Out(t / 0.11)) or (1.25 - 0.25 * Out(Seg(t, 0.11, 0.24)))
+			a = Seg(t, 0, 0.04) * out
+			D.Lit(line, "streakG", line.main, "BOTTOM", 0, -1.5 * F, 6 * F * (1 - Seg(t, 0.08, 0.3)), 1.6 * F,
+				0.9 * (1 - Seg(t, 0.04, 0.3)), 1.5708)
+		else
+			x = (line.r1 - 0.5) * 7.8 * F * t
+			y = 6.8 * F * t - 0.5 * 21 * F * t * t
+			a = Seg(t, 0, 0.04) * out
+		end
+	elseif kc == "crit" then
+		x = side * 0.6 * F + D.Shake(t, 0.11, 0.15, 0.18 * F, line.r2)
+		y = 2.6 * F + Out(Seg(t, life - 0.35, life)) * dir * F + D.Shake(t, 0.11, 0.15, 0.13 * F, line.r3)
+		k = t < 0.11 and (2.4 - 1.4 * Out(t / 0.11)) or (1 + 0.06 * (1 - Seg(t, 0.11, 0.26)))
+		a = Seg(t, 0, 0.055) * (1 - Seg(t, life - 0.28, life))
+		flash = t >= 0.11 and (1 - Seg(t, 0.11, 0.26)) or 0
+		local e = Seg(t, 0.11, 0.38)
+		local on = t >= 0.11 and 1 or 0
+		D.Lit(line, "rays", line.main, "CENTER", 0, 0, 7.9 * F * (0.75 + 0.5 * Out(e)), 7.9 * F * (0.75 + 0.5 * Out(e)),
+			on * 0.9 * (1 - e), 0.35 + line.r2)
+		D.Lit(line, "halo", line.main, "CENTER", 0, 0, 5 * F * (0.5 + 1.2 * Out(e)), 4 * F * (0.5 + 1.2 * Out(e)), on * 0.9 * (1 - e), 0)
+		D.Lit(line, "glow", line.main, "CENTER", 0, 0, 6.8 * F, 4 * F, on * 0.85 * (1 - Seg(t, 0.11, 0.25)), 0)
+	elseif kc == "hit" then
+		local row = (line.nth - 1) % 3
+		local sink = Seg(t, 0.5, life)
+		x = side * line.r1 * 1.2 * F
+		y = (1 - row) * 1.3 * F + dir * 0.95 * F * sink * sink
+		k = D.Pop(t, 0.35, 1.3, 0.06, 0.135)
+		a = Seg(t, 0, 0.04) * out
+		flash = 0.9 * (1 - Seg(t, 0, 0.12))
+	elseif kc == "heal" then
+		x = line.r1 * 0.8 * F
+		y = ((line.nth - 1) % 3 - 1) * 1.3 * F + 1.05 * F * Out(t / life)
+		k = D.Pop(t, 0.6, 1.18, 0.07, 0.15)
+		a = Seg(t, 0, 0.05) * out
+		flash = 0.6 * (1 - Seg(t, 0, 0.13))
+	elseif kc == "notice" then
+		y = ((line.nth - 1) % 2) * 1.4 * F
+		k = D.Pop(t, 0.5, 1.25, 0.07, 0.16)
+		a = Seg(t, 0, 0.04) * (1 - Seg(t, life - 0.3, life))
+		D.Lit(line, "streakG", line.main, "BOTTOM", 0, 0, 11.5 * F * Out(Seg(t, 0, 0.14)), 2 * F, 0.9 * (1 - Seg(t, 0.06, 0.38)), 0)
+	elseif kc == "word" then
+		x = (line.r1 - 0.5) * 2 * F + 1.05 * F * Out(t / life)
+		y = -1.4 * F
+		k = D.Pop(t, 0.7, 1.12, 0.06, 0.13)
+		a = Seg(t, 0, 0.05) * out
+	else
+		y = -0.6 * F * Out(t / life)
+		k = D.Pop(t, 0.7, 1.1, 0.06, 0.13)
+		a = Seg(t, 0, 0.05) * out * 0.95
+	end
+	PERS.Place(line, x, y or 0)
+	line:SetAlpha(a or 1)
+	D.Scale(line, k, flash)
+	local sign = line.sign
+	if sign.SetTextScale then
+		sign:SetTextScale(k)   -- (the sign with its number)
+	end
+end
+
+-- a line in its kind's area; `hold`: a sample, standing still that long
+function PERS.Line(e, hold)
+	local look = Style()
+	local name = PERS.of[e.kind]
+	local A = name and PERS.Area(name)
+	if not A then
+		return nil
+	end
+	local lines = A.lines
+	while #lines >= PERS.most do
+		local oldest = lines[1]
+		LineHidden(oldest)
+		oldest:Hide()
+	end
+	local line = TakeLine(A.holder, pool)
+	line.dealt = true   -- (the crisp look: the numbers' face, Number Outline, no band -- Fill and Lay)
+	line.lane = A
+	lines[#lines + 1] = line
+	DEALT.LightsOff(line)
+	if line.sign.SetTextScale then
+		line.sign:SetTextScale(1)
+	end
+	local kind = e.kind
+	local word = kind == "avoid" or kind == "combat" or kind == "rep"
+	local notice, res = kind == "notice", kind == "resource"
+	local crit = e.crit and (kind == "taken" or kind == "heal") or false
+	Fill(line, e, A.align, (word and 0.8 or res and 0.7 or notice and 1.15 or 1) * (crit and DEALT.crit or 1))
+	local key = (notice and not e.harmful and "notice") or ((kind == "avoid" or kind == "combat") and "word") or "value"
+	line.main = line[key]
+	local c = key == "value" and e.colour or nil
+	line.cr, line.cg, line.cb, line.flashed = c and c[1], c and c[2], c and c[3], 0
+	local F = TextSize()
+	A.n = A.n + 1
+	line.F, line.look, line.area, line.aname, line.pt = F, look, A, name, A.pt
+	line.kindC = crit and "crit" or (notice and "notice" or word and "word" or res and "res" or (name == "heal" and "heal" or "hit"))
+	line.r1, line.r2, line.r3 = math.random(), math.random(), math.random()
+	line.t0, line.nth = GetTime(), A.n
+	line.life = PERS.life[look][line.kindC]
+	line.rowH = F * (crit and 1.6 or 1.25)
+	A.holder:Show()
+	local Anim = MelloUI.Anim
+	if hold or Anim.reduceMotion then
+		-- a sample, or Reduce Motion: at its place, a fade, nothing else (a sample in the box's upper part: the
+		-- plate's name stands in its middle)
+		PERS.Place(line, 0, (hold and PERS.H * PERS.sampleY or 0) + (#lines - 1) * 1.25 * F * (name == "resource" and -1 or 1))
+		line:SetAlpha(1)
+		Anim:Mirror(line, hold and T.fadeIn or 0.05, hold or (line.life - 0.3), hold and T.fadeOut or 0.25)
+		return line
+	end
+	PERS.Place(line, 0, 0)
+	line:SetAlpha(0)
+	line:Show()
+	Anim:Drive(line, PERS.Step, line.life, "linear", DEALT.StepDone)
+	return line
+end
+
+-- every line of the areas gone at once (the style changed, the module off)
+function PERS.Clear()
+	for _, name in ipairs(PERS.order) do
+		local A = PERS.areas[name]
+		local lines = A.lines
+		while lines and #lines > 0 do
+			local line = lines[1]
+			LineHidden(line)
+			line:Hide()
+		end
+	end
+end
+
+-- Edit Position (the Combat Text tab's button): Combat Text's own Edit Layout session, its four areas alone
+function PERS.Edit()
+	if not M.isEnabled then
+		return
+	end
+	if not PERS.looks[Style()] then
+		MelloUI:Announce(TEXT.editPick, "info")
+		return
+	end
+	for _, name in ipairs(PERS.order) do
+		PERS.Area(name)
+	end
+	if not MelloUI.StartEditLayout or MelloUI:StartEditLayout("configurator", nil, PERS.SESSION, PERS.TITLE) == false then
+		MelloUI:Announce(TEXT.editBusy, "info")
+	end
+end
+
+M.EditPosition = PERS.Edit
 
 -- every line of a plate gone at once (Your Damage off, the plates off)
 local function DealtDrop(unit)
@@ -1659,16 +2504,72 @@ local function DealtEntry(event, flags, amount, school)
 		e.kind, e.value = "dealt", amount
 		e.crit = (flag == "CRITICAL" or flag == "CRUSHING") or nil
 		e.glancing = flag == "GLANCING" or nil
-		local physical = Enum and Enum.Damageclass and Enum.Damageclass.MaskPhysical or 1
+		-- (2.1.85; the user: "make sure that the damage is colored correctly") a spell's hit in its school's colour,
+		-- a crit of it too; a weapon's hit in the text colour, its crit gold. A school the game keeps secret, or one
+		-- it has no name for: the spell colour of before
 		local s = Num(school)
-		e.colour = e.crit and RoleRGB("gold") or ((s and s ~= physical) and MelloUI.Meaning.combatSpell)
-			or RoleRGB("text")
+		local key = nil
+		if s and s > 1 then
+			-- (each school one power of two in the game's number: its place read by arithmetic alone)
+			for i = 1, #DEALT.schools do
+				local sc = DEALT.schools[i]
+				if math.floor(s / sc[1]) % 2 == 1 then
+					key = sc[2]
+					break
+				end
+			end
+			key = key or "combatSpell"
+		end
+		local Meaning = MelloUI.Meaning
+		e.colour = (key and (Meaning[key] or Meaning.combatSpell)) or (e.crit and RoleRGB("gold")) or RoleRGB("text")
 		return e
 	elseif DEALT.words[event] then
 		e.kind, e.label = "avoid", Word(event)
 		return e
 	end
 	return nil
+end
+
+-- a heal a friend took (UNIT_COMBAT's flag and amount): a number in the healing's colour, a crit bigger
+function DEALT.HealEntry(flags, amount)
+	local e = Clear(E)
+	e.kind, e.value, e.heal = "dealt", amount, true
+	e.crit = (Text(flags) == "CRITICAL") or nil
+	e.colour = MelloUI.Meaning.combatHeal
+	return e
+end
+
+-- a friend's plate MelloUI can stand on, not your own: true; a plate the game keeps to itself: nil; anything else
+-- (an enemy, yourself, an answer the game keeps secret): false
+function DEALT.FriendPlate(unit)
+	local okA, attack = pcall(UnitCanAttack, "player", unit)
+	if not okA or Secret(attack) or attack then
+		return false
+	end
+	local plate = PlateOf(unit)
+	if not plate then
+		return nil
+	end
+	-- (your own plate, the Personal Resource Display's: the plate itself compared, no unit question)
+	if plate == PlateOf("player") then
+		return false
+	end
+	return true
+end
+
+-- UNIT_COMBAT's HEAL on a plate: kept for its frame's end, yours when a line of the combat log is its own
+function DEALT.Heal(unit, flags, amount)
+	if not (DEALT.listen and DEALT.HealsDrawing()) then
+		return
+	end
+	local friend = DEALT.FriendPlate(unit)
+	if friend == nil then
+		DEALT.NoFriend()
+		return
+	end
+	if friend then
+		DEALT.Queue(unit, DEALT.HealEntry(flags, amount), true)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -1683,6 +2584,9 @@ end
 
 local function Show(e, hold)
 	local style = Style()
+	if PERS.looks[style] then
+		return PERS.Line(e, hold)
+	end
 	if style == "feed" then
 		feed:SetPitch(Pitch())
 		return feed:Put("line", nil, hold or T.feedHold, ApplyFeed, e)
@@ -1708,7 +2612,41 @@ function M.OrderLog()
 	MelloUI:Print("Combat Text: the order of hits and threat updates on the plates for %d seconds. Pull a fresh mob.", ORDER_TIME)
 	Events()
 end
-M.SlashWords = { order = M.OrderLog }
+
+-- /mello combattext log (2.1.85, docs/plans/damage-text-redo.md, the group source): for LOG_TIME seconds, what the
+-- client sends as you fight, in the chat -- each hit an enemy's plate reports (UNIT_COMBAT), each line of the game's
+-- combat log (COMBAT_LOG_MESSAGE: only that it came, its order and whether its text and colour are plain), your swings
+-- and your casts -- with their times, to see which of them come together. Nothing secret is printed or compared.
+local LOG_TIME = 20
+-- (a value named for the print: the word "secret" for one the game keeps, never the value itself)
+local function Named(v)
+	return Secret(v) and "secret" or tostring(v)
+end
+local function ProbeLog(text, ...)
+	if S.logUntil and GetTime() < S.logUntil then
+		MelloUI:Print("%.2f " .. text, GetTime() % 100, ...)
+	end
+end
+
+function M.LogProbe()
+	S.logUntil = GetTime() + LOG_TIME
+	local CL = rawget(_G, "C_CombatLog")
+	local function Ask(name)
+		local fn = type(CL) == "table" and CL[name]
+		if type(fn) ~= "function" then
+			return "none"
+		end
+		local ok, v = pcall(fn)
+		return ok and Named(v) or "refused"
+	end
+	MelloUI:Print("Combat Text: %d seconds of hits, combat log lines, swings and casts. Fight something, then copy the lines with /mellolog. "
+		.. "Lines on: %s. Log restricted: %s. In a group: %s. Your heals: %s.", LOG_TIME, Ask("AreFilteredEventsEnabled"),
+		Ask("IsCombatLogRestricted"), tostring(MelloUI.Threat.Grouped() and true or false),
+		DEALT.HealsWhy() or "drawn by MelloUI")
+	Events()
+	C_Timer.After(LOG_TIME + 0.2, Events)
+end
+M.SlashWords = { order = M.OrderLog, log = M.LogProbe }
 
 -- a hit held for the threat update: drawn when you are on the list in time
 local function Hold(unit, e)
@@ -1768,6 +2706,23 @@ local function OnEvent(_, event, arg1, ...)
 		end
 		local drawing = DealtDrawing()
 		local logging = S.orderUntil and GetTime() < S.orderUntil
+		local ev, flag, amount, school = ...
+		local heal = not Secret(ev) and ev == "HEAL"
+		if S.logUntil and GetTime() < S.logUntil then
+			if heal then
+				local friend = DEALT.FriendPlate(arg1)
+				ProbeLog("HEAL %s flag %s amount %s (a friend's plate: %s)", arg1, Named(flag), Secret(amount) and "secret" or "plain",
+					friend == true and "yes" or friend == nil and "the game's own" or "no")
+			else
+				ProbeLog("HIT %s %s flag %s amount %s school %s", arg1, Named(ev), Named(flag), Secret(amount) and "secret" or "plain",
+					Named(school))
+			end
+		end
+		-- (2.1.85) a heal: yours when the combat log's lines say so, at a friend's plate
+		if heal then
+			DEALT.Heal(arg1, flag, amount)
+			return
+		end
 		if not (drawing or logging) then
 			return
 		end
@@ -1779,9 +2734,19 @@ local function OnEvent(_, event, arg1, ...)
 		if not drawing then
 			return
 		end
+		if MelloUI.Threat.Grouped() or DEALT.threatHidden then
+			-- (2.1.85) in a group: yours when the combat log's lines say so (DEALT.Close); a friend's plate never
+			if fought ~= false then
+				local e = DealtEntry(...)
+				if e then
+					DEALT.Queue(arg1, e, true)
+				end
+			end
+			return
+		end
 		if fought == nil then
-			-- the list secret: whose hit cannot be told, the game's numbers
-			-- for the rest of this fight
+			-- the list secret: whose hit cannot be told by it -- by the combat log's lines from here on
+			-- (Your Damage In Groups), else the game's numbers for the rest of this fight
 			DEALT.threatHidden = true
 			Apply()
 			return
@@ -1793,9 +2758,40 @@ local function OnEvent(_, event, arg1, ...)
 		if e then
 			if fought == "held" then
 				Hold(arg1, e)
+			elseif DEALT.listen then
+				DEALT.Queue(arg1, e, false)   -- (the lines flow: drawn at its frame's end, a tick told)
 			else
 				DealtLine(arg1, e)
 			end
+		end
+	elseif event == "COMBAT_LOG_MESSAGE" then
+		local message, r, _, _, order = arg1, ...
+		ProbeLog("LINE order %s text %s colour %s", Named(order), Secret(message) and "secret" or "plain",
+			Secret(r) and "secret" or "plain")
+		if DEALT.listen then
+			-- (a line replayed at a refilter is an old one: order Oldest)
+			local EO = Enum and Enum.CombatLogMessageOrder
+			local oldest = type(EO) == "table" and type(EO.Oldest) == "number" and EO.Oldest or 1
+			local newest = type(EO) == "table" and type(EO.Newest) == "number" and EO.Newest or 0
+			if Secret(order) or order == newest or order ~= oldest then
+				local L = DEALT.Frame()
+				L.lines = L.lines + 1
+			end
+		end
+	elseif event == "PLAYER_SWING" then
+		ProbeLog("SWING type %s", Named((select(1, ...))))
+		if DEALT.listen then
+			local L = DEALT.Frame()
+			L.swings = L.swings + 1
+			local sw = tremove(L.spare) or {}
+			sw.at, sw.line = L.at, nil
+			L.pending[#L.pending + 1] = sw
+		end
+	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+		ProbeLog("CAST by %s", Named(arg1))
+		if DEALT.listen and arg1 == "player" then
+			local L = DEALT.Frame()
+			L.casts = L.casts + 1
 		end
 	elseif event == "UNIT_THREAT_LIST_UPDATE" then
 		if not Secret(arg1) and type(arg1) == "string" and arg1:find("^nameplate%d") then
@@ -1808,9 +2804,17 @@ local function OnEvent(_, event, arg1, ...)
 	elseif event == "CVAR_UPDATE" then
 		-- the enemy nameplates on or off: MelloUI's numbers or the game's
 		local name = Text(arg1)
-		if name and name:lower() == "nameplateshowenemies" then
+		name = name and name:lower()
+		if name == "nameplateshowenemies" or name == "nameplateshowfriendlyplayers" then
 			Apply()
 		end
+	elseif event == "FORBIDDEN_NAME_PLATE_UNIT_ADDED" then
+		-- (2.1.85) a friendly plate the game keeps to itself: no place for your heals here
+		DEALT.NoFriend()
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		-- (2.1.85) a new place: its friendly plates may be MelloUI's to stand on again, or a dungeon's
+		DEALT.noFriend = false
+		Apply()
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		if not Secret(arg1) and type(arg1) == "string" then
 			DealtLetGo(arg1)
@@ -1847,7 +2851,8 @@ local function OnEvent(_, event, arg1, ...)
 			GameSwitch(S.cvarPending == "on")
 		end
 		if S.dealtPending then
-			DealtSwitch(S.dealtPending == "on")
+			S.dealtPending = nil
+			Apply()   -- (the game's numbers MelloUI stands in for, as the state is now)
 		end
 		if Ours() then
 			local e = Entry("LEAVING_COMBAT")
@@ -1872,8 +2877,12 @@ Events = function()
 	local want = Ours()
 	local chosen = DealtOn()
 	local dealt = chosen and PlatesShown()
+	local heals = chosen and DEALT.HealsReady()
 	local waiting = S.cvarPending ~= nil or S.dealtPending ~= nil or next(enemyPending) ~= nil
-	if not (want or chosen or waiting) then
+	local probing = S.logUntil ~= nil and GetTime() < S.logUntil
+	-- (2.1.85) the combat log's lines counted while Your Damage (or your heals) is on and they flow
+	DEALT.listen = (dealt or heals) and DEALT.LinesOn() or false
+	if not (want or chosen or waiting or probing) then
 		if events then
 			events:UnregisterAllEvents()
 		end
@@ -1894,8 +2903,23 @@ Events = function()
 	if chosen then
 		events:RegisterEvent("CVAR_UPDATE")
 		events:RegisterEvent("GROUP_ROSTER_UPDATE")
+		-- (2.1.85) your heals: a new place's friendly plates, and one the game keeps to itself (a client without the
+		-- event just lacks that sign)
+		local db = DB()
+		if not (db and db.dealtHeals == false) then
+			events:RegisterEvent("PLAYER_ENTERING_WORLD")
+			if not DEALT.noFriend then
+				pcall(events.RegisterEvent, events, "FORBIDDEN_NAME_PLATE_UNIT_ADDED")
+			end
+		end
 	end
-	if dealt or (S.orderUntil and GetTime() < S.orderUntil) then
+	if probing or DEALT.listen then
+		-- (each asked for under pcall -- a client without one of them just lacks its lines)
+		pcall(events.RegisterEvent, events, "COMBAT_LOG_MESSAGE")
+		pcall(events.RegisterEvent, events, "PLAYER_SWING")
+		pcall(events.RegisterUnitEvent or events.RegisterEvent, events, "UNIT_SPELLCAST_SUCCEEDED", "player", "pet")
+	end
+	if dealt or heals or probing or (S.orderUntil and GetTime() < S.orderUntil) then
 		events:RegisterEvent("UNIT_COMBAT")
 		events:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 		events:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
@@ -1932,13 +2956,18 @@ local burst = 0
 local function BurstStep()
 	burst = burst + 1
 	local s = Ours() and SAMPLE[burst] or nil
-	local d = DealtDrawing() and PlateOf("target") and DEALT.samples[burst] or nil
-	if not (s or d) then
+	-- (2.1.85) a friend targeted: your heals' samples at its plate
+	local h = DEALT.HealsDrawing() and DEALT.FriendPlate("target") and DEALT.heals[burst] or nil
+	local d = not h and DealtDrawing() and PlateOf("target") and DEALT.samples[burst] or nil
+	if not (s or d or h) then
 		burst = 0
 		return
 	end
 	if s then
 		Show(SampleEntry(s))
+	end
+	if h then
+		DealtLine("target", DEALT.HealEntry(h[1], h[2]))
 	end
 	if d then
 		local e = DealtEntry(d[1], d[2], d[3], d[4])
@@ -1958,7 +2987,8 @@ function M.Preview()
 		MelloUI:Announce(TEXT.gameStyle, "info")
 		return
 	end
-	if not ours and not (dealt and PlateOf("target")) then
+	local heals = DEALT.HealsDrawing() and DEALT.FriendPlate("target")
+	if not ours and not heals and not (dealt and PlateOf("target")) then
 		MelloUI:Announce(TEXT.dealtTarget, "info")
 		return
 	end
@@ -1997,14 +3027,23 @@ end
 -- it shows, faded when it closes
 local held = {}   -- the sample lines shown
 local function Samples()
-	local want = Ours() and MelloUI:EditingLayout() and true or false
+	-- (2.1.85) the three looks' areas show their samples in Combat Text's own session (Edit Position: the bus's
+	-- 'editsession'), the earlier styles' lanes in the common one as before
+	local want = false
+	if Ours() then
+		if PERS.looks[Style()] then
+			want = MelloUI:EditSession() == PERS.SESSION
+		else
+			want = MelloUI:EditingLayout() and true or false
+		end
+	end
 	if want == S.samples then
 		return
 	end
 	S.samples = want
 	if want then
 		local style = Style()
-		local list = style == "lanes" and { 1, 2, 5, 6 } or { 1, 2, 5 }
+		local list = (style == "lanes" or PERS.looks[style]) and { 1, 2, 5, 6 } or { 1, 2, 5 }
 		for _, i in ipairs(list) do
 			local row = Show(SampleEntry(SAMPLE[i]), T.sampleHold)
 			if row then
@@ -2052,6 +3091,13 @@ local function EachLine(fn)
 	for _, line in ipairs(DEALT.pool) do
 		fn(line)
 	end
+	-- (2.1.85: the three looks' areas)
+	for _, name in ipairs(PERS.order) do
+		local lines = PERS.areas[name].lines
+		for i = 1, lines and #lines or 0 do
+			fn(lines[i])
+		end
+	end
 	feed:Each(fn)
 end
 
@@ -2068,12 +3114,15 @@ end
 -- coming and faded), or the game's own back
 Apply = function()
 	local db = DB()
-	if DealtDrawing() then
-		DealtSwitch(true)
+	DEALT.KeepLines()
+	-- (2.1.85: your heals by themselves -- the game's healing numbers off only while MelloUI draws them)
+	local damage, heals = DealtDrawing(), DEALT.HealsDrawing()
+	if damage or heals then
+		DealtSwitch(damage, heals)
 		S.dealtStarted = true
 	elseif S.dealtStarted or (db and db.savedDealt ~= nil) then
 		S.dealtStarted = false
-		DealtSwitch(false)
+		DealtSwitch(false, false)
 		ClearDealt()
 	end
 	if Ours() then
@@ -2085,6 +3134,7 @@ Apply = function()
 		FadeGame(false)
 		GameSwitch(false)
 		ClearFloat()
+		PERS.Clear()
 		feed:Clear()
 		S.samples = false
 		for i = #held, 1, -1 do
@@ -2093,6 +3143,8 @@ Apply = function()
 	end
 	Events()
 end
+
+DEALT.Apply = Apply
 
 local function OnSetting(module, key)
 	if module == "Tweaks" and key == "noticeOutline" then
@@ -2121,12 +3173,18 @@ end
 
 function M:OnInit(db)
 	self.db = db
+	-- (2.1.85) a look of before, kept as the new one nearest to it (the dropdown shows what is drawn)
+	local old = db and DEALT.old[db.dealt]
+	if old then
+		db.dealt = old
+	end
 end
 
 function M:OnEnable(db)
 	self.db = db
 	MelloUI:On("setting", OnSetting, OWNER)
 	MelloUI:On("editlayout", OnEditLayout, OWNER)
+	MelloUI:On("editsession", OnEditLayout, OWNER)   -- (2.1.85: Combat Text's own session, Edit Position)
 	MelloUI:On("restart", OnRestart, OWNER)
 	MelloUI:On("palette", Repaint, OWNER)
 	MelloUI:On("preview", OnPreview, OWNER)
@@ -2152,13 +3210,16 @@ function M:OnSettingChanged(key, value, db)
 		Apply()
 		RestyleAll()
 		Samples()
-	elseif key == "dealt" then
+	elseif key == "dealt" or key == "dealtGroups" or key == "dealtHeals" then
 		Apply()
-	elseif key == "size" or key == "titleNotices" or key == "shadeSize" then
+	elseif key == "size" or key == "titleNotices" or key == "shadeSize" or key == "dealtOutline" then
 		RestyleAll()
 	elseif key == "lines" then
 		feed:Fit()
 	elseif ENEMY[key] then
 		Enemy.Write(key, value)
+		if key == "enemyHealing" then
+			Apply()   -- (2.1.85: the game's healing numbers on: MelloUI's in their place where it draws them)
+		end
 	end
 end

@@ -300,7 +300,8 @@ local function ReadItems()
 	for i = 1, #list do
 		local entry = list[i]
 		local key = entry.key
-		if key ~= nil and entry.group ~= "tool" and not seenKey[key] and MelloUI:EntryLive(entry) then
+		-- (2.1.85: an element of a feature's own session is in no Elements list)
+		if key ~= nil and entry.group ~= "tool" and not entry.session and not seenKey[key] and MelloUI:EntryLive(entry) then
 			seenKey[key] = true
 			local it = Item(key)
 			it.entry, it.key, it.label, it.cat = entry, key, Label(entry), K.Category(entry)

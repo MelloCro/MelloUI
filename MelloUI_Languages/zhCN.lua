@@ -583,8 +583,6 @@ Lang:Add("zhCN", {
 	["Outlined Text"] = "描边文字", -- draft
 	["An outline on MelloUI's on-screen text: notices, Combat Text, Gains and, with Text Shade on, the zone text and the messages in the middle of the screen. Off: soft text on a dark shadow."] = "MelloUI 屏幕文字的描边：通知、战斗文字、收获，以及开启文字阴影时的区域文字和屏幕中央的消息。关闭：暗影上的柔和文字。", -- draft
 	["Combat Text"] = "战斗文字", -- draft
-	["Numbers Over Enemies"] = "敌人头上的数字", -- draft
-	["The size of the game's damage numbers over enemies."] = "游戏在敌人头顶的伤害数字大小。", -- draft
 	["Bar Layout"] = "动作条布局", -- draft
 	["Which Bar"] = "哪条动作条", -- draft
 	["The bar the rows below set: its rows, icons, icon size and padding. MelloUI's own action bars change at once; the stance and pet bars (and the game's bars with UI Modifications off) are saved into your active Edit Mode layout once you let a slider go, and show after a /reload."] = "下方各行设置的动作条：行数、图标、图标大小和间距。MelloUI 自己的动作条立即改变；姿态条和宠物条（以及关闭界面修改时游戏的动作条）会在松开滑块时保存到当前编辑模式布局，并在 /reload 后显示。", -- draft
@@ -1860,23 +1858,12 @@ Lang:Add("zhCN", {
 	-- CombatText
 	["The text around your character in a fight (damage taken, heals, procs) in MelloUI's look, or the game's own."] = "战斗中角色周围的文字（受到的伤害、治疗、触发）使用 MelloUI 外观或游戏自带。", -- draft
 	["Your hits taken, heals and procs in MelloUI's soft look, or the game's own text."] = "你受到的打击、治疗和触发，使用MelloUI柔和的外观，或游戏自己的文字。", -- draft
-	["Combat Text Style"] = "战斗文字风格", -- draft
-	["How the text around your character is shown. Game: the game's own. Lanes: damage taken left, healing right. Feed: one column over your portrait. Classic: one stream over your head."] = "角色周围文字的显示方式。游戏：游戏自带。分道：受到伤害在左，治疗在右。信息流：头像上方一列。经典：头顶一股文字流。", -- draft
 	["Game (Blizzard)"] = "游戏（暴雪）", -- draft
 	["Lanes: round your character"] = "分道：围绕你的角色", -- draft
 	["Feed: over your portrait"] = "信息流：在你的头像上方", -- draft
 	["Classic: one stream, restyled"] = "经典：一道文字流，换了新样式", -- draft
-	["Your Damage"] = "你的伤害", -- draft
-	["How your damage numbers over enemies look. Game: the game's own. Rise, Beside, Fan or Stack: MelloUI's, shown solo; in a group the game's show."] = "敌人头顶你的伤害数字外观。游戏：游戏自带。上升、侧边、扇形或堆叠：MelloUI 的，单人时显示；组队时显示游戏的。", -- draft
-	["Rise: up from the enemy"] = "上升：从敌人身上向上", -- draft
-	["Beside: up from the plate's side"] = "侧边：从姓名板侧边向上", -- draft
-	["Fan: up, left and right"] = "扇形：向上、左和右", -- draft
-	["Stack: a column beside the enemy"] = "堆叠：敌人旁的一列", -- draft
-	["Your Damage Size"] = "你的伤害大小", -- draft
-	["The size of your damage numbers over enemies."] = "敌人头顶你的伤害数字大小。", -- draft
 	["Plays sample lines in the chosen style."] = "以所选样式播放示例文字。", -- draft
 	["a short burst in the chosen style"] = "以所选风格播放一小段", -- draft
-	["Text Around You"] = "你周围的文字", -- draft
 	["The size of the text around your character. Crits are a third bigger."] = "角色周围文字的大小。暴击大三分之一。", -- draft
 	["Notices In Title Font"] = "通知使用标题字体", -- draft
 	["Procs and auras in the title font. Off: the text font."] = "触发和光环使用标题字体。关闭：使用正文字体。", -- draft
@@ -2416,9 +2403,8 @@ Lang:Add("zhCN", {
 	["Tooltip Border"] = "鼠标提示边框", -- draft
 	["Only while the health bar shows (Hide Health Bar off)"] = "仅在显示生命条时", -- draft
 	["MelloUI Combat Text"] = "MelloUI战斗文字", -- draft
-	["Only while MelloUI draws Your Damage"] = "仅在MelloUI绘制“你的伤害”时", -- draft
-	["Only for the Lanes, Feed and Classic styles"] = "仅用于分道、信息流和经典风格", -- draft
 	["Only for the Lanes style"] = "仅用于分道风格", -- draft
+	["Only for the Lanes, Feed and Classic styles"] = "仅用于分道、信息流和经典风格", -- draft
 	["Only while the Player Frame fades"] = "仅在玩家框体淡出时", -- draft
 	["Only with the Personal Display on"] = "仅在开启个人显示时", -- draft
 	["Hidden (Hide This Bar)"] = "已隐藏（隐藏此条）", -- draft
@@ -2471,6 +2457,11 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "战斗文字：战斗伤害样式（原“你的伤害”）已重做。选择 Pop、Slam 或 Stamp：命中更干脆，暴击伴随闪光落下。", -- draft
+	["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "战斗文字：角色周围的文字也可使用 Pop、Slam 和 Stamp。Edit Position 可移动并缩放每类文字的区域。", -- draft
+	["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "战斗文字：伤害数字描边，法术命中显示其学派的颜色。", -- draft
+	["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "战斗文字：在队伍中也以 MelloUI 的样式显示你自己的伤害（测试），持续伤害在单独的小通道中显示。", -- draft
+	["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "战斗文字：治疗数字。你对友方的治疗以同样的样式显示在其姓名板上。", -- draft
 	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool：边框标签页更短了。姓名板边框和等级宝珠已移除：两者都由你的框架套装绘制。", -- draft
 	["Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings."] = "设置窗口：框体的标签页现在在一个滚动列表中显示其所有部件的设置。点击某个部件即可跳到它的设置。", -- draft
 	["Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide."] = "设置窗口：部件在预览旁排成列表，可以隐藏的部件带有“显示”开关。", -- draft
@@ -3276,6 +3267,7 @@ Lang:Add("zhCN", {
 -- stale: ["Bags: your own kinds can hold several rules: an item matching any one of them goes in the kind (one Profession Tool kind for mining picks and fishing poles)."] = "背包：自定义类别可以有多条规则，符合任意一条的物品都归入该类别（例如一个“专业工具”类别同时收纳矿工锄和鱼竿）。", -- draft
 -- stale: ["Bar Texture (Look)"] = "条材质（外观）", -- draft
 -- stale: ["Bars: the switches for the shadow behind your action bars now sit under Backdrops And Shadows, and the search finds them."] = "动作条：动作条背后阴影的开关现在位于“底板与阴影”下，搜索也能找到。", -- draft
+-- stale: ["Beside: up from the plate's side"] = "侧边：从姓名板侧边向上", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it also watches the game's controller navigation."] = "被阻止操作报告（/mellobug）：使用手柄时，也会留意游戏的手柄导航。", -- draft
 -- stale: ["Blocked actions report (/mellobug): with a controller, it notes what first changed the game's controller values."] = "被阻止操作报告（/mellobug）：使用手柄时，会记录最先改动游戏手柄数值的是什么。", -- draft
 -- stale: ["Browns with gold bevels"] = "带金色斜边的棕色", -- draft
@@ -3328,6 +3320,8 @@ Lang:Add("zhCN", {
 -- stale: ["Colour of the health bars: the unit frames', the nameplates' and your party and raid frames' (Group Frames). Blizzard bakes the green into its artwork, so the module has to colour flat textures itself. By health shades the bar from your full health colour through the half one to the low one, and keeps doing so in combat. My Colour is one colour of yours. An NPC's nameplate keeps the game's own colour (its reaction and threat) with every choice but By health. On the party and raid frames Class and Class / reaction are the class colour."] = "生命条的颜色：单位框体的、姓名板的以及你的小队和团队框体的（小队框体）。暴雪把绿色烘焙进美术里，所以模块必须自己为扁平材质上色。“按生命值”让条从你的满血颜色经过半血颜色渐变到低血颜色，战斗中也持续生效。“我的颜色”是你的一种颜色。NPC的姓名板在除“按生命值”外的所有选项下保留游戏自己的颜色（阵营关系和仇恨）。在小队和团队框体上，“职业”和“职业 / 关系”都是职业颜色。", -- draft
 -- stale: ["Colour the border of unit tooltips by class (players) or reaction (NPCs)."] = "按职业（玩家）或关系（NPC）为单位鼠标提示的边框着色。", -- draft
 -- stale: ["Colour the tooltip health bar by class or reaction instead of green."] = "按职业或关系为鼠标提示的生命条着色，而不是绿色。", -- draft
+-- stale: ["Combat Text Style"] = "战斗文字风格", -- draft
+-- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "战斗文字：你的伤害已重做。选择 Pop、Slam 或 Stamp：命中更干脆，暴击伴随闪光落下。", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "战斗文字：每隔几秒出现又消失的光环（与宠物一起的恶魔知识）只显示一次。", -- draft
 -- stale: ["Combat, frames and tooltips"] = "战斗、框体和鼠标提示", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "紧凑团队框体、小组边框和图腾使用套件外观。", -- draft
@@ -3429,6 +3423,7 @@ Lang:Add("zhCN", {
 -- stale: ["Fade: Action Bar 8"] = "淡出：动作条8", -- draft
 -- stale: ["Fade: Stance & Pet Bar"] = "淡出：姿态条和宠物条", -- draft
 -- stale: ["Fading"] = "淡出", -- draft
+-- stale: ["Fan: up, left and right"] = "扇形：向上、左和右", -- draft
 -- stale: ["Features"] = "功能", -- draft
 -- stale: ["Features are off: switch them on in /mello."] = "功能已关闭：在/mello中开启它们。", -- draft
 -- stale: ["Features on: %s"] = "已开启的功能：%s", -- draft
@@ -3556,6 +3551,7 @@ Lang:Add("zhCN", {
 -- stale: ["How the parchment looks wherever it shows: the sheets switched on below, and the quest log, quest and spell book pages. Burnt paper: warm paper with burnt edges, big pages with curled corners. Classic vellum: the vellum with painted brush-stroke edges from before 0.20.1."] = "羊皮纸在各处的样子：下方开启的纸张，以及任务日志、任务和法术书页面。焦纸：带焦边的暖色纸，大页面有卷角。经典牛皮纸：0.20.1之前带手绘笔触边缘的牛皮纸。", -- draft
 -- stale: ["How the raid's frames are grouped: by raid group (1 to 8), by role, by class, or one list."] = "团队框体的分组方式：按团队小组（1到8）、按职责、按职业，或一个列表。", -- draft
 -- stale: ["How the route is drawn on the world map and the minimap: red beads in gold rings, one pale gold line, or short pale gold dashes. The destination is a flag in a gold ring either way."] = "路线在世界地图和小地图上的画法：金环中的红色珠子、一条淡金线，或淡金色短虚线。目的地无论如何都是金环中的旗帜。", -- draft
+-- stale: ["How the text around your character is shown. Game: the game's own. Lanes: damage taken left, healing right. Feed: one column over your portrait. Classic: one stream over your head."] = "角色周围文字的显示方式。游戏：游戏自带。分道：受到伤害在左，治疗在右。信息流：头像上方一列。经典：头顶一股文字流。", -- draft
 -- stale: ["How the value is written."] = "数值的写法。", -- draft
 -- stale: ["How thick your share is on the race bar's line (its pins and labels keep their size). Also in Edit Layout: right-click the race bar."] = "你在竞速条线上的份额有多粗（标记和标签保持大小）。也可在“编辑布局”中：右键竞速条。", -- draft
 -- stale: ["How wide the bars are; the weapon's rim hangs left of them and the seconds right of them. Also in Edit Layout (right-click a bar there)."] = "条的宽度；武器圆框挂在左边，秒数在右边。也可在“编辑布局”中（在那里右键一条）。", -- draft
@@ -3563,6 +3559,7 @@ Lang:Add("zhCN", {
 -- stale: ["How wide the map is. The round map is as tall as it is wide, and its painted ring grows and shrinks with it. The square map's border and the zone name keep their size, the Services buttons too (smaller only on a map too narrow for them), and the Quest Tracker under the map follows its width. Edit Mode's minimap Size no longer sizes the map while the Minimap Kit is on."] = "地图的宽度。圆形地图高宽相等，手绘圆环随之缩放。方形地图的边框和区域名保持大小，服务按钮也是（仅在地图太窄放不下时变小），地图下方的任务追踪器跟随其宽度。小地图套件开启时，编辑模式的小地图大小不再决定地图大小。", -- draft
 -- stale: ["How wide the race bar is. Also in Edit Layout: right-click the race bar."] = "竞速条的宽度。也可在“编辑布局”中：右键竞速条。", -- draft
 -- stale: ["How wide the tracker is when it does not match the minimap's width (at least 60). Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)."] = "不与小地图同宽时追踪器的宽度（至少60）。“编辑模式的”：与游戏追踪器同宽。拖动左下角的把手可设置宽度和高度（与小地图同宽时只能设置高度）。", -- draft
+-- stale: ["How your damage numbers over enemies look. Game: the game's own. Rise, Beside, Fan or Stack: MelloUI's, shown solo; in a group the game's show."] = "敌人头顶你的伤害数字外观。游戏：游戏自带。上升、侧边、扇形或堆叠：MelloUI 的，单人时显示；组队时显示游戏的。", -- draft
 -- stale: ["How your heals look. By Class: Holy for priests and paladins, Nature for druids, Water for shamans (Holy for anyone else). Water: water circles your cast bar, a winding stream throws off droplets, a splash lands; a shield is a water bubble, a heal to full a geyser. Holy: gold sparks spiral into your spell's icon, a gold comet flies, a white flash and a burst of rays land, rune marks linger round the frame. Nature: green and gold ribbons circle your cast bar, ribbons fly shedding leaves, leaves burst and rise. Quiet: your cast bar's fill glows, a thin thread of light flies, the frame's border flares. Each kind lands its own way in each look: a heal over time sinks in, a shield wraps the frame in a barrier, protection puts a crest over it, a heal to full raises a column of light, a resurrection lights the fallen one's frame."] = "你的治疗看起来的样子。按职业：牧师和圣骑士为神圣，德鲁伊为自然，萨满为水（其他职业为神圣）。水：水流环绕你的施法条，一道蜿蜒的水流甩出水滴，落下一片水花；护盾是一个水泡，满血治疗是一道间歇泉。神圣：金色火花螺旋汇入你的法术图标，一颗金色彗星飞出，落下白色闪光和一束光芒，符文印记在框体周围停留。自然：绿金丝带环绕你的施法条，丝带一路洒落树叶飞去，树叶迸开升起。低调：施法条的填充发光，一缕细光飞出，框体边框亮起。每种类型在每种外观中都有自己的落点：持续治疗渗入，护盾用屏障包住框体，保护在其上放一个纹章，满血治疗升起一道光柱，复活点亮倒下之人的框体。", -- draft
 -- stale: ["Icon frames and bar backgrounds of the Essential, Utility and Buff cooldown viewers."] = "重要技能、效能技能和增益效果冷却查看器的图标框和条背景。", -- draft
 -- stale: ["Icons stay smooth and sharp at every size and UI scale: each one is drawn from a copy made for its size on your screen."] = "图标在任何大小和缩放下都平滑清晰：每个图标都由按其屏幕尺寸制作的副本绘制。", -- draft
@@ -3743,6 +3740,7 @@ Lang:Add("zhCN", {
 -- stale: ["Not with Attach To The Player Frame"] = "不能与附着到玩家框架同时使用", -- draft
 -- stale: ["Nudge the text down (negative) or up (positive)."] = "向下（负值）或向上（正值）微移文字。", -- draft
 -- stale: ["Nudge the text left (negative) or right (positive) from where Blizzard places its own bar text."] = "从暴雪放置自己条文字的位置向左（负值）或向右（正值）微移文字。", -- draft
+-- stale: ["Numbers Over Enemies"] = "敌人头上的数字", -- draft
 -- stale: ["Off Hand Bar"] = "副手条", -- draft
 -- stale: ["Off-hand bar"] = "副手条", -- draft
 -- stale: ["Oldschool party frames: the level badge and its border are drawn over the portrait's ring. The ring cut across the badge before."] = "Oldschool 小队框体：等级徽章及其边框现在绘制在头像环之上。此前头像环会压在徽章上。", -- draft
@@ -3764,6 +3762,7 @@ Lang:Add("zhCN", {
 -- stale: ["One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout."] = "当MelloUI有消息告诉你时，在屏幕上方三分之一处显示一行短文字：设定或完成了路线、记住了一个服务、列出了地下城的任务。几秒后淡出。可在“编辑布局”中移动。", -- draft
 -- stale: ["Only for the Dark background"] = "仅用于深色背景", -- draft
 -- stale: ["Only when attached to the frame"] = "仅在贴附框体时", -- draft
+-- stale: ["Only while MelloUI draws Your Damage"] = "仅在MelloUI绘制“你的伤害”时", -- draft
 -- stale: ["Only with the Minimal Chat View (Chat Tweaks on) or the painted chat (its Painted Skin, the reskin on)"] = "仅在极简聊天视图或手绘聊天时", -- draft
 -- stale: ["Only with the cast bars' Painted Skin"] = "仅在施法条使用手绘皮肤时", -- draft
 -- stale: ["Only with the unit frames' Painted Skin"] = "仅在单位框体使用手绘皮肤时", -- draft
@@ -3881,6 +3880,7 @@ Lang:Add("zhCN", {
 -- stale: ["Restock List: now a catalogue by kind (drink, food, ammo, potions, elixirs, scrolls, poisons, reagents) with a search: tick each item to keep and set how many."] = "补给清单：现在是带搜索的按类别目录（饮料、食物、弹药、药水、合剂、卷轴、毒药、材料）：勾选要常备的每件物品并设置数量。", -- draft
 -- stale: ["Restock: Shopping List Below gives the shop's list a share of its own, so it can open sooner than the reminder comes up."] = "补货：购物清单阈值让商店清单有自己的比例，可以比提醒更早打开。", -- draft
 -- stale: ["Restock: hunters can keep pet food by diet (meat, fish, bread, cheese, fruit, fungus), and the list holds 40 lines."] = "补给：猎人可以按食性常备宠物食物（肉、鱼、面包、奶酪、水果、蘑菇），清单最多容纳40行。", -- draft
+-- stale: ["Rise: up from the enemy"] = "上升：从敌人身上向上", -- draft
 -- stale: ["Role Picker: entering a dungeon in a group, your class's roles drop in above your character. One click sets yours, and it can remember it for the next ones."] = "职责选择：与队伍进入地下城时，你职业的职责会落在角色上方。点击一下即可设置，也可以让它为以后的副本记住。", -- draft
 -- stale: ["Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted."] = "圆形边框在小尺寸下清晰：服务按钮和圆形边框样式的圆环是实心的，不再是点状。", -- draft
 -- stale: ["Route follows Follow The Arrow, Azeroth Pilot Reloaded, TomTom's arrow and Guidelime through it, as it follows RestedXP. Several guides on? MelloUI asks which to keep."] = "Route 像跟随 RestedXP 一样跟随 Follow The Arrow、Azeroth Pilot Reloaded、TomTom 的箭头和 Guidelime。开了多个指南？MelloUI 会问保留哪个。", -- draft
@@ -3947,6 +3947,7 @@ Lang:Add("zhCN", {
 -- stale: ["Space between the name / debuff row and the crowd-control icon."] = "名字 / 减益行与控制图标之间的距离。", -- draft
 -- stale: ["Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak."] = "每个职业的法术组：所有角色共用一个布局；你关闭的法术只对你的职业生效。", -- draft
 -- stale: ["Spot"] = "位置", -- draft
+-- stale: ["Stack: a column beside the enemy"] = "堆叠：敌人旁的一列", -- draft
 -- stale: ["Star the items you want: a loot roll for one shines gold and lights Need. Pick Up Quests: Route takes you to all of a dungeon's quests in the fastest order."] = "为想要的物品加星：它的掉落掷骰会发出金光并突出“需求”。接取任务：Route 按最快顺序带你接取地下城的所有任务。", -- draft
 -- stale: ["Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag. With the widgets for loot rolls, summons and the rest, and the FPS / latency readout."] = "补给、邮件、修理和训练：头像旁轻轻一点，从不唠叨。还有拾取掷骰、召唤等小部件，以及FPS / 延迟读数。", -- draft
 -- stale: ["Supporters page: the names now hang on three animated banners, one for each tier, with MelloUI's Patreon and Discord in a copy box."] = "支持者页面：名字现在挂在三面动态旗帜上，每个等级一面，MelloUI 的 Patreon 和 Discord 地址显示在复制框中。", -- draft
@@ -3960,6 +3961,7 @@ Lang:Add("zhCN", {
 -- stale: ["Swing timer: Swing Ring Width (Thin, Medium, Thick) and Swing Ring Colour options for the ring that fills round the swing badge; the part still to fill is now a dark track, easier to see."] = "攻击计时：为攻击徽章周围逐渐填满的圆环新增“攻击圆环宽度”（细、中、粗）和“攻击圆环颜色”选项；尚未填满的部分现在是一条暗色轨道，更容易看清。", -- draft
 -- stale: ["Take the tour"] = "参观导览", -- draft
 -- stale: ["Take this indicator off the list (this spec only)."] = "从列表中移除此指示器（仅此专精）。", -- draft
+-- stale: ["Text Around You"] = "你周围的文字", -- draft
 -- stale: ["Text height relative to the icon size."] = "文字高度相对图标大小。", -- draft
 -- stale: ["Text size. Default follows the status bar text font of the game (and the Fonts module)."] = "文字大小。默认跟随游戏的状态栏数值字体（以及字体模块）。", -- draft
 -- stale: ["The Fight History window: every fight of this session, grouped by run, with the damage, healing and your spells of each. It opens from its button in the chat's button column and from the summary. It takes the place of the game's meter windows."] = "战斗历史窗口：本次游戏的每场战斗，按副本分组，带每场的伤害、治疗和你的法术。可从聊天按钮栏中的按钮和总结打开。它取代游戏的统计窗口。", -- draft
@@ -4147,6 +4149,7 @@ Lang:Add("zhCN", {
 -- stale: ["The size of Your Damage's numbers over the enemies (Rise, Beside, Fan and Stack), whatever the text around you. 70% by default."] = "敌人上方“你的伤害”数字的大小（上升、侧边、扇形和堆叠），与你周围的文字无关。默认70%。", -- draft
 -- stale: ["The size of each combo point, as a share of the health bar's height."] = "每个连击点数的大小，按生命条高度的比例。", -- draft
 -- stale: ["The size of the bar's buttons. 100% is the game's own size."] = "动作条按钮的大小。100%为游戏自己的大小。", -- draft
+-- stale: ["The size of the game's damage numbers over enemies."] = "游戏在敌人头顶的伤害数字大小。", -- draft
 -- stale: ["The size of the numbers over the enemies and the ones you heal: the game's own, and Your Damage's when MelloUI draws them (one or the other shows). 1.0 is the game's size."] = "敌人头上和你治疗对象头上数字的大小：游戏自己的，以及MelloUI绘制时“你的伤害”的（两者只显示其一）。1.0为游戏的大小。", -- draft
 -- stale: ["The size of the quest titles and the section headers (the headers in the Fonts module's title face, which draws them larger); the objectives are one size smaller. The Fonts' Titles & headers size does not change it."] = "任务标题和分区标题的大小（分区标题使用字体模块的标题字体，绘制得更大）；目标小一号。字体中的“标题和题头大小”不影响它。", -- draft
 -- stale: ["The size of the soft shade behind the combat text, the text over you and Your Damage alike. 100% is the notices' shade; less hugs the numbers closer; 0% shows none."] = "战斗文字背后柔和阴影的大小，你上方的文字和“你的伤害”都适用。100%为通知的阴影；更小则更贴近数字；0%不显示。", -- draft
@@ -4154,6 +4157,7 @@ Lang:Add("zhCN", {
 -- stale: ["The size of the tracker's title, Objectives (in the Fonts module's title face, which draws it larger). The Fonts' Titles & headers size does not change it."] = "追踪器标题“目标”的大小（使用字体模块的标题字体，绘制得更大）。字体中的“标题和题头大小”不影响它。", -- draft
 -- stale: ["The size of your buff and debuff icons under the player frame, in pixels (the target's are 22 by default). The rows keep one width, so a smaller size fits more in a row."] = "玩家框体下方增益和减益图标的大小（像素；目标的默认为22）。行宽保持不变，所以尺寸越小一行放得越多。", -- draft
 -- stale: ["The size of your buff and debuff icons, in pixels: MelloUI's own rows while Your Buffs And Debuffs shows them, else the game's buff and debuff bars (saved into your Edit Mode layout in its own steps of 3 pixels, shown after a reload; 30 is the game's size)."] = "你的增益和减益图标的大小（像素）：当“你的增益和减益效果”显示MelloUI的行时为那些行，否则为游戏的增益和减益条（按3像素一档存入你的编辑模式布局，重载后显示；30为游戏的大小）。", -- draft
+-- stale: ["The size of your damage numbers over enemies."] = "敌人头顶你的伤害数字大小。", -- draft
 -- stale: ["The size of your debuff icons on enemy nameplates, in pixels."] = "敌方姓名板上你的减益图标的大小（像素）。", -- draft
 -- stale: ["The size of your swing timer's weapon badge on your target's nameplate."] = "目标姓名板上你的攻击计时器武器徽章的大小。", -- draft
 -- stale: ["The size of your target's debuff and buff icons under its frame, in pixels. The rows keep one width, so a smaller size fits more in a row."] = "目标框体下方目标减益和增益图标的大小（像素）。行宽保持不变，所以尺寸越小一行放得越多。", -- draft
@@ -4259,6 +4263,8 @@ Lang:Add("zhCN", {
 -- stale: ["World Marker: on a quest it stands on the game's own point, at its real height, even when you look down from a hill."] = "世界标记：任务的标记会立在游戏自己的点上，处于真实高度，即使你从山丘上往下看也是如此。", -- draft
 -- stale: ["Write these lines in the chat instead of showing them on the screen. They show there even while Chat Notices is off."] = "把这些行写进聊天，而不是显示在屏幕上。即使“聊天通知”关闭，它们也会显示在那里。", -- draft
 -- stale: ["You are reminded when a line drops below this share of its amount: at 50 %, a line of 20 water reminds you at 9. At a shop it is bought back up to the full amount. The reminder needs Reminders on; the Restock List marks the low lines either way."] = "当一行低于其数量的这个比例时提醒你：在50 %时，一行20瓶水会在剩9瓶时提醒。在商店里会补回完整数量。提醒需要开启提醒；补货列表无论如何都会标出不足的行。", -- draft
+-- stale: ["Your Damage"] = "你的伤害", -- draft
+-- stale: ["Your Damage Size"] = "你的伤害大小", -- draft
 -- stale: ["Your UI and bars stay. MelloUI's features switch on."] = "你的界面和动作条保持不变。开启MelloUI的功能。", -- draft
 -- stale: ["Your addons' minimap buttons (Questie and the others that put a round button on the minimap's edge) taken off the minimap and gathered into one more group in the Services row, AddOns: click it for a list of them. A click on an addon there is that addon's own (left, right or middle), and pointing at it shows its own tooltip. Only with Button Layout's Groups. Off: the buttons go back on the minimap."] = "你的插件的小地图按钮（Questie以及其他在小地图边缘放圆形按钮的插件）从小地图上拿下来，收进服务栏中额外的一个分组“插件”：点击它即可看到列表。在那里点击插件就是点击插件本身（左键、右键或中键），指向它会显示它自己的鼠标提示。仅限按钮布局为“分组”时。关闭：按钮回到小地图上。", -- draft
 -- stale: ["Your aura indicators on the frames. Off: the frames show none."] = "框体上你的光环指示器。关闭：框体不显示任何指示器。", -- draft

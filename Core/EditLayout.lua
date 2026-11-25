@@ -369,6 +369,10 @@ end
 
 -- every layer's `method`, each in its own pcall
 function E.EachLayer(method, ...)
+	-- (2.1.85) one feature's own session (E.scope): no layer's plates beside its elements
+	if method == "Sync" and E.scope then
+		return
+	end
 	for i = 1, #layers do
 		local layer = layers[i]
 		local fn = layer[method]
@@ -575,9 +579,9 @@ local DockEnter = Shared("OnEnter on Edit Layout's dock", function(self)
 	if name then
 		local t = DOCK.toggle[name]
 		E:Tooltip(self, t.title, t.tip)
-	elseif self.melloTitle and not E.DockOpen(self) then
+	elseif self.melloTitle and not E.DockOpen(self) and not (E.scope and bar and self == bar.crest) then
 		-- (View, Elements and Layout say nothing over what they opened: it says it -- the in-game test and walk,
-		-- 2026-11-04)
+		-- 2026-11-04; the crest says nothing in a feature's own session: its click opens no list there)
 		E:Tooltip(self, self.melloTitle, self.melloBody)
 	end
 end, "script")
@@ -730,7 +734,7 @@ end
 
 local ElementsClick = Shared("OnClick on Edit Layout's Elements", function()
 	local K = E.Picker
-	if K then
+	if K and not E.scope then   -- (a feature's own session has no Elements list: the crest's click does nothing)
 		K.Toggle()
 		E:TooltipHide()
 	end
@@ -1168,14 +1172,27 @@ LayBar = function()
 	else
 		local row = bar.row
 		local d = bar.dividers
+		-- (2.1.85) a feature's own session: its name on the dock, and none of what is the whole layout's -- the
+		-- Elements list, Edit Mode's layouts, Keybind Mode. View (grid, snap, dim), Reset all (its elements only:
+		-- ResetAll), the help and the two ways out stay.
+		local scoped = E.scope ~= nil
+		bar.title:SetText(W.Tr(scoped and E.scopeTitle or E.TEXT.name))
+		bar.elements:SetShown(not scoped)
+		bar.layout:SetShown(not scoped)
+		bar.keybind:SetShown(not scoped)
+		d[2]:SetShown(not scoped)
 		local n = Put(1, bar.title, row, TextWidth(bar.title))
 		n = Put(n + 1, d[1], row, 1)
-		n = Put(n + 1, bar.elements, row, bar.elements:GetWidth())
-		n = Put(n + 1, bar.layout, row, bar.layout:GetWidth())
-		n = Put(n + 1, d[2], row, 1)
+		if not scoped then
+			n = Put(n + 1, bar.elements, row, bar.elements:GetWidth())
+			n = Put(n + 1, bar.layout, row, bar.layout:GetWidth())
+			n = Put(n + 1, d[2], row, 1)
+		end
 		n = Put(n + 1, bar.view, row, bar.view:GetWidth())
 		n = Put(n + 1, d[3], row, 1)
-		n = Put(n + 1, bar.keybind, row, DOCK.toggleSize, DOCK.roundGap)
+		if not scoped then
+			n = Put(n + 1, bar.keybind, row, DOCK.toggleSize, DOCK.roundGap)
+		end
 		n = Put(n + 1, bar.resetAll, row, DOCK.toggleSize, DOCK.roundGap)
 		n = Put(n + 1, bar.help, row, DOCK.toggleSize)
 		n = Put(n + 1, d[4], row, 1)
@@ -1941,11 +1958,13 @@ ResetAll = function()
 		return
 	end
 	-- (el-14: every Edit Mode system to Edit Mode's saved place, as before -- none to the game's default)
+	-- (2.1.85) a feature's own session resets its own elements alone: no game system, and no element of the common
+	-- session, which in turn leaves every feature session's elements where they are (entry.session, as Wanted)
 	local B = E.Bridge
-	if B and B.ClearDefaults then
+	if B and B.ClearDefaults and not E.scope then
 		B.ClearDefaults()
 	end
-	if B and B.DropAttach then
+	if B and B.DropAttach and not E.scope then
 		B.DropAttach()   -- (el-14: every attach of this session)
 	end
 	local list = MelloUI:MoverEntries()
@@ -1953,7 +1972,7 @@ ResetAll = function()
 	for i = 1, #list do
 		local entry = list[i]
 		local key = entry.key
-		if entry.group ~= "tool" and (key == nil or not seen[key]) and MelloUI:EntryLive(entry)
+		if entry.group ~= "tool" and entry.session == E.scope and (key == nil or not seen[key]) and MelloUI:EntryLive(entry)
 			and not P.LockedReason(entry) then
 			local placed = entry.save ~= nil or (key ~= nil and MelloUI:GetPosition(key) ~= nil)
 				or LS.Pos(entry) ~= nil or MelloUI:EntryWaiting(entry)
@@ -2187,7 +2206,7 @@ local function ShowPieces()
 		S.focus = nil
 	end
 	ShowBar()
-	if E.Picker then
+	if E.Picker and not E.scope then   -- (a feature's own session: no Elements list)
 		E.Picker.Resume()
 	end
 	KeyboardOn()
@@ -2216,7 +2235,14 @@ local function HidePieces(fade)
 	end
 end
 
+-- (2.1.85) a feature's own session says so with its own word, 'editsession' (scope, showing, state): nobody listening
+-- to 'editlayout' hears of it, so no other feature shows its samples, shows a faded element in full or lays its
+-- plates for a session that is not about it (MelloUI:EditingLayout() answers false then too)
 local function Fire(showing, state)
+	if E.scope then
+		MelloUI:Fire("editsession", E.scope, showing, state)
+		return
+	end
 	MelloUI:Fire("editlayout", showing, state)
 end
 
@@ -2472,6 +2498,7 @@ local function OnEnd(reason, extra)
 	end
 	MelloUI:PlayUISound("window_close")
 	Fire(false, "closed")
+	E.scope, E.scopeTitle = nil, nil   -- (2.1.85: a feature's own session is over with it, said on its own word first)
 	-- (0.19.9) what E:Close was asked to do once the session is over (Keybind
 	-- Mode, started from the bar); the next frame, Edit Layout all put away
 	local after = S.after
@@ -2631,9 +2658,10 @@ local function CancelQueue()
 	end
 	S.queued = nil
 	S.focus = nil
-	-- (an open from the configurator cancelled before it began: no way back owed)
+	-- (an open from the configurator cancelled before it began: no way back owed, no feature's session waiting)
 	if not S.open then
 		S.back = nil
+		E.scope, E.scopeTitle = nil, nil
 	end
 end
 
@@ -2705,7 +2733,20 @@ end
 
 -- `focus` (one look C6: a designer stage's Place on screen): a mover's key,
 -- its plate picked as the pieces show (kept through a queued open)
-function MelloUI:StartEditLayout(source, focus)
+-- `scope` (2.1.85; the user, 2026-11-24: "its special session in the Edit Layout where only it is shown, nothing
+-- else"): a session of one feature's own elements -- the movers registered with `session = scope` have plates, no
+-- other element, no layer (the game's frames) and no Elements list; `title` its name on the dock. Kept for this
+-- session only (its end clears it); asked while a common session is open, that one is left alone and nothing starts.
+-- The bus says 'editsession' for it, never 'editlayout' (Fire), and MelloUI:EditSession() names it while it shows.
+function MelloUI:StartEditLayout(source, focus, scope, title)
+	if type(scope) == "string" then
+		if S.open and E.scope ~= scope then
+			return false
+		end
+		E.scope, E.scopeTitle = scope, type(title) == "string" and title or nil
+	elseif not S.open then
+		E.scope, E.scopeTitle = nil, nil
+	end
 	S.focus = focus
 	local cfg = ConfigFrame()
 	if not S.open then
@@ -2731,8 +2772,14 @@ function MelloUI:StartEditLayout(source, focus)
 	end
 end
 
+-- (2.1.85) the common session only: a feature's own session is nobody else's business (its samples, its fades)
 function MelloUI:EditingLayout()
-	return E:IsShowing()
+	return E:IsShowing() and not E.scope
+end
+
+-- (2.1.85) the feature whose own session shows (StartEditLayout's scope), else nil
+function MelloUI:EditSession()
+	return E:IsShowing() and E.scope or nil
 end
 
 -- /mello edit dump: the state, every entry and why it has a plate or not,

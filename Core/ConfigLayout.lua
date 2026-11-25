@@ -176,7 +176,7 @@ L.pages = {
 		-- (1.2.4, Look's homes: every font and every bar texture, background and border here, a card per part of the
 		-- interface after the tab's own sections -- Core/Config.lua's Lay.Card; the frames' pages link here)
 		cards = { Fonts = { "Unit Frames", "Party & Raid", "Buffs & Debuffs", "Personal Display", "Quest Tracker",
-			"Combat Text", "FPS / Latency" }, Textures = { "Bars", "Backgrounds", "Borders" },
+			"FPS / Latency" }, Textures = { "Bars", "Backgrounds", "Borders" },   -- (2.1.85: Combat Text's size in its own tab)
 			Colours = { "Class Colours", "Power Colours", "NPC Colours" } } },
 	-- (1.0, the user, 2026-10-20: "once you disable MelloUI_OldSchool, the "Window" category disappears from the
 	-- Configurator, but that means that people cant configure their Bag anymore") made with or without
@@ -685,12 +685,7 @@ function L.Define(R, Link)
 	-- (0.20.1) Numbers Over Enemies only where the client has the cvar it writes (the user, 2026-10-10: this
 	-- client has none, the slider moved nothing and Combat Text reads the same cvar): else left out on purpose
 	-- (2026-10-30: Forever's is WorldTextScale_v2; Tweaks' MelloUI.WorldTextCVar finds the client's own name)
-	local hasWorldText = MelloUI.WorldTextCVar and MelloUI.WorldTextCVar() ~= nil
-	if hasWorldText then
-		R("QualityOfLife", "Combat Text", "Text", "Tweaks.worldTextScale")
-	else
-		L.unplaced["Tweaks.worldTextScale"] = "this client has no WorldTextScale cvar: the slider would move nothing"
-	end
+	-- (2.1.85: its row with Combat Text's own, below -- after the two sizes of MelloUI's texts)
 	R("Look", "Fonts", "Advanced", "Fonts.fontText")
 	R("Look", "Fonts", "Advanced", "Fonts.fontChat")
 	R("Look", "Fonts", "Advanced", "Fonts.fontTitle")
@@ -1338,21 +1333,48 @@ function L.Define(R, Link)
 	R("QualityOfLife", "Combat Text", "General", "CombatText.!enabled", { name = "MelloUI Combat Text" })
 	R("QualityOfLife", "Combat Text", "General", "CombatText.style")
 	R("QualityOfLife", "Combat Text", "General", "CombatText.dealt")
+	-- (2.1.85; the user, 2026-11-24: "first one should scale the Personal Combat Text Style, second one Combat Damage
+	-- Style") the Text section's two sizes: the text around you, then MelloUI's damage numbers; the game's own
+	-- numbers' size after them, live only while the game draws them. (The first was a card's row on Look > Fonts
+	-- with a link here since 1.2.4: its own tab's row now, the card gone)
+	-- (2.1.85: Pop, Slam and Stamp are MelloUI's styles too -- the rows that serve every one of them say so; Most
+	-- Lines and Lane Spread are the earlier styles' alone, Edit Position the three new looks')
+	local OUR_STYLE = { key = "CombatText.style", notValue = "game", line = "Only for MelloUI's styles" }
+	local NEW_LOOKS = { any = { { key = "CombatText.style", value = "pop" }, { key = "CombatText.style", value = "slam" },
+		{ key = "CombatText.style", value = "stamp" } }, line = "Only for Pop, Slam and Stamp" }
+	local OLD_STYLES = { any = { { key = "CombatText.style", value = "lanes" }, { key = "CombatText.style", value = "feed" },
+		{ key = "CombatText.style", value = "classic" } }, line = "Only for the Lanes, Feed and Classic styles" }
+	R("QualityOfLife", "Combat Text", "Text", "CombatText.size", { when = OUR_STYLE })
 	R("QualityOfLife", "Combat Text", "Text", "CombatText.dealtScale",
-		{ when = { key = "CombatText.dealt", notValue = "game", line = "Only while MelloUI draws Your Damage" } })
+		{ when = { key = "CombatText.dealt", notValue = "game", line = "Only while MelloUI draws Combat Damage" } })
+	-- (the three new looks' numbers around you wear it too)
+	R("QualityOfLife", "Combat Text", "Text", "CombatText.dealtOutline",
+		{ when = { any = { { key = "CombatText.dealt", notValue = "game" }, NEW_LOOKS.any[1], NEW_LOOKS.any[2], NEW_LOOKS.any[3] },
+			line = "Only for Combat Damage Style, or Pop, Slam and Stamp" } })
+	R("QualityOfLife", "Combat Text", "Behaviour", "CombatText.dealtGroups",
+		{ when = { key = "CombatText.dealt", notValue = "game", line = "Only while MelloUI draws Combat Damage" } })
+	-- (2.1.85; the user: "You forgot the Healing Numbers in the Damage Numbers") your heals at the friend's nameplate
+	R("QualityOfLife", "Combat Text", "Behaviour", "CombatText.dealtHeals",
+		{ when = { key = "CombatText.dealt", notValue = "game", line = "Only while MelloUI draws Combat Damage" } })
 	R("QualityOfLife", "Combat Text", "General", "CombatText.#Preview")
+	-- (2.1.85; the user: "that setting should only be accessible in Quality of Life -> On Screen -> Combat Text and a
+	-- setting called Edit Position") Combat Text's own Edit Layout session: its four areas alone
+	R("QualityOfLife", "Combat Text", "Layout", "CombatText.#Edit Position", { when = NEW_LOOKS })
 	R("QualityOfLife", "Combat Text", "Look", "CombatText.shadeSize")
 	-- (its text sizes and fonts: Look > Fonts since 0.19.1, linked below)
-	R("Look", "Fonts", "Text", "CombatText.size", { card = "Combat Text", when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
-	Link("QualityOfLife", "Combat Text", "Text", "CombatText.size", "Text Around You")
-	R("QualityOfLife", "Combat Text", "Text", "CombatText.titleNotices", { when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
+	if MelloUI.WorldTextCVar and MelloUI.WorldTextCVar() ~= nil then
+		R("QualityOfLife", "Combat Text", "Text", "Tweaks.worldTextScale",
+			{ when = { key = "CombatText.dealt", value = "game", line = "Only while the game draws Combat Damage" } })
+	else
+		L.unplaced["Tweaks.worldTextScale"] = "this client has no WorldTextScale cvar: the slider would move nothing"
+	end
+	R("QualityOfLife", "Combat Text", "Text", "CombatText.titleNotices", { when = OUR_STYLE })
 	R("QualityOfLife", "Combat Text", "Layout", "CombatText.spread",
 		{ when = { key = "CombatText.style", value = "lanes", line = "Only for the Lanes style" } })
-	R("QualityOfLife", "Combat Text", "Layout", "CombatText.lines",
-		{ when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
+	R("QualityOfLife", "Combat Text", "Layout", "CombatText.lines", { when = OLD_STYLES })
 	-- (MelloUI's kinds sleep on Game, as Most Lines; the game's four switches
 	-- for the numbers over the enemies never)
-	local MELLO_STYLES = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" }
+	local MELLO_STYLES = OUR_STYLE
 	for _, key in ipairs({ "taken", "heals", "notices", "avoid", "resource", "combat", "reputation",
 		"enemyDamage", "enemyPeriodic", "enemyPet", "enemyHealing" }) do
 		R("QualityOfLife", "Combat Text", "Behaviour", "CombatText." .. key,
