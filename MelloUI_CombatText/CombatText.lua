@@ -306,20 +306,20 @@ M = MelloUI:RegisterModule("CombatText", {
 		-- second one Combat Damage Style") the names; in the code `style` and `dealt` (Your Damage) as before
 		{ type = "dropdown", key = "style", name = "Personal Combat Text Style", values = STYLES,
 		  desc = "How the text around your character is shown. Game: the game's own. Pop, Slam or Stamp: MelloUI's new looks, each kind of line in an area of its own (Edit Position). Lanes, Feed and Classic: the earlier looks." },
-		{ type = "button", name = "Edit Position", text = "Edit", new = "2.1.85",
+		{ type = "button", name = "Edit Position", text = "Edit",
 		  hint = "move and size each area",
 		  desc = "Opens Edit Layout with only Combat Text's areas: Damage Taken, Healing, Procs and Resources. Drag one to move it, use the mouse wheel to size it. For Pop, Slam and Stamp.",
 		  onClick = function() M.EditPosition() end },
 		{ type = "dropdown", key = "dealt", name = "Combat Damage Style", values = DEALT.styles,
 		  desc = "How your damage numbers over enemies look. Game: the game's own. Pop, Slam or Stamp: MelloUI's." },
-		{ type = "toggle", key = "dealtGroups", name = "Combat Damage In Groups", new = "2.1.85",
+		{ type = "toggle", key = "dealtGroups", name = "Combat Damage In Groups",
 		  desc = "In a group, MelloUI shows your own hits: the ones the game's combat log names as yours. It needs the Combat Log's filter on My actions, and your pet's hits are not shown. Off: the game's own numbers in a group." },
 		-- (2.1.85; the user, 2026-11-24: "You forgot the Healing Numbers in the Damage Numbers, the healing that appears
 		-- above the friendly player when healing him")
-		{ type = "toggle", key = "dealtHeals", name = "Healing Numbers", new = "2.1.85",
+		{ type = "toggle", key = "dealtHeals", name = "Healing Numbers",
 		  missing = function() return not Enemy.Name("enemyHealing") and TEXT.missing or nil end,
 		  desc = "Your heals in the same look, at the nameplate of the friend you heal, in place of the game's own healing numbers. It needs friendly nameplates shown and the Combat Log's filter on My actions. Where MelloUI cannot draw them (friendly nameplates off, or inside dungeons and raids, where the game keeps friendly nameplates to itself) the game's own numbers show. Off: always the game's own." },
-		{ type = "dropdown", key = "dealtOutline", name = "Number Outline", new = "2.1.85", values = DEALT.outlines,
+		{ type = "dropdown", key = "dealtOutline", name = "Number Outline", values = DEALT.outlines,
 		  desc = "The dark outline around MelloUI's numbers (Combat Damage Style, and the numbers around you in Pop, Slam and Stamp): thick, thin or none. None: the soft shade behind them instead." },
 		-- (0.25.0; the user, 2026-10-20: "our custom damage font can not be scaled down, people complain its too big":
 		-- this client has no World Text Scale, so nothing sized them)
