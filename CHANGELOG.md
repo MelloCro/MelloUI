@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.1.88
+
+- Nameplates: Class Coloured Player Names. Players' names on their nameplates in their class colour, with one switch for enemy players (Nameplates > Enemies, the Name part) and one for friendly players (Nameplates > Friendly players, the Name part). Both are off by default. NPCs keep the game's colours, and your own class colours from Look > Colours are used when you picked any.
+
+## 2.1.87
+
+- Nameplates: an enemy player's name no longer shows twice over itself after you target them (their first name over their full name). It happened with Show Names As on a short form and the name moved in the Nameplate Designer, and stayed until the plate left the screen.
+- Nameplates: a name you hide in the Nameplate Designer is now hidden on players shown by a short name too, and the shade behind it goes with it.
+
+## 2.1.86
+
+- Combat Text: Healing Numbers look like healing now, not like a hit on your friend. A heal has a + before its number, swells in softly and floats up with a soft light in the healing colour behind it. No white flash, no streak and no shake, and a crit heal gets a ring of that light in place of the crit hit's effect.
+- Combat Text: in a group, the numbers of your weapon swings no longer go missing after you healed someone.
+
+## 2.1.85
+
+- Combat Text: clearer names. Combat Text Style is now Personal Combat Text Style, and Your Damage is Combat Damage Style. The Text section has one size for each: Personal Combat Text Size (it was Text Around You, on Look > Fonts) and Combat Damage Size. Game Damage Numbers Size (it was Numbers Over Enemies) sizes the game's own numbers and no longer changes MelloUI's.
+- Combat Text: Personal Combat Text Style has the same three new looks for the text around your character: Pop, Slam and Stamp, with an effect of their own for a crit you take and a crit heal. Lanes, Feed and Classic are still there.
+- Combat Text: with Pop, Slam or Stamp each kind of line has its own area: Damage Taken, Healing, Procs and Resources. Edit Position (Quality of Life > Combat Text) opens Edit Layout with only these four: drag one to move it, use the wheel to size its text. They are not in the normal Edit Layout.
+- Combat Text: Combat Damage Style is redone to land harder. Three new looks replace Rise, Beside, Fan and Stack: Pop (a hit lands above the plate with a hard pop), Slam (thrown out of the plate on an arc) and Stamp (a tidy column beside the plate). Hits are on screen about half as long. If you used Rise, Beside or Fan you now have Pop; Stack became Stamp.
+- Combat Text: your crits have an effect of their own in each look: a flash with a ring and rays (Pop), a gold slash with sparks (Slam), a bar of light with a ring on the plate (Stamp). With Reduce Motion the number just appears and fades.
+- Combat Text: Combat Damage In Groups (a test: try it and tell us how it goes). In a group MelloUI now shows your own hits in its look too, told from everyone else's by the game's combat log. It needs the Combat Log's filter on My actions, and your pet's hits are not shown in a group. Off: the game's own numbers in a group, as before.
+- Combat Text: Healing Numbers. With a Combat Damage Style on, your heals show in the same look too, at the nameplate of the friend you heal, in place of the game's own healing numbers. It needs friendly nameplates shown and the Combat Log's filter on My actions. Where MelloUI cannot draw them (friendly nameplates off, or inside dungeons and raids, where the game keeps friendly nameplates to itself) the game's own healing numbers show as before.
+- Combat Text: damage over time ticks are small and have a lane of their own at the plate's end, so they no longer crowd your hits.
+- Combat Text: Number Outline (Thick, Thin or None) for your damage numbers. Thick is the default. None brings back the soft shade behind them.
+- Combat Text: a spell's hit is in its school's colour: fire orange, frost blue, nature green, shadow violet, holy pale gold, arcane pink. Weapon hits stay white and their crits gold.
+- Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws the nameplates' frame and the level badge, so those two rows no longer changed what you see. The shortcut to the Minimap's Square Border is gone from that tab too; the setting itself is on the Minimap page.
+
 ## 2.1.84
 
 - Configurator: on Unit & Group Frames, Nameplates, Bars and Minimap a frame's tab now shows everything it has in one scroll: the frame's own settings first, then each part's under its own heading. Before, only one part's settings showed at a time.

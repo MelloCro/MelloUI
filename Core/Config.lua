@@ -177,6 +177,25 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.88", lines = {
+		"Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players.",
+	} },
+	{ version = "2.1.87", lines = {
+		"Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name).",
+		"Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too.",
+	} },
+	{ version = "2.1.86", lines = {
+		"Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects.",
+		"Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone.",
+	} },
+	{ version = "2.1.85", lines = {
+		"Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash.",
+		"Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area.",
+		"Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour.",
+		"Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own.",
+		"Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate.",
+		"Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both.",
+	} },
 	{ version = "2.1.84", lines = {
 		"Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings.",
 		"Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide.",
@@ -190,21 +209,6 @@ local CHANGELOG = {
 		"Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To.",
 		"Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name.",
 	} },
-	{ version = "2.1.83", lines = {
-		"Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates.",
-		"Friendly nameplates: Hide At Full Health shows only the name until they are hurt.",
-	} },
-	{ version = "2.1.82", lines = {
-		"Nearest Turn In no longer takes the navigation back from your own map pin, a guide's step or the way to your corpse.",
-	} },
-	{ version = "2.1.81", lines = {
-		"Controller: links and names in MelloUI's chat no longer open the game's windows, which blocked the controller's buttons.",
-		"Controller: MelloUI's buttons on the game's loot, split and mail windows stay out of the controller's cursor.",
-	} },
-	{ version = "2.1.80", lines = {
-		"Without Questie: quests that had no mark or area on the map and the minimap show now.",
-		"MelloUI keeps the game's option Show Quest POIs & Blobs on while its quest marks are on: the game gives all quest places only with it.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -215,11 +219,13 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.88"] = { "Nameplates.classNames" },
+	["2.1.87"] = { "=nameplates", "=nameplates" },
+	["2.1.86"] = { "CombatText.dealtHeals", false },
+	["2.1.85"] = { "CombatText.dealt", "CombatText.style", "CombatText.dealtOutline", "CombatText.dealtGroups",
+		"CombatText.dealtHeals", "UIModifications.frameSet" },
 	["2.1.84"] = { "=unit frames", "=nameplates", "UnitFrames.hidePvPBadge", "UIModifications.qol_Tooltip", false, false,
 		"=qol", "=profiles", "=unit frames", "MailRecipients.recent", "MailRecipients.bnet" },
-	["2.1.83"] = { "Nameplates.npcPlateSize", "Nameplates.npcHideFull" },
-	["2.1.82"] = { "QuestTracker.nearestTurnIn" },
-	["2.1.80"] = { "QuestList.objectiveMarks", "QuestList.objectiveMarks" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },
@@ -8297,7 +8303,7 @@ function BuildProfilesPage(width)
 	sec.shareMine:SetPoint("TOPLEFT", CARD_PAD, -(sy + 2))
 	sec.shareMine:SetText(W.Tr("Copy the string"))
 	W.FlatButton(sec.shareMine)
-	W.ButtonTag(sec.shareMine, "2.1.84")
+	W.ButtonTag(sec.shareMine)
 	Perf.SetScript(sec.shareMine, "OnClick", function()
 		-- (its settings as they are now: saved into it first, as a logout does)
 		if MelloUI.SaveCharacterProfile then
@@ -8324,7 +8330,7 @@ function BuildProfilesPage(width)
 	sec.paste:SetPoint("TOPLEFT", CARD_PAD, -(iy + 2))
 	sec.paste:SetText(W.Tr("Paste a string…"))
 	W.FlatButton(sec.paste)
-	W.ButtonTag(sec.paste, "2.1.84")
+	W.ButtonTag(sec.paste)
 	iy = iy + 26 + 6
 	sec.holds = Text(import, "GameFontHighlight", nil, C.accent)
 	sec.holds:SetPoint("TOPLEFT", CARD_PAD, -iy)

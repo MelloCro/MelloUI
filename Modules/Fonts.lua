@@ -1654,7 +1654,9 @@ do
 		if entry.outline == nil then
 			flags = forced or baseFlags
 		elseif entry.outline then
-			flags = Outlined((forced and forced ~= "") and forced or "OUTLINE", Bare(baseFlags))
+			-- (2.1.85: "thick", a caller's own wish -- Your Damage's Number Outline; the player's forced outline first)
+			flags = Outlined((forced and forced ~= "") and forced or (entry.outline == "thick" and "THICKOUTLINE" or "OUTLINE"),
+				Bare(baseFlags))
 		else
 			flags = Bare(baseFlags)
 		end
@@ -1696,7 +1698,7 @@ do
 		if outline == nil then
 			entry.outline = nil
 		else
-			entry.outline = outline and true or false
+			entry.outline = outline == "thick" and "thick" or (outline and true or false)
 		end
 		Apply(fs, entry)
 	end

@@ -260,8 +260,14 @@ opts[#opts + 1] = { type = "button", name = "Switch every area on", hint = "when
 do
 	local prev = "palette"
 	for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
+		-- (2.1.85: a `fixed` kind has no choice and no row -- the nameplates' border and the level orb, which a Frame
+		-- Set's painting covers; Kit:BorderValue answers its one look)
+		-- (its default stays the settings' own: a kept value of before equal to it is still "as shipped", so the shipped
+		-- profile's bake is what it was -- Tools/installer/test_bake.py)
 		if not k.core then
 			part.defaults[k.key] = k.default
+		end
+		if not k.core and not k.fixed then
 			local opt = { type = "dropdown", key = k.key, name = k.name, values = k.values, desc = k.desc,
 				requires = "reskin", new = k.new, after = prev }
 			if k.kind == "colours" then
@@ -269,7 +275,9 @@ do
 			end
 			opts[#opts + 1] = opt
 		end
-		prev = k.key
+		if not k.fixed then
+			prev = k.key
+		end
 	end
 end
 -- (0.19.8, the border library's stage 3, the plan's decision 7: one Raid

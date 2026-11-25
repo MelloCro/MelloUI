@@ -140,9 +140,9 @@ local M = MelloUI:RegisterModule("MailRecipients", {
 	options = {
 		{ type = "toggle", key = "bnet", name = "Battle.net Friends' Characters",
 		  desc = "The list shows your Battle.net friends too, each with the characters the game has shown of them while they played. Off: your own characters only, and none of theirs noted." },
-		{ type = "toggle", key = "recent", name = "Recent Names", new = "2.1.84",
+		{ type = "toggle", key = "recent", name = "Recent Names",
 		  desc = "The last names you sent a letter to stand in the list, strangers too. Off: none shown and none kept." },
-		{ type = "toggle", key = "found", name = "Guild And Friends While Typing", new = "2.1.84",
+		{ type = "toggle", key = "found", name = "Guild And Friends While Typing",
 		  desc = "What you type in To also looks through your guild and your friends list, as the game's own name list does. Off: only the names of the list itself." },
 		{ type = "toggle", key = "subject", name = "Subject from the First Item",
 		  desc = "An empty subject takes the name of the first item you attach, with its count for a stack. What you type yourself stays." },

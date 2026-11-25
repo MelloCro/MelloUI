@@ -922,8 +922,10 @@ Kit.orbLooks = {
 	{ value = "kit", label = "Kit orb", piece = "buttons/orb_normal" },
 	{ value = "rpg", label = "Stone badge", piece = "buttons/orb_rpg", disc = "buttons/orb_rpg_disc" },
 }
+-- (2.1.85: no row and no choice any more, `fixed` -- a Frame Set's own level badge stands on the orb of every unit
+-- frame and nameplate, Sets.Level; of the other look only the ground under the number showed)
 Kit:AddBorderKind({ kind = "orb", key = "levelOrb", default = "kit", name = "Level Orb", values = Kit.orbLooks,
-	preview = "rim",
+	preview = "rim", fixed = true,
 	desc = "The badge around the level on unit frames and nameplates. Frames already shown change after a /reload." }, "round")
 
 function Kit:OrbLook()

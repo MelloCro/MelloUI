@@ -5655,8 +5655,11 @@ do
 		  desc = "The rim on the windows' side tabs and the spellbook's tabs." },
 		{ kind = "bar", key = "barBorder", default = "frame", name = "Progress Bar Border", values = Kit.buttonLooks.progressBorders, preview = "bar",
 		  desc = "The frame around progress bars: reputation, skills, professions, experience, tooltips and the damage meter. Frame Set is your Frame Set's own bar frame." },
+		-- (2.1.85: no row and no choice any more, `fixed` -- every plate wears its Frame Set's painting, which put the
+		-- bracket's pieces out and left of another look only a faint line inside the painting's hole; seen in the
+		-- simulator, 2026-11-24)
 		{ kind = "nameplate", key = "nameplateBorder", default = "frame", name = "Nameplate Border", values = Kit.buttonLooks.barBorders, preview = "bar",
-		  desc = "The frame around the nameplates' health bars." },
+		  fixed = true, desc = "The frame around the nameplates' health bars." },
 	}
 	for _, k in ipairs(before) do
 		Kit:AddBorderKind(k, nil, "round")

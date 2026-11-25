@@ -1841,6 +1841,10 @@ local function Wanted(entry)
 	if entry.group == "tool" or not MelloUI:EntryLive(entry) then
 		return false
 	end
+	-- (2.1.85) one feature's own session (E.scope): its elements only; the common session: none of those
+	if entry.session ~= E.scope then
+		return false
+	end
 	local shown = MelloUI:EntryShown(entry) and true or false
 	shownNow[entry] = shown
 	return shown or entry.placeholder ~= nil

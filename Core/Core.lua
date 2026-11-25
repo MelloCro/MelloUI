@@ -384,6 +384,14 @@ MelloUI.Meaning = {
 	combatResource = Hex("#609CE6"),   -- (meaning colour)
 	-- (Your Damage: a spell's hit on an enemy, as the game tells them apart)
 	combatSpell = Hex("#BE96E6"),      -- (meaning colour)
+	-- (2.1.85, Your Damage; the user: "make sure that the damage is colored correctly") a spell's hit on an enemy
+	-- in its school's colour: the game's own combat log hues, lightened to read as text on a dark outline
+	combatHoly = Hex("#FFE68C"),       -- (meaning colour)
+	combatFire = Hex("#FF8A3C"),       -- (meaning colour)
+	combatNature = Hex("#8CE06A"),     -- (meaning colour)
+	combatFrost = Hex("#7FD8FF"),      -- (meaning colour)
+	combatShadow = Hex("#B79CFF"),     -- (meaning colour)
+	combatArcane = Hex("#F2A0FF"),     -- (meaning colour)
 	-- (0.17.1, the swing timers, the user's picks of swing_looks: a melee swing pale -- since 1.2.0 the swing badge's
 	-- strike, Core/SwingBadge.lua; the shot bar's cream went with the bars)
 	swingMelee = Hex("#EFEBE3"),       -- (meaning colour)
@@ -2044,6 +2052,8 @@ end
 --   MelloUI:EditingLayout() -> false      Core/EditLayout.lua's own answers
 --       while Edit Layout shows; the plain drags wait meanwhile (not a
 --       "tool"'s)
+--   MelloUI:EditSession() -> nil          (2.1.85) Core/EditLayout.lua's own names the feature whose own session
+--       shows (a mover's opts.session, StartEditLayout's scope); EditingLayout() answers false then
 --   MelloUI:FitOnScreen(frame, extraRects) -> moved, dx, dy
 --       a laid-out frame moved (its points shifted) just enough to be on
 --       the screen, together with extraRects (a frame or a list of frames
@@ -3048,6 +3058,10 @@ do
 			when = type(opts.when) == "function" and opts.when or nil,
 			waiting = type(opts.waiting) == "function" and opts.waiting or nil,
 			box = type(opts.box) == "function" and opts.box or nil,
+			-- (2.1.85; the user, 2026-11-24, of Combat Text's areas: "that specific feature should have its special
+			-- session in the Edit Layout where only it is shown, nothing else") `session`: an element of one feature's
+			-- own Edit Layout session (MelloUI:StartEditLayout's third value); it has no plate in the common one
+			session = type(opts.session) == "string" and opts.session or nil,
 		}
 		entries[#entries + 1] = entry
 		byFrame[frame] = entry
@@ -3434,6 +3448,11 @@ do
 	-- (Core/EditLayout.lua replaces it: true while Edit Layout shows)
 	function MelloUI:EditingLayout()
 		return false
+	end
+
+	-- (2.1.85; Core/EditLayout.lua replaces it: the feature whose own session shows -- StartEditLayout's scope)
+	function MelloUI:EditSession()
+		return nil
 	end
 
 	--------------------------------------------------------------------------

@@ -68,6 +68,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		healthTextSize = 0, healthPercentBeside = false,
 		-- (2.1.72) the percent's own size (0: the number's) and the names' (0: the game's)
 		healthPctSize = 0, nameSize = 0,
+		-- (2.1.88) players' names in their class colour: the enemies' switch and the friendly players' own
+		classNames = false, allyClassNames = false,
 		-- (the band behind the names: Text Shade's, Look > General > Text -- the
 		-- user, 2026-10-16; Name Shade's key dropped by Core.lua's MERGES)
 	},
@@ -100,6 +102,13 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		{ type = "slider", key = "nameSize", name = "Name Size", min = 0, max = 24, step = 1,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Game's" or string.format("%d px", v) end,
 		  desc = "The size of the names on the nameplates. Game's: the size the game gives them." },
+		-- (2.1.88; the user, 2026-11-25: "Where is the option in the configurator to have the names on nameplates in
+		-- class colour?", "Yes add it") the enemies' switch and the friendly players' own (M.Opt("classNames", kind)),
+		-- off by default; drawn by the names' cover (Plate.ClassColour), the game's own colour never written
+		{ type = "toggle", key = "classNames", name = "Class Coloured Player Names", new = "2.1.88",
+		  desc = "Enemy players' names on their nameplates in their class colour. NPCs keep the game's colours." },
+		{ type = "toggle", key = "allyClassNames", name = "Friendly Players: Class Coloured Names", new = "2.1.88",
+		  desc = "Friendly players' names on their nameplates in their class colour." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",
 		  desc = "A large crowd-control icon above the name. Needs the game's Crowd Control nameplate option on." },
@@ -261,14 +270,15 @@ function M:PlaceName(uf)
 		M.LayPart(uf.name, uf.HealthBarsContainer, place)
 		local point = type(place.point) == "string" and place.point or "CENTER"
 		uf.name:SetJustifyH(point:find("LEFT") and "LEFT" or (point:find("RIGHT") and "RIGHT") or "CENTER")
-		local hide = place.show == false
-		uf.name:SetAlpha(hide and 0 or 1)
-		M.nameHidden[uf.name] = hide or nil
+		-- (2.1.87, GitHub issue 67: the alpha is Plate.NameAlpha's -- this wrote 1 on a name a cover had hidden, at
+		-- every target change through the combo points' lift: the full name under the cover's first name)
+		M.nameHidden[uf.name] = (place.show == false) or nil
+		Plate.NameAlpha(uf)
 		return true
 	end
 	if uf and uf.name and M.nameHidden[uf.name] then
 		M.nameHidden[uf.name] = nil
-		uf.name:SetAlpha(1)   -- (its place taken back: seen again)
+		Plate.NameAlpha(uf)   -- (its place taken back: seen again, unless a cover stands for it)
 	end
 	local placer = Plate.placer
 	if placer and placer(uf) then
@@ -423,6 +433,8 @@ do
 		M.defaults[full] = false
 		M.BASE_KEY[full] = { "hideFull", kind }
 	end
+	-- (2.1.88) Class Coloured Player Names: the friendly players' own switch, under its kind's name as the others
+	M.BASE_KEY[M.KindKey("classNames", "ally")] = { "classNames", "ally" }
 end
 
 function M.PartPlace(key, kind)
@@ -1546,6 +1558,7 @@ Plate.coverOn = setmetatable({}, { __mode = "k" })     -- its cover while it cov
 Plate.coverShown = setmetatable({}, { __mode = "k" })  -- true: its cover shown (ours, never read back)
 Plate.hidden = setmetatable({}, { __mode = "k" })      -- true: its glyphs hidden by us
 Plate.tinted = setmetatable({}, { __mode = "k" })      -- true: its SetVertexColor hook is on
+Plate.classOn = setmetatable({}, { __mode = "k" })     -- true: its cover wears its class colour (the game's not copied)
 -- by cover
 Plate.looked = setmetatable({}, { __mode = "k" })      -- true: it wears retail's Forever look (Plate.Look)
 Plate.plates = {}      -- every plate frame met, once
@@ -1841,10 +1854,32 @@ function Plate.Sync(uf)
 		return
 	end
 	local want = (Plate.live[uf] and Plate.measured[uf] == true and Plate.shown[uf.name] == true
-		and Plate.Want(uf)) and true or false
+		and not M.nameHidden[uf.name] and Plate.Want(uf)) and true or false
 	if band:IsShown() ~= want then
 		band:SetShown(want)
 	end
+end
+
+-- (2.1.87, GitHub issue 67: "Names on nameplates overlap") A plate name's glyphs have two reasons to be unseen and one
+-- alpha: a cover of ours draws the name's form in their place (Plate.hidden), and the Nameplate Designer hid the name
+-- (M.nameHidden, its place's show). Both are settled here, through the two writers Plate.Hide and Plate.Reveal (no
+-- other line sets anything on the game's name): unseen while either holds. A name the Designer hid shows no cover and
+-- no band.
+-- Before, M:PlaceName wrote 1 whenever it laid a placed name again -- a target change, through the combo points'
+-- lift -- and the full name stood under the cover's first name until the plate's next layout; a name the Designer
+-- hid still showed its cover. Never per update: a layout, a target change, a setting.
+function Plate.NameAlpha(uf)
+	local name = uf and uf.name
+	if not name then
+		return
+	end
+	if Plate.hidden[name] then
+		Plate.Hide(name)     -- (covered: hidden again, the cover's way)
+	else
+		Plate.Reveal(name)   -- (seen as far as the Designer shows it)
+	end
+	Plate.CoverShow(uf)
+	Plate.Sync(uf)
 end
 
 -- The form on this plate (Show Names As), or nil while the game's full name
@@ -1855,7 +1890,13 @@ function Plate.Form(uf)
 	-- (retail's Forever look, M.ForeverArt.NameOn: every name above a bar covered, centred and outlined)
 	local forever = M.ForeverArt.NameOn()
 	local wanted = Plate.FormWanted()
-	if not (wanted or forever) then
+	-- (2.1.88) Class Coloured Player Names: a player's whole name covered too, to wear its class colour
+	local classed = false
+	if not forever then
+		local r = Plate.ClassColour(uf)
+		classed = Secret(r) or r ~= nil
+	end
+	if not (wanted or forever or classed) then
 		return nil
 	end
 	local unit = uf.unit
@@ -1866,7 +1907,7 @@ function Plate.Form(uf)
 	if not Secret(text) and text == nil then
 		return nil
 	end
-	if forever then
+	if forever or classed then
 		return text
 	end
 	local full = MelloUI:UnitNameAs(unit, "both")
@@ -1874,6 +1915,36 @@ function Plate.Form(uf)
 		return text
 	end
 	return nil
+end
+
+-- (2.1.88; the user, 2026-11-25: "Where is the option in the configurator to have the names on nameplates in class
+-- colour?", "Yes add it") Class Coloured Player Names: the colour a player's name wears on its plate -- the enemies'
+-- switch, the friendly players' own (M.Opt("classNames", kind)) -- or nil: the switch off, not a player, a class the
+-- game does not tell. The game sets its name's colour again with every health update, so nothing is written on it:
+-- the name's cover is drawn in this colour and stops copying the game's (Plate.classOn, Plate.OnColour). The colours
+-- are MelloUI.Colours' (the player's own picks on Look > Colours first, else the game's); a secret class handed on.
+function Plate.ClassWanted()
+	local db = Plate.On() and M.db
+	return db and (db.classNames == true or db.allyClassNames == true) or false
+end
+
+function Plate.ClassColour(uf)
+	if not Plate.ClassWanted() or M.Opt("classNames", M.KindOf(uf)) ~= true then
+		return nil
+	end
+	local unit = uf.unit
+	if Secret(unit) or type(unit) ~= "string" then
+		return nil
+	end
+	local okP, player = pcall(UnitIsPlayer, unit)
+	if not okP or Secret(player) or not player then
+		return nil
+	end
+	local okC, _, class = pcall(UnitClass, unit)
+	if not okC then
+		return nil
+	end
+	return MelloUI.Colours.Class(class)
 end
 
 -- the game's glyphs hidden under the cover (true when it took) and back
@@ -1888,16 +1959,16 @@ function Plate.Hide(name)
 end
 
 function Plate.Reveal(name)
-	local how = Plate.HIDE
-	if how == "alpha" then
-		pcall(name.SetAlpha, name, 1)
-	elseif how == "gradient" then
+	if Plate.HIDE == "gradient" then
 		if type(name.ClearAlphaGradient) == "function" then
 			pcall(name.ClearAlphaGradient, name)
 		else
 			pcall(name.SetAlphaGradient, name, 1024, 1)
 		end
 	end
+	-- (2.1.87: back as far as the Nameplate Designer shows the name -- one it hid stays unseen: Plate.NameAlpha's rule.
+	-- The Designer's own hide is this alpha in every way of hiding)
+	pcall(name.SetAlpha, name, M.nameHidden[name] and 0 or 1)
 end
 
 -- The cover's own look over its copy of the game's name. Shade copies the game's font, justify and shadow onto a
@@ -1979,6 +2050,20 @@ function Plate.Cover(uf, again, form)
 				MelloUI.Shade:CoverColour(fs, r, g, b, 1)
 			end
 		end
+		-- (2.1.88) Class Coloured Player Names: the cover in its class colour while it wears one (the game's no
+		-- longer copied: Plate.OnColour), back in the game's when it no longer does (a pooled frame's next unit, the
+		-- switch off)
+		local cr, cg, cb = Plate.ClassColour(uf)
+		if Secret(cr) or cr ~= nil then
+			Plate.classOn[name] = true
+			MelloUI.Shade:CoverColour(fs, cr, cg, cb, 1)
+		elseif Plate.classOn[name] then
+			Plate.classOn[name] = nil
+			local okG, gr, gg, gb = pcall(name.GetVertexColor, name)
+			if okG then
+				MelloUI.Shade:CoverColour(fs, gr, gg, gb, 1)
+			end
+		end
 	else
 		-- (refused: the game's name stays as it is, uncovered)
 		Plate.coverOn[name] = nil
@@ -1999,6 +2084,7 @@ function Plate.Uncover(uf)
 	local name = uf.name
 	local was = Plate.coverOn[name]
 	Plate.coverOn[name] = nil
+	Plate.classOn[name] = nil
 	Plate.formOf[uf] = nil
 	Plate.CoverShow(uf)
 	if Plate.hidden[name] then
@@ -2018,7 +2104,7 @@ function Plate.CoverShow(uf)
 	if not fs then
 		return
 	end
-	local want = (Plate.coverOn[name] ~= nil and Plate.shown[name] == true) and true or false
+	local want = (Plate.coverOn[name] ~= nil and Plate.shown[name] == true and not M.nameHidden[name]) and true or false
 	if Plate.coverShown[name] ~= want then
 		Plate.coverShown[name] = want
 		fs:SetShown(want)
@@ -2029,7 +2115,8 @@ end
 -- ever had a cover): handed to the cover, set there only on a change
 Plate.OnColour = Perf.Shared("SetVertexColor on a covered nameplate name", function(name, r, g, b)
 	local fs = Plate.coverOn[name]
-	if fs then
+	-- (2.1.88: a cover in its class colour keeps it -- one table read more on this path, nothing written)
+	if fs and not Plate.classOn[name] then
 		-- (the colour only: the cover stays opaque, as in Plate.Cover)
 		MelloUI.Shade:CoverColour(fs, r, g, b, 1)
 	end
@@ -2135,10 +2222,18 @@ Plate.Cleared = Perf.Shared("OnUnitCleared on a nameplate (the names' undo)", fu
 		return
 	end
 	Plate.live[uf] = nil
+	local hid = false
 	if uf.name then
 		Plate.stale[uf.name] = nil
+		-- (2.1.87: a name the Nameplate Designer hid goes back to seen with the rest, laid again at the frame's next
+		-- unit -- a pooled frame carries no hidden name to the Settings' preview plate)
+		hid = M.nameHidden[uf.name] == true
+		M.nameHidden[uf.name] = nil
 	end
 	Plate.Off(uf)
+	if hid then
+		Plate.NameAlpha(uf)
+	end
 	Plate.measured[uf], Plate.textOf[uf] = false, nil
 end)
 
@@ -2179,6 +2274,12 @@ function Plate.OnSetting(module, key)
 	end
 end
 MelloUI:On("setting", Plate.OnSetting, "Nameplates names")
+-- (2.1.88) a class colour picked on Look > Colours: the names that wear one, again
+MelloUI:On("colours", function()
+	if Plate.ClassWanted() then
+		Plate.All()
+	end
+end, "Nameplates class names")
 
 -- the module off (or restarting: OnDisable runs with isEnabled still true,
 -- Core's RestartEach): every plate's parts away
@@ -2265,7 +2366,8 @@ end
 
 -- UNIT_NAME_UPDATE while a band or a form is wanted (on a change only)
 function Plate.Listen()
-	local want = (Plate.On() and (Plate.Shade() or Plate.FormWanted() or M.ForeverArt.NameOn())) and true or false
+	local want = (Plate.On() and (Plate.Shade() or Plate.FormWanted() or M.ForeverArt.NameOn() or Plate.ClassWanted()))
+		and true or false
 	if want == Plate.listening or not Plate.frame then
 		return
 	end
@@ -3917,7 +4019,8 @@ function M:OnSettingChanged(key, value, db)
 		end
 		return
 	end
-	if key == "nameFormat" then
+	-- (2.1.88: Class Coloured Player Names, either kind's switch: every plate's cover as it is wanted now)
+	if key == "nameFormat" or key == "classNames" or key == "allyClassNames" then
 		Plate.All()
 		return
 	end
@@ -4060,7 +4163,8 @@ do
 		KIND = {
 			npc = { name = "Stormwind Guard", level = "30", sample = { reaction = 5, fraction = 0.72, area = "nameplates" },
 				castName = "Holy Light", castIcon = "Interface\\Icons\\Spell_Holy_HolyBolt" },
-			ally = { name = "Lina Brightwater", level = "17", sample = { reaction = 5, fraction = 0.72, area = "nameplates" },
+			ally = { name = "Lina Brightwater", level = "17", class = "PRIEST",   -- (2.1.88: its class, for its name's colour)
+				sample = { reaction = 5, fraction = 0.72, area = "nameplates" },
 				castName = "Flash Heal", castIcon = "Interface\\Icons\\Spell_Holy_FlashHeal" },
 		},
 		MEDAL_MAX = 44,   -- the Party Markers medallion on the friendly player's sample, at most this large
@@ -4472,6 +4576,23 @@ do
 			f.name:SetTextHeight(nh)
 			if f.measure and f.measure.SetTextHeight then
 				f.measure:SetTextHeight(nh)
+			end
+		end
+		-- (2.1.88) Class Coloured Player Names on a player's sample (the friendly player's: the enemy's sample is a
+		-- mob): its name in its class colour while its kind's switch is on, as its plate's; else its own colour back
+		do
+			local shown = Stage.KIND[kind]
+			local nr, ng, nb
+			if ours and shown and shown.class and M.Opt("classNames", kind, db) == true then
+				nr, ng, nb = MelloUI.Colours.Class(shown.class)
+			end
+			if nr and not f.nameOwn then
+				f.nameOwn = { f.name:GetTextColor() }
+			end
+			if nr then
+				f.name:SetTextColor(nr, ng, nb)
+			elseif f.nameOwn then
+				f.name:SetTextColor(f.nameOwn[1], f.nameOwn[2], f.nameOwn[3])
 			end
 		end
 		local nameH = Fin(f.name:GetStringHeight()) or 12
