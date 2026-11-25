@@ -509,6 +509,12 @@ nameplates have no quest icon), read from the unit tooltip data. (2.1.39) With Q
 quest icons over the plates are switched off once, so only this marker shows (the one setting of Questie's
 MelloUI writes, and only once: switch them on again in Questie's options to keep them).
 
+**Class Coloured Player Names** (2.1.88, off by default) draws players' names on their nameplates in their class
+colour: one switch for enemy players (Nameplates > Enemies, the Name part) and one for friendly players (Nameplates >
+Friendly players, the Name part). NPCs keep the game's colours. The colours are the ones from Look > Colours when you
+picked your own there, else the game's. It works together with Show Names As: a shortened name wears the class colour
+too. (The game's own Options can colour friendly players' names by class; it has nothing for enemy players.)
+
 In the configurator, Nameplates > Enemies shows a sample of an enemy's plate drawn with these settings (the
 name, level and icons made up): click a part of it (the name, the health bar, the CC icon, the quest icon, your
 debuffs) to open its settings. Normal | Your target switches the sample to your target's plate, with its

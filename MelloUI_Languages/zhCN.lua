@@ -2457,6 +2457,7 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "姓名板：职业颜色玩家名字。玩家的名字以职业颜色显示，敌方玩家和友方玩家各有一个开关。", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "姓名板：选中的敌方玩家的名字不再重叠显示两次（名字叠在全名上）。", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "姓名板：在姓名板设计器中隐藏的名字，对以短名显示的玩家同样保持隐藏。", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "战斗文字：治疗数字现在看起来像治疗了：数字前有 +，伴随柔和的光向上飘起，没有打击效果。", -- draft
@@ -2478,8 +2479,6 @@ Lang:Add("zhCN", {
 	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "设置窗口：框体和部件自己的标题行现在更醒目，其下的分区用小标签标出。", -- draft
 	["Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To."] = "Mail Recipients：已重做。自定义分组、你的角色的专业、最近收件人，以及在收件人栏输入时即时搜索。", -- draft
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients：已删除的角色会自动从列表中移除；未知职业显示为可点击的 ?，不再是白色名字。", -- draft
-	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "姓名板：友方 NPC 和友方玩家有了各自的预览、位置和大小。在“敌人”下的设置不再改变友方姓名板。", -- draft
-	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "友方姓名板：“满血时隐藏”在其受伤之前只显示名字。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3479,6 +3478,7 @@ Lang:Add("zhCN", {
 -- stale: ["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "框体：在头像上隐藏治疗数字；统计数字显示在你的框体和每个小队框体旁的小标签里；小队：翻转、鼠标悬停高亮，团队框体使用“团队”的外观。", -- draft
 -- stale: ["French: many more settings and messages are translated (thanks to woofix)."] = "法语：更多设置和消息已翻译（感谢 woofix）。", -- draft
 -- stale: ["Fresh start"] = "从零开始", -- draft
+-- stale: ["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "友方姓名板：“满血时隐藏”在其受伤之前只显示名字。", -- draft
 -- stale: ["Full experience"] = "完整体验", -- draft
 -- stale: ["Game menu"] = "游戏菜单", -- draft
 -- stale: ["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2：每种矿石和每种草药在地图和小地图上都有自己的图标。", -- draft
@@ -3720,6 +3720,7 @@ Lang:Add("zhCN", {
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "姓名板设计器：可将名字、控制图标、任务图标和挥击徽章拖到姓名板的任意位置；重叠在同一处的部件会以红框标出。", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "姓名板设计器：精英图标成为可单独拖动、缩放或隐藏的部件；移动团队标记不再连带移动精英图标和敌人的增益效果。", -- draft
 -- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "姓名板设计器：你的姓名板尺寸和摆放的部件在 /reload 后会保留，已在屏幕上的姓名板也一样。", -- draft
+-- stale: ["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "姓名板：友方 NPC 和友方玩家有了各自的预览、位置和大小。在“敌人”下的设置不再改变友方姓名板。", -- draft
 -- stale: ["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "姓名板：生命值文字大小可让生命值数字变小，百分比在条旁让数字留在条内。", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "姓名板：敌方姓名板上的你的减益效果新增“只显示我的减益”设置（默认开启）。", -- draft
 -- stale: ["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "姓名板：只显示名字的友方姓名板在鼠标悬停时不再出现姓名板边框。", -- draft

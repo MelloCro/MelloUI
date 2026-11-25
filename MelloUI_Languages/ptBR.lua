@@ -2457,6 +2457,7 @@ Lang:Add("ptBR", {
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
 	["Addons"] = "Addons", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Os addons com que o MelloUI funciona: o que ele faz com cada um e onde ficam as configurações.", -- draft
+	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "Placas de nome: nomes de jogadores na cor da classe. Os nomes dos jogadores na cor da classe, com um interruptor para inimigos e outro para aliados.", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "Placas de nome: o nome de um jogador inimigo selecionado não aparece mais duas vezes sobreposto (primeiro nome sobre o nome completo).", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Placas de nome: um nome ocultado no designer de placas continua oculto também em jogadores mostrados com nome curto.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Texto de combate: os números de cura agora parecem cura: um + antes do número, subindo com uma luz suave, sem efeitos de golpe.", -- draft
@@ -2478,8 +2479,6 @@ Lang:Add("ptBR", {
 	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "Configurador: a linha própria de um quadro e de uma parte agora é a de destaque, com as seções como rótulos pequenos abaixo.", -- draft
 	["Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To."] = "Mail Recipients: refeito. Grupos seus, as profissões dos seus personagens, Recentes e uma busca enquanto você digita em Para.", -- draft
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: personagens excluídos saem da lista sozinhos, e uma classe desconhecida é um ? clicável, não um nome em branco.", -- draft
-	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Placas de identificação: PNJs amigáveis e jogadores amigáveis têm a própria prévia, posições e tamanhos. O que você ajusta em Inimigos não muda mais as placas amigáveis.", -- draft
-	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Placas de identificação amigáveis: Ocultar com a vida cheia mostra só o nome até que se machuquem.", -- draft
 	["Report a problem"] = "Relatar um problema", -- draft
 	["Voice pack"] = "Pacote de vozes", -- draft
 	["open or close this window"] = "abre ou fecha esta janela", -- draft
@@ -3479,6 +3478,7 @@ Lang:Add("ptBR", {
 -- stale: ["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "Quadros: Esconder números de cura no seu retrato; os números do medidor numa aba no seu quadro e em cada quadro de grupo; grupo: Inverter, Destaque ao passar o mouse, o visual de Raide nos quadros de raide.", -- draft
 -- stale: ["French: many more settings and messages are translated (thanks to woofix)."] = "Francês: muitas outras configurações e mensagens foram traduzidas (obrigado, woofix).", -- draft
 -- stale: ["Fresh start"] = "Começar do zero", -- draft
+-- stale: ["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Placas de identificação amigáveis: Ocultar com a vida cheia mostra só o nome até que se machuquem.", -- draft
 -- stale: ["Full experience"] = "Experiência completa", -- draft
 -- stale: ["Game menu"] = "Menu do jogo", -- draft
 -- stale: ["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2: cada minério e cada erva tem seu próprio ícone no mapa e no minimapa.", -- draft
@@ -3720,6 +3720,7 @@ Lang:Add("ptBR", {
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "Designer de placas de nome: arraste o nome, o ícone de controle, o ícone de missão e o emblema de golpe para qualquer lugar da placa; partes no mesmo lugar ficam contornadas de vermelho.", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "Designer de placas de nome: o ícone de elite é uma peça própria para arrastar, redimensionar ou esconder; mover o marcador de raide não leva mais o ícone de elite e os bônus do inimigo junto.", -- draft
 -- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "Designer de placas de nome: o tamanho das suas placas e as partes que você posicionou ficam após um /reload, inclusive nas placas que já estão na tela.", -- draft
+-- stale: ["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Placas de identificação: PNJs amigáveis e jogadores amigáveis têm a própria prévia, posições e tamanhos. O que você ajusta em Inimigos não muda mais as placas amigáveis.", -- draft
 -- stale: ["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "Placas de identificação: Tamanho do texto de vida deixa os números de vida menores, e Porcentagem ao lado da barra mantém o número na barra.", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Placas de identificação: Só minhas penalidades para as suas penalidades nas placas inimigas (ligado por padrão).", -- draft
 -- stale: ["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Placas de nome: placas aliadas que mostram só o nome não ganham mais uma borda de placa ao passar o mouse.", -- draft

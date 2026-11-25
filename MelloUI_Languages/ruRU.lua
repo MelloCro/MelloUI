@@ -2457,6 +2457,7 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "Индикаторы здоровья: имена игроков в цвете класса. Имена игроков в цвете их класса, отдельный переключатель для врагов и для союзников.", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "Индикаторы здоровья: имя выбранного в цель вражеского игрока больше не отображается дважды поверх себя (имя поверх полного имени).", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Индикаторы здоровья: имя, скрытое в конструкторе индикаторов, остаётся скрытым и у игроков с коротким именем.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Текст боя: числа исцеления теперь выглядят как исцеление: + перед числом, оно плавно поднимается с мягким светом, без эффектов удара.", -- draft
@@ -2478,8 +2479,6 @@ Lang:Add("ruRU", {
 	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "Настройки: собственная строка рамки и части теперь выделена, а её разделы стоят под ней маленькими подписями.", -- draft
 	["Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To."] = "Mail Recipients: переделано. Свои группы, профессии ваших персонажей, «Недавние» и поиск по мере ввода в поле «Кому».", -- draft
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: удалённые персонажи сами уходят из списка, а неизвестный класс теперь знак «?», по которому можно щёлкнуть, а не белое имя.", -- draft
-	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Индикаторы здоровья: у дружественных НИП и дружественных игроков свой предпросмотр, свои положения и размеры. Настройки вкладки «Враги» больше не меняют дружественные индикаторы.", -- draft
-	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Дружественные индикаторы здоровья: «Скрывать при полном здоровье» показывает только имя, пока они не ранены.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3479,6 +3478,7 @@ Lang:Add("ruRU", {
 -- stale: ["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "Рамки: «Скрыть числа исцеления» на портрете; числа измерителя во вкладке у вашей рамки и у каждой рамки группы; группа: «Отразить», «Подсветка при наведении», облик «Рейда» у рамок рейда.", -- draft
 -- stale: ["French: many more settings and messages are translated (thanks to woofix)."] = "Французский: переведено гораздо больше настроек и сообщений (спасибо woofix).", -- draft
 -- stale: ["Fresh start"] = "С чистого листа", -- draft
+-- stale: ["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Дружественные индикаторы здоровья: «Скрывать при полном здоровье» показывает только имя, пока они не ранены.", -- draft
 -- stale: ["Full experience"] = "Полный набор", -- draft
 -- stale: ["Game menu"] = "Меню игры", -- draft
 -- stale: ["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2: у каждой руды и каждой травы теперь свой значок на карте и миникарте.", -- draft
@@ -3720,6 +3720,7 @@ Lang:Add("ruRU", {
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "Конструктор индикаторов: перетаскивайте имя, значок контроля, значок задания и значок удара в любое место индикатора; элементы на одном месте обводятся красным.", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "Конструктор индикаторов здоровья: значок элиты стал отдельной частью, которую можно перетащить, изменить в размере или скрыть; перемещение метки рейда больше не тянет за собой значок элиты и положительные эффекты противника.", -- draft
 -- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "Конструктор индикаторов: размер индикаторов и расставленные вами части сохраняются после /reload, в том числе на индикаторах, которые уже на экране.", -- draft
+-- stale: ["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Индикаторы здоровья: у дружественных НИП и дружественных игроков свой предпросмотр, свои положения и размеры. Настройки вкладки «Враги» больше не меняют дружественные индикаторы.", -- draft
 -- stale: ["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "Индикаторы: «Размер текста здоровья» уменьшает числа здоровья, а «Процент рядом с полосой» оставляет число в полосе.", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Индикаторы здоровья: «Только мои ослабления» для ваших ослаблений на вражеских индикаторах (включено по умолчанию).", -- draft
 -- stale: ["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Индикаторы: дружеские индикаторы, показывающие только имя, больше не получают рамку индикатора при наведении.", -- draft

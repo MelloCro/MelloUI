@@ -1012,6 +1012,9 @@ function L.Define(R, Link)
 	R("Nameplates", "enemies:healthpct", "Text", "Nameplates.healthPctSize", { name = "Size" })
 	R("Nameplates", "enemies:healthpct", "Layout", "Nameplates.healthPercentBeside")
 	R("Nameplates", "enemies:name", "Text", "Nameplates.nameSize", { name = "Size" })
+	-- (2.1.88; the user: "the names on nameplates in class colour ... Yes add it") enemy players'; the friendly
+	-- players' own switch on their tab, below
+	R("Nameplates", "enemies:name", "Look", "Nameplates.classNames")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateSize")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateWidth")
 	R("Nameplates", "enemies:health", "Layout", "Nameplates.plateHeight")
@@ -1059,6 +1062,7 @@ function L.Define(R, Link)
 		R("Nameplates", el .. ":healthpct", "Layout", p .. "HealthPercentBeside", { name = "Percent Beside The Bar" })
 		R("Nameplates", el .. ":cast", "Layout", p .. "CastHeight", { name = "Height" })
 	end
+	R("Nameplates", "friendly:name", "Look", "Nameplates.allyClassNames", { name = "Class Coloured Player Names" })   -- (2.1.88)
 	-- Friendly players: Party Markers' switch first
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.!enabled", { name = "Party Markers", gate = NP_AREA })
 	R("Nameplates", "friendly:element", "General", "PartyMarkers.who")

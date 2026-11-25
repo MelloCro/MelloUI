@@ -2464,6 +2464,7 @@ Lang:Add("deDE", {
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Die Addons, mit denen MelloUI zusammenarbeitet: was es mit jedem macht und wo ihre Einstellungen sind.",
+	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "Namensplaketten: Spielernamen in Klassenfarbe. Die Namen von Spielern in ihrer Klassenfarbe, je ein Schalter für feindliche und verbündete Spieler.", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "Namensplaketten: Der Name eines anvisierten feindlichen Spielers wird nicht mehr doppelt übereinander angezeigt (Vorname über vollem Namen).", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Namensplaketten: Ein im Namensplaketten-Designer ausgeblendeter Name bleibt auch bei Spielern mit Kurznamen ausgeblendet.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Kampftext: Heilungszahlen sehen jetzt nach Heilung aus: ein + vor der Zahl, sie schwebt mit einem sanften Licht nach oben, ohne Treffereffekte.", -- draft
@@ -2485,8 +2486,6 @@ Lang:Add("deDE", {
 	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "Konfigurator: Die eigene Zeile eines Rahmens und eines Teils ist jetzt die kräftige, seine Abschnitte stehen als kleine Beschriftungen darunter.", -- draft
 	["Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To."] = "Mail Recipients: neu gemacht. Eigene Gruppen, die Berufe deiner Charaktere, Zuletzt und eine Suche, während du in An tippst.", -- draft
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: gelöschte Charaktere verlassen die Liste von selbst, und eine unbekannte Klasse ist ein ? zum Anklicken, kein weißer Name.", -- draft
-	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Namensplaketten: Freundliche NSCs und freundliche Spieler haben ihre eigene Vorschau, eigene Positionen und Größen. Was du unter Gegner einstellst, ändert freundliche Plaketten nicht mehr.", -- draft
-	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Freundliche Namensplaketten: Bei voller Gesundheit ausblenden zeigt nur den Namen, bis sie verletzt sind.", -- draft
 	["Report a problem"] = "Ein Problem melden",
 	["Voice pack"] = "Stimmenpaket",
 	["open or close this window"] = "dieses Fenster öffnen oder schließen",
@@ -4391,6 +4390,7 @@ Lang:Add("deDE", {
 -- stale: ["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "Fenster: Heilungszahlen ausblenden am Porträt; die Zahlen des Meters in einem Reiter an deinem Fenster und jedem Gruppenfenster; Gruppe: Spiegeln, Hervorhebung bei Mauskontakt, Schlachtzugsfenster im Aussehen von Schlachtzug.", -- draft
 -- stale: ["French: many more settings and messages are translated (thanks to woofix)."] = "Französisch: Viele weitere Einstellungen und Meldungen sind übersetzt (danke an woofix).", -- draft
 -- stale: ["Fresh start"] = "Neuanfang", -- draft
+-- stale: ["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Freundliche Namensplaketten: Bei voller Gesundheit ausblenden zeigt nur den Namen, bis sie verletzt sind.", -- draft
 -- stale: ["Full experience"] = "Volles Erlebnis", -- draft
 -- stale: ["Game menu"] = "Spielmenü", -- draft
 -- stale: ["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2: Jedes Erz und jedes Kraut hat ein eigenes Symbol auf der Karte und der Minikarte.", -- draft
@@ -4636,6 +4636,7 @@ Lang:Add("deDE", {
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "Namensplaketten-Designer: Ziehe Name, CC-Symbol, Questsymbol und Schlagabzeichen an jede Stelle der Plakette; Teile auf demselben Platz werden rot umrandet.", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "Namensplaketten-Designer: Das Elite-Symbol ist ein eigenes Teil zum Ziehen, Skalieren oder Ausblenden; das Verschieben der Schlachtzugsmarkierung nimmt das Elite-Symbol und die Stärkungszauber des Gegners nicht mehr mit.", -- draft
 -- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "Namensplaketten-Designer: Deine Plakettengröße und die platzierten Teile bleiben nach einem /reload erhalten, auch auf den Plaketten, die schon zu sehen sind.", -- draft
+-- stale: ["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Namensplaketten: Freundliche NSCs und freundliche Spieler haben ihre eigene Vorschau, eigene Positionen und Größen. Was du unter Gegner einstellst, ändert freundliche Plaketten nicht mehr.", -- draft
 -- stale: ["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "Namensplaketten: Gesundheitstextgröße macht die Gesundheitszahlen kleiner, und Prozent neben der Leiste hält die Zahl in der Leiste.", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Namensplaketten: „Nur meine Schwächungen“ für deine Schwächungszauber auf feindlichen Namensplaketten (standardmäßig an).", -- draft
 -- stale: ["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Namensplaketten: Freundliche Plaketten, die nur den Namen zeigen, bekommen beim Darüberfahren keinen Plakettenrahmen mehr.", -- draft

@@ -2532,6 +2532,7 @@ Lang:Add("frFR", {
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
+	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "Barres de nom : noms des joueurs en couleur de classe. Les noms des joueurs dans la couleur de leur classe, avec un interrupteur pour les ennemis et un pour les alliés.", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "Barres de nom : le nom d'un joueur ennemi ciblé ne s'affiche plus deux fois superposé (prénom sur nom complet).", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Barres de nom : un nom masqué dans le concepteur de barres de nom reste masqué aussi pour les joueurs affichés avec un nom court.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Texte de combat : les chiffres de soins ressemblent maintenant à des soins : un + devant le chiffre, qui s'élève avec une lueur douce, sans effets de coup.", -- draft
@@ -2553,8 +2554,6 @@ Lang:Add("frFR", {
 	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "Configurateur : la ligne propre d’un cadre et d’un élément est maintenant la plus marquée, ses sections en petites étiquettes dessous.", -- draft
 	["Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To."] = "Mail Recipients: refait. Vos propres groupes, les métiers de vos personnages, Récents et une recherche pendant que vous tapez dans À.", -- draft
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: les personnages supprimés quittent la liste d'eux-mêmes, et une classe inconnue est un ? cliquable, pas un nom en blanc.", -- draft
-	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Barres de nom : les PNJ amicaux et les joueurs amicaux ont leur propre aperçu, leurs positions et leurs tailles. Ce que vous réglez sous Ennemis ne change plus les barres amicales.", -- draft
-	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Barres de nom amicales : Masquer à pleine santé n’affiche que le nom tant qu’ils ne sont pas blessés.", -- draft
 	["Report a problem"] = "Signaler un problème",
 	["Voice pack"] = "Pack de voix",
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre",
@@ -5450,6 +5449,7 @@ Lang:Add("frFR", {
 -- stale: ["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "Cadres : Masquer les nombres de soins sur votre portrait ; les nombres du compteur dans un onglet sur votre cadre et chaque cadre de groupe ; groupe : Retourner, Surbrillance au survol, l'apparence de Raid sur les cadres de raid.", -- draft
 -- stale: ["French: many more settings and messages are translated (thanks to woofix)."] = "Français : beaucoup plus de réglages et de messages sont traduits (merci à woofix).", -- draft
 -- stale: ["Fresh start"] = "Nouveau départ", -- draft
+-- stale: ["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "Barres de nom amicales : Masquer à pleine santé n’affiche que le nom tant qu’ils ne sont pas blessés.", -- draft
 -- stale: ["Full experience"] = "Expérience complète", -- draft
 -- stale: ["Game menu"] = "Menu de jeu", -- draft
 -- stale: ["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2 : chaque minerai et chaque plante a sa propre icône sur la carte et la mini-carte.", -- draft
@@ -5696,6 +5696,7 @@ Lang:Add("frFR", {
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "Concepteur de barres d'info : faites glisser le nom, l'icône de contrôle, l'icône de quête et l'insigne de frappe n'importe où sur la barre ; les éléments au même endroit sont entourés de rouge.", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "Concepteur de barres d'info : l'icône d'élite est une pièce à part entière à déplacer, redimensionner ou masquer ; déplacer le marqueur de raid n'emporte plus l'icône d'élite ni les améliorations de l'ennemi.", -- draft
 -- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "Concepteur de barres de nom : la taille de vos barres et les éléments que vous avez placés restent après un /reload, y compris sur les barres déjà à l'écran.", -- draft
+-- stale: ["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "Barres de nom : les PNJ amicaux et les joueurs amicaux ont leur propre aperçu, leurs positions et leurs tailles. Ce que vous réglez sous Ennemis ne change plus les barres amicales.", -- draft
 -- stale: ["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "Barres d’info : Taille des chiffres de vie permet de les réduire. Pourcentage à côté de la barre garde la valeur au centre de la barre.",
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "Barres d'info : Seulement mes affaiblissements pour vos affaiblissements sur les barres d'info ennemies (activé par défaut).", -- draft
 -- stale: ["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "Barres de nom : les barres alliées qui n'affichent que le nom n'ont plus de bordure de barre au survol.", -- draft

@@ -2457,6 +2457,7 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "이름표: 직업 색상 플레이어 이름. 플레이어의 이름을 직업 색상으로 표시하며, 적과 아군 플레이어에 각각 스위치가 있습니다.", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "이름표: 대상으로 지정한 적 플레이어의 이름이 더 이상 겹쳐서 두 번 표시되지 않습니다(이름 위에 전체 이름).", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "이름표: 이름표 디자이너에서 숨긴 이름은 짧은 이름으로 표시되는 플레이어에게도 숨겨집니다.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "전투 문자: 치유 숫자가 이제 치유처럼 보입니다. 숫자 앞에 +가 붙고, 부드러운 빛과 함께 떠오르며, 타격 효과가 없습니다.", -- draft
@@ -2478,8 +2479,6 @@ Lang:Add("koKR", {
 	["Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it."] = "설정 창: 프레임과 부분의 제목 줄이 이제 강조되고, 그 아래 구역은 작은 이름표로 표시됩니다.", -- draft
 	["Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To."] = "Mail Recipients: 새로 만들었습니다. 나만의 그룹, 내 캐릭터의 전문 기술, 최근 받는 사람, 받는 사람 칸에 입력하는 대로 검색.", -- draft
 	["Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name."] = "Mail Recipients: 삭제한 캐릭터는 목록에서 저절로 빠지고, 직업을 모르는 캐릭터는 흰색 이름이 아니라 누를 수 있는 ?로 표시됩니다.", -- draft
-	["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "이름표: 우호적 NPC와 우호적 플레이어에 각각의 미리 보기, 위치, 크기가 생겼습니다. 적 탭에서 바꾼 설정은 더 이상 우호적 이름표를 바꾸지 않습니다.", -- draft
-	["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "우호적 이름표: 생명력이 가득할 때 숨기기를 켜면 다칠 때까지 이름만 보입니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3479,6 +3478,7 @@ Lang:Add("koKR", {
 -- stale: ["Frames: Hide Heal Numbers on your portrait; the meter's numbers in a tab on your frame and each party frame; party: Flip, Mouseover Highlight, Raid's look in raid frames."] = "창: 초상화의 치유 숫자 숨기기; 내 창과 각 파티 창 옆 탭에 미터 숫자; 파티: 뒤집기, 마우스오버 강조, 공격대 창은 공격대의 외형.", -- draft
 -- stale: ["French: many more settings and messages are translated (thanks to woofix)."] = "프랑스어: 훨씬 더 많은 설정과 메시지가 번역되었습니다 (woofix 님께 감사드립니다).", -- draft
 -- stale: ["Fresh start"] = "처음부터", -- draft
+-- stale: ["Friendly nameplates: Hide At Full Health shows only the name until they are hurt."] = "우호적 이름표: 생명력이 가득할 때 숨기기를 켜면 다칠 때까지 이름만 보입니다.", -- draft
 -- stale: ["Full experience"] = "전체 경험", -- draft
 -- stale: ["Game menu"] = "게임 메뉴", -- draft
 -- stale: ["GatherMate2: every ore and every herb has its own icon on the map and the minimap."] = "GatherMate2: 모든 광석과 약초가 지도와 미니맵에서 각자의 아이콘을 가집니다.", -- draft
@@ -3720,6 +3720,7 @@ Lang:Add("koKR", {
 -- stale: ["Nameplates designer: drag the name, CC icon, quest icon and swing badge anywhere on the plate; parts sharing a spot are outlined red."] = "이름표 디자이너: 이름, 군중 제어 아이콘, 퀘스트 아이콘, 스윙 배지를 이름표의 원하는 곳으로 끌어 놓으세요. 같은 자리에 겹친 요소는 빨간 테두리로 표시됩니다.", -- draft
 -- stale: ["Nameplates designer: the elite icon is a part of its own to drag, size or hide; moving the raid marker no longer takes the elite icon and the enemy's buffs with it."] = "이름표 디자이너: 정예 아이콘이 따로 끌고, 크기를 바꾸고, 숨길 수 있는 부품이 되었습니다. 공격대 징표를 옮겨도 더 이상 정예 아이콘과 적의 강화 효과가 함께 움직이지 않습니다.", -- draft
 -- stale: ["Nameplates designer: your plate size and the parts you placed stay after a /reload, on the plates already on screen too."] = "이름표 디자이너: 이름표 크기와 배치한 부분이 /reload 후에도 유지되며, 이미 화면에 있는 이름표에도 적용됩니다.", -- draft
+-- stale: ["Nameplates: Friendly NPCs and Friendly players have their own preview, places and sizes. What you set under Enemies no longer changes friendly plates."] = "이름표: 우호적 NPC와 우호적 플레이어에 각각의 미리 보기, 위치, 크기가 생겼습니다. 적 탭에서 바꾼 설정은 더 이상 우호적 이름표를 바꾸지 않습니다.", -- draft
 -- stale: ["Nameplates: Health Text Size makes the health numbers smaller, and Percent Beside The Bar keeps the number in the bar."] = "이름표: 생명력 글자 크기로 생명력 숫자를 작게, 막대 옆에 백분율로 숫자는 막대 안에 둡니다.", -- draft
 -- stale: ["Nameplates: Only My Debuffs for your debuffs on enemy nameplates (on by default)."] = "이름표: 적 이름표의 내 약화 효과에 '내 약화 효과만' 설정이 추가되었습니다(기본값 켜짐).", -- draft
 -- stale: ["Nameplates: friendly plates that show only the name no longer get a plate border on mouseover."] = "이름표: 이름만 표시하는 아군 이름표에 마우스를 올려도 더 이상 이름표 테두리가 나타나지 않습니다.", -- draft

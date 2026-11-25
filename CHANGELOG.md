@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.88
+
+- Nameplates: Class Coloured Player Names. Players' names on their nameplates in their class colour, with one switch for enemy players (Nameplates > Enemies, the Name part) and one for friendly players (Nameplates > Friendly players, the Name part). Both are off by default. NPCs keep the game's colours, and your own class colours from Look > Colours are used when you picked any.
+
 ## 2.1.87
 
 - Nameplates: an enemy player's name no longer shows twice over itself after you target them (their first name over their full name). It happened with Show Names As on a short form and the name moved in the Nameplate Designer, and stayed until the plate left the screen.
