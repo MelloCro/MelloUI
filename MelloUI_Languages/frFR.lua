@@ -1910,6 +1910,8 @@ Lang:Add("frFR", {
 	["Marker Sounds"] = "Sons du marqueur",
 	["A soft sound when the World Marker appears or changes."] = "Un son discret lorsque le marqueur du monde apparaît ou change.",
 	["Arrival"] = "Arrivée",
+	["Arrived: %s"] = "Arrivée : %s",
+	["destination"] = "destination",
 	["Arrived Within (yards)"] = "Arrivée à moins de (mètres)",
 	["How close you must get for the route to end."] = "La distance à atteindre pour terminer l'itinéraire.",
 	["Flights"] = "Vols",
