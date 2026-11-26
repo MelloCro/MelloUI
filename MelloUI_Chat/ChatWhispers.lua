@@ -831,25 +831,8 @@ function WV.LayTalk()
 end
 
 -- a bar of the window's (MelloUI's thin one): its range 0 .. top (none: hidden), at `value`, its thumb `share` of it
-function WV.Bar(bar, top, value, share)
-	if not bar then
-		return
-	end
-	top = math.max(0, top or 0)
-	local okD, dragging = pcall(bar.IsDraggingThumb, bar)
-	bar.laying = true
-	bar:SetMinMaxValues(0, top)
-	if not (okD and dragging == true) then
-		bar:SetValue(math.max(0, math.min(top, value or 0)))   -- (dragged: the thumb is the mouse's)
-	end
-	bar.laying = false
-	if top > 0 then
-		local okB, bh = pcall(bar.GetHeight, bar)
-		bh = okB and Num(bh) or 100
-		bar.thumb:SetHeight(math.max(12, bh * math.min(1, share or 1)))
-	end
-	bar:SetShown(top > 0)
-end
+-- (2.1.89: the chat's one bar rule, ChatView.lua's View.Bar -- the view's own lines have a bar too)
+WV.Bar = View.Bar
 
 -- the talk glides as the chat does (View.Glide: the chat's Smooth Scrolling)
 WV.scroller = {

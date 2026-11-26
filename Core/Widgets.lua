@@ -4081,14 +4081,21 @@ end
 -- Slider, a `border` track, a `trim` thumb, its value in rows (step 1). The
 -- caller places it, sets its range and its OnValueChanged, and may size the
 -- thumb (bar.thumb) to the share of the list in view.
---   W.ThinScrollBar(parent, width) -> bar
+--   W.ThinScrollBar(parent, width[, grab]) -> bar
+-- (2.1.89; a player on Discord, of the Quest Tracker's: "could you make scroll bar ... clickable? So far it's
+-- decorative") `grab`: the strip that takes the mouse, wider than the bar drawn -- a bar of 3 or 4 px is hard to
+-- hit; the bar's hit rect grown to it, half on each side. None: the bar's own width, as before.
 --------------------------------------------------------------------------------
 
-function W.ThinScrollBar(parent, width)
+function W.ThinScrollBar(parent, width, grab)
 	local bar = CreateFrame("Slider", nil, parent)
 	bar:SetOrientation("VERTICAL")
 	bar:SetWidth(width)
 	bar:EnableMouseWheel(false)
+	if grab and grab > width and bar.SetHitRectInsets then
+		local pad = (grab - width) / 2
+		bar:SetHitRectInsets(-pad, -pad, 0, 0)
+	end
 	local track = W.Solid(bar, "BACKGROUND", "border", 1)
 	track:SetAllPoints(bar)
 	local thumb = bar:CreateTexture(nil, "ARTWORK")

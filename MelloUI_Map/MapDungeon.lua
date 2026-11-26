@@ -451,6 +451,91 @@ local function Roster(c)
 	pcall(f.FinalizeUnits, f)
 end
 
+-- (2.1.89; a player on Discord, 2026-11-26: "On the base map, you can see who is where on the map by hovering over the
+-- units on the map ... Could this be added to the MelloUI Map as well?") Who the pointer is over on a battleground's
+-- map, as the game's map tells it: the client's own unit frame answers which of its units lie under the pointer
+-- (GetMouseOverUnits, the question the game's group pin asks it; the frame takes no mouse, the canvas keeps it), you
+-- left out; a tooltip at the pointer, each one's name on a line in their class's colour, as their dot is. Asked at the
+-- map's own hover beat (Map.lua's Hover: at most ten times a second, only while the pointer is over the map) and
+-- filled again only when the units under the pointer changed (their tokens compared, plain). A name goes to the
+-- tooltip as the game gives it, never compared or joined: a secret stays one. `on` false, no unit frame, nobody
+-- there: the tooltip away, when it is this one's.
+local under = { n = 0 }
+
+local function Told(ok, ...)
+	local n = 0
+	if ok then
+		for i = 1, select("#", ...) do
+			local unit = Text((select(i, ...)))
+			if unit and not Yes(UnitIsUnit(unit, "player")) then
+				n = n + 1
+				under[n] = unit
+			end
+		end
+	end
+	for i = n + 1, under.n do
+		under[i] = nil
+	end
+	under.n = n
+	return n
+end
+
+function Dungeon.UnitTip(owner, on)
+	local c = on and S.shown and S.canvases[S.shown]
+	local f = c and c.units
+	local n = 0
+	if f and type(f.GetMouseOverUnits) == "function" then
+		n = Told(pcall(f.GetMouseOverUnits, f))
+	end
+	local key = n > 0 and table.concat(under, " ", 1, n) or nil
+	if key == under.key then
+		return
+	end
+	under.key = key
+	local tip = GameTooltip
+	if not key then
+		if under.shown then
+			under.shown = false
+			if tip:GetOwner() == owner then
+				tip:Hide()
+			end
+		end
+		return
+	end
+	local plain = MelloUI.Look.TipPalette().text
+	local Colours, Secret = MelloUI.Colours, MelloUI.Safe.IsSecret
+	local lines = 0
+	tip:SetOwner(owner, "ANCHOR_CURSOR_RIGHT")
+	for i = 1, n do
+		local unit = under[i]
+		local name = UnitName(unit)
+		if Secret(name) or name ~= nil then
+			local _, class = UnitClass(unit)
+			local r, g, b
+			if Colours and Colours.Class then
+				r, g, b = Colours.Class(Text(class))
+			end
+			r, g, b = Finite(r), Finite(g), Finite(b)
+			if not (r and g and b) then
+				r, g, b = plain[1], plain[2], plain[3]
+			end
+			lines = lines + 1
+			if lines == 1 then
+				tip:SetText(name, r, g, b)
+			else
+				tip:AddLine(name, r, g, b)
+			end
+		end
+	end
+	if lines > 0 then
+		tip:Show()
+		under.shown = true
+	else
+		tip:Hide()
+		under.shown = false
+	end
+end
+
 -- (2.1.19) a battleground's own marks on its map, as the game's map draws them (its BattlefieldFlag and Vehicle
 -- providers): each flag at the game's place for it -- on the ground, or with the one who carries it -- in its own
 -- picture; each vehicle in its atlas, turned its way (none you ride); a place that does not read plainly: not drawn

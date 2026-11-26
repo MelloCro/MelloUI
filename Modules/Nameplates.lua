@@ -105,9 +105,9 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		-- (2.1.88; the user, 2026-11-25: "Where is the option in the configurator to have the names on nameplates in
 		-- class colour?", "Yes add it") the enemies' switch and the friendly players' own (M.Opt("classNames", kind)),
 		-- off by default; drawn by the names' cover (Plate.ClassColour), the game's own colour never written
-		{ type = "toggle", key = "classNames", name = "Class Coloured Player Names", new = "2.1.88",
+		{ type = "toggle", key = "classNames", name = "Class Coloured Player Names",
 		  desc = "Enemy players' names on their nameplates in their class colour. NPCs keep the game's colours." },
-		{ type = "toggle", key = "allyClassNames", name = "Friendly Players: Class Coloured Names", new = "2.1.88",
+		{ type = "toggle", key = "allyClassNames", name = "Friendly Players: Class Coloured Names",
 		  desc = "Friendly players' names on their nameplates in their class colour." },
 		{ type = "header", name = "Crowd Control" },
 		{ type = "toggle", key = "bigCC", name = "Large CC Icon Above Name",

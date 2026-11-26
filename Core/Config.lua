@@ -177,6 +177,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.89", lines = {
+		"Map: on a battleground's map, hover a group member's dot to see their name.",
+		"Quest Tracker: its scroll bar works with the mouse now. Drag it or click it to scroll the list.",
+		"Chat: the Minimal chat view has a scroll bar while a tab holds more lines than fit.",
+		"Discard: hold Shift at a vendor to sell the cheapest stack of everything, also what the auction pays more for.",
+	} },
 	{ version = "2.1.88", lines = {
 		"Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players.",
 	} },
@@ -196,19 +202,6 @@ local CHANGELOG = {
 		"Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate.",
 		"Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both.",
 	} },
-	{ version = "2.1.84", lines = {
-		"Configurator: a frame's tab now shows all of its parts' settings in one scroll. Click a part to jump to its settings.",
-		"Configurator: the Parts are a list beside the preview, with a Show switch on the parts you can hide.",
-		"Unit frames: PvP badge, Status glow and Combat glow are shown and hidden with their Show switch in the Parts list.",
-		"Configurator: each feature's switch is now a bar on top of its tab, with its name and what it does.",
-		"Configurator: the side list shows every page at once, with a dot for on, partly on or off. Home, Edit Layout, Profiles, Addons and Supporters are icon buttons above it.",
-		"Home: a What's new line with an arrow opens the setting it is about. Back to Home brings you back.",
-		"Quality of Life: four tabs in place of twelve, each helper under its own switch. Jump to takes you to one.",
-		"Profiles: four cards. Import says what a string holds and the screen it was made for before you take it.",
-		"Configurator: a frame's and a part's own line is the strong one now, its sections small labels under it.",
-		"Mail Recipients: redone. Groups of your own, your characters' professions, Recent, and a search as you type in To.",
-		"Mail Recipients: deleted characters leave the list by themselves, and an unknown class is a ? you can click, not a white name.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -219,13 +212,12 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.89"] = { "=map", "=quest tracker", "Chat.view", "Discard.bagButton" },
 	["2.1.88"] = { "Nameplates.classNames" },
 	["2.1.87"] = { "=nameplates", "=nameplates" },
 	["2.1.86"] = { "CombatText.dealtHeals", false },
 	["2.1.85"] = { "CombatText.dealt", "CombatText.style", "CombatText.dealtOutline", "CombatText.dealtGroups",
 		"CombatText.dealtHeals", "UIModifications.frameSet" },
-	["2.1.84"] = { "=unit frames", "=nameplates", "UnitFrames.hidePvPBadge", "UIModifications.qol_Tooltip", false, false,
-		"=qol", "=profiles", "=unit frames", "MailRecipients.recent", "MailRecipients.bnet" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },

@@ -40,6 +40,9 @@
 --                that worth, and Never Throw Away Items Worth counts it; at a vendor Sell skips what the auction
 --                pays clearly more for (SELL_MARGIN, after the house's cut). Its prices show in the tooltip only,
 --                with the credit AHledger asks for (and "the copy it ships with" while it has no synced prices)
+--   (2.1.89; Nixxen: "I want to remove the cheapest item in my bags")
+--   Shift        held at a vendor, nothing is held back for the auction: the stack worth least of everything that
+--                may go is sold; the tooltip names it beside the usual pick and follows the key as it is pressed
 -- Which one: the stack worth least (the vendor's price times the stack);
 -- a tie: grey before white, then the first in the bags. Where: the backpack,
 -- the four bags and (2.1.54) the Reagent Bag; the loot window's button the
@@ -349,7 +352,13 @@ M.refused = {}
 -- their value, for the message; (2.1.50) selling: the cheapest of those
 -- held back for the auction's price and how many (AHledger); ordinary: the ordinary bags only (EachSlot);
 -- (2.1.58) last: how many were passed over because the game did not let them go (M.refused)
-function M.Cheapest(selling, ordinary)
+-- (2.1.89; Nixxen, Discord 2026-11-24: "at a vendor ... I'd like to occasionally override it to vendor/discard
+-- whichever item has the current lowest value ... when a modifier key is held (e.g., Shift. Whichever it is, it should
+-- be shown in the discard/sell tooltip) ... I want to remove the cheapest item in my bags. That would be the blasting
+-- powder in this case") all: selling with Shift held -- nothing is held back for the auction's price, the stack worth
+-- least of everything that may go is sold (its worth as ever: the auction's or the vendor's price times what the
+-- stack holds now). Throwing away is as it was: Never Throw Away Items Worth holds whatever key is down.
+function M.Cheapest(selling, ordinary, all)
 	local limit = ((Num(M.db and M.db.keepWorth) or 100) * 100)
 	local best, valuable, held, nheld, nrefused = nil, 0, nil, 0, 0
 	EachSlot(function(bag, slot)
@@ -359,7 +368,7 @@ function M.Cheapest(selling, ordinary)
 			c = nil
 		end
 		if c then
-			if selling and c.auction and c.auction * AUCTION_CUT >= SELL_MARGIN * c.price then
+			if selling and not all and c.auction and c.auction * AUCTION_CUT >= SELL_MARGIN * c.price then
 				nheld = nheld + 1
 				if not held or Better(c, held) then
 					held = c
@@ -424,6 +433,11 @@ end
 local function AtVendor()
 	local f = rawget(_G, "MerchantFrame")
 	return f and Value(f:IsShown()) == true or false
+end
+
+-- (2.1.89) Shift held at a vendor: the cheapest of everything is sold (M.Cheapest's `all`)
+local function SellAll(selling)
+	return selling and Value((Ask(rawget(_G, "IsShiftKeyDown")))) == true or false
 end
 
 -- the slot still holds this candidate (the same item, the same stack)
@@ -532,10 +546,10 @@ end
 function M.Click(source)
 	Told()   -- (a refusal's line still waiting: said before this click's own)
 	local selling = AtVendor()
-	local c, valuable, _, nheld, nrefused = M.Cheapest(selling, Ordinary(source, selling))
+	local c, valuable, _, nheld, nrefused = M.Cheapest(selling, Ordinary(source, selling), SellAll(selling))
 	if not c then
 		if selling and nheld > 0 then
-			Say("Discard: nothing to sell -- what is left sells for more at the auction house (AHledger's prices).")
+			Say("Discard: nothing to sell -- what is left sells for more at the auction house (AHledger's prices). Shift-click sells the cheapest of it anyway.")
 		elseif nrefused > 0 then
 			-- (2.1.58) only what the game did not let go is left
 			Say("Discard: nothing else to throw away -- the game did not let the rest go (passed over until you log in again).")
@@ -612,7 +626,8 @@ end
 -- auction worth and the vendor's beside it), what Sell holds back for the auction, the right-click, the credit
 local function Tip(self)
 	local selling = AtVendor()
-	local c, _, held, nheld = M.Cheapest(selling, Ordinary(self.source, selling))
+	local all = SellAll(selling)   -- (2.1.89: Shift held at a vendor)
+	local c, _, held, nheld = M.Cheapest(selling, Ordinary(self.source, selling), all)
 	local P = MelloUI.Palette.text
 	local tr, tg, tb = P[1], P[2], P[3]
 	local credit = nil
@@ -623,6 +638,11 @@ local function Tip(self)
 		if not selling and c.auction and c.auction > c.price then
 			GameTooltip:AddLine(string.format("%s%s, %s at auction (vendor %s)", c.link or "?", count, Money(c.value),
 				Money(c.vendor)), 1, 1, 1)
+			credit = c
+		elseif all and c.auction and c.auction > c.price then
+			-- (2.1.89) Shift's pick at a vendor: what the sale pays, and what the auction would
+			GameTooltip:AddLine(string.format("%s%s, %s (%s at auction)", c.link or "?", count, Money(c.vendor),
+				Money(c.value)), 1, 1, 1)
 			credit = c
 		else
 			GameTooltip:AddLine(string.format("%s%s, %s", c.link or "?", count, Money(c.vendor or c.value)), 1, 1, 1)
@@ -636,13 +656,25 @@ local function Tip(self)
 			held.count > 1 and (" x" .. held.count) or "", Money(held.auction * held.count), more), tr, tg, tb, true)
 		credit = credit or held
 	end
+	local g = rawget(_G, "GREEN_FONT_COLOR")
+	local gr, gg, gb = g and g.r or 0, g and g.g or 1, g and g.b or 0
+	if all then
+		-- (2.1.89) Shift is down: said, so the item named above is no surprise
+		GameTooltip:AddLine(Tr("Shift held: the cheapest of everything, also what the auction pays more for."), tr, tg, tb, true)
+	end
 	if c then
 		-- (2.1.50) the right-click: in the game's green of a use line; (2.1.51; Nixxen: "The tooltip for the discard
 		-- should probably say left click to discard as well") the left-click's first, what it does here
-		local g = rawget(_G, "GREEN_FONT_COLOR")
-		local gr, gg, gb = g and g.r or 0, g and g.g or 1, g and g.b or 0
 		GameTooltip:AddLine(Tr(selling and "Left-click: sell it" or "Left-click: throw it away"), gr, gg, gb)
 		GameTooltip:AddLine(Tr("Right-click: always keep %s"):format(NameOf(c)), gr, gg, gb)
+	end
+	if selling and not all and held then
+		-- (2.1.89) the key that sells what is held back, and the stack it would sell: the cheapest of everything
+		local s = M.Cheapest(true, Ordinary(self.source, true), true)
+		if s and not (c and s.bag == c.bag and s.slot == c.slot) then
+			GameTooltip:AddLine(Tr("Shift-click: sell the cheapest of everything, %s"):format(NameOf(s)
+				.. (s.count > 1 and (" x" .. s.count) or "") .. " (" .. Money(s.vendor) .. ")"), gr, gg, gb, true)
+		end
 	end
 	if credit then
 		GameTooltip:AddLine(Credit(credit.itemID), tr, tg, tb)
@@ -656,7 +688,8 @@ end
 -- (2.1.50) the right-click: the item the button would take kept from now on; its tooltip names the next one
 function M.KeepClick(self)
 	local selling = AtVendor()
-	local c = M.Cheapest(selling, Ordinary(self and self.source, selling))
+	-- (2.1.89: with Shift held, the item Shift's click would sell)
+	local c = M.Cheapest(selling, Ordinary(self and self.source, selling), SellAll(selling))
 	if not c then
 		return
 	end
@@ -665,6 +698,32 @@ function M.KeepClick(self)
 	Say("Discard: %s is kept now (the Restock List's Never Discard page lets it go).", c.link or ("item " .. c.itemID))
 	if self and GameTooltip:IsOwned(self) then
 		Tip(self)
+	end
+end
+
+-- (2.1.89) Shift pressed or let go while a Discard button's tooltip shows: the tooltip again, with the other pick.
+-- The key's event is heard only while the pointer is on a button (registered on its enter, dropped on its leave)
+local tipEar = { frame = nil, button = nil }
+
+local function TipEar_OnEvent()
+	local b = tipEar.button
+	if b and GameTooltip:IsOwned(b) then
+		Tip(b)
+	end
+end
+
+local function TipWatch(button)
+	if button and not tipEar.frame then
+		tipEar.frame = CreateFrame("Frame")
+		Perf.SetScript(tipEar.frame, "OnEvent", TipEar_OnEvent)
+	end
+	tipEar.button = button
+	if tipEar.frame then
+		if button then
+			tipEar.frame:RegisterEvent("MODIFIER_STATE_CHANGED")
+		else
+			tipEar.frame:UnregisterEvent("MODIFIER_STATE_CHANGED")
+		end
 	end
 end
 
@@ -677,8 +736,12 @@ local BUTTON_SCRIPTS = {
 		end
 		M.Click(self.source)
 	end,
-	OnEnter = Tip,
+	OnEnter = function(self)
+		Tip(self)
+		TipWatch(self)
+	end,
 	OnLeave = function()
+		TipWatch(nil)
 		GameTooltip:Hide()
 	end,
 }

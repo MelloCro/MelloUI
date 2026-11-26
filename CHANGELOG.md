@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.89
+
+- Map: on a battleground's map, hover a group member's dot to see who it is. Their name shows at the pointer in their class colour, and every name when several dots lie together, as on the game's own map.
+- Quest Tracker: its scroll bar works with the mouse now. Drag the thumb or click the bar to scroll the list; it only showed where you were before.
+- Chat: the Minimal chat view has a scroll bar at its right edge while a tab holds more lines than fit. Drag it to go back through the chat; the wheel works as before.
+- Discard: hold Shift at a vendor and the button sells the cheapest stack of everything, also what it would keep because the auction pays more (with AHledger). The tooltip names what Shift would sell and follows the key.
+
 ## 2.1.88
 
 - Nameplates: Class Coloured Player Names. Players' names on their nameplates in their class colour, with one switch for enemy players (Nameplates > Enemies, the Name part) and one for friendly players (Nameplates > Friendly players, the Name part). Both are off by default. NPCs keep the game's colours, and your own class colours from Look > Colours are used when you picked any.
