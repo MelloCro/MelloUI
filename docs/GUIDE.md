@@ -84,7 +84,7 @@ It comes in two parts, and you need both. Remade for 0.18.3: every voice at a be
 - **Dungeon Info:** every dungeon and raid beside the map, its bosses in order and what each one drops, and the rare drops of its other creatures (**Trash drops**, with who drops each). Star the items you want: when one drops, its loot roll shines gold and lights Need. **Pick Up Quests** routes you to all of a dungeon's quests in the fastest order, then to its door. Open it with the door button beside the map, a click on a dungeon's door, or `/dungeoninfo`.
   - Forever's own dungeons' loot is not in the game's files: every list of it is collected from players. Dungeon Info lists their bosses' loot from [DungeonMaster](https://www.curseforge.com/wow/addons/dungeonmaster) by MalkDev (GPL-3.0), which also has the drops Forever changed in the classic dungeons. It shows the drop rates players collect for [Everloot](https://everloot.app) (CC BY-SA 4.0) as they come in, and counts what falls in front of you: a boss's kills and drops, the corpses you loot and their rare drops, giving each a chance. With **DungeonJournal** installed, its loot lists show too. `/dungeoninfo export` gives you a text of what you have seen: post it in MelloUI's Discord and it goes into the next update for everyone.
   - **Dungeon maps:** inside a dungeon or raid the map (M) opens on its own map, with Dungeon Info's page beside it (its bosses and their loot). The classic dungeons and raids show Blizzard's own drawn maps, floor by floor (the game holds the drawings but never shows them); Forever's own dungeons show the fan-made maps of Santiago Reyes ("Atlas de Azeroth: Forever", used with his kind permission; the footer names him, his watermark stays on the parchment). The drawings mark their own bosses and ways in, so the map adds no pins of its own. From outside, a click on a dungeon's door on the map, or on its row in Dungeon Info, shows its map the same way. **World map** at the top left, or a right-click at the whole dungeon, goes back to the world. Your arrow shows where the game gives your place inside. A dungeon of several floors comes in **floors**, named as the game names them: pick one in the row above the map; the map opens on the floor you stand in and follows you into the next. Switch it off on the Map page (**Dungeon Maps**).
-  - **Battlegrounds:** inside a battleground the map opens on the battleground's own map, as the game's map does: you and your group, its flags (on the ground or with whoever carries them) and its vehicles, and its bases, towers, graveyards and camps in the game's own icons, which change with who holds them (Alliance, Horde, contested or nobody). Hover one for its name and state.
+  - **Battlegrounds:** inside a battleground the map opens on the battleground's own map, as the game's map does: you and your group, its flags (on the ground or with whoever carries them) and its vehicles, and its bases, towers, graveyards and camps in the game's own icons, which change with who holds them (Alliance, Horde, contested or nobody). Hover one for its name and state. (2.1.89) Hover a group member's dot on it to see who it is: their name at the pointer in their class colour, every name when several dots lie together.
 
 ## 👥 Small things you'll use every day
 
@@ -414,6 +414,8 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   (right-click: speak in it, leave it -- asked first); drag any tab up or down to reorder the rail (kept per character,
   Chat's viewOrder; a new tab comes in just above Whispers); a thin scroll bar (W.ThinScrollBar, the dropdown lists'
   own) when the tabs do not fit; the names in the chat's font, so Chat Size scales them and the tabs' spacing. The
+  lines have a scroll bar at the view's right edge while a tab holds more than fits (2.1.89: drag it to go back
+  through the chat); the
   lines and the whisper window's bubbles glide with Smooth Scrolling (by pixels from the foot, a line taken on as the
   newest goes by its height; Reduce Motion or the option off: line by line). Links click as in the game's chat, an item or a spell shows its tooltip under the pointer, the lines
   rise above the line you type in while it shows. Secret lines (chat messaging lockdown) show as they are: nothing
@@ -1896,7 +1898,9 @@ and the items on your Restock list. **Never Throw Away Items Worth** (1 gold): a
 or more is kept. A grey item goes on the click; a white one asks first, with its name and value.
 **Discard Button On Loot** puts the same button under the loot window's list; there it frees a
 slot only when something you are looting is worth more than what it would throw away (a quest
-item always is). Both rows are on the Windows page, the bag and loot windows' Behaviour.
+item always is). Both rows are on the Windows page, the bag and loot windows' Behaviour. With AHledger
+installed, selling at a vendor holds back what the auction pays clearly more for; (2.1.89) hold **Shift** and the
+button sells the stack worth least of everything, held back or not. The tooltip names that stack and follows the key.
 
 ### Gains
 
@@ -2092,7 +2096,8 @@ Questie's options), so MelloUI switches that off once, the first time Questie's 
 Switch it on again in Questie to keep the fold; MelloUI never touches it again.
 
 A quest tracker of MelloUI's own in the game's tracker's place (off by default), because the
-game's tracker on this client does not scroll. The mouse wheel scrolls the list. In the painted
+game's tracker on this client does not scroll. The mouse wheel scrolls the list, and so does its scroll bar
+(2.1.89: drag the thumb or click the bar; it only showed where you were before). In the painted
 look it wears the chat's look (0.24.0): the palette's dark panel, or the parchment sheet with
 Parchment on, "Objectives" at the top on a hairline, Quests and Professions as small headings
 with how many they hold, each quest's mark in the kit's round rim ("..." in progress, "?" ready

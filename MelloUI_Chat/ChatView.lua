@@ -822,6 +822,50 @@ function View.Lay()
 	for i = k + 1, #View.rows do
 		HideRow(View.rows[i])
 	end
+	View.LineBar(buf, k, prev)
+end
+
+-- A bar of the chat's own windows (MelloUI's thin one, W.ThinScrollBar) over a list laid from its foot: its range
+-- 0 .. top (none: hidden), at `value`, its thumb `share` of it; a thumb the mouse holds is left where it is. The
+-- whisper window's two bars (ChatWhispers.lua: WV.Bar is this) and the view's own lines' (below).
+function View.Bar(bar, top, value, share)
+	if not bar then
+		return
+	end
+	top = math.max(0, top or 0)
+	local okD, dragging = pcall(bar.IsDraggingThumb, bar)
+	bar.laying = true
+	bar:SetMinMaxValues(0, top)
+	if not (okD and dragging == true) then
+		bar:SetValue(math.max(0, math.min(top, value or 0)))   -- (dragged: the thumb is the mouse's)
+	end
+	bar.laying = false
+	if top > 0 then
+		local okB, bh = pcall(bar.GetHeight, bar)
+		bh = okB and Num(bh) or 100
+		bar.thumb:SetHeight(math.max(12, bh * math.min(1, share or 1)))
+	end
+	bar:SetShown(top > 0)
+end
+
+-- (2.1.89; a player on Discord, 2026-11-25: "can we have a scroll bar in the chat window?") The lines' own bar at the
+-- view's right edge, as the whisper window's talk has: shown while the open tab's lines run past the window, the
+-- newest at its foot; dragged, the lines follow (its OnValueChanged, in the view's build). Set at each lay: the
+-- topmost laid line over the lines' top, or lines not laid (a secret one unread: guessed from the window's height).
+function View.LineBar(buf, k, prev)
+	local bar, area = View.lineBar, View.area
+	if not (bar and area) then
+		return
+	end
+	local okT, areaTop = pcall(area.GetTop, area)
+	local okP, prevTop = pcall(prev and prev.GetTop or area.GetTop, prev or area)
+	areaTop, prevTop = okT and Num(areaTop), okP and Num(prevTop)
+	local okH, areaH = pcall(area.GetHeight, area)
+	local inView = math.max(1, (okH and Num(areaH) or 120) / View.scroller.estimate())
+	local past = k < buf.count or (areaTop and prevTop and prevTop > areaTop)
+		or (not (areaTop and prevTop) and buf.count > inView)
+	local top = past and math.max(1, math.ceil(buf.count - inView)) or 0
+	View.Bar(bar, top, top - View.offset, inView / math.max(1, buf.count))
 end
 
 -- laid again on the next frame (a burst of lines once)
@@ -2773,6 +2817,24 @@ local function Build()
 		PlaceButtons()
 	end)
 	View.area = area
+	-- (2.1.89) the lines' bar, in the room right of them (View.LineBar): dragged or its track clicked, the lines
+	-- follow -- the glide ended, the view at that line, its oldest line's top at the window's top (the top stop)
+	local lineBar = W.ThinScrollBar(frame, 4, 10)
+	lineBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -12)
+	lineBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, ROW_H + 10)
+	lineBar:Hide()
+	lineBar:SetScript("OnValueChanged", function(self, value)
+		local buf = View.tab and View.bufs[View.tab]
+		if self.laying or not buf then
+			return
+		end
+		local _, top = self:GetMinMaxValues()
+		View.Settle(View.scroller)
+		View.offset = math.max(0, math.min(buf.count - 1, math.floor((Num(top) or 0) - (Num(value) or 0) + 0.5)))
+		View.Lay()
+		View.TopStop(View.scroller)   -- (at its top: the oldest line's top at the window's top)
+	end)
+	View.lineBar = lineBar
 	ButtonRow(frame)
 	PlaceButtons()
 	-- (lk-12) no gold rim under Default (the game's chat box); the frame laid for the skin, and again at a switch

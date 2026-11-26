@@ -341,11 +341,21 @@ local function Hover()
 	win.mouseX, win.mouseY = nil, nil
 	if not x then
 		ShowName(nil)
+		Dungeon.UnitTip(c.frame, false)
 		PinTip(nil)
 		ShowCoords()
 		return
 	end
-	PinTip(not win.drag.on and win.pins:At(x, y) or nil)
+	-- (2.1.89) a battleground's map: the group members under the pointer by name (Dungeon.UnitTip) where no pin's
+	-- own tooltip stands -- a pin's comes first, theirs put away before it shows
+	local pin = not win.drag.on and win.pins:At(x, y) or nil
+	if pin then
+		Dungeon.UnitTip(c.frame, false)
+	end
+	PinTip(pin)
+	if not pin then
+		Dungeon.UnitTip(c.frame, not win.drag.on)
+	end
 	local path = c:Path(x, y, win.path)
 	local p = path[#path]
 	local named = p and p.kind ~= "world" and p
@@ -753,6 +763,7 @@ end
 local function Canvas_OnLeave()
 	win.over = false
 	ShowName(nil)
+	Dungeon.UnitTip(win.canvas.frame, false)   -- (2.1.89: the members' names under the pointer, away with it)
 	PinTip(nil)
 	win.mouseX, win.mouseY = nil, nil
 	ShowCoords()
@@ -1002,6 +1013,7 @@ local function Hidden()
 	Log.Hidden()
 	Search.Hidden()
 	win.drag.on = false
+	Dungeon.UnitTip(win.canvas.frame, false)
 	PinTip(nil)
 	if win.pinAnchor then
 		win.pinAnchor:Hide()

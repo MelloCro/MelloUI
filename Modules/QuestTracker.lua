@@ -221,7 +221,7 @@ end
 -- The frame
 --------------------------------------------------------------------------------
 
-local frame, header, clip, content, thumb, track
+local frame, header, clip, content, bar
 local scrollOffset = 0
 local contentHeight = 0
 local blocks = {}            -- [questID] = block, kept across rebuilds
@@ -3854,21 +3854,21 @@ local function MaxScroll()
 	return math.max(0, contentHeight - ClipHeight())
 end
 
+-- (2.1.89: the bar is a scroll bar now -- bar, made in the build below: its range the list's own, its thumb the
+-- share of the list in view; `laying`: set by us, never the player's drag)
 local function UpdateThumb()
 	local visible = ClipHeight()
 	if contentHeight <= visible + 0.5 or visible <= 0 then
-		thumb:Hide()
-		track:Hide()
+		bar:Hide()
 		return
 	end
-	track:Show()
-	thumb:Show()
-	local h = math.max(18, visible * visible / contentHeight)
-	local travel = visible - h
-	local y = travel * (scrollOffset / MaxScroll())
-	thumb:ClearAllPoints()
-	thumb:SetPoint("TOP", clip, "TOPRIGHT", THUMB_W / 2 + 3, -y)   -- (centred on the track)
-	thumb:SetHeight(h)
+	local range = MaxScroll()
+	bar.laying = true
+	bar:SetMinMaxValues(0, range)
+	bar:SetValue(math.min(range, scrollOffset))
+	bar.laying = false
+	bar.thumb:SetHeight(math.max(18, visible * visible / contentHeight))
+	bar:Show()
 end
 
 local function SetOffset(offset)
@@ -5288,19 +5288,36 @@ local function Build()
 	-- the user 2026-10-04: "only use the same style as we have in the
 	-- Configurator" -- it was the kit's thumb slab): a thin `border` track and
 	-- a `trim` thumb, 4 px
-	track = frame:CreateTexture(nil, "ARTWORK")
-	PaintKey(track, "border", "fill", 1)
-	track:SetWidth(4)
-	track:SetPoint("TOP", clip, "TOPRIGHT", THUMB_W / 2 + 3, 0)
-	track:SetPoint("BOTTOM", clip, "BOTTOMRIGHT", THUMB_W / 2 + 3, 0)
-	thumb = CreateFrame("Frame", nil, frame)
-	thumb:SetWidth(4)
-	local t = thumb:CreateTexture(nil, "ARTWORK")
-	t:SetAllPoints(thumb)
-	PaintKey(t, "trim", "fill", 1)
-	thumb:SetFrameLevel(frame:GetFrameLevel() + 6)
-	thumb:Hide()
-	track:Hide()
+	-- (2.1.89; a player on Discord, 2026-11-25: "could you make scroll bar in the quest list window clickable? So far
+	-- it's decorative") it was two pictures; now MelloUI's thin scroll bar (W.ThinScrollBar: the same track and
+	-- thumb), which takes the mouse -- its thumb dragged or its track clicked, the list follows -- over a strip as
+	-- wide as the room kept for it (THUMB_W + 4), so a 4 px bar can be hit
+	if type(Wd) == "table" and Wd.ThinScrollBar then
+		bar = Wd.ThinScrollBar(frame, 4, THUMB_W + 4)
+	else
+		-- (a world without the widgets, as the grip above: the bar all the same, its track and thumb painted here)
+		bar = CreateFrame("Slider", nil, frame)
+		bar:SetOrientation("VERTICAL")
+		bar:SetWidth(4)
+		local track = bar:CreateTexture(nil, "BACKGROUND")
+		track:SetAllPoints(bar)
+		PaintKey(track, "border", "fill", 1)
+		bar.thumb = bar:CreateTexture(nil, "ARTWORK")
+		bar.thumb:SetWidth(4)
+		PaintKey(bar.thumb, "trim", "fill", 1)
+		bar:SetThumbTexture(bar.thumb)
+	end
+	bar:SetPoint("TOP", clip, "TOPRIGHT", THUMB_W / 2 + 3, 0)
+	bar:SetPoint("BOTTOM", clip, "BOTTOMRIGHT", THUMB_W / 2 + 3, 0)
+	bar:SetFrameLevel(frame:GetFrameLevel() + 6)
+	bar:Hide()
+	Perf.SetScript(bar, "OnValueChanged", function(self, value)
+		if self.laying then
+			return
+		end
+		M.handScrolled = GetTime()   -- (the player's own scroll, as the wheel's: Scroll)
+		SetOffset(Plain(value) or 0)
+	end)
 
 	ApplyLook()
 end
