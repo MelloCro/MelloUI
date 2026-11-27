@@ -2457,6 +2457,7 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "聊天：在极简视图中，点击输入行上的语言名称即可切换你说的语言。", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "增益和减益效果：将鼠标悬停在目标的增益或减益上时，会重新显示它自己的鼠标提示，而不是别的效果的。", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "手柄：MelloUI 的复制窗口不再从游戏的聊天输入行抢走键盘。点击其中的文本即可选中。", -- draft
 	["Map: on a battleground's map, hover a group member's dot to see their name."] = "地图：在战场地图上，将鼠标悬停在队伍成员的圆点上即可看到其名字。", -- draft
@@ -2466,8 +2467,6 @@ Lang:Add("zhCN", {
 	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "姓名板：职业颜色玩家名字。玩家的名字以职业颜色显示，敌方玩家和友方玩家各有一个开关。", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "姓名板：选中的敌方玩家的名字不再重叠显示两次（名字叠在全名上）。", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "姓名板：在姓名板设计器中隐藏的名字，对以短名显示的玩家同样保持隐藏。", -- draft
-	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "战斗文字：治疗数字现在看起来像治疗了：数字前有 +，伴随柔和的光向上飘起，没有打击效果。", -- draft
-	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "战斗文字：在队伍中，治疗他人之后你的武器攻击数字不再消失。", -- draft
 	["Report a problem"] = "报告问题", -- draft
 	["Voice pack"] = "语音包", -- draft
 	["open or close this window"] = "打开或关闭此窗口", -- draft
@@ -3038,6 +3037,8 @@ Lang:Add("zhCN", {
 	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "将你的所有任务显示在任务追踪器中：点击可全部显示，或全部移除", -- draft
 	-- MelloUI_Route/Guides.lua
 	["%s - step %s"] = "%s - 第 %s 步", -- draft
+	-- MelloUI_Chat/ChatView.lua
+	["Click for the game's chat menu: the languages you speak, emotes and macros."] = "点击打开游戏的聊天菜单：你会说的语言、表情和宏。", -- draft
 	-- MelloUI_GroupFrames/GroupSpellGroupsPage.lua
 	["X / Y"] = "X / Y", -- draft
 	["Which"] = "哪些", -- draft
@@ -3314,11 +3315,13 @@ Lang:Add("zhCN", {
 -- stale: ["Colour the tooltip health bar by class or reaction instead of green."] = "按职业或关系为鼠标提示的生命条着色，而不是绿色。", -- draft
 -- stale: ["Combat Text Style"] = "战斗文字风格", -- draft
 -- stale: ["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "战斗文字：战斗伤害样式（原“你的伤害”）已重做。选择 Pop、Slam 或 Stamp：命中更干脆，暴击伴随闪光落下。", -- draft
+-- stale: ["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "战斗文字：治疗数字现在看起来像治疗了：数字前有 +，伴随柔和的光向上飘起，没有打击效果。", -- draft
 -- stale: ["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "战斗文字：治疗数字。你对友方的治疗以同样的样式显示在其姓名板上。", -- draft
 -- stale: ["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "战斗文字：伤害数字描边，法术命中显示其学派的颜色。", -- draft
 -- stale: ["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "战斗文字：角色周围的文字也可使用 Pop、Slam 和 Stamp。Edit Position 可移动并缩放每类文字的区域。", -- draft
 -- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "战斗文字：你的伤害已重做。选择 Pop、Slam 或 Stamp：命中更干脆，暴击伴随闪光落下。", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "战斗文字：每隔几秒出现又消失的光环（与宠物一起的恶魔知识）只显示一次。", -- draft
+-- stale: ["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "战斗文字：在队伍中，治疗他人之后你的武器攻击数字不再消失。", -- draft
 -- stale: ["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "战斗文字：在队伍中也以 MelloUI 的样式显示你自己的伤害（测试），持续伤害在单独的小通道中显示。", -- draft
 -- stale: ["Combat, frames and tooltips"] = "战斗、框体和鼠标提示", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "紧凑团队框体、小组边框和图腾使用套件外观。", -- draft

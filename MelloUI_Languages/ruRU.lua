@@ -2457,6 +2457,7 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Чат: в виде «Минимальный» щёлкните по названию языка в строке ввода, чтобы сменить язык, на котором вы говорите.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Баффы и дебаффы: при наведении на бафф или дебафф цели снова показывается его собственная подсказка, а не чужая.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Контроллер: окно копирования MelloUI больше не забирает клавиатуру у строки чата игры. Щёлкните по тексту, чтобы выделить его.", -- draft
 	["Map: on a battleground's map, hover a group member's dot to see their name."] = "Карта: на карте поля боя наведите курсор на точку участника группы, чтобы увидеть его имя.", -- draft
@@ -2466,8 +2467,6 @@ Lang:Add("ruRU", {
 	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "Индикаторы здоровья: имена игроков в цвете класса. Имена игроков в цвете их класса, отдельный переключатель для врагов и для союзников.", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "Индикаторы здоровья: имя выбранного в цель вражеского игрока больше не отображается дважды поверх себя (имя поверх полного имени).", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Индикаторы здоровья: имя, скрытое в конструкторе индикаторов, остаётся скрытым и у игроков с коротким именем.", -- draft
-	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Текст боя: числа исцеления теперь выглядят как исцеление: + перед числом, оно плавно поднимается с мягким светом, без эффектов удара.", -- draft
-	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Текст боя: в группе числа ваших ударов оружием больше не пропадают после того, как вы кого-то исцелили.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -3038,6 +3037,8 @@ Lang:Add("ruRU", {
 	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "Все ваши задания в отслеживании заданий: щёлкните, чтобы показать их все там или убрать их все", -- draft
 	-- MelloUI_Route/Guides.lua
 	["%s - step %s"] = "%s — шаг %s", -- draft
+	-- MelloUI_Chat/ChatView.lua
+	["Click for the game's chat menu: the languages you speak, emotes and macros."] = "Щёлкните, чтобы открыть меню чата игры: языки, на которых вы говорите, эмоции и макросы.", -- draft
 	-- MelloUI_GroupFrames/GroupSpellGroupsPage.lua
 	["X / Y"] = "X / Y", -- draft
 	["Which"] = "Чьи", -- draft
@@ -3314,11 +3315,13 @@ Lang:Add("ruRU", {
 -- stale: ["Colour the tooltip health bar by class or reaction instead of green."] = "Окрашивает полосу здоровья в подсказке по классу или отношению вместо зелёного.", -- draft
 -- stale: ["Combat Text Style"] = "Стиль текста боя", -- draft
 -- stale: ["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Текст боя: «Стиль боевого урона» (раньше «Ваш урон») переделан. Выберите Pop, Slam или Stamp: удары резче, а криты падают со вспышкой.", -- draft
+-- stale: ["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Текст боя: числа исцеления теперь выглядят как исцеление: + перед числом, оно плавно поднимается с мягким светом, без эффектов удара.", -- draft
 -- stale: ["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "Текст боя: числа исцеления. Ваше исцеление союзников в том же стиле, у их индикатора здоровья.", -- draft
 -- stale: ["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "Текст боя: обводка чисел урона, а урон от заклинаний в цвете своей школы.", -- draft
 -- stale: ["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "Текст боя: Pop, Slam и Stamp теперь и для текста вокруг персонажа. Edit Position перемещает область каждого вида и меняет её размер.", -- draft
 -- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Текст боя: «Ваш урон» переделан. Выберите Pop, Slam или Stamp: удары резче, а криты падают со вспышкой.", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "Текст боя: аура, появляющаяся и исчезающая каждые несколько секунд («Демоническое знание» с питомцем), показывается один раз.", -- draft
+-- stale: ["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Текст боя: в группе числа ваших ударов оружием больше не пропадают после того, как вы кого-то исцелили.", -- draft
 -- stale: ["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "Текст боя: ваш урон в оформлении MelloUI теперь и в группе (тест), а тики идут отдельной маленькой дорожкой.", -- draft
 -- stale: ["Combat, frames and tooltips"] = "Бой, рамки и подсказки", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "Компактные рамки рейда, рамки групп и тотемы в наборе.", -- draft

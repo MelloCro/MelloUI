@@ -2457,6 +2457,7 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "대화: 최소 보기에서 입력줄에 있는 언어 이름을 클릭하면 사용하는 언어를 바꿀 수 있습니다.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "강화 및 약화 효과: 대상의 강화 또는 약화 효과에 마우스를 올리면 다른 효과가 아닌 그 효과의 툴팁이 다시 표시됩니다.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "컨트롤러: MelloUI의 복사 창이 더 이상 게임 채팅 입력줄에서 키보드를 가져가지 않습니다. 텍스트를 클릭하면 선택됩니다.", -- draft
 	["Map: on a battleground's map, hover a group member's dot to see their name."] = "지도: 전장 지도에서 파티원의 점에 마우스를 올리면 이름이 표시됩니다.", -- draft
@@ -2466,8 +2467,6 @@ Lang:Add("koKR", {
 	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "이름표: 직업 색상 플레이어 이름. 플레이어의 이름을 직업 색상으로 표시하며, 적과 아군 플레이어에 각각 스위치가 있습니다.", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "이름표: 대상으로 지정한 적 플레이어의 이름이 더 이상 겹쳐서 두 번 표시되지 않습니다(이름 위에 전체 이름).", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "이름표: 이름표 디자이너에서 숨긴 이름은 짧은 이름으로 표시되는 플레이어에게도 숨겨집니다.", -- draft
-	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "전투 문자: 치유 숫자가 이제 치유처럼 보입니다. 숫자 앞에 +가 붙고, 부드러운 빛과 함께 떠오르며, 타격 효과가 없습니다.", -- draft
-	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "전투 문자: 파티에서 누군가를 치유한 뒤에도 무기 공격 숫자가 사라지지 않습니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -3038,6 +3037,8 @@ Lang:Add("koKR", {
 	["All your quests in the Quest Tracker: click to show them all there, or to take them all off"] = "퀘스트 추적기에 모든 퀘스트 표시: 클릭하면 모두 표시하거나 모두 제거합니다", -- draft
 	-- MelloUI_Route/Guides.lua
 	["%s - step %s"] = "%s - %s단계", -- draft
+	-- MelloUI_Chat/ChatView.lua
+	["Click for the game's chat menu: the languages you speak, emotes and macros."] = "클릭하면 게임의 대화 메뉴가 열립니다: 사용할 수 있는 언어, 감정 표현, 매크로.", -- draft
 	-- MelloUI_GroupFrames/GroupSpellGroupsPage.lua
 	["X / Y"] = "X / Y", -- draft
 	["Which"] = "누구의", -- draft
@@ -3314,11 +3315,13 @@ Lang:Add("koKR", {
 -- stale: ["Colour the tooltip health bar by class or reaction instead of green."] = "툴팁 생명력 막대를 녹색 대신 직업이나 관계 색으로 칠합니다.", -- draft
 -- stale: ["Combat Text Style"] = "전투 문자 스타일", -- draft
 -- stale: ["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "전투 문자: 전투 피해 스타일(이전의 내 피해)이 새로워졌습니다. Pop, Slam, Stamp 중에서 고르세요. 더 경쾌한 타격, 번쩍이며 꽂히는 치명타.", -- draft
+-- stale: ["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "전투 문자: 치유 숫자가 이제 치유처럼 보입니다. 숫자 앞에 +가 붙고, 부드러운 빛과 함께 떠오르며, 타격 효과가 없습니다.", -- draft
 -- stale: ["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "전투 문자: 치유 숫자. 아군에게 준 치유가 같은 모양으로 그 이름표에 표시됩니다.", -- draft
 -- stale: ["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "전투 문자: 피해 숫자 외곽선, 그리고 주문 피해는 속성 색으로 표시됩니다.", -- draft
 -- stale: ["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "전투 문자: 캐릭터 주변 문자에도 Pop, Slam, Stamp를 쓸 수 있습니다. Edit Position으로 종류별 영역을 옮기고 크기를 조절합니다.", -- draft
 -- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "전투 문자: 내 피해가 새로워졌습니다. Pop, Slam, Stamp 중에서 고르세요. 더 경쾌한 타격, 번쩍이며 꽂히는 치명타.", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "전투 문자: 몇 초마다 생겼다 사라지는 효과(소환수와의 악마의 지식)는 한 번만 표시합니다.", -- draft
+-- stale: ["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "전투 문자: 파티에서 누군가를 치유한 뒤에도 무기 공격 숫자가 사라지지 않습니다.", -- draft
 -- stale: ["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "전투 문자: 파티에서도 내 피해를 MelloUI 모양으로 표시합니다(테스트). 지속 피해는 작은 전용 줄에 표시됩니다.", -- draft
 -- stale: ["Combat, frames and tooltips"] = "전투, 창, 툴팁", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "간소화 공격대 창, 그룹 테두리, 토템에 키트 적용.", -- draft

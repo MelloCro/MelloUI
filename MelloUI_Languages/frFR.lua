@@ -2532,6 +2532,7 @@ Lang:Add("frFR", {
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
+	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Discussion : dans la vue Minimale, cliquez sur le nom de la langue dans la ligne de saisie pour changer la langue que vous parlez.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Améliorations et affaiblissements : survoler une amélioration ou un affaiblissement de la cible affiche de nouveau sa propre infobulle, et non celle d’un autre effet.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Manette : la fenêtre de copie de MelloUI ne prend plus le clavier à la ligne de discussion du jeu. Cliquez sur son texte pour le sélectionner.", -- draft
 	["Map: on a battleground's map, hover a group member's dot to see their name."] = "Carte : sur la carte d'un champ de bataille, survolez le point d'un membre du groupe pour voir son nom.", -- draft
@@ -2541,8 +2542,6 @@ Lang:Add("frFR", {
 	["Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players."] = "Barres de nom : noms des joueurs en couleur de classe. Les noms des joueurs dans la couleur de leur classe, avec un interrupteur pour les ennemis et un pour les alliés.", -- draft
 	["Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name)."] = "Barres de nom : le nom d'un joueur ennemi ciblé ne s'affiche plus deux fois superposé (prénom sur nom complet).", -- draft
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Barres de nom : un nom masqué dans le concepteur de barres de nom reste masqué aussi pour les joueurs affichés avec un nom court.", -- draft
-	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Texte de combat : les chiffres de soins ressemblent maintenant à des soins : un + devant le chiffre, qui s'élève avec une lueur douce, sans effets de coup.", -- draft
-	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Texte de combat : en groupe, les chiffres de vos coups d'arme ne disparaissent plus après avoir soigné quelqu'un.", -- draft
 	["Report a problem"] = "Signaler un problème",
 	["Voice pack"] = "Pack de voix",
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre",
@@ -4218,6 +4217,7 @@ Lang:Add("frFR", {
 	["Folds the channel list to its icons: more room for the messages. Point at an icon for its name."] = "Réduit la liste des canaux à leurs icônes pour laisser plus de place aux messages. Survolez une icône pour afficher son nom.",
 	["Show the names"] = "Afficher les noms",
 	["Shows the channel list with its names again."] = "Affiche de nouveau les noms des canaux dans la liste.",
+	["Click for the game's chat menu: the languages you speak, emotes and macros."] = "Cliquez pour ouvrir le menu de discussion du jeu : les langues que vous parlez, les emotes et les macros.", -- draft
 	["FAKE LINK"] = "LIEN FALSIFIÉ",
 	["A Community invite"] = "Une invitation à une communauté",
 	["A guild or community finder link"] = "Un lien de recherche de guilde ou de communauté",
@@ -5277,11 +5277,13 @@ Lang:Add("frFR", {
 -- stale: ["Combat Text Style"] = "Style du texte de combat",
 -- stale: ["Combat Text Style and Your Damage are both Game: the game draws them. Pick Lanes, Feed or Classic, or a Your Damage look, to preview MelloUI's."] = "Style du texte de combat et Vos dégâts sont réglés sur « Jeu » : le jeu les affiche. Choisissez « Lignes », « Flux », « Classique » ou un style pour Vos dégâts afin de prévisualiser celui de MelloUI.",
 -- stale: ["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Texte de combat : Style des dégâts de combat (avant : Vos dégâts) refait. Choisissez Pop, Slam ou Stamp : des coups plus vifs et des critiques qui tombent avec un éclair.", -- draft
+-- stale: ["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Texte de combat : les chiffres de soins ressemblent maintenant à des soins : un + devant le chiffre, qui s'élève avec une lueur douce, sans effets de coup.", -- draft
 -- stale: ["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "Texte de combat : chiffres de soins. Vos soins sur vos alliés dans le même style, sur leur barre de nom.", -- draft
 -- stale: ["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "Texte de combat : contour pour vos chiffres de dégâts, et les coups de sorts dans la couleur de leur école.", -- draft
 -- stale: ["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "Texte de combat : Pop, Slam et Stamp aussi pour le texte autour de votre personnage. Edit Position déplace et redimensionne la zone de chaque type.", -- draft
 -- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Texte de combat : Vos dégâts refaits. Choisissez Pop, Slam ou Stamp : des coups plus vifs et des critiques qui tombent avec un éclair.", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "Texte de combat : une aura qui va et vient toutes les quelques secondes (Connaissance démoniaque avec votre familier) n'est affichée qu'une fois.", -- draft
+-- stale: ["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Texte de combat : en groupe, les chiffres de vos coups d'arme ne disparaissent plus après avoir soigné quelqu'un.", -- draft
 -- stale: ["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "Texte de combat : vos propres dégâts dans le style de MelloUI en groupe aussi (un test), et les ticks dans une petite voie à part.", -- draft
 -- stale: ["Combat, frames and tooltips"] = "Combat, cadres et encadrés d'aide", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "Les cadres de raid compacts, les bordures de groupe et les totems dans le kit.", -- draft

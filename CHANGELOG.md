@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.91
+
+- Chat: the Minimal chat view lets you switch the language you speak. While you type, the language's name stands at the right end of the line; click it for the game's chat menu, with Language, emotes and macros in it. It shows for a character who speaks more than one language.
+
 ## 2.1.90
 
 - Buffs & Debuffs: hovering a buff or debuff under the target frame shows that aura's own tooltip again. On a target with both, the pointer also reached the game's hidden icons under MelloUI's, so another aura's tooltip showed, and the target frame lit up as if the pointer were on it.

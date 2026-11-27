@@ -793,6 +793,11 @@ local function CollectChatButtons()
 end
 
 local function SetButtonsHidden(hidden)
+	-- (2.1.91) under the Minimal view the buttons stay where the game has them: the view holds them out of sight itself,
+	-- and its language switch needs the game's chat menu button alive (ChatView.lua Tongue)
+	if hidden and M.View and M.View.Wanted and M.View.Wanted() then
+		hidden = false
+	end
 	local list = CollectChatButtons()
 	-- Record original parents before anything is moved.
 	for _, frame in ipairs(list) do
@@ -935,11 +940,31 @@ function Speak.Box()
 end
 
 function Speak.Wanted()
-	if not (M.isEnabled and M.db and M.db.chatButtons) then
+	-- (2.1.91: under the Minimal view too, whatever Chat Buttons says -- its switch does not show there, and the name
+	-- is that view's language switch)
+	if not (M.isEnabled and M.db and (M.db.chatButtons or (M.View and M.View.on))) then
 		return false
 	end
 	local ok, n = pcall(GetNumLanguages)
 	return ok and not Secret(n) and type(n) == "number" and n > 1
+end
+
+-- (2.1.91, the Minimal view's language switch) the name while it shows: its frame, the box it stands on, its width and
+-- its inset from the box's right end; nil while no name shows
+function M.SpokenName()
+	local label = Speak.label
+	if not (label and label:IsShown()) then
+		return nil
+	end
+	return label, Speak.Box(), label.text:GetStringWidth(), Speak.INSET
+end
+
+-- (2.1.91) the chat buttons parented again as Chat Buttons and the view say (the view switched: ChatView.lua View.Apply)
+function M.ChatButtonsAgain()
+	if M.isEnabled and M.db then
+		SetButtonsHidden(not M.db.chatButtons)
+		Speak.Update()
+	end
 end
 
 -- the right inset: the game's own, plus the label's width while it shows
@@ -986,6 +1011,11 @@ function Speak.Update()
 		Speak.label:Hide()
 	end
 	Speak.Inset(box)
+	-- (2.1.91) the Minimal view's language switch follows the name
+	local T = M.View and M.View.Tongue
+	if T then
+		T.Lay()
+	end
 end
 
 function Speak.Hook()

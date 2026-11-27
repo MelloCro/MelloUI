@@ -110,6 +110,9 @@ local TEXT = {
 	foldTip = "Folds the channel list to its icons: more room for the messages. Point at an icon for its name.",
 	unfold = "Show the names",
 	unfoldTip = "Shows the channel list with its names again.",
+	-- (2.1.91: the language switch on the line you type in, View.Tongue)
+	language = "Language",
+	languageTip = "Click for the game's chat menu: the languages you speak, emotes and macros.",
 }
 -- the links that show a tooltip under the pointer (the game's own SetHyperlink kinds)
 local TIP_LINKS = { item = true, spell = true, enchant = true, quest = true, achievement = true, currency = true,
@@ -3030,6 +3033,19 @@ local boxHooked = {}
 local FitBox = Perf.Shared("OnShow / OnHide of a chat edit box (the chat view)", function()
 	if View.on then
 		View.Fit()
+		if View.Tongue then
+			View.Tongue.Lay()   -- (2.1.91: the language switch comes with the line you type in)
+		end
+	end
+end, "script")
+
+-- (2.1.91) the box going: the language switch off it, whatever the box still answers about itself inside its own OnHide
+local FitBoxGone = Perf.Shared("OnHide of a chat edit box (the chat view)", function(box)
+	if View.on then
+		View.Fit()
+		if View.Tongue then
+			View.Tongue.Lay(box)
+		end
 	end
 end, "script")
 
@@ -3057,7 +3073,7 @@ local function PlaceEditBoxes(on)
 			if not boxHooked[box] then
 				boxHooked[box] = true
 				Perf.HookScript(box, "OnShow", FitBox)
-				Perf.HookScript(box, "OnHide", FitBox)
+				Perf.HookScript(box, "OnHide", FitBoxGone)
 			end
 		elseif was then
 			box:SetFrameLevel(was.level)
@@ -3156,6 +3172,139 @@ local function Let(f)
 	end
 	if h.links ~= nil then
 		pcall(f.SetHyperlinksEnabled, f, h.links)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The language you speak, switched from the view (2.1.91; the user, 2026-11-27: "Where is the button in chat to switch
+-- the ingame language?", "I mean to speak darnassian, orcish etc"; pick B of BuildData/output/chat_language_sketch:
+-- the language's name on the line you type in is the button)
+--
+-- The game's Language list is in its own chat menu, opened by its own button (ChatFrameMenuButton, a dropdown button:
+-- it opens on the press itself, so no secure stand-in's click opens it), and the view holds that button out of sight
+-- with the rest of the column. The language is never set from MelloUI's code: the edit box's languageID would be
+-- MelloUI's, and the game reads it with every line sent. So the game's own button is the one pressed. While the view
+-- is on, the line you type in shows and the language's name stands on it (Chat.lua's Speak label: a character who
+-- speaks more than one), the button lies on that name -- invisible (its window is at alpha 0), with the mouse, over
+-- the box -- and the menu it opens is the game's own, hung from there. Its place, size, level and layer are noted the
+-- first time and given back when the view goes; while no name shows it only loses the mouse. Under the pointer the
+-- name gets a wash and says what the click does (post-hooks of the button's OnEnter / OnLeave, once). Not in the
+-- Gamepad UI: the game's pad chat menu has the list.
+--------------------------------------------------------------------------------
+
+do
+	local Tongue = { was = nil, on = false, label = nil, hooked = false, PAD = 4, LIFT = 10 }
+	View.Tongue = Tongue
+
+	local function Button()
+		return rawget(_G, "ChatFrameMenuButton")
+	end
+
+	-- the name, its box, its width and its inset while the switch can stand on it; nil else
+	function Tongue.Where()
+		if not View.on or MelloUI.Safe.GamepadUI() or not M.SpokenName then
+			return nil
+		end
+		local label, box, width, inset = M.SpokenName()
+		if not (label and box and box.IsVisible and box:IsVisible()) then
+			return nil
+		end
+		width = Num(width)
+		if not (width and width > 0) then
+			return nil
+		end
+		return label, box, width, Num(inset) or 0
+	end
+
+	local Enter = Perf.Shared("OnEnter on the game's chat menu button (the chat view's language switch)", function()
+		local label = Tongue.on and Tongue.label
+		if not label then
+			return
+		end
+		if not label.wash then
+			label.wash = label:CreateTexture(nil, "BACKGROUND")
+			W.Paint(label.wash, "hover", "fill", 0.35)
+		end
+		label.wash:ClearAllPoints()
+		label.wash:SetPoint("TOPLEFT", label.text, "TOPLEFT", -Tongue.PAD, 2)
+		label.wash:SetPoint("BOTTOMRIGHT", label.text, "BOTTOMRIGHT", Tongue.PAD, -2)
+		label.wash:Show()
+		W.ShowTooltip(label, TEXT.language, TEXT.languageTip, nil, "ANCHOR_TOP")
+	end, "script")
+
+	local Leave = Perf.Shared("OnLeave on the game's chat menu button (the chat view's language switch)", function()
+		local label = Tongue.label
+		if label and label.wash then
+			label.wash:Hide()
+		end
+		if label and GameTooltip:GetOwner() == label then
+			GameTooltip:Hide()
+		end
+	end, "script")
+
+	-- the game's button on the name while one shows, without the mouse else (`gone`: a box hiding right now)
+	function Tongue.Lay(gone)
+		local gm = Button()
+		if not gm then
+			return
+		end
+		local label, box, width, inset = Tongue.Where()
+		if label and gone ~= nil and box == gone then
+			label = nil
+		end
+		if not label then
+			if Tongue.on then
+				Tongue.on = false
+				gm:EnableMouse(false)
+				Leave()
+			end
+			return
+		end
+		if not Tongue.was then
+			local was = { level = gm:GetFrameLevel(), strata = gm:GetFrameStrata(), points = {} }
+			local okS, w, h = pcall(gm.GetSize, gm)
+			was.w, was.h = okS and Num(w) or 32, okS and Num(h) or 32
+			for p = 1, gm:GetNumPoints() do
+				was.points[p] = { gm:GetPoint(p) }
+			end
+			Tongue.was = was
+		end
+		if not Tongue.hooked then
+			Tongue.hooked = true
+			Perf.HookScript(gm, "OnEnter", Enter)
+			Perf.HookScript(gm, "OnLeave", Leave)
+		end
+		local okH, height = pcall(box.GetHeight, box)
+		height = okH and Num(height) or BOX_LIFT
+		-- (the button's column is drawn at another scale than the box: the name's measures, the box's, in the button's)
+		local okB, boxScale = pcall(box.GetEffectiveScale, box)
+		local okG, own = pcall(gm.GetEffectiveScale, gm)
+		boxScale, own = okB and Num(boxScale), okG and Num(own)
+		local k = (boxScale and own and own > 0) and boxScale / own or 1
+		gm:SetFrameStrata(box:GetFrameStrata())
+		gm:SetFrameLevel(math.min(box:GetFrameLevel() + Tongue.LIFT, 10000))
+		gm:ClearAllPoints()
+		gm:SetPoint("RIGHT", box, "RIGHT", (-inset + Tongue.PAD) * k, 0)
+		gm:SetSize((width + 2 * Tongue.PAD) * k, height * k)
+		gm:EnableMouse(true)
+		Tongue.on, Tongue.label = true, label
+	end
+
+	-- the view going: the button as the game had it (its alpha and mouse are Let's, after this)
+	function Tongue.Back()
+		local gm, was = Button(), Tongue.was
+		Leave()
+		Tongue.was, Tongue.on, Tongue.label = nil, false, nil
+		if not (gm and was) then
+			return
+		end
+		gm:SetFrameStrata(was.strata)
+		gm:SetFrameLevel(was.level)
+		gm:SetSize(was.w, was.h)
+		gm:ClearAllPoints()
+		for _, pt in ipairs(was.points) do
+			gm:SetPoint(unpack(pt))
+		end
 	end
 end
 
@@ -3379,6 +3528,12 @@ function View.Apply()
 		View.Rail()
 		HideGame(true)
 		PlaceEditBoxes(true)
+		-- (2.1.91) the language switch: the game's chat buttons parented as the view needs them, the name on the line
+		-- you type in shown under this view too (Chat.lua's Speak), the game's menu button on it
+		if M.ChatButtonsAgain then
+			M.ChatButtonsAgain()
+		end
+		View.Tongue.Lay()
 		View.Fit()
 		View.Fonts()
 		View.Style()
@@ -3411,7 +3566,11 @@ function View.Apply()
 			M.WhisperModeAgain()
 		end
 		View.pad.Off()   -- (2.1.58: the controller given back with the view)
+		View.Tongue.Back()   -- (2.1.91: the game's chat menu button where the game had it, before its alpha and mouse)
 		HideGame(false)
+		if M.ChatButtonsAgain then
+			M.ChatButtonsAgain()   -- (Chat Buttons' own say again, and the name as it says)
+		end
 		if M.Alpha then
 			M.Alpha.Apply()   -- (2.1.78: the game's windows take Background Opacity now that they show: Alpha.Held)
 		end

@@ -450,6 +450,8 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   buttons (the kit's rim, a dark disc, our glyph); every click and menu stays the game's, so the
   language you pick is the game's own choice. While you speak more than one language, the one you
   speak shows at the right end of the line you type in, and what you type stays clear of it.
+  (2.1.91) In the Minimal view, which has no button column, that name is the button: click it for
+  the game's chat menu, with Language, emotes and macros in it.
 - Short channel tags (Short Channel Tags, on): G for Guild, P for Party, R for Raid, RW for Raid
   Warning, W for whispers, and G, T, LD, WD, LFG for the numbered channels, each in the game's own
   chat colour of that chat (2.1.40: the colours you set in the game's chat settings follow). Brackets can be
