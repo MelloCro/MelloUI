@@ -52,7 +52,9 @@ local T = {
 	-- round border and just leave the Skull icons like that?") the kinds drawn as their icon alone -- no plate, no core:
 	-- the skull as big as it stood in the plate, with the shade the map's other bare marks wear; a killed one still
 	-- faded. The big map and the minimap from this one table (the minimap wears what the big map wears).
-	BARE = { rare = true },
+	-- (2.1.92; the user, 2026-11-27, of the chests: "remove the circle and the background like we did with the rare
+	-- icons") the treasures too
+	BARE = { rare = true, treasure = true },
 	CACHE = 10,           -- s a map's POIs are kept before RareScanner is asked again
 	TEMPLATES = { RSEntityPinTemplate = true, RSGroupPinTemplate = true },
 	PARTS = { "Texture", "IconTexture" },   -- (2.1.50) its minimap pin's own pictures (RSMinimapPinTemplate)

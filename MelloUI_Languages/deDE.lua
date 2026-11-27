@@ -2464,6 +2464,15 @@ Lang:Add("deDE", {
 	["The people who help keep MelloUI going."] = "Die Menschen, die MelloUI am Laufen halten.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Die Addons, mit denen MelloUI zusammenarbeitet: was es mit jedem macht und wo ihre Einstellungen sind.",
+	["Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up."] = "Stärkungs- & Schwächungszauber: Ein Fehler beim Einloggen seit 2.1.90 ist behoben, der die Auren der Namensplaketten und die Reihen des Ziels nur halb eingerichtet ließ.", -- draft
+	["Chat: clicking the language's name on the line you type in opens the chat menu now."] = "Chat: Ein Klick auf den Namen der Sprache in der Eingabezeile öffnet jetzt das Chatmenü.", -- draft
+	["Map: spirit healers on the map and the minimap (Map Layers > Travel)."] = "Karte: Geistheiler auf der Karte und der Minikarte (Kartenebenen > Reisen).", -- draft
+	["Map: a Rares switch in Map Layers for the rares of HandyNotes plugins."] = "Karte: ein Schalter „Seltene Gegner“ in den Kartenebenen für die seltenen Gegner von HandyNotes-Plugins.", -- draft
+	["Chat: the Minimal view's scroll bar can be dragged now."] = "Chat: Die Bildlaufleiste der Ansicht „Minimal“ lässt sich jetzt ziehen.", -- draft
+	["Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too."] = "Karte: Truhen zeigen MelloUIs Truhensymbol allein, wie die seltenen Gegner, auch von HandyNotes-Plugins.", -- draft
+	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "Karte: Flugmeister erscheinen mit HandyNotes: WoW Forever nicht mehr doppelt.", -- draft
+	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "Questlog: Eine über die Suche gefundene Quest öffnet sich wieder per Klick (Oldschool).", -- draft
+	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Ein Lua-Fehler der Gruppenrahmen des Spiels beim Einloggen ist behoben (Maskentexturen).", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Chat: Klicke in der Ansicht „Minimal“ auf den Namen der Sprache in der Eingabezeile, um die Sprache zu wechseln, die du sprichst.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Stärkungs- & Schwächungszauber: Wenn du über einen Stärkungs- oder Schwächungszauber deines Ziels fährst, erscheint wieder dessen eigener Tooltip und nicht der eines anderen.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Controller: MelloUIs Kopierfenster nimmt der Chatzeile des Spiels die Tastatur nicht mehr weg. Klicke auf den Text, um ihn zu markieren.", -- draft
@@ -2985,6 +2994,8 @@ Lang:Add("deDE", {
 	["Guild masters and tabards"] = "Gildenmeister und Wappenröcke", -- draft
 	["Transmogrifiers"] = "Transmogrifizierer", -- draft
 	["Spirit healers"] = "Geistheiler", -- draft
+	["Rares"] = "Seltene Gegner", -- draft
+	["Spirit Healer"] = "Geistheiler", -- draft
 	-- Core/Core.lua
 	["Ctrl+A, Ctrl+C to copy  -  Esc closes"] = "Strg+A, Strg+C zum Kopieren  -  Esc schließt",
 	["Click the text, then Ctrl+C to copy  -  Esc closes"] = "Klicke auf den Text, dann Strg+C zum Kopieren  -  Esc schließt", -- draft

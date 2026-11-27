@@ -1686,10 +1686,20 @@ end
 -- tooltips -- and the target frame. Two frames of ours take the pointer there, never a click: one over the game's row,
 -- one under ours. They are the target frame's children (an aura container's child would hand the mouse on too), and
 -- nothing is written on a frame of the game.
+-- (2.1.92; the user's login, 2026-11-27: "Error in module 'Auras' (OnEnable): Frame:SetAllPoints(): Anchoring
+-- disallowed as dependent object would inherit forbidden aspects: UntrustedLayoutScriptExecution") An aura container
+-- with a group carries the forbidden aspect UntrustedLayoutScriptExecution, which goes on to whatever is anchored to it
+-- (ours to the game's row, the covers to ours), and the game refuses to anchor a frame that did not take that aspect
+-- when it was made: the covers are made from the game's own template for it (Blizzard_CustomAuraContainer.lua, at
+-- AddForbiddenAspects: "they can inherit DisableUntrustedLayoutScriptsTemplate on those frames at the point of
+-- creation"). A client without that template, or a refused anchor: no covers, the rows as before 2.1.90.
 local TargetCover = {}
 
 function TargetCover.New()
-	local f = CreateFrame("Frame", nil, TargetFrame)
+	local ok, f = pcall(CreateFrame, "Frame", nil, TargetFrame, "DisableUntrustedLayoutScriptsTemplate")
+	if not ok or not f then
+		return nil
+	end
 	if f.SetMouseMotionEnabled then
 		f:SetMouseMotionEnabled(true)   -- (the motion alone: a click goes on to the target frame, as before)
 	end
@@ -1699,24 +1709,26 @@ end
 
 -- game: the game's row; level: just under our buttons, above every button of the game's
 function TargetCover.Lay(on, game, level)
-	if on and not TargetCover.own then
-		TargetCover.own, TargetCover.game = TargetCover.New(), TargetCover.New()
-		TargetCover.own:SetAllPoints(targetRows)
+	if on and not TargetCover.tried then
+		TargetCover.tried = true
+		local own, over = TargetCover.New(), TargetCover.New()
+		if own and over and pcall(own.SetAllPoints, own, targetRows) then
+			TargetCover.own, TargetCover.game = own, over
+		end
 	end
 	local own, over = TargetCover.own, TargetCover.game
 	if not own then
 		return
 	end
+	local covered = false
 	if on then
 		own:SetFrameLevel(level)
 		over:SetFrameLevel(level)
 		over:ClearAllPoints()
-		if game then
-			over:SetAllPoints(game)
-		end
+		covered = game and pcall(over.SetAllPoints, over, game) and true or false
 	end
 	own:SetShown(on and true or false)
-	over:SetShown((on and game) and true or false)
+	over:SetShown(covered)
 end
 
 local function SetTarget(on)

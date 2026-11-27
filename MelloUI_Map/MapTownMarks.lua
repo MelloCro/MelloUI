@@ -17,7 +17,7 @@
 --
 -- ONE owner a kind of place (the user: "i only want 1 addon to have Priority on that even if 5 different addons are
 -- being used, no duplicate Icons from Different addons"), the first of these that has the kind:
---   1  MelloUI's own data     the flight masters (the Travel group's switch)
+--   1  MelloUI's own data     the flight masters, (2.1.92) the spirit healers (the Travel group's switches)
 --   2  the plugin             every kind of Town.KINDS, while MelloUI's look of it is used
 --   3  Questie's townsfolk    (without the plugin: as before)
 --   4  any other addon's pin  known by the game's tracking picture it wears (Town.PICTURE)
@@ -95,7 +95,8 @@ Town.KINDS = {
 	{ key = "weaponmaster", label = "Weapon masters", icon = "svc_weaponmaster" },
 	{ key = "guild", label = "Guild masters and tabards", icon = "svc_guild" },
 	{ key = "transmog", label = "Transmogrifiers", icon = "svc_transmog" },
-	{ key = "spirit", label = "Spirit healers", icon = "svc_spirit" },
+	-- (2.1.92) no spirit healers' row here: MelloUI's own, from the client's graveyards, are the owner (the Travel
+	-- group's Spirit healers switch, MapLayers' Spirits) -- the plugin's data has none anyway
 }
 local byKey, byLayer = {}, {}
 for _, k in ipairs(Town.KINDS) do
@@ -333,9 +334,11 @@ function Town.Held(kind, source)
 		return false
 	end
 	local rank = RANK[source] or RANK.other
-	if kind == "flight" then
+	if kind == "flight" or kind == "spirit" then
+		-- (2.1.92: the spirit healers too -- MelloUI's own from the client's graveyards, its Spirit healers switch)
 		local Map = MelloUI.modules and MelloUI.modules.Map
-		return type(Map) == "table" and type(Map.LayerOn) == "function" and Map:LayerOn("flights") and true or false
+		return type(Map) == "table" and type(Map.LayerOn) == "function"
+			and Map:LayerOn(kind == "flight" and "flights" or "spirits") and true or false
 	end
 	if rank > RANK.npcs and Town.Used() then
 		return true

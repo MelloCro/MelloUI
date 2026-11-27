@@ -393,6 +393,37 @@ local function KitBracket(bar)
 	return bracketed and bracketed[bar]
 end
 
+-- (2.1.92; the user's login, 2026-11-27: "Texture:AddMaskTexture(): Texture already has the maximum number of mask
+-- textures (3)" in the game's PartyMemberFrame Setup) a fill the game masks itself -- the party frames' bars wear
+-- HealthBarMask / ManaBarMask, added again at every show of the party frame -- is shaped by that mask already: ours is
+-- left off there, and the fill keeps a slot free for the game's (a fill holds three: the game's, ours and the soft ends
+-- filled it, and the game's next add failed)
+local function GameMasked(tex, mine)
+	local okN, n = pcall(tex.GetNumMaskTextures, tex)
+	if not (okN and type(n) == "number") then
+		return false
+	end
+	local IsSoft = MelloUI.Widgets.IsSoftMask
+	for i = 1, n do
+		local okM, m = pcall(tex.GetMaskTexture, tex, i)
+		if okM and m and m ~= mine and not (IsSoft and IsSoft(m)) then
+			return true
+		end
+	end
+	return false
+end
+
+-- the shape mask alone taken off the fill (its soft ends kept)
+local function ShapeOff(tex)
+	local mask = maskedTextures[tex]
+	if mask then
+		if tex.RemoveMaskTexture then
+			pcall(tex.RemoveMaskTexture, tex, mask)
+		end
+		maskedTextures[tex] = nil
+	end
+end
+
 local function UpdateMask(bar)
 	local original = originals[bar]
 	local atlas = original and original.atlas
@@ -404,6 +435,10 @@ local function UpdateMask(bar)
 	-- rect, the bracket's rails covering the edges: no shaped mask
 	if not IsPlainString(atlas) or KitBracket(bar) then
 		RemoveMask(bar)
+		return
+	end
+	if GameMasked(tex, masks[bar]) then
+		ShapeOff(tex)   -- (2.1.92: the game's own mask shapes it)
 		return
 	end
 	local mask = masks[bar]

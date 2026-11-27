@@ -2457,6 +2457,15 @@ Lang:Add("ptBR", {
 	["The people who help keep MelloUI going."] = "As pessoas que mantêm o MelloUI funcionando.", -- draft
 	["Addons"] = "Addons", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Os addons com que o MelloUI funciona: o que ele faz com cada um e onde ficam as configurações.", -- draft
+	["Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up."] = "Bônus e penalidades: corrigido um erro ao entrar desde a 2.1.90 que deixava pela metade as auras das placas de nome e as fileiras do alvo.", -- draft
+	["Chat: clicking the language's name on the line you type in opens the chat menu now."] = "Bate-papo: clicar no nome do idioma na linha em que você digita agora abre o menu do bate-papo.", -- draft
+	["Map: spirit healers on the map and the minimap (Map Layers > Travel)."] = "Mapa: curandeiros espirituais no mapa e no minimapa (Camadas do mapa > Viagem).", -- draft
+	["Map: a Rares switch in Map Layers for the rares of HandyNotes plugins."] = "Mapa: um botão Raros nas camadas do mapa para os raros dos plugins do HandyNotes.", -- draft
+	["Chat: the Minimal view's scroll bar can be dragged now."] = "Bate-papo: a barra de rolagem da visão Mínima agora pode ser arrastada.", -- draft
+	["Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too."] = "Mapa: os baús mostram só o ícone de baú do MelloUI, como os raros, também os dos plugins do HandyNotes.", -- draft
+	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "Mapa: os mestres de voo não aparecem mais duas vezes com o HandyNotes: WoW Forever.", -- draft
+	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "Registro de missões: uma missão encontrada pela busca volta a abrir com um clique (Oldschool).", -- draft
+	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Corrigido um erro de Lua dos quadros de grupo do jogo ao entrar (texturas de máscara).", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Bate-papo: na visão Mínima, clique no nome do idioma na linha em que você digita para trocar o idioma que você fala.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Bônus e penalidades: passar o mouse sobre um bônus ou uma penalidade do alvo volta a mostrar a dica dele, e não a de outro.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Controle: a janela de cópia do MelloUI não tira mais o teclado da linha de bate-papo do jogo. Clique no texto para selecioná-lo.", -- draft

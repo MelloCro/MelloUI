@@ -177,6 +177,17 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.92", lines = {
+		"Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up.",
+		"Chat: clicking the language's name on the line you type in opens the chat menu now.",
+		"Map: spirit healers on the map and the minimap (Map Layers > Travel).",
+		"Map: a Rares switch in Map Layers for the rares of HandyNotes plugins.",
+		"Chat: the Minimal view's scroll bar can be dragged now.",
+		"Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too.",
+		"Map: flight masters no longer show twice with HandyNotes: WoW Forever.",
+		"Quest log: a quest found with its search opens on click again (Oldschool).",
+		"Fixed a Lua error from the game's party frames at login (mask textures).",
+	} },
 	{ version = "2.1.91", lines = {
 		"Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak.",
 	} },
@@ -193,10 +204,6 @@ local CHANGELOG = {
 	{ version = "2.1.88", lines = {
 		"Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players.",
 	} },
-	{ version = "2.1.87", lines = {
-		"Nameplates: a targeted enemy player's name no longer shows twice over itself (first name over full name).",
-		"Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -207,11 +214,11 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.92"] = { "Auras.target", "Chat.view", "=map", "=map", "Chat.view", "=map", "=map", false, false },
 	["2.1.91"] = { "Chat.view" },
 	["2.1.90"] = { "Auras.target", false },
 	["2.1.89"] = { "=map", "=quest tracker", "Chat.view", "Discard.bagButton" },
 	["2.1.88"] = { "Nameplates.classNames" },
-	["2.1.87"] = { "=nameplates", "=nameplates" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },

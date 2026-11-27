@@ -2457,6 +2457,15 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up."] = "강화 및 약화 효과: 2.1.90부터 접속할 때 오류가 나서 이름표의 효과와 대상의 줄이 반쯤만 설정되던 문제를 고쳤습니다.", -- draft
+	["Chat: clicking the language's name on the line you type in opens the chat menu now."] = "대화: 입력줄에 있는 언어 이름을 클릭하면 이제 대화 메뉴가 열립니다.", -- draft
+	["Map: spirit healers on the map and the minimap (Map Layers > Travel)."] = "지도: 지도와 미니맵에 영혼의 치유사 표시 (지도 레이어 > 이동).", -- draft
+	["Map: a Rares switch in Map Layers for the rares of HandyNotes plugins."] = "지도: 지도 레이어에 HandyNotes 플러그인의 희귀 몬스터를 켜고 끄는 스위치 추가.", -- draft
+	["Chat: the Minimal view's scroll bar can be dragged now."] = "대화: 이제 최소 보기의 스크롤 막대를 끌 수 있습니다.", -- draft
+	["Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too."] = "지도: 보물상자가 희귀 몬스터처럼 MelloUI의 상자 아이콘만으로 표시됩니다. HandyNotes 플러그인의 상자도 마찬가지입니다.", -- draft
+	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "지도: HandyNotes: WoW Forever 사용 시 비행 조련사가 더 이상 두 번 표시되지 않습니다.", -- draft
+	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "퀘스트 목록: 검색으로 찾은 퀘스트가 다시 클릭으로 열립니다 (Oldschool).", -- draft
+	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "접속할 때 게임의 파티 프레임에서 나던 Lua 오류를 고쳤습니다 (마스크 텍스처).", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "대화: 최소 보기에서 입력줄에 있는 언어 이름을 클릭하면 사용하는 언어를 바꿀 수 있습니다.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "강화 및 약화 효과: 대상의 강화 또는 약화 효과에 마우스를 올리면 다른 효과가 아닌 그 효과의 툴팁이 다시 표시됩니다.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "컨트롤러: MelloUI의 복사 창이 더 이상 게임 채팅 입력줄에서 키보드를 가져가지 않습니다. 텍스트를 클릭하면 선택됩니다.", -- draft

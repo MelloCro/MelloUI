@@ -2457,6 +2457,15 @@ Lang:Add("esES", {
 	["The people who help keep MelloUI going."] = "Las personas que mantienen MelloUI en marcha.", -- draft
 	["Addons"] = "Addons", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Los addons con los que funciona MelloUI: qué hace con cada uno y dónde están sus ajustes.", -- draft
+	["Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up."] = "Beneficios y perjuicios: corregido un error al entrar desde la 2.1.90 que dejaba a medio preparar las auras de las placas de nombre y las filas del objetivo.", -- draft
+	["Chat: clicking the language's name on the line you type in opens the chat menu now."] = "Chat: al hacer clic en el nombre del idioma en la línea donde escribes ahora se abre el menú del chat.", -- draft
+	["Map: spirit healers on the map and the minimap (Map Layers > Travel)."] = "Mapa: los sanadores espirituales en el mapa y el minimapa (Capas del mapa > Viajes).", -- draft
+	["Map: a Rares switch in Map Layers for the rares of HandyNotes plugins."] = "Mapa: un interruptor de Raros en las capas del mapa para los raros de los complementos de HandyNotes.", -- draft
+	["Chat: the Minimal view's scroll bar can be dragged now."] = "Chat: la barra de desplazamiento de la vista Mínima ya se puede arrastrar.", -- draft
+	["Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too."] = "Mapa: los cofres muestran solo el icono de cofre de MelloUI, como los raros, también de los complementos de HandyNotes.", -- draft
+	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "Mapa: los maestros de vuelo ya no aparecen dos veces con HandyNotes: WoW Forever.", -- draft
+	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "Registro de misiones: una misión encontrada con su búsqueda vuelve a abrirse al hacer clic (Oldschool).", -- draft
+	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Corregido un error de Lua de los marcos de grupo del juego al entrar (texturas de máscara).", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Chat: en la vista Mínima, haz clic en el nombre del idioma en la línea donde escribes para cambiar el idioma que hablas.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Beneficios y perjuicios: al pasar el ratón sobre un beneficio o perjuicio del objetivo vuelve a mostrarse su propia descripción, y no la de otro.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Mando: la ventana de copia de MelloUI ya no le quita el teclado a la línea de chat del juego. Haz clic en el texto para seleccionarlo.", -- draft

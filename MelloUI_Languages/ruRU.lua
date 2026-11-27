@@ -2457,6 +2457,15 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up."] = "Баффы и дебаффы: исправлена ошибка при входе с версии 2.1.90, из-за которой ауры на индикаторах здоровья и ряды цели настраивались лишь наполовину.", -- draft
+	["Chat: clicking the language's name on the line you type in opens the chat menu now."] = "Чат: щелчок по названию языка в строке ввода теперь открывает меню чата.", -- draft
+	["Map: spirit healers on the map and the minimap (Map Layers > Travel)."] = "Карта: целители душ на карте и миникарте (Слои карты > Путешествия).", -- draft
+	["Map: a Rares switch in Map Layers for the rares of HandyNotes plugins."] = "Карта: переключатель «Редкие» в слоях карты для редких существ из плагинов HandyNotes.", -- draft
+	["Chat: the Minimal view's scroll bar can be dragged now."] = "Чат: полосу прокрутки вида «Минимальный» теперь можно перетаскивать.", -- draft
+	["Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too."] = "Карта: сундуки показаны одним значком сундука MelloUI, как и редкие существа, в том числе из плагинов HandyNotes.", -- draft
+	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "Карта: распорядители полётов больше не показываются дважды с HandyNotes: WoW Forever.", -- draft
+	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "Журнал заданий: найденное поиском задание снова открывается по щелчку (Oldschool).", -- draft
+	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Исправлена ошибка Lua рамок группы игры при входе (текстуры масок).", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Чат: в виде «Минимальный» щёлкните по названию языка в строке ввода, чтобы сменить язык, на котором вы говорите.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Баффы и дебаффы: при наведении на бафф или дебафф цели снова показывается его собственная подсказка, а не чужая.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Контроллер: окно копирования MelloUI больше не забирает клавиатуру у строки чата игры. Щёлкните по тексту, чтобы выделить его.", -- draft

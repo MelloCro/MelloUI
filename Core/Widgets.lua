@@ -441,6 +441,7 @@ do
 	local MAX_MASKS = 3
 	local WHITE8 = "Interface\\Buttons\\WHITE8X8"
 	local soft = setmetatable({}, { __mode = "k" })   -- [bar] = its mask
+	local softMask = setmetatable({}, { __mode = "k" })   -- [mask] = true: a soft-ends mask (W.IsSoftMask)
 	local wearing = setmetatable({}, { __mode = "k" })   -- [texture] = the mask it wears of its bar's
 	local own = setmetatable({}, { __mode = "k" })   -- [texture] = true: dimmed by a W.SoftMask of its own
 
@@ -457,6 +458,11 @@ do
 			pcall(tex.RemoveMaskTexture, tex, worn)
 			wearing[tex] = nil
 		end
+	end
+
+	-- (2.1.92) whether a mask is a soft-ends mask of W.SoftEnds' (a bar's own masks told from the game's)
+	function W.IsSoftMask(mask)
+		return softMask[mask] == true
 	end
 
 	function W.SoftEndsOwn(tex, on)
@@ -485,14 +491,18 @@ do
 		if worn or own[tex] or type(tex.AddMaskTexture) ~= "function" then
 			return worn
 		end
+		-- (2.1.92; the user's login: "Texture:AddMaskTexture(): Texture already has the maximum number of mask textures
+		-- (3)" in the game's PartyMemberFrame Setup, which adds its own mask again at every show of its party frame) the
+		-- last of a fill's three mask slots is never taken: it stays free for the game's own
 		local okN, n = pcall(tex.GetNumMaskTextures, tex)
-		if not (okN and type(n) == "number") or n >= MAX_MASKS then
+		if not (okN and type(n) == "number") or n >= MAX_MASKS - 1 then
 			return nil
 		end
 		local mask = soft[bar]
 		if not mask then
 			mask = W.SoftMask(bar:CreateMaskTexture(), bar)
 			soft[bar] = mask
+			softMask[mask] = true
 		end
 		tex:AddMaskTexture(mask)
 		wearing[tex] = mask

@@ -118,6 +118,9 @@ local SWITCHES = {
 	  layers = { "objectives", "objective_dots", "objectives_questie" }, group = 1, icon = "track_todo",
 	  questie = true },
 	{ key = "flights", label = "Flight masters", layers = { "flights" }, group = 2, icon = "svc_flight" },
+	-- (2.1.92; the user: "Spirit Healer Locations are not shown on the MelloUI Map") the client's own graveyards, as the
+	-- game's map shows them (MapLayers' Spirits): on as there
+	{ key = "spirits", label = "Spirit healers", layers = { "spirits" }, group = 2, icon = "svc_spirit" },
 	{ key = "transports", label = "Boats, zeppelins and portals", layers = { "transports" }, trails = true, group = 2,
 	  icon = "pin_boat" },
 	{ key = "entrances", label = "Dungeons and raids", layers = { "entrances" }, group = 2, icon = "pin_dungeon" },
@@ -137,6 +140,11 @@ local SWITCHES = {
 for _, k in ipairs(Town.KINDS) do
 	SWITCHES[#SWITCHES + 1] = { key = k.layer, label = k.label, layers = {}, group = 5, town = k }
 end
+-- (2.1.92; the user, 2026-11-27: "while using HandyNotes, we dont have a checkbox to enable or disable Rares on the
+-- Map in the Map Layers") the HandyNotes plugins' rares (HandyNotes: WoW Forever's creatures to find, MapAddonPins'
+-- RareNode) on the map and the minimap; on as before until switched. RareScanner's own rares are its own (its switch
+-- on the Addons page): while it shows them a plugin's give way anyway
+SWITCHES[#SWITCHES + 1] = { key = "rares", label = "Rares", layers = {}, group = 5, icon = "kill_rare" }
 -- (2.1.55) the switches that start off: the town kinds that do (Town.Starts) and the rows marked `off`
 local START_OFF = {}
 for _, s in ipairs(SWITCHES) do
@@ -594,8 +602,12 @@ local function SetLayer(key, on)
 	-- addons' pins' switch: their nodes built or let go (MapAddonPins' BuildZone builds them only while it is on)
 	if town then
 		Town.Changed()
-	elseif key == "addons" and shown then
+	elseif (key == "addons" or key == "rares") and shown then
 		AddonPins.Stale()
+	end
+	-- (2.1.92) the plugins' rares on the minimap follow their switch
+	if key == "rares" and AddonPins.MiniRaresChanged then
+		AddonPins.MiniRaresChanged()
 	end
 	-- (2.1.39) the quest givers' or objectives' layer on or off: Questie's icons of that kind looked at again (shown
 	-- here, in MelloUI's pictures, only while MelloUI's own layer of them is off: MapAddonPins' Cover); (2.1.43) the
@@ -607,6 +619,9 @@ local function SetLayer(key, on)
 	-- of sight, 2.1.51: Core/QuestieLook.lua's QL.MiniOwn)
 	if key == "flights" then
 		Layers.MiniFlights(on and M.isEnabled)
+	end
+	if key == "spirits" then
+		Layers.MiniSpirits(on and M.isEnabled)   -- (2.1.92: the spirit healers on the minimap, by the same switch)
 	end
 	-- (2.1.55) the level labels' switches: their pills, badges and lines laid again, the minimap's too
 	Levels.Changed(key)
@@ -1769,6 +1784,7 @@ function M:OnEnable(db)
 	Dungeon.Listen(true)   -- (2.1.0: the bosses down this run, for a dungeon's plan)
 	Fog()   -- (a profile's)
 	Layers.MiniFlights(LayerOn("flights"))   -- (2.1.50: the flight masters on the minimap)
+	Layers.MiniSpirits(LayerOn("spirits"))   -- (2.1.92: the spirit healers there, by the same switch)
 	Town.Mini(true)   -- (2.1.53: the town marks there, by the same switches)
 	AddonPins.MiniRares(true)   -- (2.1.57: another addon's rares off the minimap while RareScanner's stand there)
 	Levels.Mini(true)   -- (2.1.55: the pills and fishing badges there, by the same switches)
@@ -1803,6 +1819,7 @@ function M:OnDisable()
 	TakeHeader(false)
 	Dungeon.Listen(false)
 	Layers.MiniFlights(false)   -- (2.1.50)
+	Layers.MiniSpirits(false)   -- (2.1.92)
 	Town.Mini(false)   -- (2.1.53)
 	AddonPins.MiniRares(false)   -- (2.1.57)
 	Levels.Mini(false)   -- (2.1.55)

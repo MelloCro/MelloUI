@@ -80,7 +80,10 @@ local T = {
 	ARROW_FILE = "Interface\\Minimap\\MinimapArrow",  -- (if the atlas is missing)
 	-- the stack (MapPins' layer order): the places under the group, the group under the player; (2.1.65) your corpse
 	-- over the group, as the game's own map stacks it (Blizzard_WorldMap.lua: PIN_FRAME_LEVEL_CORPSE after the group's)
-	ORDER = { towns = 7, names = 8, places = 9, entrances = 10, transports = 12, flights = 14, quests = 20, gossip = 26,
+	SPIRITS_FROM = 2.5,      -- (2.1.92) the spirit healers from a zone's zoom on (MapAddonPins' ZONE_FROM: as other pins)
+	SPIRITS_AGAIN = 5,       -- (2.1.92) ... their list asked again this often while Questie's is not ready yet
+	ORDER = { towns = 7, names = 8, places = 9, entrances = 10, transports = 12, spirits = 13, flights = 14, quests = 20,
+		gossip = 26,
 		route = 30, waypoint = 32, group = 40, corpse = 45, player = 50 },
 	GOSSIP_ICON = "chat_general",   -- a guard's directions: the speech bubble (the game's gossip icon in MapAddonPins too)
 	MEMBER_SIZE = 16,        -- a party member's class pin (the user, 2026-10-20: "in the theme", "enough just in the color")
@@ -130,6 +133,7 @@ local floor = math.floor
 
 local TEXT = {
 	notLearned = "Not learned yet",
+	spirit = "Spirit Healer",   -- (2.1.92: a graveyard the client names none for)
 	yourPin = "Your pin",
 	yourPinHint = "Shift-click: share it in the chat\nCtrl-right-click on the map: take it away",
 	corpse = "Corpse",   -- (2.1.65: where the game's own CORPSE is missing)
@@ -394,6 +398,129 @@ local function Flights()
 	end
 end
 
+-- (2.1.92; the user, 2026-11-27: "Spirit Healer Locations are not shown on the MelloUI Map") the spirit healers: the
+-- client's own graveyards of each zone (C_DeathInfo.GetGraveyardsForMap -- what the game's own map shows them from,
+-- its SelectableGraveyardDataProvider), in MelloUI's spirit healer picture, the graveyard's name on hover, from a
+-- zone's zoom on (T.SPIRITS_FROM). Read once a session, as the map first opens: they do not move. The Travel group's
+-- Spirit healers switch (Map.lua); the minimap wears them by the same switch (Layers.MiniSpirits)
+local function SpiritTip(pin)
+	return pin.data
+end
+local SPIRIT = Icon("svc_spirit", nil, SpiritTip)
+
+-- the client's own graveyards of every zone under the world map (C_Map.GetMapChildrenInfo, as Core/QuestObjectives.lua's
+-- scan, so the minimap needs no open map)
+local function ClientSpirits(add)
+	local api, maps, kinds = rawget(_G, "C_DeathInfo"), rawget(_G, "C_Map"), rawget(_G, "Enum")
+	if not (type(api) == "table" and api.GetGraveyardsForMap and type(maps) == "table" and maps.GetMapChildrenInfo) then
+		return
+	end
+	local zone = type(kinds) == "table" and type(kinds.UIMapType) == "table" and kinds.UIMapType.Zone or 3
+	local root = 947
+	if maps.GetFallbackWorldMapID then
+		local okR, id = pcall(maps.GetFallbackWorldMapID)
+		root = okR and Finite(id) or root
+	end
+	local okZ, zones = pcall(maps.GetMapChildrenInfo, root, zone, true)
+	for _, info in ipairs(okZ and type(zones) == "table" and zones or EMPTY) do
+		local map = type(info) == "table" and Finite(info.mapID) or nil
+		local ok, list = false, nil
+		if map then
+			ok, list = pcall(api.GetGraveyardsForMap, map)
+		end
+		for _, g in ipairs(ok and type(list) == "table" and list or EMPTY) do
+			local id = type(g) == "table" and Finite(g.graveyardID) or nil
+			local x, y = XY(type(g) == "table" and g.position or nil)
+			if id and x then
+				add("g" .. id, map, x, y, Text(g.name))
+			end
+		end
+	end
+end
+
+-- (the user in game, 2026-11-27: "Spirit Healer checkbox still does nothing" -- this client lists no graveyards outside
+-- a battleground) Questie's spirit healers: its townsfolk list of your side's (Questie.db.char.townsfolk["Spirit
+-- Healer"], built a few seconds after the login: Townsfolk.lua) at their spawns (QuestieDB's, by Questie's area ids:
+-- ZoneDB's uiMap). true once read; false while Questie is not there or not ready yet
+local function QuestieSpirits(add)
+	local Q, L = rawget(_G, "Questie"), rawget(_G, "QuestieLoader")
+	local char = type(Q) == "table" and type(Q.db) == "table" and type(Q.db.char) == "table" and Q.db.char or nil
+	local ids = char and type(char.townsfolk) == "table" and char.townsfolk["Spirit Healer"] or nil
+	if type(ids) ~= "table" or type(L) ~= "table" or type(L.ImportModule) ~= "function" then
+		return false
+	end
+	local okD, DB = pcall(L.ImportModule, L, "QuestieDB")
+	local okZ, ZoneDB = pcall(L.ImportModule, L, "ZoneDB")
+	if not (okD and type(DB) == "table" and type(DB.QueryNPCSingle) == "function" and okZ and type(ZoneDB) == "table"
+		and type(ZoneDB.GetUiMapIdByAreaId) == "function") then
+		return false
+	end
+	local side = UnitFactionGroup and Text((UnitFactionGroup("player"))) or nil
+	local mine = side == "Alliance" and "A" or side == "Horde" and "H" or nil
+	for _, id in pairs(ids) do
+		local okF, friendly = pcall(DB.QueryNPCSingle, id, "friendlyToFaction")
+		friendly = okF and Text(friendly) or nil
+		local okS, spawns = pcall(DB.QueryNPCSingle, id, "spawns")
+		if okS and type(spawns) == "table" and (not friendly or friendly == "AH" or friendly == mine) then
+			local okN, name = pcall(DB.QueryNPCSingle, id, "name")
+			for area, list in pairs(spawns) do
+				local okM, map = pcall(ZoneDB.GetUiMapIdByAreaId, ZoneDB, area)
+				map = okM and Finite(map) or nil
+				for i, p in ipairs(map and type(list) == "table" and list or EMPTY) do
+					local x, y = type(p) == "table" and Finite(p[1]) or nil, type(p) == "table" and Finite(p[2]) or nil
+					if x and y and x >= 0 and y >= 0 then
+						add("q" .. tostring(id) .. ":" .. tostring(area) .. ":" .. i, map, x / 100, y / 100,
+							okN and Text(name) or nil)
+					end
+				end
+			end
+		end
+	end
+	return true
+end
+
+-- every spirit healer, once a session: { id, map, x, y, name } on its map -- the client's graveyards, else Questie's.
+-- While neither has any yet (Questie not ready: its list is built after the login) nothing is kept and the list is
+-- asked again, at most every T.SPIRITS_AGAIN seconds
+local spiritList, spiritAsked = nil, nil
+local function SpiritList()
+	if spiritList then
+		return spiritList
+	end
+	local now = GetTime and GetTime() or 0
+	if spiritAsked and now - spiritAsked < T.SPIRITS_AGAIN then
+		return EMPTY
+	end
+	spiritAsked = now
+	local list, seen = {}, {}
+	local function add(id, map, x, y, name)
+		if not seen[id] then
+			seen[id] = true
+			list[#list + 1] = { id = id, map = map, x = x, y = y, name = name }
+		end
+	end
+	ClientSpirits(add)
+	local ready = #list > 0 or QuestieSpirits(add) or not rawget(_G, "QuestieLoader")
+	if ready then
+		spiritList = list
+	end
+	return list
+end
+Layers.SpiritList = SpiritList   -- (the minimap's, and the tests')
+
+-- the map's spirit healers laid; true once the list is the session's (laid again at each open until then)
+local function Spirits()
+	local pins = S.pins
+	pins:Clear("spirits")
+	for _, g in ipairs(SpiritList()) do
+		local pin = pins:SetAt("spirits", g.id, g.map, g.x, g.y, SPIRIT)
+		if pin then
+			pin.data = g.name or W.Tr(TEXT.spirit)
+		end
+	end
+	return spiritList ~= nil
+end
+
 -- (2.1.50; the user, 2026-11-13: "do the flight masters too" -- the rule: the minimap wears what the big map wears)
 -- the flight masters on the minimap as this map lays them: MelloUI's flight picture, one not learned yet paler (FLIGHT,
 -- FLIGHT_NEW), named on hover, exactly while this map's Flight masters layer is on (the Map module on) -- on Route's
@@ -512,6 +639,99 @@ function Layers.MiniFlights(on)
 	end
 	if type(R) == "table" and type(R.WantMinimap) == "function" then
 		R.WantMinimap(MINI.OWNER, on and Layers.MiniFlightsDraw or nil)
+	end
+end
+
+-- (2.1.92) the spirit healers on the minimap as this map lays them, by its Spirit healers switch (the Map module on),
+-- on Route's minimap layer as the flight masters: the graveyards in Route's yards a continent (the map's list,
+-- Route.ToYards), the ones inside the minimap, named on hover. The list made at the first draw, not at login
+local MINI_SPIRIT = { OWNER = "Map spirit healers", SIZE = 13 }
+local spiritMini = { marks = {}, n = 0, byCont = nil }
+Layers.spiritMini = spiritMini
+
+local function MiniSpiritEnter(f)
+	local P = MelloUI.Look and MelloUI.Look.TipPalette and MelloUI.Look.TipPalette() or MelloUI.Palette
+	local t = P.text
+	GameTooltip:SetOwner(f, "ANCHOR_CURSOR")
+	GameTooltip:SetText(f.name or W.Tr(TEXT.spirit), t[1], t[2], t[3])
+	GameTooltip:Show()
+end
+
+local function MiniSpiritMark(i, frame)
+	local f = spiritMini.marks[i]
+	if not f then
+		f = CreateFrame("Frame", nil, frame)
+		f:SetFrameLevel(frame:GetFrameLevel() + 1)   -- (under the quest marks, as the flight masters)
+		f.icon = f:CreateTexture(nil, "ARTWORK")
+		f.icon:SetAllPoints(f)
+		W.Icon(f.icon, "svc_spirit")
+		if f.SetMouseClickEnabled then
+			f:EnableMouse(true)
+			f:SetMouseClickEnabled(false)
+			f:SetScript("OnEnter", MiniSpiritEnter)
+			f:SetScript("OnLeave", MiniFlightLeave)
+			f:SetScript("OnHide", MiniFlightLeave)
+		end
+		spiritMini.marks[i] = f
+	end
+	return f
+end
+
+-- the graveyards in Route's yards, a list a continent (made once: the map's list read through Route.ToYards)
+local function MiniSpiritList(cont)
+	if not spiritMini.byCont then
+		local R, by = MelloUI.Route, {}
+		local list = SpiritList()
+		if not spiritList then
+			return EMPTY   -- (Questie's list not ready yet: asked again, SpiritList's own pace)
+		end
+		for _, g in ipairs(list) do
+			local ok, c, x, y = pcall(R.ToYards, g.map, g.x, g.y)
+			c, x, y = ok and Finite(c) or nil, ok and Finite(x) or nil, ok and Finite(y) or nil
+			if c and x and y then
+				by[c] = by[c] or {}
+				by[c][#by[c] + 1] = { x = x, y = y, name = g.name }
+			end
+		end
+		spiritMini.byCont = by
+	end
+	return spiritMini.byCont[cont] or EMPTY
+end
+
+-- Route's minimap layer's tick (cont nil: hidden)
+function Layers.MiniSpiritsDraw(cont, round, R, RX, RY)
+	local Route = MelloUI.Route
+	local frame = Route.MinimapFrame()
+	local n = 0
+	if cont and frame then
+		local Offset, m = Route.MinimapOffset, MINI_SPIRIT.SIZE / 2
+		for _, p in ipairs(MiniSpiritList(cont)) do
+			local gx, gy = Offset(p.x, p.y)
+			local on
+			if round then
+				on = gx * gx + gy * gy <= (R - m) * (R - m)
+			else
+				on = math.abs(gx) <= RX - m and math.abs(gy) <= RY - m
+			end
+			if on then
+				n = n + 1
+				local f = MiniSpiritMark(n, frame)
+				f.name = p.name
+				Route.MarkPlace(f, MINI_SPIRIT.SIZE, frame, "CENTER", gx, gy)
+			end
+		end
+	end
+	for i = n + 1, spiritMini.n do
+		spiritMini.marks[i]:Hide()
+	end
+	spiritMini.n = n
+end
+
+-- (Map.lua: its OnEnable and OnDisable, its Spirit healers switch) the minimap's spirit healers wanted or not
+function Layers.MiniSpirits(on)
+	local R = MelloUI.Route
+	if type(R) == "table" and type(R.WantMinimap) == "function" and type(R.ToYards) == "function" then
+		R.WantMinimap(MINI_SPIRIT.OWNER, on and Layers.MiniSpiritsDraw or nil)
 	end
 end
 
@@ -921,6 +1141,9 @@ function Layers.Open()
 		Transports()
 		Entrances()
 		Places()
+	end
+	if not S.spirits then
+		S.spirits = Spirits()   -- (2.1.92: until Questie's list is there, at each open)
 	end
 	Flights()
 	Gossip()
@@ -1551,6 +1774,7 @@ function Layers.Init(canvas, pins)
 	pins:Layer("places", T.ORDER.places, { maxZ = T.NAMES_TO, nudge = true })
 	pins:Layer("towns", T.ORDER.towns, { minZ = T.PLACES_FROM, maxZ = T.NAMES_TO, nudge = true })
 	pins:Layer("flights", T.ORDER.flights, { minZ = T.PLACES_FROM })
+	pins:Layer("spirits", T.ORDER.spirits, { minZ = T.SPIRITS_FROM })   -- (2.1.92: from a zone's zoom on)
 	pins:Layer("route", T.ORDER.route)
 	pins:Layer("gossip", T.ORDER.gossip)
 	pins:Layer("group", T.ORDER.group)

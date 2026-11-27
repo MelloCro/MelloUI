@@ -2532,6 +2532,15 @@ Lang:Add("frFR", {
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
+	["Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up."] = "Améliorations et affaiblissements : correction d’une erreur à la connexion depuis la 2.1.90, qui laissait à moitié en place les auras des barres d’info et les rangées de la cible.", -- draft
+	["Chat: clicking the language's name on the line you type in opens the chat menu now."] = "Discussion : cliquer sur le nom de la langue dans la ligne de saisie ouvre maintenant le menu de discussion.", -- draft
+	["Map: spirit healers on the map and the minimap (Map Layers > Travel)."] = "Carte : les gardiens des âmes sur la carte et la minicarte (Calques de la carte > Voyage).", -- draft
+	["Map: a Rares switch in Map Layers for the rares of HandyNotes plugins."] = "Carte : un interrupteur Rares dans les calques de la carte pour les rares des modules HandyNotes.", -- draft
+	["Chat: the Minimal view's scroll bar can be dragged now."] = "Discussion : la barre de défilement de la vue Minimale se fait glisser maintenant.", -- draft
+	["Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too."] = "Carte : les coffres montrent l’icône de coffre de MelloUI seule, comme les rares, y compris ceux des modules HandyNotes.", -- draft
+	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "Carte : les maîtres de vol n’apparaissent plus en double avec HandyNotes: WoW Forever.", -- draft
+	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "Journal de quêtes : une quête trouvée avec sa recherche s’ouvre de nouveau au clic (Oldschool).", -- draft
+	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Correction d’une erreur Lua des cadres de groupe du jeu à la connexion (textures de masque).", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Discussion : dans la vue Minimale, cliquez sur le nom de la langue dans la ligne de saisie pour changer la langue que vous parlez.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Améliorations et affaiblissements : survoler une amélioration ou un affaiblissement de la cible affiche de nouveau sa propre infobulle, et non celle d’un autre effet.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Manette : la fenêtre de copie de MelloUI ne prend plus le clavier à la ligne de discussion du jeu. Cliquez sur son texte pour le sélectionner.", -- draft
@@ -3156,6 +3165,8 @@ Lang:Add("frFR", {
 	["Guild masters and tabards"] = "Maîtres de guilde et tabards",
 	["Transmogrifiers"] = "Transmogrifieurs",
 	["Spirit healers"] = "Gardiens des âmes",
+	["Rares"] = "Rares", -- draft
+	["Spirit Healer"] = "Gardien des âmes", -- draft
 	-- Core/Core.lua
 	["Ctrl+A, Ctrl+C to copy  -  Esc closes"] = "Ctrl+A, Ctrl+C pour copier  –  Échap pour fermer",
 	["Click the text, then Ctrl+C to copy  -  Esc closes"] = "Cliquez sur le texte, puis Ctrl+C pour copier  -  Échap ferme", -- draft

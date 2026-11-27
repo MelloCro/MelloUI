@@ -293,22 +293,85 @@ end
 --------------------------------------------------------------------------------
 local COUNT_GAP = 3   -- the count box's gap to the gear (as the game's from the search box to the count box)
 local ScreenRect = MelloUI.Safe.ScreenRect
+local Secret = MelloUI.Safe.IsSecret
 
 -- the search box narrower by what the count box beside it needs to clear the gear (moved in first)
+-- (2.1.92; the user, 2026-11-27: with MelloUI's map off, a quest found by the log's search would not open and each
+-- click moved its title down; the probe: every rebuild of the list came from the search box's own text-changed
+-- script, with no addon's code under it) The box was made narrower by its SIZE, and the game sizes it again, 200 x 20,
+-- at every rebuild of the list (QuestLogQuests_ShowQuestCount, Camelot's), after which this narrowed it once more: its
+-- width changed twice a rebuild, the client laid its text again and ran its OnTextChanged, which -- a search typed in
+-- -- searches again and rebuilds the list again: the list rebuilt on and on, each rebuild releasing the row under the
+-- mouse between its press and its release (no click; the game's press nudge never undone). Its width is now held by
+-- a second anchor of its own -- its right end, from its own left anchor and the width wanted -- laid with the window's
+-- layout only (LayEdges), never at a rebuild: the game's size no longer moves it. The game's anchors back when the
+-- skin goes or the room is there
+local searchHeld = setmetatable({}, { __mode = "k" })   -- [search box] = { points = the game's anchors, w = its width }
+local QL_COUNT_X = 3   -- the count box hangs off the search box's right end this far (QuestMapFrame.xml)
+
+local function SearchRelease(search)
+	local held = searchHeld[search]
+	if not held then
+		return
+	end
+	searchHeld[search] = nil
+	search:ClearAllPoints()
+	for _, p in ipairs(held.points) do
+		search:SetPoint(unpack(p))
+	end
+end
+
 local function SearchEdge(sf)
 	local search, dd = sf.SearchBox, sf.SettingsDropdown
 	if not search then
 		return
 	end
-	Kit:Shrink(search, "rails", 0, 0)
-	if not (active and skin and skin.window) then
+	Kit:Shrink(search, "rails", 0, 0)   -- (a size of 2.1.91's or before: the game's given back)
+	local count = _G.QuestLogCount
+	if not (active and skin and skin.window and dd and count) then
+		SearchRelease(search)
 		return
 	end
-	local _, _, countR = ScreenRect(_G.QuestLogCount or search)
-	local gearL = dd and ScreenRect(dd)
-	if countR and gearL and countR > gearL - COUNT_GAP then
-		Kit:Shrink(search, "rails", (countR - gearL + COUNT_GAP) / search:GetEffectiveScale(), 0)
+	local held = searchHeld[search]
+	local points, gameW = held and held.points, held and held.w
+	if not held then
+		points = {}
+		for i = 1, search:GetNumPoints() do
+			local p = { search:GetPoint(i) }
+			if Secret(p[4]) or Secret(p[5]) then
+				return
+			end
+			points[i] = p
+		end
+		local okW, w = pcall(search.GetWidth, search)
+		gameW = okW and not Secret(w) and w or nil
 	end
+	local first = points[1]
+	local right = first and type(first[1]) == "string" and first[1]:find("LEFT") and first[1]:gsub("LEFT", "RIGHT")
+	if #points ~= 1 or not (right and gameW and gameW > 0) then
+		return   -- (not the game's one anchor on its left: left as it is)
+	end
+	local boxL = ScreenRect(search)
+	local gearL = ScreenRect(dd)
+	local okC, countW = pcall(count.GetWidth, count)
+	local s, cs = search:GetEffectiveScale(), count:GetEffectiveScale()
+	if not (boxL and gearL and okC and not Secret(countW) and countW and s and s > 0) then
+		return
+	end
+	local want = (gearL - COUNT_GAP - (QL_COUNT_X + countW) * cs - boxL) / s
+	if want >= gameW - 0.5 then
+		SearchRelease(search)   -- (the room is there: the game's own width)
+		return
+	end
+	want = math.max(want, 40)
+	local okN, now = pcall(search.GetWidth, search)
+	if held and okN and not Secret(now) and now and math.abs(now - want) < 0.5 then
+		return   -- (as it is: nothing laid again)
+	end
+	searchHeld[search] = { points = points, w = gameW }
+	search:ClearAllPoints()
+	search:SetPoint(unpack(first))
+	search:SetPoint(right, first[2], first[3], (first[4] or 0) + want, first[5] or 0)
 end
 
 local function LayEdges()
@@ -687,18 +750,8 @@ local function Hook()
 	if details then
 		Perf.HookScript(details, "OnShow", LayEdges)
 	end
-	-- (the game sizes its search box again with each count, Camelot's QuestMapFrameUtils: taken as the game's, the
-	-- box narrowed again -- The edges)
-	if type(QuestLogQuests_ShowQuestCount) == "function" then
-		hooksecurefunc("QuestLogQuests_ShowQuestCount", function()
-			local qf = QuestMapFrame.QuestsFrame
-			local sf = qf and qf.ScrollFrame
-			if sf and sf.SearchBox and Kit.ShrinkTaken then
-				Kit:ShrinkTaken(sf.SearchBox)
-				SearchEdge(sf)
-			end
-		end)
-	end
+	-- (2.1.92: no hook on the game's count any more -- it sized the search box again at every rebuild, and the box's
+	-- width now stands by its anchors: SearchEdge)
 	local sf = QuestScrollFrame
 	if sf and sf.HookScript then
 		Perf.HookScript(sf, "OnShow", LayEdges)   -- (Back from a quest's details)

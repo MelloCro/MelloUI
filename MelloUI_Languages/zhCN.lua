@@ -2457,6 +2457,15 @@ Lang:Add("zhCN", {
 	["The people who help keep MelloUI going."] = "帮助 MelloUI 持续发展的人们。", -- draft
 	["Addons"] = "插件", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "与 MelloUI 配合的插件：它对每个插件做什么，以及它们的设置在哪里。", -- draft
+	["Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up."] = "增益和减益效果：修复了自 2.1.90 起登录时的一个错误，该错误会让姓名板上的光环和目标的光环行只设置了一半。", -- draft
+	["Chat: clicking the language's name on the line you type in opens the chat menu now."] = "聊天：点击输入行上的语言名称现在会打开聊天菜单。", -- draft
+	["Map: spirit healers on the map and the minimap (Map Layers > Travel)."] = "地图：地图和小地图上显示灵魂医者（地图图层 > 旅行）。", -- draft
+	["Map: a Rares switch in Map Layers for the rares of HandyNotes plugins."] = "地图：地图图层中新增“稀有”开关，用于 HandyNotes 插件的稀有怪。", -- draft
+	["Chat: the Minimal view's scroll bar can be dragged now."] = "聊天：极简视图的滚动条现在可以拖动了。", -- draft
+	["Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too."] = "地图：宝箱像稀有怪一样只显示 MelloUI 的宝箱图标，HandyNotes 插件的宝箱也是如此。", -- draft
+	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "地图：使用 HandyNotes: WoW Forever 时，飞行管理员不再重复显示。", -- draft
+	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "任务日志：通过搜索找到的任务再次可以点击打开（Oldschool）。", -- draft
+	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "修复了登录时游戏小队框体的一个 Lua 错误（遮罩纹理）。", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "聊天：在极简视图中，点击输入行上的语言名称即可切换你说的语言。", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "增益和减益效果：将鼠标悬停在目标的增益或减益上时，会重新显示它自己的鼠标提示，而不是别的效果的。", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "手柄：MelloUI 的复制窗口不再从游戏的聊天输入行抢走键盘。点击其中的文本即可选中。", -- draft

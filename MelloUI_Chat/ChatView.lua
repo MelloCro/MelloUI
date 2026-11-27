@@ -3049,6 +3049,15 @@ local FitBoxGone = Perf.Shared("OnHide of a chat edit box (the chat view)", func
 	end
 end, "script")
 
+-- (2.1.92; the user, 2026-11-27: "Clicking to change the language from Orcish does nothing") the game opens the line
+-- you type in with Show, then SetFrameStrata("DIALOG") and Raise (ChatFrameUtil.ActivateChat): the language switch,
+-- laid at the Show, stood under the risen line, which took its click. Laid again after each.
+function View.BoxRaised()
+	if View.on and View.Tongue then
+		View.Tongue.Lay()
+	end
+end
+
 -- the line you type in: over the lines' foot, above the view; put back as it was when the view goes
 local function PlaceEditBoxes(on)
 	Windows(function(f)
@@ -3074,6 +3083,8 @@ local function PlaceEditBoxes(on)
 				boxHooked[box] = true
 				Perf.HookScript(box, "OnShow", FitBox)
 				Perf.HookScript(box, "OnHide", FitBoxGone)
+				hooksecurefunc(box, "SetFrameStrata", View.BoxRaised)
+				hooksecurefunc(box, "Raise", View.BoxRaised)
 			end
 		elseif was then
 			box:SetFrameLevel(was.level)
@@ -3193,7 +3204,8 @@ end
 --------------------------------------------------------------------------------
 
 do
-	local Tongue = { was = nil, on = false, label = nil, hooked = false, PAD = 4, LIFT = 10 }
+	local Tongue = { was = nil, on = false, label = nil, hooked = false, sticky = false, PAD = 4, LIFT = 10,
+		STRATA = "FULLSCREEN" }
 	View.Tongue = Tongue
 
 	local function Button()
@@ -3242,6 +3254,50 @@ do
 		end
 	end, "script")
 
+	-- (2.1.92; the user in game, after the button stood on top -- their /fstack -- and the click still opened nothing)
+	-- a click outside the line you type in takes its focus, and an empty line then closes (the game's
+	-- ShouldDeactivateChatOnEditFocusLost): the name and the switch went with it before the menu could open. The game
+	-- keeps the line's focus for a frame registered for that (ChatFrameUtil.RegisterForStickyFocus, as its dressing
+	-- room's dropdown is) that says so -- a dropdown button does while the mouse is on it or on its menu
+	-- (DropdownButtonMixin:HasStickyFocus). Its own chat menu button registered while the switch stands on the name, its
+	-- own answer asked; let go with the switch
+	function Tongue.Sticky(on)
+		local util, gm = rawget(_G, "ChatFrameUtil"), Button()
+		if not (type(util) == "table" and gm and type(util.RegisterForStickyFocus) == "function"
+			and type(util.UnregisterForStickyFocus) == "function") then
+			return
+		end
+		on = on and true or false
+		if on ~= Tongue.sticky then
+			Tongue.sticky = on
+			pcall(on and util.RegisterForStickyFocus or util.UnregisterForStickyFocus, gm)
+		end
+	end
+
+	-- (2.1.92; the user's probe at the press: the game handed it to ChatFrame1EditBox, the button above it and under
+	-- the pointer all the same -- a line with the keyboard's focus takes every press inside its own rect) the line's
+	-- clickable rect stops before the name while the switch stands on it (its hit rect's right inset: the name, its
+	-- room and the inset it stands in), and is given back as it was with the switch
+	function Tongue.Hit(box, right)
+		local kept = Tongue.hit
+		if kept and (not box or kept.box ~= box) then
+			pcall(kept.box.SetHitRectInsets, kept.box, kept.l, kept.r, kept.t, kept.b)
+			Tongue.hit, kept = nil, nil
+		end
+		if not (box and box.SetHitRectInsets and box.GetHitRectInsets) then
+			return
+		end
+		if not kept then
+			local ok, l, r, t, b = pcall(box.GetHitRectInsets, box)
+			if not ok then
+				return
+			end
+			kept = { box = box, l = Num(l) or 0, r = Num(r) or 0, t = Num(t) or 0, b = Num(b) or 0 }
+			Tongue.hit = kept
+		end
+		pcall(box.SetHitRectInsets, box, kept.l, math.max(kept.r, right), kept.t, kept.b)
+	end
+
 	-- the game's button on the name while one shows, without the mouse else (`gone`: a box hiding right now)
 	function Tongue.Lay(gone)
 		local gm = Button()
@@ -3256,6 +3312,8 @@ do
 			if Tongue.on then
 				Tongue.on = false
 				gm:EnableMouse(false)
+				Tongue.Sticky(false)
+				Tongue.Hit(nil)
 				Leave()
 			end
 			return
@@ -3281,13 +3339,23 @@ do
 		local okG, own = pcall(gm.GetEffectiveScale, gm)
 		boxScale, own = okB and Num(boxScale), okG and Num(own)
 		local k = (boxScale and own and own > 0) and boxScale / own or 1
-		gm:SetFrameStrata(box:GetFrameStrata())
+		-- (2.1.92; the user in game: the click still did nothing) a layer above every chat line's, whatever lifts the box
+		-- (its own DIALOG and Raise, its top-level rise on a click) or stands at its level: only the name's room
+		gm:SetFrameStrata(Tongue.STRATA)
 		gm:SetFrameLevel(math.min(box:GetFrameLevel() + Tongue.LIFT, 10000))
 		gm:ClearAllPoints()
 		gm:SetPoint("RIGHT", box, "RIGHT", (-inset + Tongue.PAD) * k, 0)
 		gm:SetSize((width + 2 * Tongue.PAD) * k, height * k)
 		gm:EnableMouse(true)
+		-- (2.1.92; the user in game: the hover reached it -- the name's wash, /fstack -- and a press did not: its clicks
+		-- and its motion each switched on where the client tells them apart, whatever left one off)
+		if gm.SetMouseClickEnabled and gm.SetMouseMotionEnabled then
+			pcall(gm.SetMouseClickEnabled, gm, true)
+			pcall(gm.SetMouseMotionEnabled, gm, true)
+		end
 		Tongue.on, Tongue.label = true, label
+		Tongue.Sticky(true)
+		Tongue.Hit(box, inset + width + Tongue.PAD)
 	end
 
 	-- the view going: the button as the game had it (its alpha and mouse are Let's, after this)
@@ -3295,6 +3363,8 @@ do
 		local gm, was = Button(), Tongue.was
 		Leave()
 		Tongue.was, Tongue.on, Tongue.label = nil, false, nil
+		Tongue.Sticky(false)
+		Tongue.Hit(nil)
 		if not (gm and was) then
 			return
 		end
@@ -3308,6 +3378,33 @@ do
 	end
 end
 
+-- (2.1.92; the user in game, 2026-11-27: the language's name and the view's scroll bar took no click -- "there might be
+-- some invisible layer on top of it") a held window's own controls are frames of their own: its scroll bar (with the
+-- bar's arrows, track and thumb), its scroll-to-bottom button, its resize grip and its click-anywhere button (the IM
+-- style's, over the whole window). Unseen with the window they still took the mouse -- along the view's right edge and
+-- its bottom corner, over it once the game raises the window (a chat window is top-level). Held and let go with it
+local CONTROLS = { "ScrollBar", "ScrollToBottomButton", "ResizeButton", "clickAnywhereButton" }
+-- a control's children and theirs, `depth` steps down (the bar's arrows and track, the track's thumb): no table made
+local function ControlKids(Do, depth, ...)
+	for i = 1, select("#", ...) do
+		local k = select(i, ...)
+		Do(k)
+		if depth > 1 then
+			ControlKids(Do, depth - 1, k:GetChildren())
+		end
+	end
+end
+local function Controls(f, Do)
+	for _, key in ipairs(CONTROLS) do
+		local c = rawget(f, key)
+		if type(c) == "table" and c.EnableMouse then
+			Do(c)
+			ControlKids(Do, 2, c:GetChildren())
+		end
+	end
+end
+View.CONTROLS = CONTROLS   -- (the tests')
+
 local function HideGame(on)
 	if on then
 		View.hiding = true   -- (first: the Fader lets the game's windows go, ChatPanel's no-fade stands aside)
@@ -3316,6 +3413,7 @@ local function HideGame(on)
 	local Do = on and Hold or Let
 	Windows(function(f, i)
 		Do(f, true)
+		Controls(f, Do)   -- (2.1.92)
 		Do(rawget(_G, "ChatFrame" .. i .. "Tab"))
 	end)
 	Do(rawget(_G, "GeneralDockManager"))

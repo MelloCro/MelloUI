@@ -760,6 +760,46 @@ local function RareNode(state, coord)
 end
 AddonPins.RareNode = RareNode
 
+-- (2.1.92; the user, 2026-11-27, a picture of Blackrock Mountain: "chests are not being reskinned in all themes") a
+-- plugin's treasure: a node of the same table that names no creature and keeps what it holds (`loot`, HandyNotes: WoW
+-- Forever's field) -- worn in MelloUI's treasure seal, RareScanner's look of a container, as a rare wears the rare one
+local function TreasureNode(state, coord)
+	if type(state) ~= "table" or coord == nil or RareNode(state, coord) then
+		return false
+	end
+	local ok, node = pcall(Field, state, coord)
+	if not (ok and type(node) == "table") then
+		return false
+	end
+	local okL, loot = pcall(Field, node, "loot")
+	return okL and type(loot) == "table"
+end
+AddonPins.TreasureNode = TreasureNode
+
+-- (2.1.92; the user, 2026-11-27: "the Flight Masters double icons are still there, i think that handy notes draws them
+-- on top of the existing ones") a node's atlas name, as its plugin keeps it (HandyNotes: WoW Forever's flight masters:
+-- atlas "FlightMaster"). Such a node's picture comes as the atlas's sheet with its corners, whose file names no kind,
+-- so a town kind is known by the atlas's name too (MapTownMarks' KindOfPicture reads a name either way)
+local function NodeAtlas(state, coord)
+	if type(state) ~= "table" or coord == nil then
+		return nil
+	end
+	local ok, node = pcall(Field, state, coord)
+	if not (ok and type(node) == "table") then
+		return nil
+	end
+	local okA, atlas = pcall(Field, node, "atlas")
+	return okA and Text(atlas) or nil
+end
+AddonPins.NodeAtlas = NodeAtlas
+
+-- (2.1.92) the map's Rares switch (Map.lua's SWITCHES, the HandyNotes group): the plugins' rares shown at all
+local function RaresOn()
+	local Map = MelloUI.modules and MelloUI.modules.Map
+	return not (type(Map) == "table" and type(Map.LayerOn) == "function") or Map:LayerOn("rares") ~= false
+end
+AddonPins.RaresOn = RaresOn
+
 -- HandyNotes: every enabled plugin's nodes of the zone (GetNodes2: their own map, 0..1 there)
 -- (2.1.44) an addon's nodes only while its switch on the Addons page, Use with MelloUI, is on (Core/Integrations.lua)
 local function Used(key)
@@ -786,9 +826,11 @@ Sources[1] = function(id, add)
 	-- (2.1.57) the rares RareScanner's while it shows them: a plugin's rare nodes not drawn too (RareNode); while it
 	-- does not, a plugin's rare wears MelloUI's rare seal, RareScanner's look (RL.PlainSeal) -- the plugin's own
 	-- tooltip, clicks and fade kept, its picture and size not: one kind, one look
+	-- (2.1.92) and none while the map's Rares switch is off
 	local RL = MelloUI.RareScannerLook
-	local rares = RL and RL.Rares and RL.Rares() or false
+	local rares = (RL and RL.Rares and RL.Rares()) or not RaresOn()
 	local seal = RL and not rares and RL.PlainSeal or nil
+	local chestSeal = RL and RL.PlainSeal or nil   -- (2.1.92: a plugin's treasures in MelloUI's treasure seal)
 	for name, handler in pairs(hn.plugins) do
 		if name ~= mine and enabled[name] and type(handler) == "table" and type(handler.GetNodes2) == "function" then
 			local ok, iter, state, value = pcall(handler.GetNodes2, handler, id, false)
@@ -802,12 +844,13 @@ Sources[1] = function(id, add)
 					value, guard = coord, guard + 1
 					coord = Finite(coord)
 					local rare = coord and RareNode(state, value)
+					local chest = coord and not rare and chestSeal and TreasureNode(state, value)
 					if coord and not (rare and rares) then
 						local x, y = floor(coord / 10000) / 10000, (coord % 10000) / 10000
 						local fade = min(max(alpha * (Finite(a) or 1), 0), 1)
 						local spec
-						if rare and seal then
-							spec = seal("rare")
+						if (rare and seal) or chest then
+							spec = chest and chestSeal("treasure") or seal("rare")
 							spec.alpha = fade < 1 and fade or spec.alpha
 						else
 							spec = { size = T.NODE * scale * (Finite(s) or 1), alpha = fade }
@@ -826,7 +869,8 @@ Sources[1] = function(id, add)
 						end
 						spec.enter, spec.leave, spec.click, spec.right = NodeEnter, NodeLeave, NodeClick, true
 						spec.data = { name, map2 or id, coord }
-						if (rare and seal) or not (Town and Town.Held(Town.KindOfPicture(spec.icon), "other")) then
+						local town = Town and (Town.KindOfPicture(spec.icon) or Town.KindOfPicture(NodeAtlas(state, value)))
+						if (rare and seal) or chest or not (town and Town.Held(town, "other")) then
 							add("hn:" .. name .. ":" .. (map2 or id) .. ":" .. coord, map2 or id, x, y, spec)
 						end
 					end
@@ -1219,8 +1263,8 @@ do
 		if not (mini.want and RL and Used("HandyNotes")) then
 			return nil
 		end
-		if RL.MiniRares and RL.MiniRares() then
-			return "owned"
+		if (RL.MiniRares and RL.MiniRares()) or not RaresOn() then
+			return "owned"   -- (2.1.92: or the map's Rares switch off -- the plugin's off the minimap, nothing for them)
 		end
 		return RL.MiniSeal and RouteLayer() and "dressed" or nil
 	end
@@ -1261,6 +1305,7 @@ do
 			f = CreateFrame("Frame", nil, frame)
 			f:SetFrameLevel(frame:GetFrameLevel() + 1)   -- (under the quest marks, as the town marks)
 			MelloUI.RareScannerLook.MiniSeal(f, "rare")
+			f.kind = "rare"
 			if f.SetMouseClickEnabled then
 				f:EnableMouse(true)
 				f:SetMouseClickEnabled(false)
@@ -1294,6 +1339,10 @@ do
 						if on then
 							n = n + 1
 							local f = Mark(n, frame)
+							if f.kind ~= (p.kind or "rare") then   -- (2.1.92: a rare's seal or a treasure's)
+								f.kind = p.kind or "rare"
+								MelloUI.RareScannerLook.MiniSeal(f, f.kind)
+							end
 							f.plugin, f.mapID, f.coord = p.plugin, p.mapID, p.coord
 							Route.MarkPlace(f, size, frame, "CENTER", gx, gy)
 						end
@@ -1348,23 +1397,31 @@ do
 		if not (okN and type(state) == "table") then
 			return nil
 		end
+		-- the rares (off, ours in their seal only while "dressed") and (2.1.92) the treasures (ours in their seal
+		-- wherever Route's layer is there: no owner before the plugin -- else HandyNotes' own stay)
 		local gone
 		for icon in pairs(laid) do
-			if type(icon) == "table" and RareNode(state, icon.coord) then
-				gone = gone or {}
-				gone[#gone + 1] = icon
+			if type(icon) == "table" then
+				local kind = RareNode(state, icon.coord) and "rare" or TreasureNode(state, icon.coord) and "treasure" or nil
+				if kind then
+					gone = gone or {}
+					gone[#gone + 1] = { icon = icon, kind = kind }
+				end
 			end
 		end
-		local R = mode == "dressed" and RouteLayer() or nil
+		local layer = RouteLayer()
 		local list
-		for _, icon in ipairs(gone or {}) do
-			pcall(pins.RemoveMinimapIcon, pins, ref, icon)
-			local c = R and Finite(icon.coord)
+		for _, g in ipairs(gone or {}) do
+			local R = (g.kind == "treasure" or mode == "dressed") and layer or nil
+			if R or g.kind == "rare" then
+				pcall(pins.RemoveMinimapIcon, pins, ref, g.icon)
+			end
+			local c = R and Finite(g.icon.coord)
 			if c then
 				local okY, cont, x, y = pcall(R.ToYards, zone, floor(c / 10000) / 10000, (c % 10000) / 10000)
 				if okY and cont and x and y then
 					list = list or {}
-					list[#list + 1] = { cont = cont, x = x, y = y, mapID = zone, coord = c, plugin = name }
+					list[#list + 1] = { cont = cont, x = x, y = y, mapID = zone, coord = c, plugin = name, kind = g.kind }
 				end
 			end
 		end
@@ -1405,6 +1462,14 @@ do
 			if was and type(hn.UpdateMinimap) == "function" then
 				pcall(hn.UpdateMinimap, hn)
 			end
+		end
+	end
+	-- (2.1.92) the map's Rares switch turned: HandyNotes lays its minimap icons again (its own UpdateMinimap, a
+	-- plugin at a time through the hooked UpdateMinimapPlugin), and they are sorted by the switch as it stands now
+	function AddonPins.MiniRaresChanged()
+		local hn = mini.want and Ace("HandyNotes")
+		if hn and type(hn.UpdateMinimap) == "function" then
+			pcall(hn.UpdateMinimap, hn)
 		end
 	end
 	AddonPins.mini = mini   -- (the tests)

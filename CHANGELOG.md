@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.92
+
+- Fixed: since 2.1.90, Buffs & Debuffs could stop at login with "Anchoring disallowed ... UntrustedLayoutScriptExecution" when the target's buffs and debuffs were on. Your nameplates' auras were then not MelloUI's, and the game's own row under the target frame stayed seen beneath MelloUI's.
+- Fixed: in the Minimal chat view, clicking the language's name on the line you type in did nothing, and the view's scroll bar could not be dragged. The game's own chat window lies hidden under the view, and its scroll bar, resize grip and other buttons still caught the mouse there; they no longer do, and the language switch sits above the line you type in. A click on the name also no longer closes an empty line before the game's menu can open.
+- Map: spirit healers are on MelloUI's map and the minimap (Map Layers > Travel > Spirit healers, on). Their places come from Questie, or from the game where it lists them. The Spirit healers row under HandyNotes is gone: its plugin had none to show.
+- Map: a Rares switch in Map Layers, under HandyNotes, for the rares a HandyNotes plugin such as HandyNotes: WoW Forever puts on the map and the minimap. On as before.
+- Map: chests are drawn as MelloUI's chest icon alone, without the round plate, like the rares: a HandyNotes plugin's (such as HandyNotes: WoW Forever's) and RareScanner's, on the map and the minimap, in every look. An opened chest is faded.
+- Fixed: flight masters showed twice on MelloUI's map with HandyNotes: WoW Forever, its own icon beside MelloUI's. While Flight masters is on in Map Layers, only MelloUI's show.
+- Fixed (Oldschool, with MelloUI's map off): a quest found with the quest log's search would not open when clicked, and its title moved down a little with each click. While a search was typed in, the log kept rebuilding its list under the mouse; it no longer does.
+- Fixed: a Lua error at login, "Texture already has the maximum number of mask textures (3)", from the game's party frames, for example after a cinematic. Bar Textures took every mask slot of their bars, and the game could not add its own again; it always keeps one free now.
+
 ## 2.1.91
 
 - Chat: the Minimal chat view lets you switch the language you speak. While you type, the language's name stands at the right end of the line; click it for the game's chat menu, with Language, emotes and macros in it. It shows for a character who speaks more than one language.
