@@ -4964,6 +4964,14 @@ Lang:Add("frFR", {
 	["Last events (seconds, newest last):"] = "Derniers événements (en secondes, les plus récents en dernier) :",
 	-- kept: MelloUI_Chat/ChatView.lua
 	["Whisper someone"] = "Chuchoter à quelqu’un",
+	["Speak in say (/s )."] = "Parler sur le canal Dire (/s ).",
+	["Speak in party (/p )."] = "Parler sur le canal Groupe (/p ).",
+	["Speak in raid (/ra )."] = "Parler sur le canal Raid (/ra ).",
+	["Speak in instance (/i )."] = "Parler sur le canal Instance (/i ).",
+	["Speak in guild (/g )."] = "Parler sur le canal Guilde (/g ).",
+	["Speak in yell (/y )."] = "Parler sur le canal Crier (/y ).",
+	["Speak in whisper someone (/w )."] = "Envoyer un message privé (/w Nom).",
+	["Speak in emote (/e )."] = "Faire une emote (/e ).",
 	["Friends"] = "Amis",
 	["Your friends list."] = "Votre liste d’amis.",
 	["The damage meter's fights."] = "Les combats du compteur de dégâts.",
@@ -6064,14 +6072,6 @@ Lang:Add("frFR", {
 -- stale: ["Sounds:"] = "Sons :",
 -- stale: ["Space between the name / debuff row and the crowd-control icon."] = "L'espace entre la ligne nom / affaiblissements et l'icône de contrôle.", -- draft
 -- stale: ["Speak in %s (%s)."] = "Choisir le mode %s (%s).",
--- stale: ["Speak in emote (/e )."] = "Faire une emote (/e ).",
--- stale: ["Speak in guild (/g )."] = "Parler sur le canal Guilde (/g ).",
--- stale: ["Speak in instance (/i )."] = "Parler sur le canal Instance (/i ).",
--- stale: ["Speak in party (/p )."] = "Parler sur le canal Groupe (/p ).",
--- stale: ["Speak in raid (/ra )."] = "Parler sur le canal Raid (/ra ).",
--- stale: ["Speak in say (/s )."] = "Parler sur le canal Dire (/s ).",
--- stale: ["Speak in whisper someone (/w )."] = "Envoyer un message privé (/w Nom).",
--- stale: ["Speak in yell (/y )."] = "Parler sur le canal Crier (/y ).",
 -- stale: ["Spell groups for every class: one layout for all your characters; a spell you switch off is your class's own tweak."] = "Groupes de sorts pour chaque classe : une disposition pour tous vos personnages ; un sort que vous désactivez ne vaut que pour votre classe.", -- draft
 -- stale: ["Spot"] = "Emplacement", -- draft
 -- stale: ["Stack: a column beside the enemy"] = "Pile : une colonne à côté de l'ennemi",
