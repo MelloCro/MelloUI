@@ -1510,6 +1510,15 @@ OB.Bags = B
 local BM = { allBagButtons = {}, expandBar = true, expandBarAuto = false }
 OB.BagManager = BM
 
+-- the bag buttons are secure: defer layout changes until combat ends
+local function BagsLater(fn, key)
+	if InCombatLockdown() then
+		MelloUI.Kit:WhenOutOfCombat(fn, key)
+		return true
+	end
+	return false
+end
+
 function BM:EnumerateBagButtons()
 	return ipairs(self.allBagButtons)
 end
@@ -1526,7 +1535,14 @@ function BM:ToggleExpandBar()
 	SetCVar("expandBagBar", not GetCVarBool("expandBagBar"))
 end
 
+local function ExpandAgain()
+	BM:OnExpandBarChanged()
+end
+
 function BM:OnExpandBarChanged()
+	if BagsLater(ExpandAgain, "OwnBars: the bag bar opened or folded") then
+		return
+	end
 	local bar = B.bar
 	if bar and bar:ShouldShowExpandToggle() then
 		local open = self:ShouldBarExpand()
@@ -1610,6 +1626,9 @@ function BAR.GetBagBarLength(self)
 end
 
 function BAR.Layout(self)
+	if BagsLater(function() self:Layout() end, "OwnBars: the bag bar laid") then
+		return
+	end
 	local horizontal = self:IsHorizontal()
 	for _, button in BM:EnumerateBagButtons() do
 		if button.UpdateOrientation then
@@ -1960,10 +1979,6 @@ local function OnHideSlot(self)
 	ItemContextOff(self)
 end
 
-local function OnClick(self, button, down)
-	self:BagSlotOnClick(button, down)
-end
-
 local function OnDragStart(self, button)
 	self:BagSlotOnDragStart(button)
 end
@@ -2057,7 +2072,8 @@ local function NewButton(bar, gameName, game)
 			return nil
 		end
 	end
-	local ok, b = pcall(CreateFrame, "ItemButton", OUR_NAME[gameName], bar)
+	-- secure: opening bags from our own OnClick tainted the bank frame (#68), so clicks go to the game's button
+	local ok, b = pcall(CreateFrame, "ItemButton", OUR_NAME[gameName], bar, "SecureActionButtonTemplate")
 	if not (ok and type(b) == "table" and b.icon and b.GetNormalTexture) then
 		return nil
 	end
@@ -2088,6 +2104,9 @@ local function NewButton(bar, gameName, game)
 	end
 	SlotParts(b, game)
 	b:RegisterForClicks("AnyUp")
+	b:SetAttribute("type", "click")
+	b:SetAttribute("clickbutton", game)
+	b:SetAttribute("useOnKeyDown", false)
 	b.isBag = 1
 	b.maxDisplayCount = 999
 	b.UpdateTooltip = b.BagSlotOnEnter
@@ -2130,7 +2149,6 @@ local function NewButton(bar, gameName, game)
 	b:SetScript("OnEvent", BTN.OnEvent)
 	b:SetScript("OnShow", OnShowSlot)
 	b:SetScript("OnHide", OnHideSlot)
-	b:SetScript("OnClick", OnClick)
 	b:SetScript("OnDragStart", OnDragStart)
 	b:SetScript("OnReceiveDrag", OnReceiveDrag)
 	b:SetScript("OnEnter", OnEnter)
@@ -2325,7 +2343,10 @@ end
 
 -- the bag bar where it should stand (fr-18 sim): a place of its own where the store says, else on the game's bag bar
 local function BagsFollow()
-	if OB.standing.bags and Place(B.bar) and OnGame(B.bar, B.game) then
+	if not OB.standing.bags or BagsLater(BagsFollow, "OwnBars: the bag bar placed") then
+		return
+	end
+	if Place(B.bar) and OnGame(B.bar, B.game) then
 		MelloUI:Fire("bagbar")   -- (Action Bars' backdrop laid round it again)
 	end
 end
@@ -2366,7 +2387,7 @@ local function BagsBack()
 end
 
 local function BagsOn(db)
-	if not BuildBags() then
+	if InCombatLockdown() or not BuildBags() then
 		return false
 	end
 	BagsAway()
@@ -2415,7 +2436,7 @@ end
 
 local PARTS = {
 	{ id = "status", on = StatusOn, off = StatusOff },
-	{ id = "bags", on = BagsOn, off = BagsOff },
+	{ id = "bags", on = BagsOn, off = BagsOff, secure = true },
 }
 
 -- (fr-18b) a part of ours in another file (Modules/OwnActionBars.lua): { id, on(db) -> done, off(), secure = true:

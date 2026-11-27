@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.94
+
+- Fixed: with MelloUI's action bars, using an item in the game's bags could fail with "MelloUI tried to call UseContainerItem()", often after visiting the bank. The bag bar now opens bags through the game's own buttons. During combat, bag bar layout changes wait until the fight ends.
+
 ## 2.1.93
 
 - Fixed: in a German game, both buttons of the question before abandoning a quest said "Abbrechen". The one that abandons it says "Quest abbrechen" now (Abandon Quest in English), the game's own words, in the question and in the Quest Tracker's right-click menu.
