@@ -2093,9 +2093,11 @@ function Act.Abandon(id)
 	else
 		ok, text = pcall(string.format, Act.Text("ABANDON_QUEST_CONFIRM", "Abandon \"%s\"?"), title)
 	end
+	-- its yes in the game's words for the deed (ABANDON_QUEST, as the game's own quest menu), never the short
+	-- ABANDON_QUEST_ABBREV: German's is "Abbrechen", the word for Cancel too, and both buttons read the same
 	MelloUI:Confirm({
 		text = ok and text or title,
-		accept = Act.Text("ABANDON_QUEST_ABBREV", "Abandon"),
+		accept = Act.Text("ABANDON_QUEST", "Abandon Quest"),
 		onAccept = function()
 			local before = Act.Pick(id)
 			pcall(Q.AbandonQuest)
@@ -2147,7 +2149,8 @@ function Act.Menu(block, id)
 			Act.LinkInChat(id)
 		end)
 		if Act.CanAbandon(id) then
-			root:CreateButton(Act.Text("ABANDON_QUEST_ABBREV", "Abandon"), function()
+			-- the game's own quest menu's words (ABANDON_QUEST: German "Quest abbrechen"; the short one reads Cancel)
+			root:CreateButton(Act.Text("ABANDON_QUEST", "Abandon Quest"), function()
 				Act.Abandon(id)
 			end)
 		end

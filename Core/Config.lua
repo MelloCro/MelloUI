@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.93", lines = {
+		"Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel.",
+	} },
 	{ version = "2.1.92", lines = {
 		"Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up.",
 		"Chat: clicking the language's name on the line you type in opens the chat menu now.",
@@ -201,9 +204,6 @@ local CHANGELOG = {
 		"Chat: the Minimal chat view has a scroll bar while a tab holds more lines than fit.",
 		"Discard: hold Shift at a vendor to sell the cheapest stack of everything, also what the auction pays more for.",
 	} },
-	{ version = "2.1.88", lines = {
-		"Nameplates: Class Coloured Player Names. Players' names in their class colour, a switch each for enemy and friendly players.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -214,11 +214,11 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.93"] = { false },
 	["2.1.92"] = { "Auras.target", "Chat.view", "=map", "=map", "Chat.view", "=map", "=map", false, false },
 	["2.1.91"] = { "Chat.view" },
 	["2.1.90"] = { "Auras.target", false },
 	["2.1.89"] = { "=map", "=quest tracker", "Chat.view", "Discard.bagButton" },
-	["2.1.88"] = { "Nameplates.classNames" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },

@@ -2466,6 +2466,7 @@ Lang:Add("zhCN", {
 	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "地图：使用 HandyNotes: WoW Forever 时，飞行管理员不再重复显示。", -- draft
 	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "任务日志：通过搜索找到的任务再次可以点击打开（Oldschool）。", -- draft
 	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "修复了登录时游戏小队框体的一个 Lua 错误（遮罩纹理）。", -- draft
+	["Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel."] = "任务：放弃任务的按钮现在显示“放弃任务”。德语里它和“取消”按钮写的一样。", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "聊天：在极简视图中，点击输入行上的语言名称即可切换你说的语言。", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "增益和减益效果：将鼠标悬停在目标的增益或减益上时，会重新显示它自己的鼠标提示，而不是别的效果的。", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "手柄：MelloUI 的复制窗口不再从游戏的聊天输入行抢走键盘。点击其中的文本即可选中。", -- draft

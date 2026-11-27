@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.93
+
+- Fixed: in a German game, both buttons of the question before abandoning a quest said "Abbrechen". The one that abandons it says "Quest abbrechen" now (Abandon Quest in English), the game's own words, in the question and in the Quest Tracker's right-click menu.
+
 ## 2.1.92
 
 - Fixed: since 2.1.90, Buffs & Debuffs could stop at login with "Anchoring disallowed ... UntrustedLayoutScriptExecution" when the target's buffs and debuffs were on. Your nameplates' auras were then not MelloUI's, and the game's own row under the target frame stayed seen beneath MelloUI's.

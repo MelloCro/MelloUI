@@ -2466,6 +2466,7 @@ Lang:Add("koKR", {
 	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "지도: HandyNotes: WoW Forever 사용 시 비행 조련사가 더 이상 두 번 표시되지 않습니다.", -- draft
 	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "퀘스트 목록: 검색으로 찾은 퀘스트가 다시 클릭으로 열립니다 (Oldschool).", -- draft
 	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "접속할 때 게임의 파티 프레임에서 나던 Lua 오류를 고쳤습니다 (마스크 텍스처).", -- draft
+	["Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel."] = "퀘스트: 퀘스트를 포기하는 버튼에 이제 '퀘스트 포기'라고 나옵니다. 독일어에서는 취소 버튼과 같은 말이었습니다.", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "대화: 최소 보기에서 입력줄에 있는 언어 이름을 클릭하면 사용하는 언어를 바꿀 수 있습니다.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "강화 및 약화 효과: 대상의 강화 또는 약화 효과에 마우스를 올리면 다른 효과가 아닌 그 효과의 툴팁이 다시 표시됩니다.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "컨트롤러: MelloUI의 복사 창이 더 이상 게임 채팅 입력줄에서 키보드를 가져가지 않습니다. 텍스트를 클릭하면 선택됩니다.", -- draft

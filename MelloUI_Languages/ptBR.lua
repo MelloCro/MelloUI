@@ -2466,6 +2466,7 @@ Lang:Add("ptBR", {
 	["Map: flight masters no longer show twice with HandyNotes: WoW Forever."] = "Mapa: os mestres de voo não aparecem mais duas vezes com o HandyNotes: WoW Forever.", -- draft
 	["Quest log: a quest found with its search opens on click again (Oldschool)."] = "Registro de missões: uma missão encontrada pela busca volta a abrir com um clique (Oldschool).", -- draft
 	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Corrigido um erro de Lua dos quadros de grupo do jogo ao entrar (texturas de máscara).", -- draft
+	["Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel."] = "Missões: o botão que abandona uma missão agora diz Abandonar missão. Em alemão dizia o mesmo que Cancelar.", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Bate-papo: na visão Mínima, clique no nome do idioma na linha em que você digita para trocar o idioma que você fala.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Bônus e penalidades: passar o mouse sobre um bônus ou uma penalidade do alvo volta a mostrar a dica dele, e não a de outro.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Controle: a janela de cópia do MelloUI não tira mais o teclado da linha de bate-papo do jogo. Clique no texto para selecioná-lo.", -- draft
