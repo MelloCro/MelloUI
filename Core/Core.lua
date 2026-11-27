@@ -804,6 +804,41 @@ do
 	end
 end
 
+-- (2.1.90; the controller player's reports on 2.1.89) /mellobug typed into the chat opened the copy window, whose box
+-- took the keyboard from the game's chat line: the chat window's own pad focus then ended inside MelloUI's run (its
+-- footer hidden, the window manager's FrameHidden, three slots of the registries), which the chat line's next open
+-- reads -- its pad buttons MelloUI's from there. In the Gamepad UI a box of MelloUI's takes the keyboard from nothing
+-- or from another of MelloUI's, never from a box of the game's: there the player's own press on it does, a run of the
+-- game's.
+--   Safe.Focus(box) -> true when the box took the keyboard
+do
+	local ours = setmetatable({}, { __mode = "k" })   -- [box] = true: asked here before
+
+	local function Own(frame)
+		if ours[frame] then
+			return true
+		end
+		local ok, name = pcall(frame.GetName, frame)
+		return ok and type(name) == "string" and not (issecretvalue and issecretvalue(name)) and name:find("^MelloUI") ~= nil
+	end
+
+	function Safe.Focus(box)
+		if type(box) ~= "table" or type(box.SetFocus) ~= "function" then
+			return false
+		end
+		ours[box] = true
+		if Safe.GamepadUI() then
+			local get = rawget(_G, "GetCurrentKeyBoardFocus")
+			local ok, held = pcall(get or error)
+			if ok and type(held) == "table" and held ~= box and not Own(held) then
+				return false
+			end
+		end
+		box:SetFocus()
+		return true
+	end
+end
+
 -- The screen as a player names it: its size in pixels and its aspect ratio
 -- ("32:9", "21:9", "16:9", "16:10", "3:2", "4:3", "5:4": the nearest one,
 -- and no label when none is within 4 %, as a triple screen or a 32:10), from
@@ -4218,13 +4253,18 @@ function MelloUI:ShowText(title, text)
 	local W = MelloUI.Widgets
 	f.onAccept = nil
 	f.accept:Hide()
-	f.hint:SetText(W.Tr("Ctrl+A, Ctrl+C to copy  -  Esc closes"))
 	f.title:SetText(COPY_TITLE .. W.Tr(title or ""))
 	f.text = text or ""
 	f.edit:SetText(f.text)
 	f:Show()
-	f.edit:SetFocus()
-	f.edit:HighlightText()
+	-- (2.1.90: Safe.Focus -- in the Gamepad UI the keyboard is never taken from the game's chat line; the player's click
+	-- on the text takes it, and the box marks all of it then)
+	if Safe.Focus(f.edit) then
+		f.hint:SetText(W.Tr("Ctrl+A, Ctrl+C to copy  -  Esc closes"))
+		f.edit:HighlightText()
+	else
+		f.hint:SetText(W.Tr("Click the text, then Ctrl+C to copy  -  Esc closes"))
+	end
 end
 
 -- An empty box to paste into; Import calls onAccept(text), and the window
@@ -4234,12 +4274,15 @@ function MelloUI:ShowPaste(title, onAccept)
 	local W = MelloUI.Widgets
 	f.onAccept = onAccept
 	f.accept:Show()
-	f.hint:SetText(W.Tr("Ctrl+V to paste  -  Esc closes"))
 	f.title:SetText(COPY_TITLE .. W.Tr(title or ""))
 	f.text = ""
 	f.edit:SetText("")
 	f:Show()
-	f.edit:SetFocus()
+	if Safe.Focus(f.edit) then
+		f.hint:SetText(W.Tr("Ctrl+V to paste  -  Esc closes"))
+	else
+		f.hint:SetText(W.Tr("Click the box, then Ctrl+V to paste  -  Esc closes"))
+	end
 end
 
 function MelloUI:ShowLog(title)

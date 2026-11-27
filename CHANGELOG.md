@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.90
+
+- Buffs & Debuffs: hovering a buff or debuff under the target frame shows that aura's own tooltip again. On a target with both, the pointer also reached the game's hidden icons under MelloUI's, so another aura's tooltip showed, and the target frame lit up as if the pointer were on it.
+- Controller: MelloUI's copy window (/mellobug, /mellolog) no longer takes the keyboard from the game's chat line. With the Gamepad UI on that could leave the game refusing pad actions later. Click the text to select it.
+- Controller: /mellobug now says where the game's pad buttons first stopped being the game's own.
+
 ## 2.1.89
 
 - Map: on a battleground's map, hover a group member's dot to see who it is. Their name shows at the pointer in their class colour, and every name when several dots lie together, as on the game's own map.

@@ -2457,6 +2457,8 @@ Lang:Add("koKR", {
 	["The people who help keep MelloUI going."] = "MelloUI가 계속 나아가도록 돕는 분들입니다.", -- draft
 	["Addons"] = "애드온", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "MelloUI와 함께 작동하는 애드온: 각각으로 무엇을 하는지, 설정이 어디 있는지.", -- draft
+	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "강화 및 약화 효과: 대상의 강화 또는 약화 효과에 마우스를 올리면 다른 효과가 아닌 그 효과의 툴팁이 다시 표시됩니다.", -- draft
+	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "컨트롤러: MelloUI의 복사 창이 더 이상 게임 채팅 입력줄에서 키보드를 가져가지 않습니다. 텍스트를 클릭하면 선택됩니다.", -- draft
 	["Map: on a battleground's map, hover a group member's dot to see their name."] = "지도: 전장 지도에서 파티원의 점에 마우스를 올리면 이름이 표시됩니다.", -- draft
 	["Quest Tracker: its scroll bar works with the mouse now. Drag it or click it to scroll the list."] = "퀘스트 추적기: 스크롤 막대를 이제 마우스로 쓸 수 있습니다. 끌거나 클릭하여 목록을 스크롤하세요.", -- draft
 	["Chat: the Minimal chat view has a scroll bar while a tab holds more lines than fit."] = "대화: 탭에 들어가는 것보다 많은 줄이 있을 때 최소 대화 보기에 스크롤 막대가 표시됩니다.", -- draft
@@ -2466,12 +2468,6 @@ Lang:Add("koKR", {
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "이름표: 이름표 디자이너에서 숨긴 이름은 짧은 이름으로 표시되는 플레이어에게도 숨겨집니다.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "전투 문자: 치유 숫자가 이제 치유처럼 보입니다. 숫자 앞에 +가 붙고, 부드러운 빛과 함께 떠오르며, 타격 효과가 없습니다.", -- draft
 	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "전투 문자: 파티에서 누군가를 치유한 뒤에도 무기 공격 숫자가 사라지지 않습니다.", -- draft
-	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "전투 문자: 전투 피해 스타일(이전의 내 피해)이 새로워졌습니다. Pop, Slam, Stamp 중에서 고르세요. 더 경쾌한 타격, 번쩍이며 꽂히는 치명타.", -- draft
-	["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "전투 문자: 캐릭터 주변 문자에도 Pop, Slam, Stamp를 쓸 수 있습니다. Edit Position으로 종류별 영역을 옮기고 크기를 조절합니다.", -- draft
-	["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "전투 문자: 피해 숫자 외곽선, 그리고 주문 피해는 속성 색으로 표시됩니다.", -- draft
-	["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "전투 문자: 파티에서도 내 피해를 MelloUI 모양으로 표시합니다(테스트). 지속 피해는 작은 전용 줄에 표시됩니다.", -- draft
-	["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "전투 문자: 치유 숫자. 아군에게 준 치유가 같은 모양으로 그 이름표에 표시됩니다.", -- draft
-	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool: 테두리 탭이 짧아졌습니다. 이름표 테두리와 레벨 구슬은 없어졌습니다. 프레임 세트가 둘 다 그립니다.", -- draft
 	["Report a problem"] = "문제 보고", -- draft
 	["Voice pack"] = "음성 팩", -- draft
 	["open or close this window"] = "이 창 열기 또는 닫기", -- draft
@@ -2959,6 +2955,9 @@ Lang:Add("koKR", {
 	["Not shown (RareScanner adds them)"] = "표시 안 함 (RareScanner가 추가함)", -- draft
 	["MelloUI's own steps aside while Polestar's switch is on"] = "Polestar 스위치가 켜져 있는 동안 MelloUI 기능은 물러남", -- draft
 	["Polestar's switch for it is off"] = "Polestar의 해당 스위치가 꺼져 있음", -- draft
+	-- Core/Core.lua
+	["Click the text, then Ctrl+C to copy  -  Esc closes"] = "텍스트를 클릭한 다음 Ctrl+C로 복사  -  Esc로 닫기", -- draft
+	["Click the box, then Ctrl+V to paste  -  Esc closes"] = "입력 칸을 클릭한 다음 Ctrl+V로 붙여넣기  -  Esc로 닫기", -- draft
 	-- Core/Preview.lua
 	["In a fight"] = "전투 중", -- draft
 	-- Core/LevelCard.lua
@@ -3314,8 +3313,13 @@ Lang:Add("koKR", {
 -- stale: ["Colour the border of unit tooltips by class (players) or reaction (NPCs)."] = "개체 툴팁의 테두리를 직업(플레이어) 또는 관계(NPC)로 칠합니다.", -- draft
 -- stale: ["Colour the tooltip health bar by class or reaction instead of green."] = "툴팁 생명력 막대를 녹색 대신 직업이나 관계 색으로 칠합니다.", -- draft
 -- stale: ["Combat Text Style"] = "전투 문자 스타일", -- draft
+-- stale: ["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "전투 문자: 전투 피해 스타일(이전의 내 피해)이 새로워졌습니다. Pop, Slam, Stamp 중에서 고르세요. 더 경쾌한 타격, 번쩍이며 꽂히는 치명타.", -- draft
+-- stale: ["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "전투 문자: 치유 숫자. 아군에게 준 치유가 같은 모양으로 그 이름표에 표시됩니다.", -- draft
+-- stale: ["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "전투 문자: 피해 숫자 외곽선, 그리고 주문 피해는 속성 색으로 표시됩니다.", -- draft
+-- stale: ["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "전투 문자: 캐릭터 주변 문자에도 Pop, Slam, Stamp를 쓸 수 있습니다. Edit Position으로 종류별 영역을 옮기고 크기를 조절합니다.", -- draft
 -- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "전투 문자: 내 피해가 새로워졌습니다. Pop, Slam, Stamp 중에서 고르세요. 더 경쾌한 타격, 번쩍이며 꽂히는 치명타.", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "전투 문자: 몇 초마다 생겼다 사라지는 효과(소환수와의 악마의 지식)는 한 번만 표시합니다.", -- draft
+-- stale: ["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "전투 문자: 파티에서도 내 피해를 MelloUI 모양으로 표시합니다(테스트). 지속 피해는 작은 전용 줄에 표시됩니다.", -- draft
 -- stale: ["Combat, frames and tooltips"] = "전투, 창, 툴팁", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "간소화 공격대 창, 그룹 테두리, 토템에 키트 적용.", -- draft
 -- stale: ["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "설정 창: 애니메이션, 강화 및 약화 효과, 지도, 후원자가 모든 스킨에서 고유 아이콘을 가집니다.", -- draft
@@ -3755,6 +3759,7 @@ Lang:Add("koKR", {
 -- stale: ["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Oldschool의 행동 단축바는 그려진 테두리를 유지하고, Default의 플레이어 프레임은 확대해도 선명합니다.", -- draft
 -- stale: ["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: 유닛 프레임, 시전바, 개인 표시기, 이름표, 채팅에 새 테두리가 생겼습니다. 테두리 > 프레임 세트에서 세 가지 중 고를 수 있습니다: 금박 석재, 단조 철, 조각 목재.", -- draft
 -- stale: ["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "올드스쿨: 진행 바가 마름모 장식 받침 대신 프레임 세트의 프레임을 입고, 목록의 줄은 두꺼운 금색 막대 대신 어두운 바탕의 차분한 선으로 바뀝니다.", -- draft
+-- stale: ["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool: 테두리 탭이 짧아졌습니다. 이름표 테두리와 레벨 구슬은 없어졌습니다. 프레임 세트가 둘 다 그립니다.", -- draft
 -- stale: ["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: CurseForge가 MelloUI_Oldschool보다 MelloUI를 먼저 업데이트해도 손그림 외형이 더 이상 꺼지지 않습니다. 같은 2.1 시리즈의 Oldschool이면 모두 맞습니다.", -- draft
 -- stale: ["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "올드스쿨: 퀘스트 애니메이션이 프레임 세트를 입습니다. 아이콘은 세트의 고리 안에, 글자는 세트 프레임의 판 위에, 그려진 빛과 함께 표시됩니다.", -- draft
 -- stale: ["On a quest's tooltip in the Quest List, name your other characters who have done the quest or have it in their quest log. A character is noted each time it logs out; /mello alts lists them and forgets a deleted one."] = "퀘스트 리스트의 퀘스트 툴팁에 그 퀘스트를 했거나 목록에 가진 다른 캐릭터의 이름을 보여 줍니다. 캐릭터는 접속을 끊을 때마다 기록되며, /mello alts 가 목록을 보여 주고 지운 캐릭터를 잊습니다.", -- draft

@@ -1578,7 +1578,68 @@ BUG.WRITE_HOOKS = {
 	{ path = { "GamepadSharedUtility", "InputBindingManager" }, slots = { "currentCoreBindingActive" },
 		lists = { "activeBindings" }, methods = { "AddBindingSet", "RemoveSet" } },
 	{ path = { "GamepadMainActionBarFrame", "PageUnit" }, slots = { "activeBar" }, methods = { "SetActiveActionBar" } },
+	-- (2.1.90) the binding sets' factory: plain functions (`plain`: the call's first value is the set's group), and
+	-- the group itself is asked, not the pad's values (`factory`: BUG.Factory below)
+	{ path = { "GamepadMode" }, slots = {}, plain = true, factory = true,
+		methods = { "ActivateBindingGroup", "DeactivateBindingGroup", "UncacheBindingGroup" } },
 }
+
+-- (2.1.90; the controller player's eleven reports on 2.1.89, read against build 71139's own files) Where a window's pad
+-- buttons take an addon's name. Every binding set of the pad is made by ONE function of the game's
+-- (GamepadMode.CreateBindingGroup, Blizzard_GamepadSharedUtility's BindingSetFactory.lua), which reads and raises one
+-- counter kept beside it (nextBindingGroupId: the set's number, the tail of its name), and a window's footer makes a
+-- new set at every refresh. So one set made inside an addon's run leaves the counter that addon's, and from then on
+-- every set of every window is: the next game window that opens writes its bindings so, and a later close is
+-- forbidden. It fits every report -- the first value that turned was always the next window's footer set, on a way all
+-- the game's own, with none of the watched calls run from MelloUI's code. The counter cannot be asked for (a local of
+-- the game's file); a set's name can. Each group handed to the factory's other calls is asked who wrote its name. Kept:
+-- the last set that was the game's and the first that was not -- its name says which footer's it is, the two numbers
+-- between which the counter turned, and when it is activated in the run that made it (a shown footer's), the way there
+-- is that run's own. One ask a call until the first is found, none after.
+BUG.factory = {}
+function BUG.Factory(method, group)
+	local F = BUG.factory
+	if F.first or type(group) ~= "table" then
+		return
+	end
+	local check = rawget(_G, "issecurevariable")
+	if type(check) ~= "function" then
+		return
+	end
+	local at = BUG.beganAt and math.floor(GetTime() - BUG.beganAt) or nil
+	local ok, secure, by = pcall(check, group, "name")
+	if not (ok and secure == false) then
+		F.clean, F.cleanAt, F.seen = BUG.WhatName(group), at, (F.seen or 0) + 1
+		return
+	end
+	by = tostring(by)
+	local okW, way = pcall(BUG.Way)
+	F.first = {
+		name = BUG.WhatName(group), by = by, at = at, call = method, combat = InCombatLockdown() and true or false,
+		way = okW and way or nil, clean = F.clean, cleanAt = F.cleanAt, seen = F.seen or 0,
+	}
+end
+
+-- the report's lines of it (nil: no set was ever asked)
+function BUG.FactoryLines()
+	local F = BUG.factory
+	local first = F.first
+	if not first then
+		if not F.seen then
+			return nil
+		end
+		return { format("The pad's binding sets: all %d asked were the game's own (the last: %s, %s s in).", F.seen,
+			tostring(F.clean or "?"), tostring(F.cleanAt or "?")) }
+	end
+	local out = { format("The pad's binding sets turned %s's at %s, %s s in, %s (the game's %s); the last of the game's own "
+		.. "before it: %s, %s s in, of %d asked", first.by, first.name, tostring(first.at or "?"),
+		first.combat and "in combat" or "out of combat", first.call, tostring(first.clean or "none"),
+		tostring(first.cleanAt or "?"), first.seen) }
+	for _, line in ipairs(first.way or {}) do
+		out[#out + 1] = "  " .. line
+	end
+	return out
+end
 
 -- a frame's name, a binding set's own name, or what it is (never a secret)
 function BUG.WhatName(v)
@@ -1896,13 +1957,20 @@ function BUG.HookPad()
 				local only = spec.only
 				for _, method in ipairs(spec.methods) do
 					if type(t[method]) == "function" then
-						rawHook(t, method, function(_, arg)
-							-- (a table of the game's own with other users: only the calls named, the secret test first)
-							if only and (Secret(arg) or type(arg) ~= "string" or not only[arg]) then
-								return
-							end
-							pcall(BUG.Wrote, spec, label, t, method, arg)
-						end)
+						if spec.factory then
+							-- (2.1.90: a plain function of the game's, its first value the set's group)
+							rawHook(t, method, function(group)
+								pcall(BUG.Factory, method, group)
+							end)
+						else
+							rawHook(t, method, function(_, arg)
+								-- (a table of the game's own with other users: only the calls named, the secret test first)
+								if only and (Secret(arg) or type(arg) ~= "string" or not only[arg]) then
+									return
+								end
+								pcall(BUG.Wrote, spec, label, t, method, arg)
+							end)
+						end
 					end
 				end
 			end
@@ -1937,6 +2005,10 @@ function BUG.WriteLines()
 		for _, line in ipairs(r.way or {}) do
 			out[#out + 1] = "  " .. line
 		end
+	end
+	-- (2.1.90) the binding sets' factory: where the sets' counter turned an addon's (BUG.Factory)
+	for _, line in ipairs(BUG.FactoryLines() or {}) do
+		out[#out + 1] = line
 	end
 	return out
 end

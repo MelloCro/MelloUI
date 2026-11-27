@@ -1679,6 +1679,46 @@ local function TargetFilter()
 	return M.db.targetOnlyMine and "HARMFUL|PLAYER" or "HARMFUL"
 end
 
+-- (2.1.90; sh4dd0w, Discord 2026-11-26: "the tooltips while mouse overing are all over the place, when target has both
+-- buffs and debuffs. Also the target frame itself gets in the way of hovering a buff/debuff") An aura button always
+-- hands the mouse on to what lies under it (the game's forbidden aspect AlwaysPropagateInput, its children's too). Under
+-- ours lie the game's own row -- invisible, still laid, in its own order (a friend's buffs first) with its own
+-- tooltips -- and the target frame. Two frames of ours take the pointer there, never a click: one over the game's row,
+-- one under ours. They are the target frame's children (an aura container's child would hand the mouse on too), and
+-- nothing is written on a frame of the game.
+local TargetCover = {}
+
+function TargetCover.New()
+	local f = CreateFrame("Frame", nil, TargetFrame)
+	if f.SetMouseMotionEnabled then
+		f:SetMouseMotionEnabled(true)   -- (the motion alone: a click goes on to the target frame, as before)
+	end
+	f:Hide()
+	return f
+end
+
+-- game: the game's row; level: just under our buttons, above every button of the game's
+function TargetCover.Lay(on, game, level)
+	if on and not TargetCover.own then
+		TargetCover.own, TargetCover.game = TargetCover.New(), TargetCover.New()
+		TargetCover.own:SetAllPoints(targetRows)
+	end
+	local own, over = TargetCover.own, TargetCover.game
+	if not own then
+		return
+	end
+	if on then
+		own:SetFrameLevel(level)
+		over:SetFrameLevel(level)
+		over:ClearAllPoints()
+		if game then
+			over:SetAllPoints(game)
+		end
+	end
+	own:SetShown(on and true or false)
+	over:SetShown((on and game) and true or false)
+end
+
 local function SetTarget(on)
 	local game = GameTargetRow()
 	if on and not targetRows and TargetFrame then
@@ -1703,6 +1743,7 @@ local function SetTarget(on)
 		end
 		Try(targetRows.SetEnabled, targetRows, on and true or false)
 		targetRows:SetShown(on and true or false)
+		TargetCover.Lay(on and true or false, game, math.max(targetRows:GetFrameLevel() - 1, 0))
 	end
 	Veil(game, on and true or false)
 end

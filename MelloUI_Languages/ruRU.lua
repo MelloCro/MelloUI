@@ -2457,6 +2457,8 @@ Lang:Add("ruRU", {
 	["The people who help keep MelloUI going."] = "Люди, благодаря которым MelloUI продолжает развиваться.", -- draft
 	["Addons"] = "Аддоны", -- draft
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Аддоны, с которыми работает MelloUI: что он делает с каждым и где их настройки.", -- draft
+	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Баффы и дебаффы: при наведении на бафф или дебафф цели снова показывается его собственная подсказка, а не чужая.", -- draft
+	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Контроллер: окно копирования MelloUI больше не забирает клавиатуру у строки чата игры. Щёлкните по тексту, чтобы выделить его.", -- draft
 	["Map: on a battleground's map, hover a group member's dot to see their name."] = "Карта: на карте поля боя наведите курсор на точку участника группы, чтобы увидеть его имя.", -- draft
 	["Quest Tracker: its scroll bar works with the mouse now. Drag it or click it to scroll the list."] = "Отслеживание заданий: полоса прокрутки теперь работает с мышью. Перетащите её или щёлкните по ней, чтобы прокрутить список.", -- draft
 	["Chat: the Minimal chat view has a scroll bar while a tab holds more lines than fit."] = "Чат: у минимального вида чата есть полоса прокрутки, когда во вкладке больше строк, чем помещается.", -- draft
@@ -2466,12 +2468,6 @@ Lang:Add("ruRU", {
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Индикаторы здоровья: имя, скрытое в конструкторе индикаторов, остаётся скрытым и у игроков с коротким именем.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Текст боя: числа исцеления теперь выглядят как исцеление: + перед числом, оно плавно поднимается с мягким светом, без эффектов удара.", -- draft
 	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Текст боя: в группе числа ваших ударов оружием больше не пропадают после того, как вы кого-то исцелили.", -- draft
-	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Текст боя: «Стиль боевого урона» (раньше «Ваш урон») переделан. Выберите Pop, Slam или Stamp: удары резче, а криты падают со вспышкой.", -- draft
-	["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "Текст боя: Pop, Slam и Stamp теперь и для текста вокруг персонажа. Edit Position перемещает область каждого вида и меняет её размер.", -- draft
-	["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "Текст боя: обводка чисел урона, а урон от заклинаний в цвете своей школы.", -- draft
-	["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "Текст боя: ваш урон в оформлении MelloUI теперь и в группе (тест), а тики идут отдельной маленькой дорожкой.", -- draft
-	["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "Текст боя: числа исцеления. Ваше исцеление союзников в том же стиле, у их индикатора здоровья.", -- draft
-	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool: вкладка «Рамки» стала короче. «Рамка индикаторов здоровья» и «Сфера уровня» убраны: и то, и другое рисует ваш Набор рамок.", -- draft
 	["Report a problem"] = "Сообщить о проблеме", -- draft
 	["Voice pack"] = "Пакет голосов", -- draft
 	["open or close this window"] = "открыть или закрыть это окно", -- draft
@@ -2959,6 +2955,9 @@ Lang:Add("ruRU", {
 	["Not shown (RareScanner adds them)"] = "Не показываются (их добавляет RareScanner)", -- draft
 	["MelloUI's own steps aside while Polestar's switch is on"] = "Собственная функция MelloUI уступает место, пока включён переключатель Polestar", -- draft
 	["Polestar's switch for it is off"] = "Переключатель Polestar для этого выключен", -- draft
+	-- Core/Core.lua
+	["Click the text, then Ctrl+C to copy  -  Esc closes"] = "Щёлкните по тексту, затем Ctrl+C, чтобы скопировать  -  Esc закрывает", -- draft
+	["Click the box, then Ctrl+V to paste  -  Esc closes"] = "Щёлкните по полю, затем Ctrl+V, чтобы вставить  -  Esc закрывает", -- draft
 	-- Core/Preview.lua
 	["In a fight"] = "В бою", -- draft
 	-- Core/LevelCard.lua
@@ -3314,8 +3313,13 @@ Lang:Add("ruRU", {
 -- stale: ["Colour the border of unit tooltips by class (players) or reaction (NPCs)."] = "Окрашивает рамку подсказок юнитов по классу (игроки) или отношению (NPC).", -- draft
 -- stale: ["Colour the tooltip health bar by class or reaction instead of green."] = "Окрашивает полосу здоровья в подсказке по классу или отношению вместо зелёного.", -- draft
 -- stale: ["Combat Text Style"] = "Стиль текста боя", -- draft
+-- stale: ["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Текст боя: «Стиль боевого урона» (раньше «Ваш урон») переделан. Выберите Pop, Slam или Stamp: удары резче, а криты падают со вспышкой.", -- draft
+-- stale: ["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "Текст боя: числа исцеления. Ваше исцеление союзников в том же стиле, у их индикатора здоровья.", -- draft
+-- stale: ["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "Текст боя: обводка чисел урона, а урон от заклинаний в цвете своей школы.", -- draft
+-- stale: ["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "Текст боя: Pop, Slam и Stamp теперь и для текста вокруг персонажа. Edit Position перемещает область каждого вида и меняет её размер.", -- draft
 -- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Текст боя: «Ваш урон» переделан. Выберите Pop, Slam или Stamp: удары резче, а криты падают со вспышкой.", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "Текст боя: аура, появляющаяся и исчезающая каждые несколько секунд («Демоническое знание» с питомцем), показывается один раз.", -- draft
+-- stale: ["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "Текст боя: ваш урон в оформлении MelloUI теперь и в группе (тест), а тики идут отдельной маленькой дорожкой.", -- draft
 -- stale: ["Combat, frames and tooltips"] = "Бой, рамки и подсказки", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "Компактные рамки рейда, рамки групп и тотемы в наборе.", -- draft
 -- stale: ["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "Настройки: у «Анимаций», «Баффов и дебаффов», «Карты» и «Поддержавших» свои значки в каждом облике.", -- draft
@@ -3755,6 +3759,7 @@ Lang:Add("ruRU", {
 -- stale: ["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Панели действий Oldschool сохраняют нарисованные рамки; рамка игрока Default остаётся чёткой при увеличении.", -- draft
 -- stale: ["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool: новые рамки для рамок юнитов, индикатора заклинаний, личного дисплея, индикаторов здоровья и чата — три набора на выбор в разделе Рамки > Набор рамок: Позолоченный камень, Кованое железо и Резное дерево.", -- draft
 -- stale: ["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "Олдскул: полосы прогресса носят рамку вашего Набора рамок вместо скобы с ромбами, а строки списков стали спокойными линиями на тёмном фоне вместо толстых золотых полос.", -- draft
+-- stale: ["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool: вкладка «Рамки» стала короче. «Рамка индикаторов здоровья» и «Сфера уровня» убраны: и то, и другое рисует ваш Набор рамок.", -- draft
 -- stale: ["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool: рисованный вид больше не отключается после обновления, если CurseForge привозит MelloUI раньше MelloUI_Oldschool; подходит любой Oldschool из той же серии 2.1.", -- draft
 -- stale: ["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "Олдскул: анимации заданий носят ваш Набор рамок: значок в кольце набора, слова на табличке из его рамки, в нарисованном свете.", -- draft
 -- stale: ["On a quest's tooltip in the Quest List, name your other characters who have done the quest or have it in their quest log. A character is noted each time it logs out; /mello alts lists them and forgets a deleted one."] = "В подсказке задания в «Списке заданий» называет ваших других персонажей, выполнивших задание или имеющих его в журнале. Персонаж записывается при каждом выходе; /mello alts перечисляет их и забывает удалённого.", -- draft

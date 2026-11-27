@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.90", lines = {
+		"Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's.",
+		"Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it.",
+	} },
 	{ version = "2.1.89", lines = {
 		"Map: on a battleground's map, hover a group member's dot to see their name.",
 		"Quest Tracker: its scroll bar works with the mouse now. Drag it or click it to scroll the list.",
@@ -194,14 +198,6 @@ local CHANGELOG = {
 		"Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects.",
 		"Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone.",
 	} },
-	{ version = "2.1.85", lines = {
-		"Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash.",
-		"Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area.",
-		"Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour.",
-		"Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own.",
-		"Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate.",
-		"Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -212,12 +208,11 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.90"] = { "Auras.target", false },
 	["2.1.89"] = { "=map", "=quest tracker", "Chat.view", "Discard.bagButton" },
 	["2.1.88"] = { "Nameplates.classNames" },
 	["2.1.87"] = { "=nameplates", "=nameplates" },
 	["2.1.86"] = { "CombatText.dealtHeals", false },
-	["2.1.85"] = { "CombatText.dealt", "CombatText.style", "CombatText.dealtOutline", "CombatText.dealtGroups",
-		"CombatText.dealtHeals", "UIModifications.frameSet" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },

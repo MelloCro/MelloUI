@@ -2532,6 +2532,8 @@ Lang:Add("frFR", {
 	["The people who help keep MelloUI going."] = "Les personnes qui font vivre MelloUI.",
 	["Addons"] = "Addons",
 	["The addons MelloUI works with: what it does with each one, and where their settings are."] = "Les addons avec lesquels MelloUI fonctionne : ce qu'il fait avec chacun et où se trouvent leurs réglages.",
+	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Améliorations et affaiblissements : survoler une amélioration ou un affaiblissement de la cible affiche de nouveau sa propre infobulle, et non celle d’un autre effet.", -- draft
+	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Manette : la fenêtre de copie de MelloUI ne prend plus le clavier à la ligne de discussion du jeu. Cliquez sur son texte pour le sélectionner.", -- draft
 	["Map: on a battleground's map, hover a group member's dot to see their name."] = "Carte : sur la carte d'un champ de bataille, survolez le point d'un membre du groupe pour voir son nom.", -- draft
 	["Quest Tracker: its scroll bar works with the mouse now. Drag it or click it to scroll the list."] = "Suivi des quêtes : sa barre de défilement fonctionne maintenant à la souris. Faites-la glisser ou cliquez dessus pour faire défiler la liste.", -- draft
 	["Chat: the Minimal chat view has a scroll bar while a tab holds more lines than fit."] = "Discussion : la vue de discussion minimale a une barre de défilement quand un onglet contient plus de lignes qu'il n'en tient.", -- draft
@@ -2541,12 +2543,6 @@ Lang:Add("frFR", {
 	["Nameplates: a name hidden in the Nameplate Designer stays hidden on players shown by a short name too."] = "Barres de nom : un nom masqué dans le concepteur de barres de nom reste masqué aussi pour les joueurs affichés avec un nom court.", -- draft
 	["Combat Text: Healing Numbers look like healing now: a + before the number, floating up with a soft light, no hit effects."] = "Texte de combat : les chiffres de soins ressemblent maintenant à des soins : un + devant le chiffre, qui s'élève avec une lueur douce, sans effets de coup.", -- draft
 	["Combat Text: in a group, your weapon swings' numbers no longer go missing after you healed someone."] = "Texte de combat : en groupe, les chiffres de vos coups d'arme ne disparaissent plus après avoir soigné quelqu'un.", -- draft
-	["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Texte de combat : Style des dégâts de combat (avant : Vos dégâts) refait. Choisissez Pop, Slam ou Stamp : des coups plus vifs et des critiques qui tombent avec un éclair.", -- draft
-	["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "Texte de combat : Pop, Slam et Stamp aussi pour le texte autour de votre personnage. Edit Position déplace et redimensionne la zone de chaque type.", -- draft
-	["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "Texte de combat : contour pour vos chiffres de dégâts, et les coups de sorts dans la couleur de leur école.", -- draft
-	["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "Texte de combat : vos propres dégâts dans le style de MelloUI en groupe aussi (un test), et les ticks dans une petite voie à part.", -- draft
-	["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "Texte de combat : chiffres de soins. Vos soins sur vos alliés dans le même style, sur leur barre de nom.", -- draft
-	["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool : l'onglet Bordures est plus court. Bordure des barres d'info et Orbe de niveau ont disparu : votre Style des cadres dessine les deux.", -- draft
 	["Report a problem"] = "Signaler un problème",
 	["Voice pack"] = "Pack de voix",
 	["open or close this window"] = "ouvrir ou fermer cette fenêtre",
@@ -3163,7 +3159,9 @@ Lang:Add("frFR", {
 	["Spirit healers"] = "Gardiens des âmes",
 	-- Core/Core.lua
 	["Ctrl+A, Ctrl+C to copy  -  Esc closes"] = "Ctrl+A, Ctrl+C pour copier  –  Échap pour fermer",
+	["Click the text, then Ctrl+C to copy  -  Esc closes"] = "Cliquez sur le texte, puis Ctrl+C pour copier  -  Échap ferme", -- draft
 	["Ctrl+V to paste  -  Esc closes"] = "Ctrl+V pour coller  –  Échap pour fermer",
+	["Click the box, then Ctrl+V to paste  -  Esc closes"] = "Cliquez dans le champ, puis Ctrl+V pour coller  -  Échap ferme", -- draft
 	["Log cleared."] = "Journal effacé.",
 	["|cffff4040Error|r in module '%s' (%s): %s"] = "|cffff4040Erreur|r dans le module « %s » (%s) : %s",
 	-- Core/RareScannerLook.lua
@@ -5278,8 +5276,13 @@ Lang:Add("frFR", {
 -- stale: ["Colour the tooltip health bar by class or reaction instead of green."] = "Colore la barre de vie de l'encadré d'aide selon la classe ou la réaction au lieu du vert.", -- draft
 -- stale: ["Combat Text Style"] = "Style du texte de combat",
 -- stale: ["Combat Text Style and Your Damage are both Game: the game draws them. Pick Lanes, Feed or Classic, or a Your Damage look, to preview MelloUI's."] = "Style du texte de combat et Vos dégâts sont réglés sur « Jeu » : le jeu les affiche. Choisissez « Lignes », « Flux », « Classique » ou un style pour Vos dégâts afin de prévisualiser celui de MelloUI.",
+-- stale: ["Combat Text: Combat Damage Style (it was Your Damage) redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Texte de combat : Style des dégâts de combat (avant : Vos dégâts) refait. Choisissez Pop, Slam ou Stamp : des coups plus vifs et des critiques qui tombent avec un éclair.", -- draft
+-- stale: ["Combat Text: Healing Numbers. Your heals on friends in the same look, at their nameplate."] = "Texte de combat : chiffres de soins. Vos soins sur vos alliés dans le même style, sur leur barre de nom.", -- draft
+-- stale: ["Combat Text: Number Outline for your damage numbers, and spell hits in their school's colour."] = "Texte de combat : contour pour vos chiffres de dégâts, et les coups de sorts dans la couleur de leur école.", -- draft
+-- stale: ["Combat Text: Pop, Slam and Stamp for the text around your character too. Edit Position moves and sizes each kind's area."] = "Texte de combat : Pop, Slam et Stamp aussi pour le texte autour de votre personnage. Edit Position déplace et redimensionne la zone de chaque type.", -- draft
 -- stale: ["Combat Text: Your Damage redone. Pick Pop, Slam or Stamp: snappier hits, and crits that land with a flash."] = "Texte de combat : Vos dégâts refaits. Choisissez Pop, Slam ou Stamp : des coups plus vifs et des critiques qui tombent avec un éclair.", -- draft
 -- stale: ["Combat Text: an aura that comes and goes every few seconds (Demonic Knowledge with your pet) is shown once."] = "Texte de combat : une aura qui va et vient toutes les quelques secondes (Connaissance démoniaque avec votre familier) n'est affichée qu'une fois.", -- draft
+-- stale: ["Combat Text: your own damage in MelloUI's look in groups too (a test), and ticks in a small lane of their own."] = "Texte de combat : vos propres dégâts dans le style de MelloUI en groupe aussi (un test), et les ticks dans une petite voie à part.", -- draft
 -- stale: ["Combat, frames and tooltips"] = "Combat, cadres et encadrés d'aide", -- draft
 -- stale: ["Compact raid frames, group borders and totems in the kit."] = "Les cadres de raid compacts, les bordures de groupe et les totems dans le kit.", -- draft
 -- stale: ["Configurator: Animations, Buffs & Debuffs, Map and Supporters have icons of their own in every skin."] = "Configurateur : Animations, Améliorations et affaiblissements, Carte et Soutiens ont leurs propres icônes dans chaque apparence.", -- draft
@@ -5732,6 +5735,7 @@ Lang:Add("frFR", {
 -- stale: ["Oldschool's action bars keep their painted frames; Default's player frame stays sharp when scaled up."] = "Les barres d'action d'Oldschool gardent leurs cadres peints ; le cadre du joueur de Default reste net une fois agrandi.", -- draft
 -- stale: ["Oldschool: new frames for the unit frames, cast bar, Personal Display, nameplates and chat, in three sets to pick from under Borders > Frame Set: Gilded Stone, Forged Iron and Carved Wood."] = "Oldschool : choisissez parmi trois styles de cadres dans Bordures > Style de cadres : Pierre dorée, Fer forgé ou Bois sculpté. Ils habillent les cadres d’unité, la barre d’incantation, l’Affichage personnel, les barres d’info et la discussion.",
 -- stale: ["Oldschool: progress bars wear your Frame Set's own frame in place of the bracket with diamond caps, and list rows are calm lines on a dark ground in place of thick gold bars."] = "Oldschool : les barres de progression reprennent le style de cadres choisi au lieu de l’encadrement à extrémités en losange. Les lignes des listes sont fines et posées sur un fond sombre, au lieu de larges barres dorées.",
+-- stale: ["Oldschool: the Borders tab is shorter. Nameplate Border and Level Orb are gone: your Frame Set draws both."] = "Oldschool : l'onglet Bordures est plus court. Bordure des barres d'info et Orbe de niveau ont disparu : votre Style des cadres dessine les deux.", -- draft
 -- stale: ["Oldschool: the painted look no longer switches off after an update when CurseForge brings MelloUI before MelloUI_Oldschool; any Oldschool from the same 2.1 series fits."] = "Oldschool : le look peint ne se désactive plus après une mise à jour quand CurseForge livre MelloUI avant MelloUI_Oldschool ; tout Oldschool de la même série 2.1 convient.", -- draft
 -- stale: ["Oldschool: the quest animations wear your Frame Set: the icon in the set's ring, the words on a plaque of the set's frame, in painted light."] = "Oldschool : les animations de quête reprennent le style de cadres choisi. L’icône apparaît dans son anneau et le texte sur une plaque assortie, avec un effet peint.",
 -- stale: ["On a quest's tooltip in the Quest List, name your other characters who have done the quest or have it in their quest log. A character is noted each time it logs out; /mello alts lists them and forgets a deleted one."] = "Sur l'encadré d'aide d'une quête dans la Liste des quêtes, nomme vos autres personnages qui ont fait la quête ou l'ont dans leur journal. Un personnage est noté à chaque déconnexion ; /mello alts les liste et oublie un personnage supprimé.", -- draft
