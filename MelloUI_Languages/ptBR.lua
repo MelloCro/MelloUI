@@ -2490,6 +2490,15 @@ Lang:Add("ptBR", {
 	["Spoken: pick MelloUI as its narrator style to see its lines in the Voice Over widget."] = "Spoken: escolha o MelloUI como estilo de narrador para ver as falas dele no widget de voz.", -- draft
 	["Spoken: play its recordings from the quest log, the tracker's menu and Dungeon Info."] = "Spoken: toque as gravações dele pelo registro de missões, pelo menu do rastreador e pelo Dungeon Info.", -- draft
 	["Quest log: Read reads a quest with no recording again, with Read Unvoiced Lines off too."] = "Registro de missões: Ler volta a ler uma missão sem gravação, mesmo com Ler falas sem voz desligado.", -- draft
+	["the way to that point of your zone's map (/way <zone> 45.2 63.8 for another zone; with TomTom, /route 45.2 63.8)"] = "o caminho até esse ponto do mapa da sua zona (/way <zona> 45.2 63.8 para outra zona; com TomTom, /route 45.2 63.8)", -- draft
+	["Route: no zone called \"%s\". Type its name as the map shows it, or leave it out for the zone you are in."] = "Route: nenhuma zona chamada \"%s\". Escreva o nome como o mapa mostra, ou deixe de fora para a zona em que você está.", -- draft
+	["Route: those coordinates are not a place Route can go to."] = "Route: essas coordenadas não são um lugar aonde o Route possa ir.", -- draft
+	["Route: type /way 45.2 63.8 for a place on your zone's map, or /way Elwynn Forest 45.2 63.8."] = "Route: digite /way 45.2 63.8 para um lugar no mapa da sua zona, ou /way Elwynn Forest 45.2 63.8.", -- draft
+	["Route: type /way 45.2 63.8 to be shown the way there."] = "Route: digite /way 45.2 63.8 para ver o caminho até lá.", -- draft
+	["Route: coordinates in chat become a link. Click one for the way there."] = "Route: coordenadas no chat viram link. Clique em uma para ver o caminho.", -- draft
+	["Map: every entrance of a dungeon shows, such as Uldaman's side entrance."] = "Mapa: todas as entradas de uma masmorra aparecem, como a entrada lateral de Uldaman.", -- draft
+	["Clickable Coordinates In Chat"] = "Coordenadas clicáveis no chat", -- draft
+	["Coordinates in chat, such as 45.2 63.8 or 45, 63, become a link: a click shows the way there. You can also type /way 45.2 63.8."] = "Coordenadas no chat, como 45.2 63.8 ou 45, 63, viram link: um clique mostra o caminho até lá. Você também pode digitar /way 45.2 63.8.", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Bate-papo: na visão Mínima, clique no nome do idioma na linha em que você digita para trocar o idioma que você fala.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Bônus e penalidades: passar o mouse sobre um bônus ou uma penalidade do alvo volta a mostrar a dica dele, e não a de outro.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Controle: a janela de cópia do MelloUI não tira mais o teclado da linha de bate-papo do jogo. Clique no texto para selecioná-lo.", -- draft

@@ -2490,6 +2490,15 @@ Lang:Add("zhCN", {
 	["Spoken: pick MelloUI as its narrator style to see its lines in the Voice Over widget."] = "Spoken：把 MelloUI 选为它的旁白样式，即可在配音小组件里看到它的台词。", -- draft
 	["Spoken: play its recordings from the quest log, the tracker's menu and Dungeon Info."] = "Spoken：可从任务日志、追踪菜单和地下城信息播放它的录音。", -- draft
 	["Quest log: Read reads a quest with no recording again, with Read Unvoiced Lines off too."] = "任务日志：没有录音的任务，点“朗读”也会重新朗读，即使关闭了“朗读无配音台词”。", -- draft
+	["the way to that point of your zone's map (/way <zone> 45.2 63.8 for another zone; with TomTom, /route 45.2 63.8)"] = "前往你所在区域地图上该点的路线（其他区域用 /way <区域> 45.2 63.8；装有 TomTom 时用 /route 45.2 63.8）", -- draft
+	["Route: no zone called \"%s\". Type its name as the map shows it, or leave it out for the zone you are in."] = "Route：没有叫 \"%s\" 的区域。请按地图上显示的名字输入，或省略它以使用你所在的区域。", -- draft
+	["Route: those coordinates are not a place Route can go to."] = "Route：这个坐标不是 Route 能去的地方。", -- draft
+	["Route: type /way 45.2 63.8 for a place on your zone's map, or /way Elwynn Forest 45.2 63.8."] = "Route：输入 /way 45.2 63.8 前往你所在区域地图上的位置，或 /way Elwynn Forest 45.2 63.8。", -- draft
+	["Route: type /way 45.2 63.8 to be shown the way there."] = "Route：输入 /way 45.2 63.8 即可显示前往该处的路线。", -- draft
+	["Route: coordinates in chat become a link. Click one for the way there."] = "Route：聊天中的坐标会变成链接，点击即可显示前往该处的路线。", -- draft
+	["Map: every entrance of a dungeon shows, such as Uldaman's side entrance."] = "地图：地下城的每个入口都会显示，比如奥达曼的侧门。", -- draft
+	["Clickable Coordinates In Chat"] = "聊天坐标可点击", -- draft
+	["Coordinates in chat, such as 45.2 63.8 or 45, 63, become a link: a click shows the way there. You can also type /way 45.2 63.8."] = "聊天中的坐标（如 45.2 63.8 或 45, 63）会变成链接：点击即可显示前往该处的路线。也可以输入 /way 45.2 63.8。", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "聊天：在极简视图中，点击输入行上的语言名称即可切换你说的语言。", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "增益和减益效果：将鼠标悬停在目标的增益或减益上时，会重新显示它自己的鼠标提示，而不是别的效果的。", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "手柄：MelloUI 的复制窗口不再从游戏的聊天输入行抢走键盘。点击其中的文本即可选中。", -- draft

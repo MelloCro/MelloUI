@@ -177,6 +177,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.97", lines = {
+		"Route: type /way 45.2 63.8 to be shown the way there.",
+		"Route: coordinates in chat become a link. Click one for the way there.",
+		"Map: every entrance of a dungeon shows, such as Uldaman's side entrance.",
+	} },
 	{ version = "2.1.96", lines = {
 		"Spoken: MelloUI works with it. While it reads quests, MelloUI's Voice Over stays quiet.",
 		"Spoken: pick MelloUI as its narrator style to see its lines in the Voice Over widget.",
@@ -193,17 +198,6 @@ local CHANGELOG = {
 	{ version = "2.1.93", lines = {
 		"Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel.",
 	} },
-	{ version = "2.1.92", lines = {
-		"Buffs & Debuffs: fixed an error at login since 2.1.90 that left the nameplates' auras and the target's rows half set up.",
-		"Chat: clicking the language's name on the line you type in opens the chat menu now.",
-		"Map: spirit healers on the map and the minimap (Map Layers > Travel).",
-		"Map: a Rares switch in Map Layers for the rares of HandyNotes plugins.",
-		"Chat: the Minimal view's scroll bar can be dragged now.",
-		"Map: chests show MelloUI's chest icon alone, like the rares, from HandyNotes plugins too.",
-		"Map: flight masters no longer show twice with HandyNotes: WoW Forever.",
-		"Quest log: a quest found with its search opens on click again (Oldschool).",
-		"Fixed a Lua error from the game's party frames at login (mask textures).",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -214,11 +208,11 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.97"] = { false, "Route.chatCoords", "=map" },
 	["2.1.96"] = { false, false, false, false },
 	["2.1.95"] = { false, "UnitFrames.detachTargetCast" },
 	["2.1.94"] = { false },
 	["2.1.93"] = { false },
-	["2.1.92"] = { "Auras.target", "Chat.view", "=map", "=map", "Chat.view", "=map", "=map", false, false },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },
@@ -271,6 +265,8 @@ local COMMANDS = {
 	{ "/vo reset", "the Voice Over window back to its place" },
 	{ "/route status", "the route, its road data and your flight points" },
 	{ "/route clear", "stop the route" },
+	-- (2.1.97; the user: "type the coordinates in chat and get navigated to them") Route.lua's M.Way; TomTom's /way wins
+	{ "/way 45.2 63.8", "the way to that point of your zone's map (/way <zone> 45.2 63.8 for another zone; with TomTom, /route 45.2 63.8)" },
 	{ "/services", "the list of the nearest services" },
 	{ "/services <service>", "route to the nearest one, e.g. /services repair" },
 	{ "/restock", "your Restock List: what to keep in your bags" },

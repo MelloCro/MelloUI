@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.97
+
+- Route: type /way 45.2 63.8 to be shown the way to that point of your zone's map, or /way Westfall 45.2 63.8 for another zone (also /route 45.2 63.8). With TomTom installed, /way stays TomTom's, and Route follows its arrow as before.
+- Route: coordinates people post in chat, such as 45.2 63.8 or 45, 63, become a link: a click shows the way there. Route > Clickable Coordinates In Chat switches it off.
+- Fixed: a dungeon's other entrance far from its first had no pin on MelloUI's map, such as Uldaman's side entrance to the Hall of the Keepers. Every entrance shows now, Maraudon's, Dire Maul's and Gnomeregan's too.
+
 ## 2.1.96
 
 - Spoken: MelloUI works with Spoken, the voice-over addon for quests, books, zones and bosses. While Spoken reads quests, MelloUI's Voice Over stays quiet for quest dialogue and NPC greetings, and for books while Spoken reads those.

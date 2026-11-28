@@ -99,6 +99,9 @@ local T = {
 	-- (2.1.0, qu-01: the user's pick W1, "every kind at 16 px") the docks and the doors from the world's zoom on; pins of
 	-- one kind that touch become one (MapPins' merge: the docks of one harbour within DOCK_MERGE px)
 	PLACE_SIZE = 16,
+	-- (2.1.97) two doors of one dungeon in the data are one door within this many yards (Blackfathom Deeps' and
+	-- Blackrock Depths' pairs, some 15 apart); farther, each its own pin (Uldaman's side door, Maraudon's, Dire Maul's)
+	DOOR_SAME = 100,
 	DOCK_MERGE = 12,
 	-- (P2) a capital: a slate disc in a gold rim, its name beside it; a town the same, smaller. Drawn as the sketch drew
 	-- it, from the set's badge disc (sharp at every size): the gold disc, the slate core RIM px in, a dark EDGE px out
@@ -954,6 +957,19 @@ local function DoorKey(name)
 	return (name:lower():gsub("^the ", ""))
 end
 
+-- (2.1.97; the user, standing at Uldaman's side door: "on my location is the side entrance to Uldaman - Hall of the
+-- Keepers") a door of the data already laid under its name: on the same continent within T.DOOR_SAME yards. One pin a
+-- name hid every second door of a dungeon (2.1.54's rule against the Hall of Thanes' two names for one door)
+local function DoorLaid(laid, row)
+	for _, r in ipairs(type(laid) == "table" and laid or EMPTY) do
+		local dx, dy = (r[4] or 0) - (row[4] or 0), (r[5] or 0) - (row[5] or 0)
+		if r[3] == row[3] and dx * dx + dy * dy < T.DOOR_SAME * T.DOOR_SAME then
+			return true
+		end
+	end
+	return false
+end
+
 local function Entrances()
 	local pins, data = S.pins, Data()
 	pins:Clear("entrances")
@@ -962,12 +978,16 @@ local function Entrances()
 	local mine = T.DATA_SIDE[Side()]
 	for _, row in ipairs(data and data.entrances or EMPTY) do
 		local id, name, kind, side = row[1], row[2], row[9], row[10]
-		if name and not seen[DoorKey(name)] and ENTRANCE[kind] and (not (side and mine) or side == 0 or side == mine) then
+		local key = name and DoorKey(name)
+		if name and not DoorLaid(seen[key], row) and ENTRANCE[kind] and (not (side and mine) or side == 0 or side == mine) then
 			local wx, wy = WorldPoint(row[3], row[4], row[5])
 			if wx then
-				seen[DoorKey(name)] = true
+				local laid = seen[key] or {}
+				seen[key] = laid
+				laid[#laid + 1] = row
 				local lv = data.dungeonLevel and data.dungeonLevel[id]
-				local pin = pins:Set("entrances", name, wx, wy, EntranceSpec(kind))
+				-- (the first door its name, each other "name#2" ...: its own pin; its name the dungeon's)
+				local pin = pins:Set("entrances", #laid == 1 and name or (name .. "#" .. #laid), wx, wy, EntranceSpec(kind))
 				if pin then
 					pin.data = { name = name, kind = kind, levels = lv and (lv[1] or 0) > 0 and lv or nil, dungeonID = id,
 						source = "data" }

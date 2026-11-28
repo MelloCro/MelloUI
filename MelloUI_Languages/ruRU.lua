@@ -2490,6 +2490,15 @@ Lang:Add("ruRU", {
 	["Spoken: pick MelloUI as its narrator style to see its lines in the Voice Over widget."] = "Spoken: выберите MelloUI стилем рассказчика, чтобы видеть его реплики в виджете озвучки.", -- draft
 	["Spoken: play its recordings from the quest log, the tracker's menu and Dungeon Info."] = "Spoken: включайте его записи из журнала заданий, меню отслеживания и Dungeon Info.", -- draft
 	["Quest log: Read reads a quest with no recording again, with Read Unvoiced Lines off too."] = "Журнал заданий: «Читать» снова читает задание без записи, даже при выключенном «Читать неозвученные реплики».", -- draft
+	["the way to that point of your zone's map (/way <zone> 45.2 63.8 for another zone; with TomTom, /route 45.2 63.8)"] = "путь к этой точке на карте вашей зоны (/way <зона> 45.2 63.8 для другой зоны; с TomTom — /route 45.2 63.8)", -- draft
+	["Route: no zone called \"%s\". Type its name as the map shows it, or leave it out for the zone you are in."] = "Route: нет зоны с названием \"%s\". Напишите название как на карте или уберите его для зоны, где вы находитесь.", -- draft
+	["Route: those coordinates are not a place Route can go to."] = "Route: эти координаты — не место, куда Route может проложить путь.", -- draft
+	["Route: type /way 45.2 63.8 for a place on your zone's map, or /way Elwynn Forest 45.2 63.8."] = "Route: введите /way 45.2 63.8 для места на карте вашей зоны или /way Elwynn Forest 45.2 63.8.", -- draft
+	["Route: type /way 45.2 63.8 to be shown the way there."] = "Route: введите /way 45.2 63.8, чтобы увидеть путь туда.", -- draft
+	["Route: coordinates in chat become a link. Click one for the way there."] = "Route: координаты в чате становятся ссылкой. Нажмите на неё, чтобы увидеть путь.", -- draft
+	["Map: every entrance of a dungeon shows, such as Uldaman's side entrance."] = "Карта: показываются все входы подземелья, например боковой вход в Ульдаман.", -- draft
+	["Clickable Coordinates In Chat"] = "Кликабельные координаты в чате", -- draft
+	["Coordinates in chat, such as 45.2 63.8 or 45, 63, become a link: a click shows the way there. You can also type /way 45.2 63.8."] = "Координаты в чате, например 45.2 63.8 или 45, 63, становятся ссылкой: щелчок показывает путь туда. Можно также ввести /way 45.2 63.8.", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Чат: в виде «Минимальный» щёлкните по названию языка в строке ввода, чтобы сменить язык, на котором вы говорите.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Баффы и дебаффы: при наведении на бафф или дебафф цели снова показывается его собственная подсказка, а не чужая.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Контроллер: окно копирования MelloUI больше не забирает клавиатуру у строки чата игры. Щёлкните по тексту, чтобы выделить его.", -- draft

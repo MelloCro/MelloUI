@@ -140,7 +140,8 @@ PATHLIKE = re.compile(r"[\\/]|^\||\.(lua|tga|blp|ttf|ogg|mp3)$", re.I)
 # a slash command and its arguments ("/sfx play <name>", "/mello profile ...", "/vo stop | pause | skip"): the same in
 # every language. A sentence that opens with one ("/mellobug's report now shows ...") is a line a player reads.
 # (2.1.64: any number of arguments -- "/mello preview solo | party | raid | stop", Core/Preview.lua's usage)
-SLASH = re.compile(r"^/[a-z]+(?: (?:[a-z]+|<[a-z]+>|\||\.\.\.))*$")
+# (2.1.97: a number too -- "/way 45.2 63.8", coordinates, Route's M.Way)
+SLASH = re.compile(r"^/[a-z]+(?: (?:[a-z]+|<[a-z]+>|\d+(?:\.\d+)?|\||\.\.\.))*$")
 # a format's placeholders and colour codes ("/ %d": a slash and a count, the same in every language -- while "%s: %s"
 # is a line: "%s : %s" in French, "%s：%s" in Chinese)
 NOT_WORDS = re.compile(r"%(?:\d+\$)?[-+#0]*\d*(?:\.\d+)?[sdfgixXc]|\|c[0-9a-fA-F]{8}|\|r")

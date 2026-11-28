@@ -63,6 +63,7 @@ local M = MelloUI:RegisterModule("Route", {
 		trailLook = "beads",
 		arrive = 25,
 		flightHint = true,
+		chatCoords = true,
 	},
 	options = {
 		{ type = "header", name = "Drawing" },
@@ -108,6 +109,10 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "header", name = "Arrival" },
 		{ type = "slider", key = "arrive", name = "Arrived Within (yards)", min = 10, max = 100, step = 5,
 		  desc = "How close you must get for the route to end." },
+		-- (2.1.97; the user, of a click on coordinates people post in chat: "Yes, add it") M.Way.Chat
+		{ type = "toggle", key = "chatCoords", name = "Clickable Coordinates In Chat", new = "2.1.97",
+		  search = "coordinates coords chat link way waypoint click",
+		  desc = "Coordinates in chat, such as 45.2 63.8 or 45, 63, become a link: a click shows the way there. You can also type /way 45.2 63.8." },
 		{ type = "header", name = "Flights" },
 		{ type = "toggle", key = "flightHint", name = "Flight Map Help",
 		  desc = "At a flight master, shows where your route flies to and how long the flight takes." },
@@ -12414,9 +12419,262 @@ function M.GuideDump()
 	MelloUI:ShowLog("route guide dump")
 end
 
+--------------------------------------------------------------------------------
+-- Coordinates typed in chat (2.1.97; the user, 2026-11-28: "is there a way where MelloUI users can type the
+-- coordinates in chat and get navigated to them?", then "Yes, build it"): /way 45.2 63.8 (the zone you stand in),
+-- /way Elwynn Forest 45.2 63.8 (a zone or a city by its name), the same after /route. Route goes there as to any point
+-- of a map: its pin on the map, the way on the map, the minimap and the marker. A comma for the decimal point is
+-- fine (45,2 63,8). TomTom's own /way stays TomTom's (Route follows its arrow already): MelloUI's /way is made at the
+-- login only where no addon has one.
+--------------------------------------------------------------------------------
+M.Way = { zones = nil }
+
+local function WayTr(text)
+	local W = MelloUI.Widgets
+	return W and W.Tr and W.Tr(text) or text
+end
+
+-- the words before the two numbers at the end, and the numbers (0 to 100); nil: not coordinates
+function M.Way.Parse(text)
+	text = (text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	local head, xs, ys = text:match("^(.-)%s*(%d+[%.,]?%d*)[%s,]+(%d+[%.,]?%d*)$")
+	local x = xs and tonumber((xs:gsub(",", ".")))
+	local y = ys and tonumber((ys:gsub(",", ".")))
+	if not (x and y and x >= 0 and x <= 100 and y >= 0 and y <= 100) then
+		return nil
+	end
+	return head, x, y
+end
+
+-- the world's zones and cities by their names (lower case), made the first time a name is typed
+function M.Way.Zones()
+	if M.Way.zones then
+		return M.Way.zones
+	end
+	local zones = {}
+	local kinds = Enum and Enum.UIMapType
+	if C_Map and C_Map.GetMapChildrenInfo and kinds then
+		for _, root in ipairs({ 947, 1414, 1415 }) do   -- (Azeroth, Kalimdor, the Eastern Kingdoms)
+			local ok, list = pcall(C_Map.GetMapChildrenInfo, root, kinds.Zone, true)
+			for _, info in ipairs(ok and type(list) == "table" and list or {}) do
+				local name = Plain(info.name)
+				local id = Plain(info.mapID)
+				if type(name) == "string" and type(id) == "number" and not zones[name:lower()] then
+					zones[name:lower()] = id
+				end
+			end
+		end
+	end
+	M.Way.zones = zones
+	return zones
+end
+
+-- the map: the zone you stand in (no name), the zone of that name, else the only one whose name starts so
+function M.Way.Map(name)
+	if name == nil or name == "" then
+		local ok, id = pcall(C_Map.GetBestMapForUnit, "player")
+		return ok and Plain(id) or nil
+	end
+	name = name:lower()
+	local zones = M.Way.Zones()
+	if zones[name] then
+		return zones[name]
+	end
+	local found
+	for zone, id in pairs(zones) do
+		if zone:sub(1, #name) == name then
+			if found and found ~= id then
+				return nil
+			end
+			found = id
+		end
+	end
+	return found
+end
+
+-- the way to the coordinates in `text`; false: not coordinates (the caller goes on)
+function M.Way.Go(text)
+	local head, x, y = M.Way.Parse(text)
+	if not x then
+		return false
+	end
+	local mapID = M.Way.Map(head)
+	if not mapID then
+		MelloUI:Print(WayTr("Route: no zone called \"%s\". Type its name as the map shows it, or leave it out for the zone you are in."):format(head))
+		return true
+	end
+	M.Way.To(mapID, x, y)
+	return true
+end
+
+-- the way to x, y (0 to 100) of a map: its pin, its label the zone and the numbers
+function M.Way.To(mapID, x, y)
+	local ok, info = pcall(C_Map.GetMapInfo, mapID)
+	local zone = ok and type(info) == "table" and Plain(info.name) or nil
+	local label = string.format("%s%.1f, %.1f", type(zone) == "string" and (zone .. " ") or "", x, y)
+	if not M:SetDestinationTo({ mapID = mapID, x = x / 100, y = y / 100 }, label, true) then
+		MelloUI:Print(WayTr("Route: those coordinates are not a place Route can go to."))
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Coordinates in chat become links (2.1.97; the user, of a click on coordinates people post: "Yes, add it"). In a
+-- chat line, a pair of map coordinates -- one with a decimal point ("45.2 63.8", "45.2, 63.8") or two of two digits
+-- or more with a comma between ("45, 63"), both 0 to 100, so a count ("need 1, 2 more") or two plain numbers ("lvl 25
+-- 30") stay words -- becomes a link in the palette's gold. Its map: the zone named just before the numbers ("Westfall
+-- 45.2 63.8"), else the one you stand in as the line comes. A click shows the way there (M.Way.To). The game's own
+-- addon links (|Haddon:...|h: LinkUtil hands their click to EventRegistry's "SetItemRef"), so they work in the game's
+-- chat windows and MelloUI's Chat View alike, nothing of the game's hooked. A secret line, or one holding an escape
+-- code (a link, a colour, a texture), is left as it came. Route's Clickable Coordinates In Chat switches it off.
+--------------------------------------------------------------------------------
+M.Way.LINK = "addon:MelloUI:way:"
+M.Way.EVENTS = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID",
+	"CHAT_MSG_RAID_LEADER", "CHAT_MSG_RAID_WARNING", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER", "CHAT_MSG_WHISPER",
+	"CHAT_MSG_WHISPER_INFORM", "CHAT_MSG_CHANNEL", "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER",
+	"CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM" }
+
+-- a pair of coordinates as chat writes them (the numbers as typed, and their separator), or nil
+function M.Way.Pair(xs, sep, ys)
+	local x, y = tonumber(xs), tonumber(ys)
+	if not (x and y and x <= 100 and y <= 100) then
+		return nil
+	end
+	local dotted = xs:find(".", 1, true) or ys:find(".", 1, true)
+	local comma = sep:find(",", 1, true) and #xs:match("^%d+") >= 2 and #ys:match("^%d+") >= 2
+	if not (dotted or comma) or sep:find(",.*,") then
+		return nil
+	end
+	return x, y
+end
+
+-- the zone named just before the numbers (its last one to four words), else nil
+function M.Way.ZoneBefore(text)
+	local words = {}
+	for word in text:lower():gmatch("[%a']+") do
+		words[#words + 1] = word
+	end
+	local zones = M.Way.Zones()
+	for n = math.min(4, #words), 1, -1 do
+		local name = table.concat(words, " ", #words - n + 1, #words)
+		if zones[name] then
+			return zones[name]
+		end
+	end
+	return nil
+end
+
+-- a chat line with its coordinates as links; nil: nothing changed
+function M.Way.Linked(msg)
+	if type(msg) ~= "string" or MelloUI.Safe.IsSecret(msg) or msg:find("|", 1, true) or not msg:find("%d") then
+		return nil
+	end
+	local here
+	local changed = false
+	local gold = MelloUI:PaletteCode("selectedTrim")
+	local out = msg:gsub("()(%d+%.?%d*)([%s,]+)(%d+%.?%d*)%f[^%d%.]", function(at, xs, sep, ys)
+		if at > 1 and msg:sub(at - 1, at - 1):find("[%d%.]") then
+			return nil
+		end
+		local x = M.Way.Pair(xs, sep, ys)
+		if not x then
+			return nil
+		end
+		local mapID = M.Way.ZoneBefore(msg:sub(1, at - 1))
+		if not mapID then
+			if here == nil then
+				local ok, id = pcall(C_Map.GetBestMapForUnit, "player")
+				here = ok and Plain(id) or false
+			end
+			mapID = here or nil
+		end
+		if not mapID then
+			return nil
+		end
+		changed = true
+		return string.format("%s|H%s%d:%s:%s|h[%s]|h|r", gold, M.Way.LINK, mapID, xs, ys, xs .. sep .. ys)
+	end)
+	return changed and out or nil
+end
+
+function M.Way.Filter(_, _, msg, ...)
+	local linked = M.Way.Linked(msg)
+	if linked then
+		return false, linked, ...
+	end
+	return false
+end
+
+-- a click on one (EventRegistry's "SetItemRef": the game's handler of addon links)
+function M.Way.OnLink(_, link)
+	if type(link) ~= "string" or link:sub(1, #M.Way.LINK) ~= M.Way.LINK then
+		return
+	end
+	local map, xs, ys = link:sub(#M.Way.LINK + 1):match("^(%d+):([%d%.]+):([%d%.]+)$")
+	local mapID, x, y = tonumber(map), tonumber(xs), tonumber(ys)
+	if mapID and x and y then
+		M.Way.To(mapID, x, y)
+	end
+end
+
+-- the links made while Route is on and its switch is (the filters added once, taken out when off)
+function M.Way.Chat(on)
+	local CU = rawget(_G, "ChatFrameUtil")
+	local add = CU and CU.AddMessageEventFilter or rawget(_G, "ChatFrame_AddMessageEventFilter")
+	local remove = CU and CU.RemoveMessageEventFilter or rawget(_G, "ChatFrame_RemoveMessageEventFilter")
+	on = on and true or false
+	if on == (M.Way.chat or false) or type(add) ~= "function" or type(remove) ~= "function" then
+		return
+	end
+	M.Way.chat = on
+	for _, event in ipairs(M.Way.EVENTS) do
+		pcall(on and add or remove, event, M.Way.Filter)
+	end
+end
+
+function M.Way.ChatWanted()
+	return (M.isEnabled and M.db and M.db.chatCoords ~= false) and true or false
+end
+
+-- /way, where no addon has one (TomTom's stays TomTom's)
+function M.Way.Claim()
+	local taken = false
+	for key, value in pairs(_G) do
+		if type(key) == "string" and type(value) == "string" and key:sub(1, 6) == "SLASH_" and value:lower() == "/way" then
+			taken = true
+			break
+		end
+	end
+	if taken then
+		return
+	end
+	SLASH_MELLOWAY1 = "/way"
+	SlashCmdList.MELLOWAY = function(msg)
+		if not M.Way.Go(msg) then
+			MelloUI:Print(WayTr("Route: type /way 45.2 63.8 for a place on your zone's map, or /way Elwynn Forest 45.2 63.8."))
+		end
+	end
+end
+
+do
+	local login = CreateFrame("Frame")
+	login:RegisterEvent("PLAYER_LOGIN")
+	login:SetScript("OnEvent", function(self)
+		self:UnregisterAllEvents()
+		M.Way.Claim()
+		local ER = rawget(_G, "EventRegistry")
+		if ER and ER.RegisterCallback then
+			ER:RegisterCallback("SetItemRef", M.Way.OnLink, M.Way)
+		end
+		M.Way.Chat(M.Way.ChatWanted())
+	end)
+end
+
 SLASH_MELLOROUTE1 = "/route"
 SlashCmdList.MELLOROUTE = function(msg)
 	msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	if M.Way.Go(msg) then   -- (2.1.97: /route 45.2 63.8, /route <zone> 45.2 63.8)
+		return
+	end
 	if msg == "dots" then
 		-- what the painters draw (the kit gem or the game's dot), for the copy window
 		MelloUI:ClearLog()
@@ -12782,6 +13040,8 @@ function M:OnSettingChanged(key, value, db)
 		Beacon.HoldNavigation()   -- (2.1.63: the game's in-game navigation held or given back with it)
 	elseif key == "trailLook" then
 		Beacon.Tint()   -- (the World Marker's light and flag in the new look; the maps' at the redraw)
+	elseif key == "chatCoords" then
+		M.Way.Chat(M.Way.ChatWanted())   -- (2.1.97: coordinates in chat as links)
 	elseif key == "followGuide" and M.Guide then
 		-- (as /route guide: their spot, their steps in the Quest Tracker and their items, or all gone)
 		M.Guide.Forget()

@@ -2490,6 +2490,15 @@ Lang:Add("koKR", {
 	["Spoken: pick MelloUI as its narrator style to see its lines in the Voice Over widget."] = "Spoken: 내레이터 스타일로 MelloUI를 고르면 대사가 음성 위젯에 나옵니다.", -- draft
 	["Spoken: play its recordings from the quest log, the tracker's menu and Dungeon Info."] = "Spoken: 퀘스트 목록, 추적기 메뉴, 던전 정보에서 녹음을 재생하세요.", -- draft
 	["Quest log: Read reads a quest with no recording again, with Read Unvoiced Lines off too."] = "퀘스트 목록: 녹음 없는 퀘스트도 읽기로 다시 읽어 줍니다. 녹음 없는 대사 읽기를 꺼도 마찬가지입니다.", -- draft
+	["the way to that point of your zone's map (/way <zone> 45.2 63.8 for another zone; with TomTom, /route 45.2 63.8)"] = "현재 지역 지도에서 그 지점으로 가는 길 (다른 지역은 /way <지역> 45.2 63.8; TomTom이 있으면 /route 45.2 63.8)", -- draft
+	["Route: no zone called \"%s\". Type its name as the map shows it, or leave it out for the zone you are in."] = "Route: \"%s\"라는 지역이 없습니다. 지도에 나오는 이름으로 쓰거나, 지금 있는 지역이면 빼세요.", -- draft
+	["Route: those coordinates are not a place Route can go to."] = "Route: 그 좌표는 Route가 갈 수 있는 곳이 아닙니다.", -- draft
+	["Route: type /way 45.2 63.8 for a place on your zone's map, or /way Elwynn Forest 45.2 63.8."] = "Route: 현재 지역 지도의 장소는 /way 45.2 63.8, 다른 지역은 /way Elwynn Forest 45.2 63.8 처럼 입력하세요.", -- draft
+	["Route: type /way 45.2 63.8 to be shown the way there."] = "Route: /way 45.2 63.8 을 입력하면 그곳까지 길을 보여 줍니다.", -- draft
+	["Route: coordinates in chat become a link. Click one for the way there."] = "Route: 채팅의 좌표가 링크가 됩니다. 누르면 그곳까지 길을 보여 줍니다.", -- draft
+	["Map: every entrance of a dungeon shows, such as Uldaman's side entrance."] = "지도: 울다만의 옆 입구처럼 던전의 모든 입구가 표시됩니다.", -- draft
+	["Clickable Coordinates In Chat"] = "채팅 좌표 클릭", -- draft
+	["Coordinates in chat, such as 45.2 63.8 or 45, 63, become a link: a click shows the way there. You can also type /way 45.2 63.8."] = "45.2 63.8 이나 45, 63 같은 채팅의 좌표가 링크가 되어, 누르면 그곳까지 길을 보여 줍니다. /way 45.2 63.8 로 입력할 수도 있습니다.", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "대화: 최소 보기에서 입력줄에 있는 언어 이름을 클릭하면 사용하는 언어를 바꿀 수 있습니다.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "강화 및 약화 효과: 대상의 강화 또는 약화 효과에 마우스를 올리면 다른 효과가 아닌 그 효과의 툴팁이 다시 표시됩니다.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "컨트롤러: MelloUI의 복사 창이 더 이상 게임 채팅 입력줄에서 키보드를 가져가지 않습니다. 텍스트를 클릭하면 선택됩니다.", -- draft
