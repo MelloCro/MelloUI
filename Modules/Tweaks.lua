@@ -36,6 +36,22 @@ local function OwnG(name)
 	return _G[name]
 end
 
+-- MelloUI's bag buttons are secure: defer changes to them until combat ends. Returns true if deferred.
+local function BagsLater(fn, key)
+	if not InCombatLockdown() then
+		return false
+	end
+	local pack = OwnG("MainMenuBarBackpackButton")
+	local ok, protected = pcall(function()
+		return pack ~= nil and pack:IsProtected()
+	end)
+	if ok and protected then
+		MelloUI.Kit:WhenOutOfCombat(fn, key)
+		return true
+	end
+	return false
+end
+
 -- (the same, for a reader that took the game's frame with rawget)
 local function OwnRaw(name)
 	local OB = MelloUI.OwnBars
@@ -251,6 +267,9 @@ end
 
 local hiddenBy = {}   -- [key] = the frame hidden for it (fr-18: the bag bar's frame may change -- ours or the game's)
 local function UpdateHiddenFrames()
+	if BagsLater(UpdateHiddenFrames, "Tweaks: frames hidden and the bag bar") then
+		return
+	end
 	local db = M.db
 	for key, getter in pairs(HIDE_TARGETS) do
 		local frame = getter()
@@ -329,7 +348,7 @@ end
 -- them (the Backpack panel's painted bag bar): ns.BagSlotOverride returns
 -- true when it has placed them itself.
 local function LayoutBagSlots()
-	if not (slotsAttached and holder) then
+	if not (slotsAttached and holder) or BagsLater(LayoutBagSlots, "Tweaks: the bag slots laid on the bag window") then
 		return
 	end
 	if ns.BagSlotOverride and ns.BagSlotOverride(SlotButtons(), holder) then
@@ -374,7 +393,7 @@ local function FirstBagFrame()
 end
 
 local function PositionBagSlots()
-	if not holder then
+	if not holder or BagsLater(PositionBagSlots, "Tweaks: the bag slots placed under the bag window") then
 		return
 	end
 	if slotsAttached and ns.BagSlotOverride and ns.BagSlotOverride(SlotButtons(), holder) then
@@ -490,6 +509,9 @@ local function DetachBagSlots()
 end
 
 function UpdateBagSlots()
+	if BagsLater(UpdateBagSlots, "Tweaks: the bag slots docked or given back") then
+		return
+	end
 	local db = M.db
 	local want = M.isEnabled and db and db.hideBagBar and db.bagSlotsOnBags and not editModeActive and BagsBar ~= nil
 	if want then
@@ -722,7 +744,7 @@ end
 -- slots back, the arrow hidden, the game's own chain from the backpack laid
 -- again (its pass not run), the frame art on its own anchors
 function Fold.Release()
-	if not Fold.on then
+	if not Fold.on or BagsLater(Fold.Release, "Tweaks: the bag bar's fold let go") then
 		return
 	end
 	Fold.on = false
@@ -746,6 +768,9 @@ function Fold.Release()
 end
 
 function Fold.Apply()
+	if BagsLater(Fold.Apply, "Tweaks: the bag bar's fold laid") then
+		return
+	end
 	if not Fold.Active() then
 		Fold.Release()
 		return
@@ -791,7 +816,7 @@ end, "hook")
 -- The arrow clicked: the slots shown or hidden BEFORE the game's own click
 -- handler sets the CVar and its pass runs, so its dividers come out right
 Fold.PreClick = Perf.Shared("PreClick on the bag bar's arrow", function()
-	if not Fold.on then
+	if not Fold.on or BagsLater(Fold.Apply, "Tweaks: the bag bar's fold laid") then
 		return
 	end
 	local mgr = OwnG("MainMenuBarBagManager")

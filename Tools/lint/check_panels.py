@@ -322,6 +322,10 @@ CHECKS = {
                                 "Modules/OwnActionBars.lua",
                                 # (fr-18 stage 3) the stance, pet and possess bars, the same way
                                 "Modules/OwnSpecialBars.lua",
+                                # (2.1.94, issue #68 / PR #69) the bag bar of ours, the same way: its buttons' click the
+                                # game's own bag buttons' (type "click": an addon OnClick opening the bags tainted the
+                                # bank's bankType), built out of a fight (OB.Sync's secure part), laid after one
+                                "Modules/OwnBars.lua",
                                 # (2.1.49) the Gamepad UI's Game Menu shortcut: one hidden button made out of a fight
                                 # on UIParent, one click phase (AnyDown), whose click is the game's own close of the
                                 # menu (Core/Config.lua's pad.Arm)

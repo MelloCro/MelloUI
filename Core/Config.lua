@@ -177,6 +177,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.94", lines = {
+		"Action Bars: items in the game's bags can be used again after opening the bags with MelloUI's bag bar.",
+	} },
 	{ version = "2.1.93", lines = {
 		"Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel.",
 	} },
@@ -198,12 +201,6 @@ local CHANGELOG = {
 		"Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's.",
 		"Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it.",
 	} },
-	{ version = "2.1.89", lines = {
-		"Map: on a battleground's map, hover a group member's dot to see their name.",
-		"Quest Tracker: its scroll bar works with the mouse now. Drag it or click it to scroll the list.",
-		"Chat: the Minimal chat view has a scroll bar while a tab holds more lines than fit.",
-		"Discard: hold Shift at a vendor to sell the cheapest stack of everything, also what the auction pays more for.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -214,11 +211,11 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.94"] = { false },
 	["2.1.93"] = { false },
 	["2.1.92"] = { "Auras.target", "Chat.view", "=map", "=map", "Chat.view", "=map", "=map", false, false },
 	["2.1.91"] = { "Chat.view" },
 	["2.1.90"] = { "Auras.target", false },
-	["2.1.89"] = { "=map", "=quest tracker", "Chat.view", "Discard.bagButton" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },
