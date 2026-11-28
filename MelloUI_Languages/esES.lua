@@ -2468,6 +2468,11 @@ Lang:Add("esES", {
 	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Corregido un error de Lua de los marcos de grupo del juego al entrar (texturas de máscara).", -- draft
 	["Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel."] = "Misiones: el botón que abandona una misión dice ahora Abandonar misión. En alemán decía lo mismo que Cancelar.", -- draft
 	["Action Bars: items in the game's bags can be used again after opening the bags with MelloUI's bag bar."] = "Barras de acción: los objetos de las bolsas del juego se pueden volver a usar tras abrir las bolsas con la barra de bolsas de MelloUI.", -- draft
+	["Target of Target: move it on its own in Edit Layout."] = "Objetivo del objetivo: ahora se mueve por separado en Editar diseño.", -- draft
+	["Target: Detach Cast Bar puts your target's cast bar on its own, to move anywhere in Edit Layout."] = "Objetivo: Separar barra de lanzamiento deja la barra de lanzamiento de tu objetivo aparte, para moverla donde quieras en Editar diseño.", -- draft
+	["Detach Cast Bar"] = "Separar barra de lanzamiento", -- draft
+	["Your target's cast bar on its own, away from the target frame. Move it in Edit Layout (Target Cast Bar)."] = "La barra de lanzamiento de tu objetivo aparte, lejos del marco del objetivo. Muévela en Editar diseño (Barra de lanzamiento del objetivo).", -- draft
+	["Target Cast Bar"] = "Barra de lanzamiento del objetivo", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Chat: en la vista Mínima, haz clic en el nombre del idioma en la línea donde escribes para cambiar el idioma que hablas.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Beneficios y perjuicios: al pasar el ratón sobre un beneficio o perjuicio del objetivo vuelve a mostrarse su propia descripción, y no la de otro.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Mando: la ventana de copia de MelloUI ya no le quita el teclado a la línea de chat del juego. Haz clic en el texto para seleccionarlo.", -- draft

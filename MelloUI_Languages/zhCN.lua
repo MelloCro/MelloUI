@@ -2468,6 +2468,11 @@ Lang:Add("zhCN", {
 	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "修复了登录时游戏小队框体的一个 Lua 错误（遮罩纹理）。", -- draft
 	["Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel."] = "任务：放弃任务的按钮现在显示“放弃任务”。德语里它和“取消”按钮写的一样。", -- draft
 	["Action Bars: items in the game's bags can be used again after opening the bags with MelloUI's bag bar."] = "动作条：用 MelloUI 的背包栏打开背包后，游戏背包里的物品又可以正常使用了。", -- draft
+	["Target of Target: move it on its own in Edit Layout."] = "目标的目标：现在可以在“编辑布局”中单独移动。", -- draft
+	["Target: Detach Cast Bar puts your target's cast bar on its own, to move anywhere in Edit Layout."] = "目标：开启“分离施法条”后，目标的施法条独立出来，可在“编辑布局”中随意移动。", -- draft
+	["Detach Cast Bar"] = "分离施法条", -- draft
+	["Your target's cast bar on its own, away from the target frame. Move it in Edit Layout (Target Cast Bar)."] = "让目标的施法条脱离目标框体，单独显示。在“编辑布局”中移动它（目标施法条）。", -- draft
+	["Target Cast Bar"] = "目标施法条", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "聊天：在极简视图中，点击输入行上的语言名称即可切换你说的语言。", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "增益和减益效果：将鼠标悬停在目标的增益或减益上时，会重新显示它自己的鼠标提示，而不是别的效果的。", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "手柄：MelloUI 的复制窗口不再从游戏的聊天输入行抢走键盘。点击其中的文本即可选中。", -- draft

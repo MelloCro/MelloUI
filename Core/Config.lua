@@ -177,6 +177,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.95", lines = {
+		"Target of Target: move it on its own in Edit Layout.",
+		"Target: Detach Cast Bar puts your target's cast bar on its own, to move anywhere in Edit Layout.",
+	} },
 	{ version = "2.1.94", lines = {
 		"Action Bars: items in the game's bags can be used again after opening the bags with MelloUI's bag bar.",
 	} },
@@ -197,10 +201,6 @@ local CHANGELOG = {
 	{ version = "2.1.91", lines = {
 		"Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak.",
 	} },
-	{ version = "2.1.90", lines = {
-		"Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's.",
-		"Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -211,11 +211,11 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.95"] = { false, "UnitFrames.detachTargetCast" },
 	["2.1.94"] = { false },
 	["2.1.93"] = { false },
 	["2.1.92"] = { "Auras.target", "Chat.view", "=map", "=map", "Chat.view", "=map", "=map", false, false },
 	["2.1.91"] = { "Chat.view" },
-	["2.1.90"] = { "Auras.target", false },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },

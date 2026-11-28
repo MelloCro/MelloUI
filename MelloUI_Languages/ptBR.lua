@@ -2468,6 +2468,11 @@ Lang:Add("ptBR", {
 	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Corrigido um erro de Lua dos quadros de grupo do jogo ao entrar (texturas de máscara).", -- draft
 	["Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel."] = "Missões: o botão que abandona uma missão agora diz Abandonar missão. Em alemão dizia o mesmo que Cancelar.", -- draft
 	["Action Bars: items in the game's bags can be used again after opening the bags with MelloUI's bag bar."] = "Barras de ação: os itens das bolsas do jogo podem ser usados de novo depois de abrir as bolsas pela barra de bolsas do MelloUI.", -- draft
+	["Target of Target: move it on its own in Edit Layout."] = "Alvo do alvo: agora pode ser movido separadamente em Editar layout.", -- draft
+	["Target: Detach Cast Bar puts your target's cast bar on its own, to move anywhere in Edit Layout."] = "Alvo: Separar barra de lançamento deixa a barra de lançamento do seu alvo à parte, para mover para onde quiser em Editar layout.", -- draft
+	["Detach Cast Bar"] = "Separar barra de lançamento", -- draft
+	["Your target's cast bar on its own, away from the target frame. Move it in Edit Layout (Target Cast Bar)."] = "A barra de lançamento do seu alvo à parte, longe do quadro do alvo. Mova-a em Editar layout (Barra de lançamento do alvo).", -- draft
+	["Target Cast Bar"] = "Barra de lançamento do alvo", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Bate-papo: na visão Mínima, clique no nome do idioma na linha em que você digita para trocar o idioma que você fala.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Bônus e penalidades: passar o mouse sobre um bônus ou uma penalidade do alvo volta a mostrar a dica dele, e não a de outro.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Controle: a janela de cópia do MelloUI não tira mais o teclado da linha de bate-papo do jogo. Clique no texto para selecioná-lo.", -- draft

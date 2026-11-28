@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.95
+
+- Unit Frames: the Target of Target can be moved on its own in Edit Layout (Target of Target). Until you move it, it stays at the target frame as before.
+- Unit Frames: Detach Cast Bar (Unit Frames > Target > Layout) puts your target's cast bar on its own, to move anywhere in Edit Layout (Target Cast Bar). It shows the same casts as the game's bar, which is hidden while it is on. Off by default.
+
 ## 2.1.94
 
 - Fixed: with MelloUI's action bars, using an item in the game's bags could fail with "MelloUI tried to call UseContainerItem()", often after visiting the bank. The bag bar now opens bags through the game's own buttons. During combat, bag bar layout changes wait until the fight ends.

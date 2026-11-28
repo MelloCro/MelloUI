@@ -4608,69 +4608,13 @@ end
 -- alpha (HoldFadeOutAnim: 1 for a second, then out; a landed cast's FadeOutAnim the same), which the engine lays over
 -- the alpha set, past the post-hook: its fades stopped as the game plays them (once a cast's end, counted). The cut
 -- plays on the display's own bar (CastFX)
-local GameCast = { hooked = false, held = false, writing = false, FADES = { "HoldFadeOutAnim", "FadeOutAnim" } }
-
-function GameCast.OnAlpha(bar, alpha)
-	if not GameCast.held or GameCast.writing or (not Secret(alpha) and alpha == 0) then
-		return
+-- (2.1.95) the hold itself is one system with Unit Frames' detached target cast bar: MelloUI.CastHold
+-- (Modules/CastBars.lua), lifted from here as it was
+local function HoldGameCast(on)
+	local hold = MelloUI.CastHold
+	if hold then
+		hold.Hold(rawget(_G, "PlayerCastingBarFrame"), on, "PersonalDisplay: the game's cast bar", StillCasting)
 	end
-	GameCast.writing = true
-	bar:SetAlpha(0)
-	GameCast.writing = false
-	MelloUI.Perf.WriteBack("PersonalDisplay: the game's cast bar")
-end
-
-function GameCast.OnFade(anim)
-	if GameCast.held then
-		anim:Stop()
-		MelloUI.Perf.WriteBack("PersonalDisplay: the game's cast bar fade")
-	end
-end
-
--- the bar's own fades (its animation groups, read raw)
-function GameCast.Fades(bar)
-	local out = {}
-	for _, key in ipairs(GameCast.FADES) do
-		local anim = rawget(bar, key)
-		if type(anim) == "table" and type(anim.Play) == "function" then
-			out[#out + 1] = anim
-		end
-	end
-	return out
-end
-
-function GameCast.Hold(on)
-	local bar = rawget(_G, "PlayerCastingBarFrame")
-	if type(bar) ~= "table" or type(bar.SetAlpha) ~= "function" then
-		return
-	end
-	on = on and true or false
-	if on == GameCast.held then
-		return
-	end
-	GameCast.held = on
-	if on and not GameCast.hooked then
-		GameCast.hooked = true
-		hooksecurefunc(bar, "SetAlpha", GameCast.OnAlpha)
-		for _, anim in ipairs(GameCast.Fades(bar)) do
-			hooksecurefunc(anim, "Play", GameCast.OnFade)
-		end
-	end
-	if on then
-		-- (one running as it comes on: an interrupt's hold, stopped)
-		for _, anim in ipairs(GameCast.Fades(bar)) do
-			if anim:IsPlaying() then
-				anim:Stop()
-			end
-		end
-	elseif bar:IsShown() and not StillCasting() and not rawget(bar, "isInEditMode") then
-		-- (off with no cast while it still stands from the last one's end, its fade held off: left see-through, so no
-		-- old bar comes back; the game's next cast gives it its 1, as each start does)
-		return
-	end
-	GameCast.writing = true
-	bar:SetAlpha(on and 0 or 1)
-	GameCast.writing = false
 end
 
 local function CastHeld()
@@ -5709,7 +5653,7 @@ local function Start()
 	if M.db and Num(M.db.zoomRef) == nil then
 		M.db.zoomRef = Zoom.Read()
 	end
-	GameCast.Hold(CastHeld())
+	HoldGameCast(CastHeld())
 	ChargeFrom()
 	HoldGameSwing()
 	Motion.Shown()
@@ -6772,7 +6716,7 @@ function M:OnDisable()
 	Events(false)
 	Cds.Off()
 	HoldGame()
-	GameCast.Hold(false)
+	HoldGameCast(false)
 	ChargeFrom()
 	HoldGameSwing()
 	S.preview = false
@@ -6827,7 +6771,7 @@ function M:OnSettingChanged(key, _, db)
 	elseif key == "zoom" then
 		Place()
 	elseif key == "hideCastBar" then
-		GameCast.Hold(CastHeld())
+		HoldGameCast(CastHeld())
 	elseif key == "healFrom" then
 		ChargeFrom()
 	elseif key == "swing" then

@@ -57,6 +57,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		frames = true,
 		partyFlip = false,
 		druidForms = true,
+		detachTargetCast = false,
 	},
 	options = {
 		-- (2026-10-20, the user: the game's frames as they are, in the set's borders, one picture each; the Frames section)
@@ -74,6 +75,11 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		{ type = "toggle", key = "druidForms", name = "Druid Forms",
 		  search = "druid form forms shapeshift cat bear mana energy rage",
 		  desc = "For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values." },
+		-- (2.1.95; the user, 2026-11-28: "an option to detach the target cast bar and move it freely") MelloUI.TargetCast,
+		-- Modules/CastBars.lua: MelloUI's own bar for the target's casts, moved in Edit Layout
+		{ type = "toggle", key = "detachTargetCast", name = "Detach Cast Bar", new = "2.1.95",
+		  search = "target cast bar castbar detach move free spell bar",
+		  desc = "Your target's cast bar on its own, away from the target frame. Move it in Edit Layout (Target Cast Bar)." },
 		{ type = "header", name = "Names" },
 		{ type = "dropdown", key = "nameFont", name = "Name Font", values = MelloUI.FontFaces,
 		  desc = "The font of names on the unit frames and party portraits. Shared: the interface font." },
@@ -3811,6 +3817,15 @@ function M:OnEnable(db)
 	local K = MelloUI.Kit
 	Frames.covered = (type(K) == "table" and type(K.IsOn) == "function" and K:IsOn("unitframes")) and true or false
 	Frames.Start()
+	M.CastDetach()
+end
+
+-- (2.1.95) Detach Cast Bar: the target's cast bar MelloUI's own while the row is on (Modules/CastBars.lua)
+function M.CastDetach()
+	local cast = MelloUI.TargetCast
+	if cast then
+		cast.Set(M.isEnabled and M.db and M.db.detachTargetCast == true)
+	end
 end
 
 function M:OnDisable()
@@ -3826,6 +3841,7 @@ function M:OnDisable()
 	ApplyParts()
 	ApplyAll()
 	Frames.Lay()   -- (isEnabled is false: the game's art back)
+	M.CastDetach()
 end
 
 --------------------------------------------------------------------------------
@@ -3881,6 +3897,10 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "targetOfTarget" then
 		M.ToTChanged(db)
+		return
+	end
+	if key == "detachTargetCast" then
+		M.CastDetach()
 		return
 	end
 	if key == "nameFormat" then

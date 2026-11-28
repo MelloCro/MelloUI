@@ -410,6 +410,7 @@ local function ApplyCastBars()
 			CollectCastBar(frame.spellbar, list)
 		end
 	end
+	CollectCastBar(rawget(_G, "MelloUITargetCastBar"), list)   -- (2.1.95: the target's own, detached: Modules/CastBars.lua)
 	ShadeAll("castbar", list)
 end
 
@@ -1190,6 +1191,12 @@ local function InstallHooks()
 			ApplyUnitFrames()
 		end
 	end, "Dark Mode: the target frame of ours")
+	-- (2.1.95) the target's own cast bar, built when its row first comes on (Modules/CastBars.lua)
+	MelloUI:On("targetcast", function()
+		if Active("castbar") then
+			ApplyCastBars()
+		end
+	end, "Dark Mode: the target's own cast bar")
 
 	-- Bag buttons re-set their atlases when bags change. (fr-18: MelloUI's own bag buttons while they stand in --
 	-- hooked as they come, the bag bar and the status bars shaded again)

@@ -77,7 +77,7 @@ local FillOf, Masked, Bar, TextsOn, Ask, Yes, Later = K.FillOf, K.Masked, K.Bar,
 local KINDS = {
 	{ key = "target", unit = "target", totUnit = "targettarget", game = "TargetFrame", gameToT = "TargetFrameToT",
 	  name = "MelloUITargetFrame", change = "PLAYER_TARGET_CHANGED", owner = "target frame", totOwner = "target of target",
-	  keep = {} },
+	  keep = {}, totKey = "MelloUITargetFrameToT", totLabel = "Target of Target" },
 	{ key = "focus", unit = "focus", totUnit = "focustarget", game = "FocusFrame", gameToT = "FocusFrameToT",
 	  name = "MelloUIFocusFrame", change = "PLAYER_FOCUS_CHANGED", owner = "focus frame", totOwner = "focus target",
 	  keep = { GROUP_ROSTER_UPDATE = true, UNIT_CLASSIFICATION_CHANGED = true, PLAYER_FLAGS_CHANGED = true } },
@@ -592,6 +592,9 @@ function BuildToT(kind)
 	local unit = kind.totUnit
 	local f = CreateFrame("Button", kind.name .. "ToT", game, "SecureUnitButtonTemplate")
 	U.mine[f] = true
+	-- (2.1.95) a size of its own, the game's frame's (TargetofTargetFrameTemplate's 120 x 49): at a place of its own it
+	-- hangs by one point (Edit Layout), where SetAllPoints gives it none
+	f:SetSize(Num(game:GetWidth()) or 120, Num(game:GetHeight()) or 49)
 	f:SetAllPoints(game)
 	f:SetFrameLevel(game:GetFrameLevel())
 	f:SetAttribute("unit", unit)
@@ -686,7 +689,37 @@ function BuildToT(kind)
 	f.HealthCheck = O.ToTHealthCheck
 	kind.tot = f
 	O.ToTScripts(f)
+	O.ToTMover(kind, f)   -- (after its OnShow / OnHide: Core hooks them)
 	return f
+end
+
+-- (2.1.95; the user, 2026-11-28: "i want the target of target to be able to be moved separatelly") the target of
+-- target an Edit Layout element of its own (docs/plans/target-tot-castbar.md). With no place of its own it stands over
+-- the game's frame's rect, so it goes with the target frame; given one, it stands there -- still the game's frame's
+-- child, so it shows, hides and fades by the game's rule, in a fight too. Laid out of a fight only (a secure unit
+-- button: Core's RestorePosition leaves a protected frame alone in one); Reset puts it over the game's rect again, at
+-- the target frame's size. The kinds with a `totKey` only (the target's: the focus target was not asked for)
+function O.ToTHome(kind)
+	local f, game = kind.tot, rawget(_G, kind.gameToT)
+	if not f or type(game) ~= "table" or InCombatLockdown() then
+		return false
+	end
+	f:ClearAllPoints()
+	f:SetAllPoints(game)
+	f:SetScale(1)
+	return true
+end
+
+function O.ToTMover(kind, f)
+	if not kind.totKey then
+		return
+	end
+	local home = function()
+		return O.ToTHome(kind)
+	end
+	MelloUI:RegisterMover(f, f, { key = kind.totKey, label = kind.totLabel, group = "hud", category = "frames",
+		page = "UnitFrames", placeholder = true, default = home, reset = home,
+		when = function() return kind.standing end })
 end
 
 --------------------------------------------------------------------------------
@@ -1577,6 +1610,11 @@ local function Stand(kind)
 	f:Show()
 	local tot = f.totFrame
 	if tot then
+		-- (2.1.95) its place of its own put back now, out of a fight (Core's registration came while it was not live
+		-- yet, and its first show may come in a fight)
+		if kind.totKey and MelloUI:GetPosition(kind.totKey) then
+			MelloUI:RestorePosition(kind.totKey, tot)
+		end
 		tot:Show()
 		if tot:IsVisible() then
 			ToTListen(tot, true)

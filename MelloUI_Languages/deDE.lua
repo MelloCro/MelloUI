@@ -2475,6 +2475,11 @@ Lang:Add("deDE", {
 	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "Ein Lua-Fehler der Gruppenrahmen des Spiels beim Einloggen ist behoben (Maskentexturen).", -- draft
 	["Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel."] = "Quests: Der Knopf, der eine Quest abbricht, heißt jetzt „Quest abbrechen“. Auf Deutsch stand dort vorher dasselbe wie auf „Abbrechen“.", -- draft
 	["Action Bars: items in the game's bags can be used again after opening the bags with MelloUI's bag bar."] = "Aktionsleisten: Gegenstände in den Taschen des Spiels lassen sich wieder benutzen, nachdem die Taschen über MelloUIs Taschenleiste geöffnet wurden.", -- draft
+	["Target of Target: move it on its own in Edit Layout."] = "Ziel des Ziels: Lässt sich jetzt in „Layout bearbeiten“ einzeln verschieben.", -- draft
+	["Target: Detach Cast Bar puts your target's cast bar on its own, to move anywhere in Edit Layout."] = "Ziel: „Zauberleiste lösen“ stellt die Zauberleiste deines Ziels für sich, frei verschiebbar in „Layout bearbeiten“.", -- draft
+	["Detach Cast Bar"] = "Zauberleiste lösen", -- draft
+	["Your target's cast bar on its own, away from the target frame. Move it in Edit Layout (Target Cast Bar)."] = "Die Zauberleiste deines Ziels für sich, getrennt vom Zielrahmen. Verschiebe sie in „Layout bearbeiten“ (Zauberleiste des Ziels).", -- draft
+	["Target Cast Bar"] = "Zauberleiste des Ziels", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "Chat: Klicke in der Ansicht „Minimal“ auf den Namen der Sprache in der Eingabezeile, um die Sprache zu wechseln, die du sprichst.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "Stärkungs- & Schwächungszauber: Wenn du über einen Stärkungs- oder Schwächungszauber deines Ziels fährst, erscheint wieder dessen eigener Tooltip und nicht der eines anderen.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "Controller: MelloUIs Kopierfenster nimmt der Chatzeile des Spiels die Tastatur nicht mehr weg. Klicke auf den Text, um ihn zu markieren.", -- draft

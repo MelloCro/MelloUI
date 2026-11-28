@@ -2468,6 +2468,11 @@ Lang:Add("koKR", {
 	["Fixed a Lua error from the game's party frames at login (mask textures)."] = "접속할 때 게임의 파티 프레임에서 나던 Lua 오류를 고쳤습니다 (마스크 텍스처).", -- draft
 	["Quests: the button that abandons a quest says Abandon Quest now. In German it said the same as Cancel."] = "퀘스트: 퀘스트를 포기하는 버튼에 이제 '퀘스트 포기'라고 나옵니다. 독일어에서는 취소 버튼과 같은 말이었습니다.", -- draft
 	["Action Bars: items in the game's bags can be used again after opening the bags with MelloUI's bag bar."] = "행동 단축바: MelloUI의 가방 바로 가방을 연 뒤에도 게임 가방의 아이템을 다시 사용할 수 있습니다.", -- draft
+	["Target of Target: move it on its own in Edit Layout."] = "대상의 대상: 이제 레이아웃 편집에서 따로 옮길 수 있습니다.", -- draft
+	["Target: Detach Cast Bar puts your target's cast bar on its own, to move anywhere in Edit Layout."] = "대상: 시전 바 분리를 켜면 대상의 시전 바가 따로 떨어져, 레이아웃 편집에서 원하는 곳으로 옮길 수 있습니다.", -- draft
+	["Detach Cast Bar"] = "시전 바 분리", -- draft
+	["Your target's cast bar on its own, away from the target frame. Move it in Edit Layout (Target Cast Bar)."] = "대상의 시전 바를 대상 프레임에서 떼어 따로 둡니다. 레이아웃 편집에서 옮기세요 (대상 시전 바).", -- draft
+	["Target Cast Bar"] = "대상 시전 바", -- draft
 	["Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak."] = "대화: 최소 보기에서 입력줄에 있는 언어 이름을 클릭하면 사용하는 언어를 바꿀 수 있습니다.", -- draft
 	["Buffs & Debuffs: hovering a target's buff or debuff shows that aura's own tooltip again, not another one's."] = "강화 및 약화 효과: 대상의 강화 또는 약화 효과에 마우스를 올리면 다른 효과가 아닌 그 효과의 툴팁이 다시 표시됩니다.", -- draft
 	["Controller: MelloUI's copy window no longer takes the keyboard from the game's chat line. Click its text to select it."] = "컨트롤러: MelloUI의 복사 창이 더 이상 게임 채팅 입력줄에서 키보드를 가져가지 않습니다. 텍스트를 클릭하면 선택됩니다.", -- draft

@@ -45,6 +45,8 @@ local BARS = {
 	player = function() return PlayerCastingBarFrame end,
 	pet = function() return PetCastingBarFrame end,
 	target = function() return TargetFrame and TargetFrame.spellbar end,
+	-- (2.1.95) the target's own, detached (Unit Frames' Detach Cast Bar: Modules/CastBars.lua), built as the game's
+	targetOwn = function() return rawget(_G, "MelloUITargetCastBar") end,
 	focus = function() return FocusFrame and FocusFrame.spellbar end,
 	overlay = function() return OverlayPlayerCastingBarFrame end,
 }
@@ -53,6 +55,7 @@ local BARS = {
 -- a unit frame (TargetSpellBarTemplate: 150 x 10, the text box 12 px under)
 local KNOWN = {
 	target = { w = 150, h = 10, box = 12 },
+	targetOwn = { w = 150, h = 10, box = 12 },
 	focus = { w = 150, h = 10, box = 12 },
 }
 
@@ -465,6 +468,21 @@ end
 --------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
+
+-- (2.1.95) the target's own cast bar, built when its row first comes on: dressed then, its pieces on with the skin
+MelloUI:On("targetcast", function()
+	if not skin then
+		return
+	end
+	local before = #skin.reps
+	SkinCastBar(BARS.targetOwn(), KNOWN.targetOwn)
+	if active then
+		for i = before + 1, #skin.reps do
+			skin.reps[i]:Enable()
+		end
+		Kit:WhenOutOfCombat(SetBar.All, "Cast bars: the frame set")
+	end
+end, "Cast bars: the target's own bar")
 
 function M:OnEnable(db)
 	self.db = db

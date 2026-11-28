@@ -1596,6 +1596,7 @@ local function ApplyCastBars()
 			ApplyToCastBar(frame.spellbar, "castbars")
 		end
 	end
+	ApplyToCastBar(rawget(_G, "MelloUITargetCastBar"), "castbars")   -- (2.1.95: the target's own, Modules/CastBars.lua)
 end
 
 --------------------------------------------------------------------------------
@@ -1781,6 +1782,12 @@ local function InstallHooks()
 			ApplyUnitFrames()
 		end
 	end, "Bar Textures: the player frame of ours")
+	-- (2.1.95) the target's own cast bar, built when its row first comes on (Modules/CastBars.lua)
+	MelloUI:On("targetcast", function()
+		if M.isEnabled and Active("castbars") then
+			ApplyCastBars()
+		end
+	end, "Bar Textures: the target's own cast bar")
 	-- (fr-18) MelloUI's own status bars come or gone (the game's given back): the bars of the ones that stand now
 	MelloUI:On("ownbars", function(part)
 		if part == "status" and M.isEnabled and Active("statusbars") then
