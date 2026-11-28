@@ -77,7 +77,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		  desc = "For a druid: one more row under your power bar, split in two, shows the two powers it does not show right now. Energy and rage in caster form, mana and rage in cat form, mana and energy in bear form. Their numbers follow Bar Values." },
 		-- (2.1.95; the user, 2026-11-28: "an option to detach the target cast bar and move it freely") MelloUI.TargetCast,
 		-- Modules/CastBars.lua: MelloUI's own bar for the target's casts, moved in Edit Layout
-		{ type = "toggle", key = "detachTargetCast", name = "Detach Cast Bar", new = "2.1.95",
+		{ type = "toggle", key = "detachTargetCast", name = "Detach Cast Bar",
 		  search = "target cast bar castbar detach move free spell bar",
 		  desc = "Your target's cast bar on its own, away from the target frame. Move it in Edit Layout (Target Cast Bar)." },
 		{ type = "header", name = "Names" },
