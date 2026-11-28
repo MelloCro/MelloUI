@@ -266,6 +266,10 @@ OnEvent = Shared("MelloUI Players: the group's events", OnEvent, "event")
 local QM = MelloUI.QuestMoments and MelloUI.QuestMoments.__
 local Seg, OutCubic, OutBack, Hump = QM.Seg, QM.OutCubic, QM.OutBack, QM.Hump
 local W   -- MelloUI.Widgets, read at the first moment
+local function Tr(text)
+	local Lang = MelloUI.Lang
+	return Lang and Lang.T(text) or text
+end
 
 local function Tex(file, layer, sub, add)
 	local t = B.root:CreateTexture(nil, layer or "ARTWORK", nil, sub or 0)
@@ -676,7 +680,7 @@ M.SlashWords = {
 			n = n + 1
 		end
 		MelloUI:Print("MelloUI Players: %d in the group as read, the moment %s, in a group %s", n,
-			(M.db and M.db.moment) and "on" or "off", tostring(G.inGroup))
+			Tr((M.db and M.db.moment) and "on" or "off"), Tr(G.inGroup and "yes" or "no"))
 		for k = max(1, G.lastN - 11), G.lastN do
 			MelloUI:Print("  %s", tostring(G.last[(k - 1) % 12 + 1]))
 		end

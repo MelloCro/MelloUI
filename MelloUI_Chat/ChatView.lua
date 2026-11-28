@@ -91,9 +91,16 @@ local TYPE_NAME = { SAY = "Say", YELL = "Yell", EMOTE = "Emote", PARTY = "Party"
 	WHISPER_INFORM = "Whisper", BN_WHISPER = "Whisper", BN_WHISPER_INFORM = "Whisper", MONSTER_SAY = "Says",
 	MONSTER_YELL = "Yells", MONSTER_WHISPER = "Whispers" }
 -- who you speak to: the row's letters (the chat menu's picks), the game's slash command for each, its chat colour
-local PICKS = { { "S", "/s ", "SAY", "Say" }, { "P", "/p ", "PARTY", "Party" }, { "R", "/ra ", "RAID", "Raid" },
-	{ "I", "/i ", "INSTANCE_CHAT", "Instance" }, { "G", "/g ", "GUILD", "Guild" }, { "Y", "/y ", "YELL", "Yell" },
-	{ "W", "/w ", "WHISPER", "Whisper someone" }, { "E", "/e ", "EMOTE", "Emote" } }
+local PICKS = {
+	{ "S", "/s ", "SAY", "Say", "Speak in say (/s )." },
+	{ "P", "/p ", "PARTY", "Party", "Speak in party (/p )." },
+	{ "R", "/ra ", "RAID", "Raid", "Speak in raid (/ra )." },
+	{ "I", "/i ", "INSTANCE_CHAT", "Instance", "Speak in instance (/i )." },
+	{ "G", "/g ", "GUILD", "Guild", "Speak in guild (/g )." },
+	{ "Y", "/y ", "YELL", "Yell", "Speak in yell (/y )." },
+	{ "W", "/w ", "WHISPER", "Whisper someone", "Speak in whisper someone (/w )." },
+	{ "E", "/e ", "EMOTE", "Emote", "Speak in emote (/e )." },
+}
 local TEXT = {
 	tabTip = "Show this chat window's lines.\nRight-click: the window's menu (rename it, make a new window -- on "
 		.. "General --, close it, its font size, its settings: which chat and channels it shows).\nDrag it up or down "
@@ -2285,8 +2292,7 @@ local function ButtonRow(frame)
 			end
 			letter:SetText(pick[1])
 			b.label = letter
-			b.slash, b.tipTitle = pick[2], pick[4]
-			b.tipText = "Speak in " .. pick[4]:lower() .. " (" .. pick[2] .. ")."
+			b.slash, b.tipTitle, b.tipText = pick[2], pick[4], pick[5]
 			Perf.SetScript(b, "OnClick", PickClick)
 		else
 			b.action, b.tipTitle, b.tipText = act[4], act[2], act[3]

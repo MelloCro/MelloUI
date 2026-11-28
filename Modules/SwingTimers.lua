@@ -319,7 +319,8 @@ local function N(v)
 end
 
 local function Say(text, ...)
-	MelloUI:Print("swing %6.2f  " .. text, GetTime() - log.t0, ...)
+	local Lang = MelloUI.Lang
+	MelloUI:Print((Lang and Lang.T("swing %6.2f  ") or "swing %6.2f  ") .. text, GetTime() - log.t0, ...)
 end
 
 local function SpellName(id)
