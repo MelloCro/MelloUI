@@ -4,7 +4,7 @@
 ## Author: Mello
 ## Version: 2.1.95
 ## Dependencies: MelloUI
-## OptionalDeps: MelloUI_Oldschool
+## OptionalDeps: MelloUI_Oldschool, Spoken
 ## X-MelloUI-Feature: VoiceOver
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 

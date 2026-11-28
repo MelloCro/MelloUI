@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.96
+
+- Spoken: MelloUI works with Spoken, the voice-over addon for quests, books, zones and bosses. While Spoken reads quests, MelloUI's Voice Over stays quiet for quest dialogue and NPC greetings, and for books while Spoken reads those.
+- Spoken: MelloUI's Voice Over widget is one of Spoken's narrator styles, "MelloUI". Spoken offers it once (it is also in Spoken's settings); picked, Spoken's lines show in the widget with the speaker's face, the ring and its buttons.
+- Spoken: Read on the quest log plays Spoken's recording of the quest where it has one. The Quest Tracker's right-click menu has Play Voice-Over, and Dungeon Info's dungeon and boss pages have a Story button for Spoken's stories.
+- Spoken is on the Addons page, with its own switch.
+- Fixed: Read on the quest log read nothing for a quest the voice pack has no recording of while Read Unvoiced Lines was off. It reads it now: that setting is for the dialog that plays by itself.
+
 ## 2.1.95
 
 - Unit Frames: the Target of Target can be moved on its own in Edit Layout (Target of Target). Until you move it, it stays at the target frame as before.

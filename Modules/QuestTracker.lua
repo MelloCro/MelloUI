@@ -2148,6 +2148,14 @@ function Act.Menu(block, id)
 		root:CreateButton(Act.Text("SHARE_IN_CHAT", "Link in Chat"), function()
 			Act.LinkInChat(id)
 		end)
+		-- (2.1.96; the user: "can we add full integration with Spoken addon?") Spoken's recording of the quest, where it
+		-- has one (Core/Spoken.lua): played, or stopped while it plays
+		local SP = rawget(MelloUI, "Spoken")
+		if SP and SP.Story("quest", id) then
+			root:CreateButton(Tr(SP.Playing("quest", id) and "Stop Voice-Over" or "Play Voice-Over"), function()
+				SP.Toggle("quest", id)
+			end)
+		end
 		if Act.CanAbandon(id) then
 			-- the game's own quest menu's words (ABANDON_QUEST: German "Quest abbrechen"; the short one reads Cancel)
 			root:CreateButton(Act.Text("ABANDON_QUEST", "Abandon Quest"), function()

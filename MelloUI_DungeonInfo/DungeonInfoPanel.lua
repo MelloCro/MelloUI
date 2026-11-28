@@ -91,6 +91,10 @@ local TEXT = {
 	pickUp = "Pick Up Quests", pickUpN = "Pick Up Quests (%d)",
 	pickUpTip = "Route takes you to every quest of it you can take now, in the fastest order from where you stand.",
 	pickUpNone = "No quest of it to take now.",
+	-- (2.1.96; the user: "can we add full integration with Spoken addon?") Spoken's stories (Core/Spoken.lua)
+	story = "Story", storyStop = "Stop",
+	storyTip = "Spoken tells this dungeon's story. Again: stop.",
+	bossStoryTip = "Spoken tells this boss's story. Again: stop.",
 	noDoor = "Its door is not known yet: it is learned the first time you walk in.",
 	noLoot = "No drops known for this boss yet: what he drops is kept the first time he falls in front of you.",
 	noBosses = "No bosses known for this one.",
@@ -729,9 +733,48 @@ local ButtonEnter = Perf.Shared("OnEnter on Dungeon Info's page buttons", functi
 	W.ShowTooltip(self, self.label:GetText(), self.tip)
 end, "script")
 
+-- (2.1.96) Spoken's story of the page shown: the dungeon's (its instance map) or the boss's (its encounter), where
+-- Spoken has one to play now; its button's word, Stop while it plays (laid again on Spoken's AUDIO_CHANGED)
+local function StoryOf(button)
+	local inst, boss, H = S.inst, S.boss, S.bossHead
+	if inst and S.buttons and button == S.buttons.story then
+		return "instance", inst.map
+	elseif inst and boss and not boss.trash and H and button == H.story then
+		return "boss", boss.id
+	end
+	return nil, nil
+end
+
+local function StoryLabel(SP, b)
+	local kind, id = StoryOf(b)
+	if kind and b:IsShown() then
+		b.label:SetText(W.Tr(SP.Playing(kind, id) and TEXT.storyStop or TEXT.story))
+	end
+end
+
+function P.StoryLabels()
+	local SP = rawget(MelloUI, "Spoken")
+	if not (SP and S.buttons) then
+		return
+	end
+	StoryLabel(SP, S.buttons.story)
+	if S.bossHead then
+		StoryLabel(SP, S.bossHead.story)
+	end
+end
+
 local ButtonClick = Perf.Shared("OnClick on Dungeon Info's page buttons", function(self)
 	local inst, B = S.inst, S.buttons
 	if not inst then
+		return
+	end
+	local kind, id = StoryOf(self)
+	if kind then
+		local SP = rawget(MelloUI, "Spoken")
+		if SP then
+			SP.Toggle(kind, id)   -- (its own sound)
+		end
+		P.StoryLabels()
 		return
 	end
 	local door = J.Door(inst)
@@ -837,13 +880,21 @@ function P.LayInst()
 	local door = J.Door(inst) ~= nil
 	B.show:SetAlpha(door and 1 or 0.5)
 	B.route:SetAlpha(door and 1 or 0.5)
-	local step = width / 3
+	-- (2.1.96) Story beside them while Spoken has this dungeon's story to play: four across, else three
+	local SP = rawget(MelloUI, "Spoken")
+	local story = SP and SP.Story("instance", inst.map) or false
+	B.story:SetShown(story)
+	B.story.label:SetShown(story)
+	local step = width / (story and 4 or 3)
 	B.show:ClearAllPoints()
 	B.show:SetPoint("TOP", B.row, "TOPLEFT", step * 0.5, 0)
 	B.route:ClearAllPoints()
 	B.route:SetPoint("TOP", B.row, "TOPLEFT", step * 1.5, 0)
 	B.quests:ClearAllPoints()
 	B.quests:SetPoint("TOP", B.row, "TOPLEFT", step * 2.5, 0)
+	B.story:ClearAllPoints()
+	B.story:SetPoint("TOP", B.row, "TOPLEFT", step * 3.5, 0)
+	P.StoryLabels()
 	y = y + T.BUTTON_ROW + 6
 	-- its bosses
 	local n = #inst.bosses
@@ -942,6 +993,19 @@ function P.LayBoss()
 	else
 		H.title:SetPoint("TOPLEFT", page, "TOPLEFT", 2, -y)
 		y = y + textH + 2 + 12
+	end
+	-- (2.1.96) his story, while Spoken has one to play: a row of its own under the head, as the dungeon page's buttons
+	local SP = rawget(MelloUI, "Spoken")
+	local story = not boss.trash and SP and SP.Story("boss", boss.id) or false
+	H.row:SetShown(story)
+	if story then
+		H.row:ClearAllPoints()
+		H.row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
+		H.row:SetSize(width, T.BUTTON_ROW)
+		H.story:ClearAllPoints()
+		H.story:SetPoint("TOP", H.row, "TOPLEFT", width / 6, 0)
+		y = y + T.BUTTON_ROW + 6
+		P.StoryLabels()
 	end
 	-- (1.2.2) the data's, DungeonJournal's and the ones seen fall, in one list; a trash drop's line names who drops it
 	local drops = J.Drops(boss)
@@ -1296,6 +1360,9 @@ local function Build(pane)
 	B.show = PageButton(row, "goal_pin", TEXT.show, TEXT.showTip)
 	B.route = PageButton(row, "btn_way", TEXT.route, TEXT.routeTip)
 	B.quests = PageButton(row, "page_questlist", TEXT.pickUp, TEXT.pickUpTip)
+	B.story = PageButton(row, "voice_page", TEXT.story, TEXT.storyTip)   -- (2.1.96: Spoken's, shown where it has one)
+	B.story:Hide()
+	B.story.label:Hide()
 	S.buttons = B
 	S.noBosses = W.Text(page, "GameFontHighlight", TEXT.noBosses, "text")
 	S.noQuests = W.Text(page, "GameFontHighlight", TEXT.noQuests, "text")
@@ -1318,7 +1385,16 @@ local function Build(pane)
 	if BH.band then
 		BH.band:Anchor(BH.title, BH.sub, 4, 2)
 	end
+	-- (2.1.96) his story's row (Spoken's: shown where it has one)
+	BH.row = CreateFrame("Frame", nil, bp)
+	BH.row:SetHeight(T.BUTTON_ROW)
+	BH.row:Hide()
+	BH.story = PageButton(BH.row, "voice_page", TEXT.story, TEXT.bossStoryTip)
 	S.bossHead = BH
+	local SP = rawget(MelloUI, "Spoken")
+	if SP then
+		SP.On("AUDIO_CHANGED", P.StoryLabels)   -- (a story's end: Story again)
+	end
 	S.noLoot = W.Text(bp, "GameFontHighlight", TEXT.noLoot, "text")
 	-- laid again as the game comes to know items, or your quests change, while it shows
 	local f = CreateFrame("Frame", nil, pane)

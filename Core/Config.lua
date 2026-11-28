@@ -177,6 +177,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "2.1.96", lines = {
+		"Spoken: MelloUI works with it. While it reads quests, MelloUI's Voice Over stays quiet.",
+		"Spoken: pick MelloUI as its narrator style to see its lines in the Voice Over widget.",
+		"Spoken: play its recordings from the quest log, the tracker's menu and Dungeon Info.",
+		"Quest log: Read reads a quest with no recording again, with Read Unvoiced Lines off too.",
+	} },
 	{ version = "2.1.95", lines = {
 		"Target of Target: move it on its own in Edit Layout.",
 		"Target: Detach Cast Bar puts your target's cast bar on its own, to move anywhere in Edit Layout.",
@@ -198,9 +204,6 @@ local CHANGELOG = {
 		"Quest log: a quest found with its search opens on click again (Oldschool).",
 		"Fixed a Lua error from the game's party frames at login (mask textures).",
 	} },
-	{ version = "2.1.91", lines = {
-		"Chat: in the Minimal view, click the language's name on the line you type in to switch the language you speak.",
-	} },
 }
 
 -- (2.1.84; the user, 2026-11-24, of "What's new that opens the setting": "continue with 3, 4, 5, 6, 7") where a What's
@@ -211,11 +214,11 @@ local CHANGELOG = {
 -- setup does not have (a feature addon not loaded) leaves the line plain. Kept in step with CHANGELOG above, line by
 -- line (Tools/lint/check_whats_new.py: no version and no line here that is not there)
 local NEWS_GO = {
+	["2.1.96"] = { false, false, false, false },
 	["2.1.95"] = { false, "UnitFrames.detachTargetCast" },
 	["2.1.94"] = { false },
 	["2.1.93"] = { false },
 	["2.1.92"] = { "Auras.target", "Chat.view", "=map", "=map", "Chat.view", "=map", "=map", false, false },
-	["2.1.91"] = { "Chat.view" },
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },

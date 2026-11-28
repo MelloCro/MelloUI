@@ -130,6 +130,7 @@ local TEXT = {
 	abandon = "Abandon",
 	read = "Read", stop = "Stop",
 	readTip = "Read the quest aloud: its description in the quest giver's voice, then the recorded objectives when the voice pack has them (Voice Over). Again: stop.",
+	readSpokenTip = "Play Spoken's recording of this quest. Again: stop.",   -- (2.1.96: Core/Spoken.lua)
 	showTip = "The map goes to where this quest is done (its turn-in once it is ready).",
 	showNone = "This quest has no place on the map.",   -- (2.1.65: a crafting writ, done wherever you craft)
 	routeTip = "Follow this quest: Route shows the way to it. Click again to let it go.",
@@ -192,6 +193,18 @@ end
 local function VoiceOver()
 	local ok, vo = pcall(MelloUI.GetModule, MelloUI, "VoiceOver")
 	return ok and type(vo) == "table" and type(vo.ReadToggle) == "function" and vo or nil
+end
+
+-- (2.1.96; the user picked "Spoken first") the quest read: Spoken's recording where it has one (Core/Spoken.lua),
+-- else Voice Over's reading
+local function SpokenStory(id)
+	local SP = rawget(MelloUI, "Spoken")
+	return SP and SP.Story("quest", id) or false
+end
+
+local function Reading(id)
+	local SP, VO = rawget(MelloUI, "Spoken"), VoiceOver()
+	return (SP and SP.Playing("quest", id)) or (VO and VO.Reading(id)) or false
 end
 
 local function Watched(id)
@@ -821,8 +834,8 @@ end
 
 -- Read's label as Voice Over reads (Stop while it reads)
 local function ReadLabel()
-	local VO, b = VoiceOver(), S.buttons.read
-	local reading = VO and VO.Reading() and true or false
+	local b = S.buttons.read
+	local reading = Reading(S.selected) and true or false
 	if reading ~= b.reading then
 		b.reading = reading
 		b.label:SetText(W.Tr(reading and TEXT.stop or TEXT.read))
@@ -832,7 +845,7 @@ end
 local function Buttons(id)
 	local A, B = Acts(), S.buttons
 	local VO = VoiceOver()
-	local canRead = VO and VO.ReadCan() and true or false
+	local canRead = (SpokenStory(id) or (VO and VO.ReadCan(id))) and true or false
 	if B.read:IsShown() ~= canRead then
 		B.read:SetShown(canRead)
 		LayButtons()
@@ -1124,6 +1137,8 @@ local ButtonEnter = Perf.Shared("OnEnter on the map's quest page buttons", funct
 	local body = self.tip
 	if self == S.buttons.share and self.icon:IsDesaturated() then
 		body = TEXT.shareOff
+	elseif self == S.buttons.read and SpokenStory(S.selected) then
+		body = TEXT.readSpokenTip
 	end
 	W.ShowTooltip(self, self.label:GetText(), body)
 end, "script")
@@ -1140,8 +1155,10 @@ local ButtonClick = Perf.Shared("OnClick on the map's quest page buttons", funct
 			return
 		end
 	elseif self == B.read then
-		local VO = VoiceOver()
-		if VO then
+		local SP, VO = rawget(MelloUI, "Spoken"), VoiceOver()
+		if SP and SP.Toggle("quest", id) then   -- (Spoken's recording first: its own sound)
+			ReadLabel()
+		elseif VO then
 			VO.ReadToggle(id)   -- (its own sound and line)
 			ReadLabel()
 		end

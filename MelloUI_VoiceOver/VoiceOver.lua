@@ -1638,15 +1638,19 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 	end
 	-- Read Unvoiced Lines off (user, 2026-09-26: "turn off TTS Voices if the
 	-- Dialog is not voiced"): with the packs on, a line with no recording is
-	-- left silent.
-	if not entry.file and M.db.soundPacks and M.db.speakUnrecorded == false then
+	-- left silent. (2.1.96; the user, 2026-11-28: "i cant read the quest when i
+	-- click on read in quest details while using MelloUI Map") a line the
+	-- player asked for -- Read on a quest log (opts.asked) -- is read aloud
+	-- with no recording too: the setting is for the dialog that plays by itself
+	local asked = opts and opts.asked or false
+	if not entry.file and M.db.soundPacks and M.db.speakUnrecorded == false and not asked then
 		if not M.db.queueLines and not (opts and opts.follow) then
 			StopEngine()   -- a new window still ends the line before it, as it does when that line is read
 		end
 		Widget:Update()
 		return
 	end
-	if entry.file and (info.clipOnly or (M.db.soundPacks and M.db.speakUnrecorded == false)) then
+	if entry.file and (info.clipOnly or (M.db.soundPacks and M.db.speakUnrecorded == false and not asked)) then
 		entry.recordedOnly = true   -- a file that fails to play stays silent too
 	end
 	queue[#queue + 1] = entry
@@ -2016,6 +2020,202 @@ local function Tray(_, rows)
 	return W_TEXT.lines_:format(n, Clock(total))
 end
 
+--------------------------------------------------------------------------------
+-- Spoken's narrator (2.1.96; the user, of a MelloUI narrator for Spoken: "Yes, the widget"; docs/plans/spoken.md):
+-- MelloUI's style among Spoken's narrator styles (Spoken:RegisterNarrator, its Public API, through Core/Spoken.lua).
+-- Picked in Spoken's settings, Spoken shows none of its own windows and hands the line to show to Narr.Update -- and
+-- this widget shows it as it shows Voice Over's: the speaker's face, the name and the line's title, the subtitles by the
+-- line's progress, the ring, the count of the lines waiting, its buttons Spoken's (Pause / Resume, Skip, Stop, the
+-- tray's line). Voice Over's own line, while it reads one, goes first (it stands aside where Spoken reads: SpokenSays).
+-- Spoken's tables are read, never changed, and kept only while they are the line shown.
+--------------------------------------------------------------------------------
+
+local Narr = { ID = "melloui", clip = nil, entry = nil, pausedAt = nil, registered = false }
+M.Narr = Narr
+
+-- one of Spoken's calls (nil: no Spoken, its Addons page switch off, no such call, or it raised)
+local function SpokenAsk(name, ...)
+	local SP = rawget(MelloUI, "Spoken")
+	local S = SP and SP.API() or nil
+	local fn = S and S[name]
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, a = pcall(fn, S, ...)
+	if ok then
+		return a
+	end
+	return nil
+end
+
+-- Spoken's line on the widget (Voice Over has none of its own to show)
+local function Narrating()
+	return Narr.clip ~= nil and current == nil and #queue == 0
+end
+
+-- a clip's text, plain and not empty (MelloUI.Safe.Text: nil for a secret or not a string)
+local function ClipText(v)
+	local t = MelloUI.Safe.Text(v)
+	return t ~= "" and t or nil
+end
+
+local function ClipPresent(clip)
+	local p = type(clip) == "table" and clip.present
+	return type(p) == "table" and p or {}
+end
+
+-- the line's kind as Voice Over's (its bullet): a quest line's part from its key ("q:33:accept"), a book's page, else
+-- a greeting
+local function ClipKind(clip)
+	local part = (ClipText(clip.key) or ""):match(":(%a+)$")
+	if part and KINDS[part] then
+		return part
+	end
+	local source = type(clip.source) == "table" and clip.source.key
+	return source == "readables" and "readable" or "gossip"
+end
+
+-- (Spoken's Narrator Update: the line to show, or nil)
+function Narr.Update(clip)
+	if type(clip) ~= "table" then
+		clip = nil
+	end
+	if clip ~= Narr.clip then
+		Narr.clip, Narr.pausedAt, Narr.entry = clip, nil, nil
+		if clip then
+			local len = PlainNumber(clip.length)
+			Narr.entry = { text = ClipText(ClipPresent(clip).transcript), length = len and len > 0 and len or nil,
+				startedAt = GetTime() }
+			-- (a line handed over part way through: its played share, from Spoken's caption)
+			local cap = SpokenAsk("GetCaption")
+			local share = type(cap) == "table" and cap.clip == clip and PlainNumber(cap.progress) or nil
+			if share and Narr.entry.length then
+				Narr.entry.startedAt = GetTime() - share * Narr.entry.length
+			end
+			Widget:Register()
+		end
+	end
+	Widget:Update()
+end
+
+-- (Spoken's AUDIO_CHANGED) a pause holds the ring; Resume plays the line again from its start (Spoken's client has
+-- no seek)
+function Narr.Audio()
+	if not Narr.clip then
+		return
+	end
+	local isPaused = SpokenAsk("IsPaused") == true
+	if isPaused and not Narr.pausedAt then
+		Narr.pausedAt = GetTime()
+	elseif not isPaused and Narr.pausedAt then
+		Narr.pausedAt = nil
+		if Narr.entry then
+			Narr.entry.startedAt = GetTime()
+		end
+	end
+	Widget:Update()
+end
+
+function Narr.Waiting()
+	return PlainNumber(SpokenAsk("GetWaitingCount")) or 0
+end
+
+function Narr.Progress()
+	local e = Narr.entry
+	if not (e and e.length) then
+		return nil
+	end
+	return e.startedAt, e.length, Narr.pausedAt
+end
+
+function Narr.Subtitle()
+	local e = Narr.entry
+	if not (M.db and M.db.overlaySubtitles and e and e.text) then
+		return nil
+	end
+	if not e.pages then
+		e.pages = BuildPages(SubFits, e.text)
+		e.pageWeights = nil
+	end
+	e.page = SubtitlePage(e)
+	return e.pages[e.page] or e.text
+end
+
+function Narr.PauseToggle()
+	if SpokenAsk("IsPaused") == true then
+		SpokenAsk("Resume")
+	else
+		SpokenAsk("Pause")
+	end
+end
+
+function Narr.Skip()
+	SpokenAsk("Skip")
+end
+
+function Narr.Stop()
+	SpokenAsk("StopAll")
+end
+
+-- the widget's pause and next, Spoken's while it narrates, else Voice Over's
+function Narr.Held()
+	if Narrating() then
+		return Narr.pausedAt ~= nil
+	end
+	return paused and true or false
+end
+
+function Narr.HasNext()
+	if Narrating() then
+		return Narr.Waiting() > 0
+	end
+	return HasNext()
+end
+
+-- the tray: the line shown, its time left (Spoken lists no more of its queue than its count)
+function Narr.Tray(rows)
+	local clip, e = Narr.clip, Narr.entry
+	local p = ClipPresent(clip)
+	local r = rows[1] or {}
+	rows[1] = r
+	r.line, r.icon = nil, nil
+	r.glyph = Narr.pausedAt and "pause" or "play"
+	r.text = ClipText(p.label) or ClipText(p.header) or KINDS[ClipKind(clip)].label
+	local left = e and e.length and math.max(0, e.length - ((Narr.pausedAt or GetTime()) - e.startedAt)) or nil
+	r.right = left and W_TEXT.left:format(MelloUI.Reminders.Clock(math.ceil(left))) or ""
+	r.onClick = Narr.Skip
+	rows.n = 1
+	return nil
+end
+
+-- the style's card among Spoken's (while the addons load: Spoken loads first, MelloUI_VoiceOver's OptionalDeps; else
+-- at the login)
+function Narr.Register()
+	if Narr.registered then
+		return
+	end
+	local SP = rawget(MelloUI, "Spoken")
+	local S = SP and SP.API() or nil
+	if not (S and type(S.RegisterNarrator) == "function") then
+		return
+	end
+	local W = MelloUI.Widgets
+	local Tr = W and W.Tr or function(t) return t end
+	local ok = pcall(S.RegisterNarrator, S, Narr.ID, { addon = "MelloUI_VoiceOver", title = "MelloUI",
+		description = Tr("Spoken's lines in MelloUI's Voice Over widget: the speaker's face, name and words, a ring as the line plays, and its buttons. Move it with Edit Layout."),
+		Update = Narr.Update })
+	if ok then
+		Narr.registered = true
+		SP.On("AUDIO_CHANGED", Narr.Audio)
+		-- (the user: "i just want when spoken is installed for his questlines to be read as our Dialogue Widget") the
+		-- style offered to the player: Spoken's own window, once ever, never when it is already theirs (its Public
+		-- SuggestNarrator: Spoken lets no addon switch the style itself)
+		if type(S.SuggestNarrator) == "function" then
+			pcall(S.SuggestNarrator, S, Narr.ID)
+		end
+	end
+end
+
 local SPEC = {
 	key = WIDGET, column = true, label = W_TEXT.label, hint = W_TEXT.hint, rightClick = true,
 	-- (the column's bottom slot: no other widget moves what is being read;
@@ -2025,22 +2225,30 @@ local SPEC = {
 		return M.db.overlayCompact ~= false
 	end,
 	enabled = function()
-		return M.isEnabled and M.db.overlay and true or false
+		return ((M.isEnabled and M.db.overlay) or Narr.clip ~= nil) and true or false
 	end,
 	check = function()
-		return current ~= nil or #queue > 0
+		return current ~= nil or #queue > 0 or Narr.clip ~= nil
 	end,
 	title = function()
+		if Narrating() then
+			return ClipText(ClipPresent(Narr.clip).header) or W_TEXT.unknown
+		end
 		local h = Head()
 		return h and (h.name or W_TEXT.unknown) or ""
 	end,
 	text = function()
 		local h = Head()
-		if not h then
+		local info, title
+		if Narrating() then
+			info = KINDS[ClipKind(Narr.clip)]
+			title = ClipText(ClipPresent(Narr.clip).label) or info.label
+		elseif not h then
 			return ""
+		else
+			info = KINDS[h.kind] or KINDS.gossip
+			title = h.title or info.label
 		end
-		local info = KINDS[h.kind] or KINDS.gossip
-		local title = h.title or info.label
 		if IsSecret(title) then
 			return title
 		end
@@ -2050,20 +2258,53 @@ local SPEC = {
 	end,
 	icon = TexturePath("Book"),
 	model = function()
+		if Narrating() then
+			local pt = ClipPresent(Narr.clip).portrait
+			return M.db.overlayPortrait and type(pt) == "table" and PlainNumber(pt.creatureID) or nil
+		end
 		local h = Head()
 		return M.db.overlayPortrait and h and h.npc and h.npc.id or nil
 	end,
 	talking = function()
+		if Narrating() then
+			return SpokenAsk("IsPlaying") == true and not Narr.pausedAt
+		end
 		return IsPlaying()
 	end,
 	count = function()
+		if Narrating() then
+			return Narr.Waiting()
+		end
 		return #queue
 	end,
-	progress = Progress,
+	progress = function()
+		if Narrating() then
+			return Narr.Progress()
+		end
+		return Progress()
+	end,
 	time = TimeText,
-	sub = Subtitle,
-	tray = Tray,
+	sub = function()
+		if Narrating() then
+			return Narr.Subtitle()
+		end
+		return Subtitle()
+	end,
+	tray = function(spec, rows)
+		if Narrating() then
+			return Narr.Tray(rows)
+		end
+		return Tray(spec, rows)
+	end,
 	onClick = function(_, mouse)
+		if Narrating() then
+			if mouse == "RightButton" then
+				Narr.Stop()
+			else
+				Narr.PauseToggle()
+			end
+			return
+		end
 		if mouse == "RightButton" then
 			Stop()
 		else
@@ -2071,19 +2312,35 @@ local SPEC = {
 		end
 	end,
 	actions = {
-		{ glyph = function() return paused and "play" or "pause" end,
-		  tip = function() return paused and W_TEXT.resume or W_TEXT.pause end,
-		  desc = function() return paused and W_TEXT.resumeDesc or W_TEXT.pauseDesc end,
-		  fn = function() TogglePaused() end },
-		{ glyph = "skip", tip = W_TEXT.skip, desc = W_TEXT.skipDesc, shown = HasNext,
+		{ glyph = function() return Narr.Held() and "play" or "pause" end,
+		  tip = function() return Narr.Held() and W_TEXT.resume or W_TEXT.pause end,
+		  desc = function() return Narr.Held() and W_TEXT.resumeDesc or W_TEXT.pauseDesc end,
 		  fn = function()
+			if Narrating() then
+				Narr.PauseToggle()
+			else
+				TogglePaused()
+			end
+		  end },
+		{ glyph = "skip", tip = W_TEXT.skip, desc = W_TEXT.skipDesc, shown = function() return Narr.HasNext() end,
+		  fn = function()
+			if Narrating() then
+				Narr.Skip()
+				return
+			end
 			local e = current or queue[1]
 			if e then
 				Skip(e)
 			end
 		  end },
-		{ glyph = "stop", tip = W_TEXT.stop, desc = W_TEXT.stopDesc, shown = function() return not HasNext() end,
-		  fn = function() Stop() end },
+		{ glyph = "stop", tip = W_TEXT.stop, desc = W_TEXT.stopDesc, shown = function() return not Narr.HasNext() end,
+		  fn = function()
+			if Narrating() then
+				Narr.Stop()
+			else
+				Stop()
+			end
+		  end },
 		{ glyph = "list", tip = W_TEXT.lines, desc = W_TEXT.linesDesc, tray = true },
 		{ glyph = function() return WidgetsLocked() and "padlock" or "padlockOpen" end,
 		  tip = function() return WidgetsLocked() and W_TEXT.locked or W_TEXT.unlocked end,
@@ -2450,14 +2707,28 @@ local function ReadPage()
 	end
 end
 
+-- (2.1.96; the user picked "Spoken first", then: "i just want when spoken is installed for his questlines to be read
+-- as our Dialogue Widget and melloUI voiceover stepps aside": MelloUI.Spoken, Core/Spoken.lua) while Spoken reads a
+-- part, Voice Over stays quiet for all of it: quests and NPC greetings while Spoken's quests are on, books while its
+-- readables are on -- recorded by Spoken or not. Spoken off, missing or switched off on the Addons page: Voice Over
+-- reads everything, as before
+local function SpokenSays(what)
+	local SP = rawget(MelloUI, "Spoken")
+	if not SP then
+		return false
+	end
+	return SP.Speaks(what == "book" and "readables" or "quests")
+end
+M.SpokenSays = SpokenSays
+
 local handlers = {
 	GOSSIP_SHOW = function()
-		if M.db.gossip then
+		if M.db.gossip and not SpokenSays("gossip") then
 			Enqueue(GossipText(), DescribeNPC(), "gossip")
 		end
 	end,
 	QUEST_GREETING = function()
-		if M.db.gossip and GetGreetingText then
+		if M.db.gossip and GetGreetingText and not SpokenSays("gossip") then
 			Enqueue(GetGreetingText(), DescribeNPC(), "gossip")
 		end
 	end,
@@ -2465,7 +2736,7 @@ local handlers = {
 	-- a text of the NPC's own window like any other
 	TRAINER_SHOW = function()
 		local GetTrainerGreetingText = _G.GetTrainerGreetingText
-		if M.db.gossip and GetTrainerGreetingText then
+		if M.db.gossip and GetTrainerGreetingText and not SpokenSays("gossip") then
 			local ok, text = pcall(GetTrainerGreetingText)
 			if ok then
 				Enqueue(text, DescribeNPC(), "gossip")
@@ -2473,26 +2744,30 @@ local handlers = {
 		end
 	end,
 	QUEST_DETAIL = function()
-		if M.db.questDetail then
+		if M.db.questDetail and not SpokenSays("quest") then
 			ScheduleQuestRead("accept")
 		end
 	end,
 	QUEST_PROGRESS = function()
-		if M.db.questProgress and GetProgressText then
+		if M.db.questProgress and GetProgressText and not SpokenSays("quest") then
 			ScheduleQuestRead("progress")
 		end
 	end,
 	QUEST_COMPLETE = function()
-		if M.db.questComplete and GetRewardText then
+		if M.db.questComplete and GetRewardText and not SpokenSays("quest") then
 			ScheduleQuestRead("complete")
 		end
 	end,
 	-- (2.1.7: a window answered before it could be read: ReadMissed)
 	QUEST_ACCEPTED = function(questID)
-		ReadMissed("accept", questID)
+		if not SpokenSays("quest") then
+			ReadMissed("accept", questID)
+		end
 	end,
 	QUEST_TURNED_IN = function(questID)
-		ReadMissed("complete", questID)
+		if not SpokenSays("quest") then
+			ReadMissed("complete", questID)
+		end
 	end,
 	GOSSIP_CLOSED = function()
 		if M.db.stopOnClose then
@@ -2507,7 +2782,7 @@ local handlers = {
 	-- (no ITEM_TEXT_CLOSED: closing the book, or walking away from it, never
 	-- stops its reading)
 	ITEM_TEXT_READY = function()
-		if M.db.readBooks then
+		if M.db.readBooks and not SpokenSays("book") then
 			ReadPage()
 		end
 	end,
@@ -2644,9 +2919,9 @@ local function ReadQuest(questID)
 	local v2 = Mode() == "v2"
 	local speaker = v2 and (npc.id or 0) or nil
 	if type(description) == "string" and not IsSecret(description) and description ~= "" then
-		-- (Read Unvoiced Lines off and no recording: nothing queued, and
-		-- the button says there is nothing to read)
-		spoken = Enqueue(description, npc, "accept", title, questID, nil, v2 and { speaker = speaker } or nil) ~= nil
+		-- (asked for: read aloud with no recording even with Read Unvoiced
+		-- Lines off, 2.1.96 -- that setting is for the dialog's own lines)
+		spoken = Enqueue(description, npc, "accept", title, questID, nil, { speaker = speaker, asked = true }) ~= nil
 	end
 	-- then the voice pack's objectives line (Quest Objectives), or nothing:
 	-- never text-to-speech, not the counts either (user, 2026-09-29)
@@ -2707,15 +2982,27 @@ end
 -- (the quest log's reading, for this button and MelloUI's map's quest page, MelloUI_Map: one reader) whether it is
 -- offered (Read Button In The Quest Log, a voice to read with); whether a quest is being read; read the quest, or
 -- stop the reading under way
-function M.ReadCan()
+-- (2.1.96, Spoken first) a quest Spoken has a recording of: its recording, played or stopped (MelloUI.Spoken)
+function M.ReadCan(questID)
+	local SP = rawget(MelloUI, "Spoken")
+	if SP and SP.Story("quest", questID) then
+		return true
+	end
+	-- (the user, of the button hidden for a quest Spoken has no recording of: "now i cant see the read button in the
+	-- quest log") Read is the player asking: Voice Over reads it, Spoken or not -- it steps aside for the dialog only
 	return (M.isEnabled and M.db.questLog and HasTTS()) and true or false
 end
 
-function M.Reading()
-	return IsReadingLog()
+function M.Reading(questID)
+	local SP = rawget(MelloUI, "Spoken")
+	return (SP and SP.Playing("quest", questID)) or IsReadingLog()
 end
 
 function M.ReadToggle(questID)
+	local SP = rawget(MelloUI, "Spoken")
+	if SP and SP.Toggle("quest", questID) then
+		return
+	end
 	if IsReadingLog() then
 		Stop()
 		MelloUI:PlayUISound("option_off")
@@ -3022,3 +3309,15 @@ MelloUI:Profile("VoiceOver", "line lookup + queue", Enqueue)
 
 -- the next files, the NPC voice data (NPCVoiceData.lua, NPCVoiceOverrides.lua), timed under their own name
 MelloUI.Perf:Scope("MelloUI_VoiceOver (the NPC voice data)")
+
+-- (2.1.96) the MelloUI narrator's card among Spoken's styles: while the addons load (Spoken first: the TOC's
+-- OptionalDeps), else at the login
+Narr.Register()
+if not Narr.registered then
+	local login = CreateFrame("Frame")
+	login:RegisterEvent("PLAYER_LOGIN")
+	login:SetScript("OnEvent", function(self)
+		self:UnregisterAllEvents()
+		Narr.Register()
+	end)
+end

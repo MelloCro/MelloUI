@@ -10,7 +10,8 @@
 -- MapAddonPins' sources; HandyNotes: NPCs (Forever) in MelloUI_Map/MapTownMarks.lua (2.1.53); the guides (RestedXP, Zygor, TomTom, Polestar's) in MelloUI_Route/Guides.lua; Clique in
 -- MelloUI:ClickCast; SharedMedia in Core/SharedMedia.lua (2.1.45: the sounds too); the bag addons in Core/Overlaps.lua's
 -- "bags" job (2.1.49: MelloUI's bag window steps aside); AHledger's auction prices in Modules/Discard.lua (2.1.50);
--- ManaRise in Modules/ManaRise.lua (2.1.71: MelloUI's action buttons handed to it). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
+-- ManaRise in Modules/ManaRise.lua (2.1.71: MelloUI's action buttons handed to it); Spoken in Core/Spoken.lua (2.1.96:
+-- Voice Over, the quest log, the tracker's menu and Dungeon Info through it). Off, MelloUI leaves that addon alone (its look, its data, its settings) from the next /reload --
 -- but two quest trackers never show at once (Core/Overlaps.lua's questTracker stays).
 -- Shown by the configurator's Addons page (Core/AddonsPage.lua). Nothing at login: read when asked.
 --   I.GROUPS, I.LIST, I.ByKey     the addons by group, in the page's order
@@ -407,6 +408,27 @@ I.LIST = {
 	  parts = { { "its prices", function()
 		local api = Global("AHledgerAPI")
 		return api ~= nil and type(api.GetMedian) == "function"
+	  end } } },
+	-- (2.1.96; the user, 2026-11-28: "can we add full integration with Spoken addon?", Spoken first) Core/Spoken.lua,
+	-- through Spoken's own API for other addons (its Public calls), nothing of it hooked
+	{ key = "Spoken", name = "Spoken", folders = { "Spoken" }, group = "look",
+	  url = "https://www.curseforge.com/wow/addons/spoken",
+	  does = { "Spoken speaks first: MelloUI's Voice Over stays quiet for quests and NPC greetings while Spoken's quests are on, and for books while its readables are on.",
+		"Read on the quest log plays Spoken's recording of the quest where it has one. The Quest Tracker's right-click menu and Dungeon Info's dungeon and boss pages play its stories too.",
+		"Spoken offers MelloUI as its narrator style once (also in its settings): picked, its lines show in MelloUI's Voice Over widget." },
+	  short = "Its voices first; its stories from the quest log, tracker and Dungeon Info",
+	  links = { { "Voice Over", id = "VoiceOver.questDetail" } },
+	  parts = { { "its API", function()
+		local S = Global("Spoken")
+		if not (S and type(S.IsCompatible) == "function") then
+			return false
+		end
+		local ok, yes = pcall(S.IsCompatible, S, 1)
+		return ok and yes == true
+	  end }, { "its stories", function()
+		local S = Global("Spoken")
+		return S ~= nil and type(S.HasStory) == "function" and type(S.PlayStory) == "function"
+			and type(S.StopStory) == "function"
 	  end } } },
 	-- (2.1.32 read its media; 2.1.45, Custom Sounds' Your Sounds: its sounds, the player's own files through the
 	-- MelloUI_MySounds template, docs/custom-sounds.md) the library any pack brings: working while it is found
