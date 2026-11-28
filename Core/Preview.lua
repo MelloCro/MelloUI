@@ -469,7 +469,7 @@ function Preview:Start(scene, part)
 		cfg:Hide()
 	end
 	S.mode, S.scene, S.part, S.t0, S.idx, S.fighting = item.mode, scene, part, GetTime(), 0, false
-	strip.title:SetText(TEXT.title:format(item.name))
+	strip.title:SetText(W.Tr(TEXT.title):format(W.Tr(item.name)))
 	Phase("rest")
 	strip:Show()
 	driver:RegisterEvent("PLAYER_REGEN_DISABLED")

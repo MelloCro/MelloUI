@@ -160,7 +160,7 @@ end
 local function SetName()
 	local box = P.box
 	if box then
-		box.title:SetText(TEXT.title:format(P.unit))
+		box.title:SetText(MelloUI.Widgets.Tr(TEXT.title):format(P.unit))
 		local ok, name = pcall(UnitName, P.unit)
 		box.name:SetText(ok and name or "")   -- (SetText takes a secret as it is)
 	end

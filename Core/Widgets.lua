@@ -9490,7 +9490,7 @@ do
 			W.Paint(row.label, "selectedTrim", "text")
 		elseif r.kind == "line" then
 			row.label:SetPoint("RIGHT", row, "RIGHT", -38, 0)
-			row.label:SetText(TEXT.line)
+			row.label:SetText(W.Tr(TEXT.line))
 			row.label:SetFontObject("MelloUIFont_GameFontHighlightSmall")
 			W.Paint(row.label, "mutedText", "text")
 			row.rule:ClearAllPoints()
@@ -9704,7 +9704,7 @@ do
 			d.started = true
 			list.open = nil   -- (0.21.1: the settings close as a row is dragged)
 			local r = list.data[d.from]
-			list.ghost.label:SetText(r and (r.kind == "line" and TEXT.line or r.label) or "")
+			list.ghost.label:SetText(r and (r.kind == "line" and W.Tr(TEXT.line) or r.label) or "")
 			list.ghost:Show()
 		end
 		-- (near the view's top or foot: a row at a time)

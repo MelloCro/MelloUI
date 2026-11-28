@@ -1036,24 +1036,24 @@ end
 local function GoTo(kind, opts)
 	local R = Route()
 	if not R then
-		Notify("The Route module is off; enable it under /mello.", "fail")
+		Notify(Tr("The Route module is off; enable it under /mello."), "fail")
 		return false, "off"
 	end
 	local profession = Profession(opts)
-	local what = (opts and type(opts.what) == "string" and opts.what) or (profession and (profession.label .. " trainer")) or kind.label:lower()
+	local what = (opts and type(opts.what) == "string" and opts.what) or (profession and F("trainer for %s", profession.label)) or Tr(kind.label)
 	local near = Nearest(kind, 6, profession, Filter(opts))
 	if #near == 0 then
 		-- (Zephras Isle before 0.14.0 said "none known on this continent" when
 		-- the player had no place there)
 		if not Placed(R) then
-			Notify("Can't place you on this map, so no route to the nearest " .. what .. ".", "fail")
+			Notify(F("Can't place you on this map, so no route to the nearest %s.", what), "fail")
 			return false, "noplace"
 		end
 		local fallback = opts and KIND[opts.fallback]
 		if fallback and fallback ~= kind then
 			return GoTo(fallback)
 		end
-		Notify("No " .. what .. " known on this continent yet.", "fail")
+		Notify(F("No %s known on this continent yet.", what), "fail")
 		return false, "none"
 	end
 	local costs = {}
@@ -1253,13 +1253,15 @@ local function Remember(kindKey, name, sub)
 	end
 	learned[key] = { kind = kindKey, name = name, sub = sub or "", mapID = mapID, x = x, y = y }
 	local icon = ""
+	local label = kindKey == "trainer" and "Trainer" or kindKey
 	for _, kind in ipairs(KINDS) do
-		if (kind.key == kindKey or kind.data == kindKey) and kind.icon then
+		if (kind.key == kindKey or (kind.data == kindKey and kindKey ~= "trainer")) and kind.icon then
 			icon = "|T" .. kind.icon .. ":22:22|t  "
+			label = kind.label
 			break
 		end
 	end
-	Notify(icon .. "Remembered " .. name .. " as a " .. kindKey, "learn")
+	Notify(icon .. Tr("Remembered %s as a %s"):format(name, Tr(label)), "learn")
 end
 
 local eventFrame = CreateFrame("Frame")

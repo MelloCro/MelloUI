@@ -507,9 +507,9 @@ do
 		told[mapID] = true
 		local name = info and MelloUI.Safe.Text(info.name) or ("map " .. mapID)
 		if what == "you" then
-			M:Notify("Route can't place you on this map (" .. name .. "), so there is no route from here.", "info")
+			M:Notify(M.Tr("Route can't place you on this map (%s), so there is no route from here."):format(name), "info")
 		else
-			M:Notify("Route can't place that point on its map (" .. name .. "), so there is no route to it.", "info")
+			M:Notify(M.Tr("Route can't place that point on its map (%s), so there is no route to it."):format(name), "info")
 		end
 	end
 end
@@ -6551,7 +6551,9 @@ local function CheckArrival()
 		end
 		-- with Travel Time, how long the way took: "Arrived: Stormwind (2:48)"
 		local took = Travel.Took(destination)
-		M:Notify("Arrived: " .. (destination.label or "destination") .. (took and (" (" .. took .. ")") or ""), "arrive")
+		local notice = took and M.Tr("Arrived: %s (%s)"):format(destination.label or "destination", took)
+			or M.Tr("Arrived: %s"):format(destination.label or "destination")
+		M:Notify(notice, "arrive")
 		if destination.fromWaypoint and C_Map.ClearUserWaypoint then
 			pcall(C_Map.ClearUserWaypoint)
 		end
@@ -7584,7 +7586,7 @@ do
 		end
 		if not trip.arrived then
 			trip.arrived = true
-			M:Notify("Arrived: " .. (s.label or "destination"), "arrive")
+			M:Notify(M.Tr("Arrived: %s"):format(s.label or "destination"), "arrive")
 			TR.Changed(trip)
 		end
 		return true
@@ -11629,7 +11631,7 @@ do
 		if M.db.learn and a.from and a.to and took >= F.SHORTEST and took <= F.LONGEST then
 			F.Learn(a.from, a.to, took)
 		end
-		M:Notify("Landed at " .. a.name .. " (" .. Clock(took) .. ")", "arrive")
+		M:Notify(M.Tr("Landed at %s (%s)"):format(a.name, Clock(took)), "arrive")
 	end
 
 	-- Route's tick, while a flight is asked for or under way
